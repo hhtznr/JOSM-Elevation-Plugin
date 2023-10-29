@@ -26,3 +26,4 @@ replay_pid*
 # Build and javadoc directories
 /build/
 /javadoc/
+/bin/

@@ -1,13 +1,14 @@
 package hhtznr.josm.plugins.elevation;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.HashMap;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -65,6 +66,7 @@ public class SRTMFileReader {
     private File srtmDirectory = null;
     private final HashMap<String, SRTMTile> tileCache = new HashMap<>();
     private SRTMTile previousTile = null;
+    private final ExecutorService fileReadExecutor = Executors.newSingleThreadExecutor();
 
     /**
      * Returns a singleton instance of the SRTM file reader.
@@ -152,17 +154,8 @@ public class SRTMFileReader {
                 if (srtmFile != null) {
                     Logging.info("Elevation: Caching data of SRTM tile " + srtmTileID + " from file "
                             + srtmFile.getAbsolutePath());
-                    try {
-                        srtmTile = readSrtmFile(srtmFile);
-                    } catch (FileNotFoundException e) {
-                        Logging.error("Elevation: Retrieving elevation for SRTM tile from file "
-                                + srtmFile.getAbsolutePath() + " failed: => " + e.getMessage());
-                    } catch (IOException e) {
-                        Logging.error(e);
-                    }
-                    synchronized (tileCache) {
-                        tileCache.put(srtmTileID, srtmTile);
-                    }
+                    // Read the SRTM file as task in a separate thread
+                    fileReadExecutor.submit(new ReadSRTMFileTask(srtmFile));
                 }
                 // Otherwise, put an empty data set with status "missing" into the cache
                 else {
@@ -184,88 +177,15 @@ public class SRTMFileReader {
     }
 
     /**
-     * Reads an SRTM tile from a ZIP-compressed SRTM file as obtained from NASA.
+     * Called by {@code ReadSRTMFileTask} when the SRTM file was read successfully
+     * (tile status: valid) or reading failed (tile status: missing).
      *
-     * The types SRTM1 and SRTM3 are automatically distinguished based on the file
-     * name. If both, an SRTM1 and SRTM3 file, are available for the same tile,
-     * SRTM1 takes precedence.
-     *
-     * <b>Format of an uncompressed SRTM file</b>
-     *
-     * Source: https://lpdaac.usgs.gov/documents/179/SRTM_User_Guide_V3.pdf
-     *
-     * <i>Height files have the extension .HGT, and the DEM is provided as two-byte
-     * (16-bit) binary signed integer raster data. Two-byte signed integers can
-     * range from -32,767 to 32,767 m and can encompass the range of the Earth’s
-     * elevations. Header or trailer bytes are not embedded in the file. The data
-     * are stored in row major order, meaning all the data for the northernmost row,
-     * row 1, are followed by all the data for row 2, and so on.
-     *
-     * The two-byte data are in Motorola "big-endian" order with the most
-     * significant byte first. Most personal computers, and Macintosh computers
-     * built after 2006 use Intel ("little-endian") order so byte swapping may be
-     * necessary. Some software programs perform the swapping during ingest.
-     *
-     * Voids in Versions 1.0 and 2.1 are flagged with the value -32,768. There are
-     * no voids in Version 3.0.</i>
-     *
-     * @param srtmFile The compressed SRTM file as downloaded from NASA.
-     * @return An SRTM tile contained in the file with status "valid" if the file
-     *         contained data of the expected length or an SRTM tile with null data
-     *         and status "missing" otherwise.
-     * @throws IOException Thrown if the type (SRTM1, SRTM3) cannot be determined
-     *                     from the file name or if I/O exceptions are thrown upon
-     *                     attempting to read the SRTM file.
+     * @param srtmTile The SRTM tile that was read.
      */
-    public static SRTMTile readSrtmFile(File srtmFile) throws IOException {
-        SRTMTile.Type type = getSRTMTileTypeFromFileName(srtmFile.getName());
-        if (type == null)
-            throw new IOException("Cannot identify if file '" + srtmFile.getName() + "' is an SRTM1 or SRTM3 file.");
-        String srtmTileID = getSRTMTileIDFromFileName(srtmFile.getName());
-
-        // Expected number of elevation data points
-        int srtmTileSize;
-        if (type == SRTMTile.Type.SRTM1)
-            srtmTileSize = SRTMTile.SRTM1_TILE_LENGTH * SRTMTile.SRTM1_TILE_LENGTH;
-        else
-            srtmTileSize = SRTMTile.SRTM3_TILE_LENGTH * SRTMTile.SRTM3_TILE_LENGTH;
-
-        // Expected number of bytes in the SRTM file (number of data points * 2 bytes
-        // per short).
-        int bytesExpected = srtmTileSize * 2;
-
-        short[] elevationData = null;
-
-        try (InputStream inputStream = Compression.getUncompressedFileInputStream(srtmFile.toPath())) {
-            // https://www.baeldung.com/convert-input-stream-to-array-of-bytes
-            ByteBuffer byteBuffer = ByteBuffer.allocate(bytesExpected);
-            while (inputStream.available() > 0) {
-                int b = inputStream.read();
-                // EOF
-                if (b == -1)
-                    break;
-                if (byteBuffer.position() >= bytesExpected)
-                    throw new IOException("Elevation: SRTM file '" + srtmFile.getName()
-                            + "' contains more bytes than expected. Expected: " + bytesExpected + " bytes");
-                byteBuffer.put((byte) b);
-            }
-            int bytesRead = byteBuffer.position();
-
-            if (bytesRead != bytesExpected) {
-                Logging.error("Elevation: Wrong number of bytes in SRTM file '" + srtmFile.getName() + "'. Expected: "
-                        + bytesExpected + " bytes; read: " + bytesRead + " bytes");
-                return new SRTMTile(srtmTileID, type, null, SRTMTile.Status.MISSING);
-            }
-
-            // Convert byte order
-            byteBuffer.order(ByteOrder.BIG_ENDIAN);
-
-            elevationData = new short[srtmTileSize];
-            for (int index = 0; index * 2 < bytesRead; index++)
-                elevationData[index] = byteBuffer.getShort(index * 2);
+    private void readSRTMFIleTaskCompleted(SRTMTile srtmTile) {
+        synchronized (tileCache) {
+            tileCache.put(srtmTile.getID(), srtmTile);
         }
-
-        return new SRTMTile(srtmTileID, type, elevationData, SRTMTile.Status.VALID);
     }
 
     /**
@@ -360,5 +280,106 @@ public class SRTMFileReader {
             return SRTMTile.Type.SRTM3;
         else
             return null;
+    }
+
+    /**
+     * Task class to be executed by a thread executor service for reading an SRTM
+     * tile from a ZIP-compressed SRTM file as obtained from NASA.
+     *
+     * The types SRTM1 and SRTM3 are automatically distinguished based on the file
+     * name. If both, an SRTM1 and SRTM3 file, are available for the same tile,
+     * SRTM1 takes precedence.
+     *
+     * <b>Format of an uncompressed SRTM file</b>
+     *
+     * Source: https://lpdaac.usgs.gov/documents/179/SRTM_User_Guide_V3.pdf
+     *
+     * <i>Height files have the extension .HGT, and the DEM is provided as two-byte
+     * (16-bit) binary signed integer raster data. Two-byte signed integers can
+     * range from -32,767 to 32,767 m and can encompass the range of the Earth’s
+     * elevations. Header or trailer bytes are not embedded in the file. The data
+     * are stored in row major order, meaning all the data for the northernmost row,
+     * row 1, are followed by all the data for row 2, and so on.
+     *
+     * The two-byte data are in Motorola "big-endian" order with the most
+     * significant byte first. Most personal computers, and Macintosh computers
+     * built after 2006 use Intel ("little-endian") order so byte swapping may be
+     * necessary. Some software programs perform the swapping during ingest.
+     *
+     * Voids in Versions 1.0 and 2.1 are flagged with the value -32,768. There are
+     * no voids in Version 3.0.</i>
+     */
+    private class ReadSRTMFileTask implements Runnable {
+
+        private File srtmFile;
+
+        /**
+         * Creates a new SRTM file read task.
+         *
+         * @param srtmFile The SRTM file to read.
+         */
+        public ReadSRTMFileTask(File srtmFile) {
+            this.srtmFile = srtmFile;
+        }
+
+        @Override
+        public void run() {
+            String srtmTileID = getSRTMTileIDFromFileName(srtmFile.getName());
+            SRTMTile.Type type = getSRTMTileTypeFromFileName(srtmFile.getName());
+            Logging.info("Elevation: Reading SRTM file '" + srtmFile.getName() + "' for tile ID " + srtmTileID);
+            if (type == null) {
+                Logging.error("Elevation: Cannot identify if file '" + srtmFile.getName() + "' is an SRTM1 or SRTM3 file.");
+                SRTMFileReader.this.readSRTMFIleTaskCompleted(new SRTMTile(srtmTileID, type, null, SRTMTile.Status.MISSING));
+                return;
+            }
+
+            // Expected number of elevation data points
+            int srtmTileSize;
+            if (type == SRTMTile.Type.SRTM1)
+                srtmTileSize = SRTMTile.SRTM1_TILE_LENGTH * SRTMTile.SRTM1_TILE_LENGTH;
+            else
+                srtmTileSize = SRTMTile.SRTM3_TILE_LENGTH * SRTMTile.SRTM3_TILE_LENGTH;
+
+            // Expected number of bytes in the SRTM file (number of data points * 2 bytes
+            // per short).
+            int bytesExpected = srtmTileSize * 2;
+
+            short[] elevationData = null;
+
+            try (InputStream inputStream = Compression.getUncompressedFileInputStream(srtmFile.toPath())) {
+                // https://www.baeldung.com/convert-input-stream-to-array-of-bytes
+                ByteBuffer byteBuffer = ByteBuffer.allocate(bytesExpected);
+                while (inputStream.available() > 0) {
+                    int b = inputStream.read();
+                    // EOF
+                    if (b == -1)
+                        break;
+                    if (byteBuffer.position() >= bytesExpected) {
+                        Logging.error("Elevation: SRTM file '" + srtmFile.getName()
+                                + "' contains more bytes than expected. Expected: " + bytesExpected + " bytes");
+                        return;
+                    }
+                    byteBuffer.put((byte) b);
+                }
+                int bytesRead = byteBuffer.position();
+
+                if (bytesRead != bytesExpected) {
+                    Logging.error("Elevation: Wrong number of bytes in SRTM file '" + srtmFile.getName() + "'. Expected: "
+                            + bytesExpected + " bytes; read: " + bytesRead + " bytes");
+                    SRTMFileReader.this.readSRTMFIleTaskCompleted(new SRTMTile(srtmTileID, type, null, SRTMTile.Status.MISSING));
+                }
+
+                // Convert byte order
+                byteBuffer.order(ByteOrder.BIG_ENDIAN);
+
+                elevationData = new short[srtmTileSize];
+                for (int index = 0; index * 2 < bytesRead; index++)
+                    elevationData[index] = byteBuffer.getShort(index * 2);
+            } catch (IOException e) {
+                Logging.error("Elevation: Exception reading SRTM file '" + srtmFile.getName() + "': " + e.toString());
+                return;
+            }
+            SRTMFileReader.this.readSRTMFIleTaskCompleted(new SRTMTile(srtmTileID, type, elevationData, SRTMTile.Status.VALID));
+        }
     }
 }

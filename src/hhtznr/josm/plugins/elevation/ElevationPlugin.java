@@ -9,10 +9,11 @@ import org.openstreetmap.josm.tools.Logging;
 
 public class ElevationPlugin extends Plugin {
 
-	private LocalElevationLabel localElevationLabel = null;
+    private LocalElevationLabel localElevationLabel = null;
 
-	 /**
+    /**
      * Initializes the plugin.
+     *
      * @param info Context information about the plugin.
      */
     public ElevationPlugin(PluginInformation info) {
@@ -22,8 +23,8 @@ public class ElevationPlugin extends Plugin {
 
     /**
      * Called after Main.mapFrame is initialized. (After the first data is loaded).
-     * You can use this callback to tweak the newFrame to your needs, as example install
-     * an alternative Painter.
+     * You can use this callback to tweak the newFrame to your needs, as example
+     * install an alternative Painter.
      */
     @Override
     public void mapFrameInitialized(MapFrame oldFrame, MapFrame newFrame) {

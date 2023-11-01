@@ -98,10 +98,11 @@ public class SRTMTile {
     }
 
     /**
-     * Status of SRTM tiles (loading, valid, missing).
+     * Status of SRTM tiles (loading, valid, missing, download scheduled,
+     * downloading, download failed).
      */
     enum Status {
-        LOADING, VALID, MISSING
+        LOADING, VALID, MISSING, DOWNLOAD_SCHEDULED, DOWNLOADING, DOWNLOAD_FAILED
     }
 
     /**

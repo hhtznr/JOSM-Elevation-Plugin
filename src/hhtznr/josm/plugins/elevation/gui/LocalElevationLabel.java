@@ -26,6 +26,8 @@ public class LocalElevationLabel extends ImageLabel {
 	 *                 be added to the status line.
 	 */
     public void addToMapFrame(MapFrame mapFrame) {
+        if (mapFrame == null)
+            return;
         // Add after the longitude ImageLabel at index = 2
         // or alternatively at index 0 or 1, if index = 2 should be out of range
         int index = Math.min(mapFrame.statusLine.getComponentCount(), 2);

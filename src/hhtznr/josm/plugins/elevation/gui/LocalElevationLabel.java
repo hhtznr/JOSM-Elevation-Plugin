@@ -23,7 +23,7 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
 
     private final DecimalFormat ELEVATION_FORMAT = new DecimalFormat("0 m");
 
-    private MapFrame mapFrame;
+    private MapFrame mapFrame = null;
 
     public LocalElevationLabel(MapFrame mapFrame) {
         super("ele", "The terrain elevation at the mouse pointer.", 10, MapStatus.PROP_BACKGROUND_COLOR.get());
@@ -41,6 +41,8 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
     public void addToMapFrame(MapFrame mapFrame) {
         if (mapFrame == null)
             return;
+        if (this.mapFrame != null)
+            remove();
         setText("");
         mapFrame.mapView.addMouseMotionListener(this);
         // Add after the longitude ImageLabel at index = 2
@@ -48,6 +50,15 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
         int index = Math.min(mapFrame.statusLine.getComponentCount(), 2);
         mapFrame.statusLine.add(this, GBC.std().insets(3, 0, 0, 0), index);
         this.mapFrame = mapFrame;
+    }
+
+    /**
+     * Removes this local elevation label from the map frame.
+     */
+    public void remove() {
+        mapFrame.mapView.removeMouseMotionListener(this);
+        mapFrame.statusLine.remove(this);
+        mapFrame = null;
     }
 
     @Override

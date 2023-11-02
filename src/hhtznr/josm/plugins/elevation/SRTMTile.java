@@ -93,15 +93,52 @@ public class SRTMTile {
     /**
      * SRTM file types (SRTM1, SRTM3).
      */
-    enum Type {
-        SRTM1, SRTM3
+    public enum Type {
+        /**
+         * SRTM1: elevation sampled at 1 arc-second
+         */
+        SRTM1("SRTM1"),
+
+        /**
+         * SRTM3: elevation sampled at 3 arc-seconds
+         */
+        SRTM3("SRTM3");
+
+        private final String typeName;
+
+        Type(String typeName) {
+            this.typeName = typeName;
+        }
+
+        /**
+         * Returns the name associated with this SRTM type.
+         *
+         * @return The name of the type.
+         */
+        public String getName() {
+            return typeName;
+        }
+
+        /**
+         * Returns the SRTM type associated with a given name.
+         *
+         * @param name The name associated with the SRTM type.
+         * @return The SRTM type associated with the name or {@code SRTM1} otherwise.
+         */
+        public static Type fromName(String name) {
+            for (Type type : Type.values()) {
+                if (type.getName().equals(name))
+                    return type;
+            }
+            return SRTM1;
+        }
     }
 
     /**
      * Status of SRTM tiles (loading, valid, missing, download scheduled,
      * downloading, download failed).
      */
-    enum Status {
+    public enum Status {
         LOADING, VALID, MISSING, DOWNLOAD_SCHEDULED, DOWNLOADING, DOWNLOAD_FAILED
     }
 

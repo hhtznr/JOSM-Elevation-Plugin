@@ -13,6 +13,16 @@ import org.openstreetmap.josm.data.Preferences;
 public class ElevationPreferences {
 
     /**
+     * Property key for enabling or disabling use of elevation data.
+     */
+    public static final String ELEVATION_ENABLED = "elevation.enabled";
+
+    /**
+     * Property key for preferred SRTM type.
+     */
+    public static final String PREFERRED_SRTM_TYPE = "elevation.srtm.type.preferred";
+
+    /**
      * Property key for enabling or disabling automatic download of elevation data.
      */
     public static final String ELEVATION_AUTO_DOWNLOAD_ENABLED = "elevation.autodownload";
@@ -21,6 +31,16 @@ public class ElevationPreferences {
      * Property key for authentication bearer token for SRTM server.
      */
     public static final String ELEVATION_SERVER_AUTH_BEARER = "elevation.srtm.server.auth.bearer";
+
+    /**
+     * Default property value for enabling use of elevation data: {@code true}.
+     */
+    public static final boolean DEFAULT_ELEVATION_ENABLED = true;
+
+    /**
+     * Default property value for the preferred SRTM type.
+     */
+    public static final SRTMTile.Type DEFAULT_PREFERRED_SRTM_TYPE = SRTMTile.Type.SRTM1;
 
     /**
      * Default property value for authentication bearer token for SRTM HGT server:

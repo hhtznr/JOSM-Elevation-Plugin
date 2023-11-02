@@ -50,6 +50,7 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
     private final ExecutorService fileReadExecutor = Executors.newSingleThreadExecutor();
 
     private SRTMFileDownloader srtmFileDownloader;
+    private SRTMTile.Type preferredSRTMType;
     private boolean autoDownloadEnabled = false;
 
     /**
@@ -76,6 +77,8 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
 
     private SRTMFileReader(File srtmDirectory) {
         setSrtmDirectory(srtmDirectory);
+        preferredSRTMType = SRTMTile.Type.fromName(Config.getPref().get(ElevationPreferences.PREFERRED_SRTM_TYPE,
+                ElevationPreferences.DEFAULT_PREFERRED_SRTM_TYPE.getName()));
         boolean autoDownloadEnabled = Config.getPref().getBoolean(ElevationPreferences.ELEVATION_AUTO_DOWNLOAD_ENABLED,
                 ElevationPreferences.DEFAULT_ELEVATION_AUTO_DOWNLOAD_ENABLED);
         setAutoDownloadEnabled(autoDownloadEnabled);
@@ -108,6 +111,24 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
             Logging.error("Elevation: Could not set directory for SRTM files: " + srtmDirectory.toString());
             this.srtmDirectory = null;
         }
+    }
+
+    /**
+     * Returns the SRTM type that is preferred by this SRTM file reader.
+     *
+     * @return The preferred SRTM type.
+     */
+    public SRTMTile.Type getPreferredSRTMType() {
+        return preferredSRTMType;
+    }
+
+    /**
+     * Sets the SRTM type which is preferred by this SRTM file reader.
+     *
+     * @param type The SRTM type to be preferred.
+     */
+    public void setPreferredSRTMType(SRTMTile.Type type) {
+        preferredSRTMType = type;
     }
 
     /**
@@ -151,8 +172,7 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
                     synchronized (tileCache) {
                         tileCache.put(srtmTileID, new SRTMTile(srtmTileID, null, null, SRTMTile.Status.DOWNLOAD_SCHEDULED));
                     }
-                    // TODO: Distinguish SRTM types
-                    srtmFileDownloader.downloadSRTMFile(srtmTileID, SRTMTile.Type.SRTM3);
+                    srtmFileDownloader.downloadSRTMFile(srtmTileID, preferredSRTMType);
                 }
                 // Otherwise, put an empty data set with status "missing" into the cache
                 else {
@@ -204,21 +224,32 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
         Set<File> files = Stream.of(srtmDirectory.listFiles())
                 .filter(file -> !file.isDirectory() && file.getName().startsWith(srtmTileID))
                 .collect(Collectors.toSet());
-        File srtm3File = null;
+
+        String preferredSRTMFileID = SRTMFiles.SRTM1_ZIP_FILE_ID;
+        String nonPreferredSRTMFileID = SRTMFiles.SRTM3_ZIP_FILE_ID;
+        if (preferredSRTMType == SRTMTile.Type.SRTM3) {
+            preferredSRTMFileID = SRTMFiles.SRTM3_ZIP_FILE_ID;
+            nonPreferredSRTMFileID = SRTMFiles.SRTM1_ZIP_FILE_ID;
+        }
+        File nonPreferredSRTMFile = null;
         for (File file : files) {
-            if (file.getName().contains(SRTMFiles.SRTM1_ZIP_FILE_ID)) {
-                Logging.info("Elevation: Found local SRTM1 file " + file.getName());
+            if (file.getName().contains(preferredSRTMFileID)) {
+                Logging.info("Elevation: Found preferred local SRTM file " + file.getName());
                 return file;
             }
-            if (file.getName().contains(SRTMFiles.SRTM3_ZIP_FILE_ID))
-                srtm3File = file;
+            if (file.getName().contains(nonPreferredSRTMFileID))
+                nonPreferredSRTMFile = file;
         }
-        if (srtm3File != null)
-            Logging.info("Elevation: Found local SRTM3 file " + srtm3File.getName());
+        if (nonPreferredSRTMFile != null) {
+            Logging.info("Elevation: Found non-preferred local SRTM file " + nonPreferredSRTMFile.getName());
+            // Download the SRTM file as the preferred type if auto-download enabled
+            if (autoDownloadEnabled)
+                srtmFileDownloader.downloadSRTMFile(srtmTileID, preferredSRTMType);
+        }
         else
             Logging.info("Elevation: Did not find a local SRTM file for tile ID " + srtmTileID);
 
-        return srtm3File;
+        return nonPreferredSRTMFile;
     }
 
     /**
@@ -365,8 +396,18 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
             if (srtmDirectory != null) {
                 if (srtmFileDownloader == null)
                     try {
+                        // Create an SRTM file downloader instance
                         srtmFileDownloader = new SRTMFileDownloader(srtmDirectory);
                         srtmFileDownloader.addDownloadListener(this);
+                        // Clear any SRTM tiles marked as missing from the cache so they will be
+                        // downloaded, if needed
+                        synchronized (tileCache) {
+                            for (String srtmTileID : tileCache.keySet()) {
+                                SRTMTile srtmTile = tileCache.get(srtmTileID);
+                                if (srtmTile.getStatus() == SRTMTile.Status.MISSING)
+                                    tileCache.remove(srtmTileID);
+                            }
+                        }
                     } catch (MalformedURLException e) {
                         autoDownloadEnabled = false;
                         Logging.error("Elevation: Cannot enable auto-downloading: " + e.toString());

@@ -27,7 +27,8 @@ import org.openstreetmap.josm.tools.Logging;
  */
 public class SRTMFileDownloader {
 
-    private final URL baseUrl;
+    private final URL srtm1BaseURL;
+    private final URL srtm3BaseURL;
     private File srtmDirectory;
 
     private String authHeader;
@@ -40,11 +41,12 @@ public class SRTMFileDownloader {
      * Creates a new SRTM file downloader.
      *
      * @param srtmDirectory The local directory into which to download SRTM files.
-     * @param url           The URL from which to download SRTM files. See also
+     * @param srtm1BaseURL  The URL from which to download SRTM1 files. See also
      *                      {@link ElevationPreferences#SRTM1_SERVER_BASE_URL
-     *                      ElevationPreferences.SRTM1_SERVER_BASE_URL} and
-     *                      {@link ElevationPreferences#SRTM3_SERVER_BASE_URL
      *                      ElevationPreferences.SRTM1_SERVER_BASE_URL}.
+     * @param srtm3BaseURL  The URL from which to download SRTM3 files. See also
+     *                      {@link ElevationPreferences#SRTM3_SERVER_BASE_URL
+     *                      ElevationPreferences.SRTM3_SERVER_BASE_URL}.
      * @param bearer        The authorization bearer token to use. See also
      *                      {@link ElevationPreferences#ELEVATION_SERVER_AUTH_BEARER
      *                      ElevationPreferences.ELEVATION_SERVER_AUTH_BEARER} and
@@ -52,9 +54,11 @@ public class SRTMFileDownloader {
      *                      ElevationPreferences.SRTM_SERVER_REGISTRATION_URL}.
      * @throws MalformedURLException Thrown if the URL is not properly formatted.
      */
-    public SRTMFileDownloader(File srtmDirectory, String url, String bearer) throws MalformedURLException {
+    public SRTMFileDownloader(File srtmDirectory, String srtm1BaseURL, String srtm3BaseURL, String bearer)
+            throws MalformedURLException {
         // May throw MalformedURLException
-        this.baseUrl = new URL(url);
+        this.srtm1BaseURL = new URL(srtm1BaseURL);
+        this.srtm3BaseURL = new URL(srtm3BaseURL);
         // https://stackoverflow.com/questions/38085964/authorization-bearer-token-in-httpclient
         if (!bearer.equals(""))
             authHeader = "Bearer " + bearer;
@@ -71,8 +75,7 @@ public class SRTMFileDownloader {
      * @throws MalformedURLException Thrown if the URL is not properly formatted.
      */
     public SRTMFileDownloader(File srtmDirectory) throws MalformedURLException {
-        // TODO: Ability to handle URLs for SRTM1 and SRTM3
-        this(srtmDirectory, ElevationPreferences.SRTM3_SERVER_BASE_URL,
+        this(srtmDirectory, ElevationPreferences.SRTM1_SERVER_BASE_URL, ElevationPreferences.SRTM3_SERVER_BASE_URL,
                 Config.getPref().get(ElevationPreferences.ELEVATION_SERVER_AUTH_BEARER,
                         ElevationPreferences.DEFAULT_ELEVATION_SERVER_AUTH_BEARER));
     }
@@ -124,6 +127,11 @@ public class SRTMFileDownloader {
 
         @Override
         public void run() {
+            URL srtmBaseURL;
+            if (srtmType == SRTMTile.Type.SRTM1)
+                srtmBaseURL = srtm1BaseURL;
+            else
+                srtmBaseURL = srtm3BaseURL;
             String srtmFileName = SRTMFiles.getSRTMFileName(srtmTileID, srtmType);
 
             Logging.info("Elevation: Downloading STRM file " + srtmFileName);
@@ -132,7 +140,7 @@ public class SRTMFileDownloader {
 
             URL url = null;
             try {
-                url = new URL(SRTMFileDownloader.this.baseUrl + srtmFileName);
+                url = new URL(srtmBaseURL + srtmFileName);
             } catch (MalformedURLException e) {
                 downloadFailed(srtmTileID);
                 return;
@@ -143,8 +151,6 @@ public class SRTMFileDownloader {
             HttpClient.Response response = null;
             try {
                 response = httpClient.connect();
-                // Logging.info("Elevation: HGT server responded: " + response.getResponseCode()
-                // + " " + response.getResponseMessage());
                 // https://urs.earthdata.nasa.gov/documentation/for_users/data_access/java
                 if (response.getResponseCode() != 200) {
                     downloadFailed(srtmTileID);
@@ -169,7 +175,7 @@ public class SRTMFileDownloader {
             }
 
             // This would happen, if the downloaded file was uncompressed, but it does not
-            // contain an appropriately named file (with HGT prefix)
+            // contain an appropriately named file (prefixed with SRTM tile ID)
             if (srtmFile == null) {
                 Logging.error("Elevation: Downloaded compressed SRTM file " + srtmFileName
                         + " did not contain a file with the expected STRM tile ID!");

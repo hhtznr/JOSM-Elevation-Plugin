@@ -85,6 +85,11 @@ public class SRTMTile {
      */
     public static int INVALID_TILE_LENGTH = -1;
 
+    /**
+     * The geographic vertical and horizontal dimensions of an SRTM tile: 1°.
+     */
+    public static double SRTM_TILE_ARC_DEGREES = 1.0;
+
     private String id;
     private Type type;
     private short[] elevationData;

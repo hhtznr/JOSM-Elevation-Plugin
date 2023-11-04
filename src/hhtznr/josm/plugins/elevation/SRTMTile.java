@@ -217,7 +217,7 @@ public class SRTMTile {
         if (elevationData == null)
             return 0;
         // Data size in bytes
-        return elevationData.length * 2;
+        return elevationData.length * elevationData[0].length * 2;
     }
 
     /**

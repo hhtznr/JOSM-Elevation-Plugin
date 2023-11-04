@@ -6,6 +6,8 @@ import java.util.HashMap;
 
 import org.openstreetmap.josm.tools.Logging;
 
+import hhtznr.josm.plugins.elevation.SRTMTile.Status;
+
 /**
  * In-memory cache for SRTM tiles which can be limited in size. If the cache
  * size is limited, the last recently tiles will be removed if new tiles are
@@ -44,25 +46,36 @@ public class SRTMTileCache {
     }
 
     /**
-     * Puts the SRTM tile into the cache. In case that the cache already holds an
-     * SRTM tile with the same tile ID, it is removed and returned.
+     * Puts a new SRTM tile with the provided data and attributes into the cache or
+     * updates an existing SRTM tile if a tile with the provided ID already exists
+     * in the cache.
      *
-     * @param srtmTile The SRTM tile to put into the cache.
-     * @return Removed SRTM tile if the cache was already holding an SRTM tile with
-     *         the same ID or {@code null} if the cache did not hold an SRTM tile
-     *         with the same ID.
+     * @param id            The ID of the SRTM tile.
+     * @param type          The type of the SRTM tile or {@code null} if there is no
+     *                      data and therefore the type is not known.
+     * @param elevationData The elevation data or {@code null} if the data is not
+     *                      available (yet).
+     * @param status        The status of the SRTM tile.
+     * @return The new SRTM tile that was put into the cache or the existing SRTM
+     *         tile that was updated, never {@code null}.
      */
-    public synchronized SRTMTile put(SRTMTile srtmTile) {
-        SRTMTile previousTile = cache.put(srtmTile.getID(), srtmTile);
-        if (previousTile != null)
-            cacheSize -= previousTile.getDataSize();
-        if (srtmTile != null)
+    public synchronized SRTMTile putOrUpdateSRTMTile(String id, SRTMTile.Type type, short[][] elevationData,
+            Status status) {
+        SRTMTile srtmTile = cache.get(id);
+        if (srtmTile == null) {
+            srtmTile = new SRTMTile(id, type, elevationData, status);
+            cache.put(id, srtmTile);
             cacheSize += srtmTile.getDataSize();
-        Logging.info("Elevation: Cached SRTM tile " + srtmTile.getID() + " with size "
-                + getSizeString(srtmTile.getDataSize()) + " -> cache size: " + getSizeString(cacheSize));
+        } else {
+            cacheSize -= srtmTile.getDataSize();
+            srtmTile.update(type, elevationData, status);
+            cacheSize += srtmTile.getDataSize();
+        }
+        Logging.info("Elevation: Cached SRTM tile " + id + " with size " + getSizeString(srtmTile.getDataSize())
+                + " -> cache size: " + getSizeString(cacheSize));
         if (cacheSizeLimit != ElevationPreferences.DISABLED_RAM_CACHE_SIZE_LIMIT && cacheSize > cacheSizeLimit)
             cleanCache();
-        return previousTile;
+        return srtmTile;
     }
 
     /**

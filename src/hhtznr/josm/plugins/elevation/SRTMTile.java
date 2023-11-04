@@ -90,7 +90,7 @@ public class SRTMTile {
      */
     public static double SRTM_TILE_ARC_DEGREES = 1.0;
 
-    private String id;
+    private final String id;
     private Type type;
     private short[][] elevationData;
     private Status status;
@@ -161,10 +161,7 @@ public class SRTMTile {
      */
     public SRTMTile(String id, Type type, short[][] elevationData, Status status) {
         this.id = id;
-        this.type = type;
-        this.elevationData = elevationData;
-        this.status = status;
-        this.accessTime = System.currentTimeMillis();
+        update(type, elevationData, status);
     }
 
     /**
@@ -181,8 +178,25 @@ public class SRTMTile {
      *
      * @return The status of the tile.
      */
-    public Status getStatus() {
+    public synchronized Status getStatus() {
         return status;
+    }
+
+    /**
+     * Updates type, data and status of this SRTM tile.
+     *
+     * @param type          The type of the SRTM tile.
+     * @param elevationData The elevation data points or {@code null} if no data is
+     *                      available. The 1st dimension of the array of arrays is
+     *                      the longitude ("x"), the 2nd dimension is the latitude
+     *                      ("y").
+     * @param status        The current status of the SRTM tile.
+     */
+    public synchronized void update(Type type, short[][] elevationData, Status status) {
+        this.type = type;
+        this.elevationData = elevationData;
+        this.status = status;
+        this.accessTime = System.currentTimeMillis();
     }
 
     /**
@@ -190,7 +204,7 @@ public class SRTMTile {
      *
      * @return The access time stamp.
      */
-    public long getAccessTime() {
+    public synchronized long getAccessTime() {
         return accessTime;
     }
 
@@ -199,7 +213,7 @@ public class SRTMTile {
      *
      * @return Size of the elevation data in bytes.
      */
-    public int getDataSize() {
+    public synchronized int getDataSize() {
         if (elevationData == null)
             return 0;
         // Data size in bytes
@@ -213,7 +227,7 @@ public class SRTMTile {
      * @return The number of data points in one tile dimension or
      *         {@code INVALID_TILE_LENGTH} if the SRTM type is inappropriate.
      */
-    public int getTileLength() {
+    public synchronized int getTileLength() {
         if (type == Type.SRTM1)
             return SRTM1_TILE_LENGTH;
         if (type == Type.SRTM3)
@@ -229,7 +243,7 @@ public class SRTMTile {
      * @return The elevation for the given location or {@code SRTM_DATA_VOID} if no
      *         data is available.
      */
-    public short getElevation(ILatLon latLon) {
+    public synchronized short getElevation(ILatLon latLon) {
         // Update the access time
         accessTime = System.currentTimeMillis();
         int tileLength = getTileLength();

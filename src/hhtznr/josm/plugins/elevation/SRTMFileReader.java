@@ -187,21 +187,18 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
                     Logging.info("Elevation: Caching data of SRTM tile " + srtmTileID + " from file "
                             + srtmFile.getAbsolutePath());
                     // Read the SRTM file as task in a separate thread
-                    srtmTile = new SRTMTile(srtmTileID, null, null, SRTMTile.Status.LOADING_SCHEDULED);
-                    tileCache.put(srtmTile);
+                    srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.LOADING_SCHEDULED);
                     fileReadExecutor.submit(new ReadSRTMFileTask(srtmFile));
                 }
                 // If auto-downloading of SRTM files is enabled, try to download the missing
                 // file
                 else if (autoDownloadEnabled) {
-                    srtmTile = new SRTMTile(srtmTileID, null, null, SRTMTile.Status.DOWNLOAD_SCHEDULED);
-                    tileCache.put(srtmTile);
+                    srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.DOWNLOAD_SCHEDULED);
                     srtmFileDownloader.downloadSRTMFile(srtmTileID, preferredSRTMType);
                 }
                 // Otherwise, put an empty data set with status "missing" into the cache
                 else {
-                    srtmTile = new SRTMTile(srtmTileID, null, null, SRTMTile.Status.MISSING);
-                    tileCache.put(srtmTile);
+                    srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.MISSING);
                 }
             }
             // If we have a valid tile now, remember it as the previous tile
@@ -301,12 +298,12 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
         @Override
         public void run() {
             String srtmTileID = SRTMFiles.getSRTMTileIDFromFileName(srtmFile.getName());
-            SRTMFileReader.this.tileCache.put(new SRTMTile(srtmTileID, null, null, SRTMTile.Status.LOADING));
+            SRTMFileReader.this.tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.LOADING);
             SRTMTile.Type type = SRTMFiles.getSRTMTileTypeFromFileName(srtmFile.getName());
             if (type == null) {
                 Logging.error(
                         "Elevation: Cannot identify whether file '" + srtmFile.getName() + "' is an SRTM1 or SRTM3 file.");
-                SRTMFileReader.this.tileCache.put(new SRTMTile(srtmTileID, type, null, SRTMTile.Status.MISSING));
+                SRTMFileReader.this.tileCache.putOrUpdateSRTMTile(srtmTileID, type, null, SRTMTile.Status.MISSING);
                 return;
             }
 
@@ -345,7 +342,7 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
                 if (bytesRead != bytesExpected) {
                     Logging.error("Elevation: Wrong number of bytes in SRTM file '" + srtmFile.getName()
                             + "'. Expected: " + bytesExpected + " bytes; read: " + bytesRead + " bytes");
-                    SRTMFileReader.this.tileCache.put(new SRTMTile(srtmTileID, type, null, SRTMTile.Status.MISSING));
+                    SRTMFileReader.this.tileCache.putOrUpdateSRTMTile(srtmTileID, type, null, SRTMTile.Status.MISSING);
                 }
 
                 // Convert byte order
@@ -363,7 +360,7 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
                 Logging.error("Elevation: Exception reading SRTM file '" + srtmFile.getName() + "': " + e.toString());
                 return;
             }
-            SRTMFileReader.this.tileCache.put(new SRTMTile(srtmTileID, type, elevationData, SRTMTile.Status.VALID));
+            SRTMFileReader.this.tileCache.putOrUpdateSRTMTile(srtmTileID, type, elevationData, SRTMTile.Status.VALID);
         }
     }
 
@@ -403,7 +400,7 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
 
     @Override
     public void srtmFileDownloadStarted(String srtmTileID) {
-        tileCache.put(new SRTMTile(srtmTileID, null, null, SRTMTile.Status.DOWNLOADING));
+        tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.DOWNLOADING);
     }
 
     @Override
@@ -414,6 +411,6 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
 
     @Override
     public void srtmFileDownloadFailed(String srtmTileID) {
-        tileCache.put(new SRTMTile(srtmTileID, null, null, SRTMTile.Status.DOWNLOAD_FAILED));
+        tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.DOWNLOAD_FAILED);
     }
 }

@@ -156,8 +156,21 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
      *         {@link SRTMTile#SRTM_DATA_VOID SRTMTile.SRTM_DATA_VOID} if there is a
      *         data void or no SRTM data covering the location is available.
      */
-    public synchronized short getElevation(ILatLon latLon) {
-        String srtmTileID = getSRTMTileID(latLon);
+    public short getElevation(ILatLon latLon) {
+        SRTMTile srtmTile = getSRTMTile(SRTMTile.getTileID(latLon));
+        // Retrieves and returns elevation value if SRTM data is valid
+        return srtmTile.getElevation(latLon);
+    }
+
+    /**
+     * Returns an SRTM tile for the given SRTM tile ID.
+     *
+     * @param srtmTileID The SRTM tile ID.
+     * @return The SRTM tile for the given SRTM tile ID. The returned tile may hold
+     *         no data, if it is not available (yet), but it will never be
+     *         {@code null}.
+     */
+    public synchronized SRTMTile getSRTMTile(String srtmTileID) {
         // Map editing is often done in the very same place for a while.
         // Therefore consider the previous tile first of all.
         SRTMTile srtmTile = previousTile;
@@ -174,29 +187,28 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
                     Logging.info("Elevation: Caching data of SRTM tile " + srtmTileID + " from file "
                             + srtmFile.getAbsolutePath());
                     // Read the SRTM file as task in a separate thread
-                    tileCache.put(new SRTMTile(srtmTileID, null, null, SRTMTile.Status.LOADING_SCHEDULED));
+                    srtmTile = new SRTMTile(srtmTileID, null, null, SRTMTile.Status.LOADING_SCHEDULED);
+                    tileCache.put(srtmTile);
                     fileReadExecutor.submit(new ReadSRTMFileTask(srtmFile));
                 }
-                // If auto-downloading of SRTM files is enabled, try to download the missing file
+                // If auto-downloading of SRTM files is enabled, try to download the missing
+                // file
                 else if (autoDownloadEnabled) {
-                    tileCache.put(new SRTMTile(srtmTileID, null, null, SRTMTile.Status.DOWNLOAD_SCHEDULED));
+                    srtmTile = new SRTMTile(srtmTileID, null, null, SRTMTile.Status.DOWNLOAD_SCHEDULED);
+                    tileCache.put(srtmTile);
                     srtmFileDownloader.downloadSRTMFile(srtmTileID, preferredSRTMType);
                 }
                 // Otherwise, put an empty data set with status "missing" into the cache
                 else {
-                    tileCache.put(new SRTMTile(srtmTileID, null, null, SRTMTile.Status.MISSING));
+                    srtmTile = new SRTMTile(srtmTileID, null, null, SRTMTile.Status.MISSING);
+                    tileCache.put(srtmTile);
                 }
             }
             // If we have a valid tile now, remember it as the previous tile
             if (srtmTile != null && srtmTile.getStatus() == SRTMTile.Status.VALID)
                 previousTile = srtmTile;
-            else
-                return SRTMTile.SRTM_DATA_VOID;
         }
-        // Retrieve and return elevation value if SRTM data is valid
-        short elevation = srtmTile.getElevation(latLon);
-        //Logging.info("Elevation: Elevation for lat = " + latLon.lat() + ", lon = " + latLon.lon() + " from tile " + srtmTileID +": " + elevation + " m");  
-        return elevation;
+        return srtmTile;
     }
 
     /**
@@ -244,38 +256,6 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
             Logging.info("Elevation: Did not find a local SRTM file for tile ID " + srtmTileID);
 
         return nonPreferredSRTMFile;
-    }
-
-    /**
-     * Returns the appropriate SRTM tile ID for the given coordinate. The format of
-     * the ID is <code>[N|S]nn[W|E]mmm</code> where <code>nn</code> is the integral
-     * latitude without decimal places and <code>mmm</code> is the integral
-     * longitude of the south west (lower left) corner of the tile.
-     *
-     * @param latLon The coordinate to get the SRTM tile ID for.
-     * @return The ID of the SRTM tile.
-     */
-    private static String getSRTMTileID(ILatLon latLon) {
-        // Integer part of latitude and longitude
-        // https://stackoverflow.com/questions/54629033/cast-to-int-vs-math-floor
-        int integerLat = (int) Math.floor(latLon.lat());
-        int integerLon = (int) Math.floor(latLon.lon());
-
-        String latPrefix = "N";
-        // Negative latitudes are south of the equator
-        if (integerLat < 0) {
-            latPrefix = "S";
-            integerLat = -integerLat;
-        }
-
-        String lonPrefix = "E";
-        // Negative longitudes are west of the Prime Meridian
-        if (integerLon < 0) {
-            lonPrefix = "W";
-            integerLon = -integerLon;
-        }
-
-        return String.format("%s%02d%s%03d", latPrefix, integerLat, lonPrefix, integerLon);
     }
 
     /**
@@ -332,18 +312,18 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
 
             Logging.info("Elevation: Reading SRTM file '" + srtmFile.getName() + "' for tile ID " + srtmTileID);
 
-            // Expected number of elevation data points
-            int srtmTileSize;
+            // Expected number of elevation data points in one dimension
+            int srtmTileLength;
             if (type == SRTMTile.Type.SRTM1)
-                srtmTileSize = SRTMTile.SRTM1_TILE_LENGTH * SRTMTile.SRTM1_TILE_LENGTH;
+                srtmTileLength = SRTMTile.SRTM1_TILE_LENGTH;
             else
-                srtmTileSize = SRTMTile.SRTM3_TILE_LENGTH * SRTMTile.SRTM3_TILE_LENGTH;
+                srtmTileLength = SRTMTile.SRTM3_TILE_LENGTH;
 
             // Expected number of bytes in the SRTM file (number of data points * 2 bytes
             // per short).
-            int bytesExpected = srtmTileSize * 2;
+            int bytesExpected = srtmTileLength * srtmTileLength * 2;
 
-            short[] elevationData = null;
+            short[][] elevationData = null;
 
             try (InputStream inputStream = Compression.getUncompressedFileInputStream(srtmFile.toPath())) {
                 // https://www.baeldung.com/convert-input-stream-to-array-of-bytes
@@ -371,9 +351,14 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
                 // Convert byte order
                 byteBuffer.order(ByteOrder.BIG_ENDIAN);
 
-                elevationData = new short[srtmTileSize];
-                for (int index = 0; index * 2 < bytesRead; index++)
-                    elevationData[index] = byteBuffer.getShort(index * 2);
+                // Array of arrays for storing the elevation values at the raster locations
+                // 1st dimension = longitude = x
+                // 2nd dimension = latitude = y
+                elevationData = new short[srtmTileLength][srtmTileLength];
+                for (int latIndex = 0; latIndex < srtmTileLength; latIndex++) {
+                    for (int lonIndex = 0; lonIndex < srtmTileLength; lonIndex ++)
+                        elevationData[lonIndex][latIndex] = byteBuffer.getShort((latIndex * srtmTileLength + lonIndex) * 2);
+                }
             } catch (IOException e) {
                 Logging.error("Elevation: Exception reading SRTM file '" + srtmFile.getName() + "': " + e.toString());
                 return;

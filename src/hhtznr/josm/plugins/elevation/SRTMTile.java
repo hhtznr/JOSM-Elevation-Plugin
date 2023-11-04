@@ -92,7 +92,7 @@ public class SRTMTile {
 
     private String id;
     private Type type;
-    private short[] elevationData;
+    private short[][] elevationData;
     private Status status;
     private long accessTime;
 
@@ -154,10 +154,12 @@ public class SRTMTile {
      * @param id            The ID of the SRTM tile.
      * @param type          The type of the SRTM tile.
      * @param elevationData The elevation data points or {@code null} if no data is
-     *                      available.
+     *                      available. The 1st dimension of the array of arrays is
+     *                      the longitude ("x"), the 2nd dimension is the latitude
+     *                      ("y").
      * @param status        The current status of the SRTM tile.
      */
-    public SRTMTile(String id, Type type, short[] elevationData, Status status) {
+    public SRTMTile(String id, Type type, short[][] elevationData, Status status) {
         this.id = id;
         this.type = type;
         this.elevationData = elevationData;
@@ -168,8 +170,7 @@ public class SRTMTile {
     /**
      * Returns the tile ID.
      *
-     * @return The tile ID, see {@link SRTMFileReader#getSRTMTileID
-     *         SRTMFileReader.getSRTMTileID}.
+     * @return The tile ID.
      */
     public String getID() {
         return id;
@@ -224,6 +225,32 @@ public class SRTMTile {
      * Returns the elevation value of the tile raster location that is closest to
      * the given location.
      *
+     * @param latLon The location.
+     * @return The elevation for the given location or {@code SRTM_DATA_VOID} if no
+     *         data is available.
+     */
+    public short getElevation(ILatLon latLon) {
+        // Update the access time
+        accessTime = System.currentTimeMillis();
+        int tileLength = getTileLength();
+        if (status != Status.VALID || elevationData == null || tileLength == INVALID_TILE_LENGTH)
+            return SRTM_DATA_VOID;
+
+        LonLatIndices indices = getIndices(latLon, tileLength);
+
+        try {
+            return elevationData[indices.lonIndex][indices.latIndex];
+        } catch (ArrayIndexOutOfBoundsException e) {
+            // Should not happen
+            Logging.error("Elevation: Error reading elevation data from SRTM tile " + id + ": " + e.toString());
+            return SRTM_DATA_VOID;
+        }
+    }
+
+    /**
+     * Returns the array indices of the elevation value of the tile raster location
+     * that is closest to the given location.
+     *
      * Note: This method only uses the sign of latitude and longitude as well as
      * their decimal part to identify and return the appropriate elevation value. It
      * does not check whether this tile is actually meant to provide elevation
@@ -272,17 +299,13 @@ public class SRTMTile {
      *    * tile name: south west (lower left) corner
      * }</pre>
      *
-     * @param latLon The location.
-     * @return The elevation for the given location or {@code SRTM_DATA_VOID} if no
-     *         data is available.
+     * @param latLon     The location.
+     * @param tileLength The number of data points in latitude respectively
+     *                   longitude dimension of the tile.
+     * @return The array indices of the elevation value where the raster location is
+     *         closest to the given location.
      */
-    public short getElevation(ILatLon latLon) {
-        // Update the access time
-        accessTime = System.currentTimeMillis();
-        int tileLength = getTileLength();
-        if (status != Status.VALID || elevationData == null || tileLength == INVALID_TILE_LENGTH)
-            return SRTM_DATA_VOID;
-
+    private static LonLatIndices getIndices(ILatLon latLon, int tileLength) {
         // Determine the array index at which to retrieve the elevation at the given
         // location
         double lat = latLon.lat();
@@ -302,15 +325,7 @@ public class SRTMTile {
         // tileLength - 1]
         int latIndex = (int) Math.round(latDecimalPart * (tileLength - 1));
         int lonIndex = (int) Math.round(lonDecimalPart * (tileLength - 1));
-        int index = latIndex * tileLength + lonIndex;
-
-        try {
-            return elevationData[index];
-        } catch (ArrayIndexOutOfBoundsException e) {
-            // Should not happen
-            Logging.error("Elevation: Error reading elevation data from SRTM tile " + id + ": " + e.toString());
-            return SRTM_DATA_VOID;
-        }
+        return new LonLatIndices(lonIndex, latIndex);
     }
 
     /**
@@ -324,5 +339,60 @@ public class SRTMTile {
         BigDecimal bd = new BigDecimal(String.valueOf(d)).abs();
         long intPart = bd.longValue();
         return bd.subtract(new BigDecimal(intPart)).doubleValue();
+    }
+
+    /**
+     * Returns the appropriate SRTM tile ID for the given coordinate. The format of
+     * the ID is <code>[N|S]nn[W|E]mmm</code> where <code>nn</code> is the integral
+     * latitude without decimal places and <code>mmm</code> is the integral
+     * longitude of the south west (lower left) corner of the tile.
+     *
+     * @param latLon The coordinate to get the SRTM tile ID for.
+     * @return The ID of the SRTM tile.
+     */
+    public static String getTileID(ILatLon latLon) {
+        // Integer part of latitude and longitude
+        // https://stackoverflow.com/questions/54629033/cast-to-int-vs-math-floor
+        int integerLat = (int) Math.floor(latLon.lat());
+        int integerLon = (int) Math.floor(latLon.lon());
+
+        return getTileID(integerLat, integerLon);
+    }
+
+    /**
+     * Returns the SRTM tile ID that corresponds to the given integer coordinates
+     * (full degrees) that denote the south west (lower left) corner of the SRTM
+     * tile.
+     *
+     * @param lat The integer latitude of the lower left corner of the SRTM tile.
+     * @param lon The integer longitude of the lower left corner of the SRTM tile.
+     * @return The ID of the SRTM tile.
+     */
+    public static String getTileID(int lat, int lon) {
+        String latPrefix = "N";
+        // Negative latitudes are south of the equator
+        if (lat < 0) {
+            latPrefix = "S";
+            lat = -lat;
+        }
+
+        String lonPrefix = "E";
+        // Negative longitudes are west of the Prime Meridian
+        if (lon < 0) {
+            lonPrefix = "W";
+            lon = -lon;
+        }
+
+        return String.format("%s%02d%s%03d", latPrefix, lat, lonPrefix, lon);
+    }
+
+    private static class LonLatIndices {
+        public final int lonIndex;
+        public final int latIndex;
+
+        public LonLatIndices(int lonIndex, int latIndex) {
+            this.lonIndex = lonIndex;
+            this.latIndex = latIndex;
+        }
     }
 }

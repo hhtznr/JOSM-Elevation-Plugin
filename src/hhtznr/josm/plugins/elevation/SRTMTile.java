@@ -94,6 +94,7 @@ public class SRTMTile {
     private Type type;
     private short[] elevationData;
     private Status status;
+    private long accessTime;
 
     /**
      * SRTM file types (SRTM1, SRTM3).
@@ -144,7 +145,7 @@ public class SRTMTile {
      * downloading, download failed).
      */
     public enum Status {
-        LOADING, VALID, MISSING, DOWNLOAD_SCHEDULED, DOWNLOADING, DOWNLOAD_FAILED
+        LOADING_SCHEDULED, LOADING, VALID, MISSING, DOWNLOAD_SCHEDULED, DOWNLOADING, DOWNLOAD_FAILED
     }
 
     /**
@@ -161,6 +162,7 @@ public class SRTMTile {
         this.type = type;
         this.elevationData = elevationData;
         this.status = status;
+        this.accessTime = System.currentTimeMillis();
     }
 
     /**
@@ -180,6 +182,15 @@ public class SRTMTile {
      */
     public Status getStatus() {
         return status;
+    }
+
+    /**
+     * Returns the time of last attempted access to the data of this SRTM tile.
+     *
+     * @return The access time stamp.
+     */
+    public long getAccessTime() {
+        return accessTime;
     }
 
     /**
@@ -266,6 +277,8 @@ public class SRTMTile {
      *         data is available.
      */
     public short getElevation(ILatLon latLon) {
+        // Update the access time
+        accessTime = System.currentTimeMillis();
         int tileLength = getTileLength();
         if (status != Status.VALID || elevationData == null || tileLength == INVALID_TILE_LENGTH)
             return SRTM_DATA_VOID;

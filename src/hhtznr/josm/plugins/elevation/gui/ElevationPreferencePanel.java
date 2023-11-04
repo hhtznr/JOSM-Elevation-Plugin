@@ -12,6 +12,8 @@ import javax.swing.BorderFactory;
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JSpinner;
+import javax.swing.SpinnerNumberModel;
 import javax.swing.event.HyperlinkEvent;
 
 import org.openstreetmap.josm.gui.widgets.JMultilineLabel;
@@ -51,7 +53,10 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
     private final JLabel lblSRTMType = new JLabel("Preferred SRTM Type:");
     private final JosmComboBox<SRTMTile.Type> cbSRTMType = new JosmComboBox<>(SRTMTile.Type.values());
-
+    private final JLabel lblCacheSize = new JLabel("Max. Size of In-Memory Tile Cache (MiB):");
+    private final JSpinner spCacheSize = new JSpinner(new SpinnerNumberModel(
+            ElevationPreferences.DEFAULT_RAM_CACHE_SIZE_LIMIT, ElevationPreferences.DISABLED_RAM_CACHE_SIZE_LIMIT,
+            ElevationPreferences.MAX_RAM_CACHE_SIZE_LIMIT, ElevationPreferences.INCR_RAM_CACHE_SIZE_LIMIT));
     private final JMultilineLabel lblSRTM1Server = new JMultilineLabel(I18n.tr(
             "<html>STRM1 files (elevation sampled at 1 arc-seconds) can be downloaded from <a href=\"{0}\">{0}</a>.</html>",
             ElevationPreferences.SRTM1_SERVER_BASE_URL));
@@ -111,47 +116,60 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         pnl.add(cbEnableElevation, gc);
 
         gc.gridy = 1;
+        gc.gridx = 0;
         gc.fill = GridBagConstraints.NONE;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
         pnl.add(lblSRTMType, gc);
 
-        gc.gridx = 1;
+        gc.gridx++;
         gc.fill = GridBagConstraints.NONE;
         gc.weightx = 1.0;
         pnl.add(cbSRTMType, gc);
 
-        gc.gridy = 2;
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.fill = GridBagConstraints.NONE;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnl.add(lblCacheSize, gc);
+
+        gc.gridx++;
+        gc.fill = GridBagConstraints.NONE;
+        gc.weightx = 1.0;
+        pnl.add(spCacheSize, gc);
+
+        gc.gridy++;
         gc.gridx = 0;
         gc.fill = GridBagConstraints.HORIZONTAL;
         gc.gridwidth = 2;
         pnl.add(lblSRTM1Server, gc);
 
-        gc.gridy = 3;
+        gc.gridy = 4;
         pnl.add(lblSRTM3Server, gc);
 
-        gc.gridy = 4;
+        gc.gridy++;
         pnl.add(cbEnableAutoDownload, gc);
 
-        gc.gridy = 5;
+        gc.gridy++;
         gc.fill = GridBagConstraints.NONE;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
         pnl.add(lblAuthBearer, gc);
 
-        gc.gridx = 1;
+        gc.gridx++;
         gc.fill = GridBagConstraints.HORIZONTAL;
         gc.weightx = 1.0;
         pnl.add(tfAuthBearer, gc);
 
-        gc.gridy = 6;
+        gc.gridy++;
         gc.gridx = 0;
         gc.gridwidth = 2;
         gc.weightx = 1.0;
         pnl.add(lblAuthBearerNotes, gc);
 
         // add an extra spacer, otherwise the layout is broken
-        gc.gridy = 7;
+        gc.gridy++;
         gc.gridwidth = 2;
         gc.fill = GridBagConstraints.BOTH;
         gc.weighty = 1.0;
@@ -169,6 +187,8 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
                 ElevationPreferences.DEFAULT_ELEVATION_ENABLED));
         cbSRTMType.setSelectedItem(SRTMTile.Type.fromName(pref.get(ElevationPreferences.PREFERRED_SRTM_TYPE,
                 ElevationPreferences.DEFAULT_PREFERRED_SRTM_TYPE.getName())));
+        spCacheSize.setValue(pref.getInt(ElevationPreferences.RAM_CACHE_SIZE_LIMIT,
+                ElevationPreferences.DEFAULT_RAM_CACHE_SIZE_LIMIT));
         cbEnableAutoDownload.setSelected(pref.getBoolean(ElevationPreferences.ELEVATION_AUTO_DOWNLOAD_ENABLED,
                 ElevationPreferences.DEFAULT_ELEVATION_AUTO_DOWNLOAD_ENABLED));
         tfAuthBearer.setText(pref.get(ElevationPreferences.ELEVATION_SERVER_AUTH_BEARER,
@@ -179,6 +199,8 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         if (cbEnableElevation.isSelected()) {
             lblSRTMType.setEnabled(true);
             cbSRTMType.setEnabled(true);
+            lblCacheSize.setEnabled(true);
+            spCacheSize.setEnabled(true);
             lblSRTM1Server.setEnabled(true);
             lblSRTM3Server.setEnabled(true);
             cbEnableAutoDownload.setEnabled(true);
@@ -188,6 +210,8 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         } else {
             lblSRTMType.setEnabled(false);
             cbSRTMType.setEnabled(false);
+            lblCacheSize.setEnabled(false);
+            spCacheSize.setEnabled(false);
             lblSRTM1Server.setEnabled(false);
             lblSRTM3Server.setEnabled(false);
             cbEnableAutoDownload.setEnabled(false);
@@ -217,6 +241,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         IPreferences pref = Config.getPref();
         pref.putBoolean(ElevationPreferences.ELEVATION_ENABLED, cbEnableElevation.isSelected());
         pref.put(ElevationPreferences.PREFERRED_SRTM_TYPE, ((SRTMTile.Type) cbSRTMType.getSelectedItem()).getName());
+        pref.putInt(ElevationPreferences.RAM_CACHE_SIZE_LIMIT, (Integer) spCacheSize.getValue());
         pref.putBoolean(ElevationPreferences.ELEVATION_AUTO_DOWNLOAD_ENABLED, cbEnableAutoDownload.isSelected());
         pref.put(ElevationPreferences.ELEVATION_SERVER_AUTH_BEARER, tfAuthBearer.getText());
     }

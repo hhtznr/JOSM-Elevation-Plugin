@@ -23,6 +23,11 @@ public class ElevationPreferences {
     public static final String PREFERRED_SRTM_TYPE = "elevation.srtm.type.preferred";
 
     /**
+     * Property key for size limit of the in-memory SRTM tile cache.
+     */
+    public static final String RAM_CACHE_SIZE_LIMIT = "elevation.cache.ram.size.limit";
+
+    /**
      * Property key for enabling or disabling automatic download of elevation data.
      */
     public static final String ELEVATION_AUTO_DOWNLOAD_ENABLED = "elevation.autodownload";
@@ -41,6 +46,29 @@ public class ElevationPreferences {
      * Default property value for the preferred SRTM type.
      */
     public static final SRTMTile.Type DEFAULT_PREFERRED_SRTM_TYPE = SRTMTile.Type.SRTM1;
+
+    /**
+     * Default property value for the size limit of the in-memory SRTM tile cache in
+     * MiB: 128.
+     */
+    public static final int DEFAULT_RAM_CACHE_SIZE_LIMIT = 128;
+
+    /**
+     * Value for the size limit of the in-memory SRTM tile cache for setting an
+     * unlimited cache size: 0
+     */
+    public static final int DISABLED_RAM_CACHE_SIZE_LIMIT = 0;
+
+    /**
+     * Maximum size limit of the in-memory SRTM tile cache in MiB: 1024.
+     */
+    public static final int MAX_RAM_CACHE_SIZE_LIMIT = 1024;
+
+    /**
+     * Increment of the size limit of the in-memory SRTM tile cache used by the
+     * spinner in the elevation preferences in MiB: 1.
+     */
+    public static final int INCR_RAM_CACHE_SIZE_LIMIT = 1;
 
     /**
      * Default property value for authentication bearer token for SRTM HGT server:

@@ -169,6 +169,9 @@ public class SRTMFileDownloader {
                     if (responseCode == HttpURLConnection.HTTP_UNAUTHORIZED)
                         Logging.info(
                                 "Elevation: SRTM download server did not grant authorization. You may need to renew your authorization bearer token!");
+                    else if (responseCode == HttpURLConnection.HTTP_NOT_FOUND)
+                        Logging.info("Elevation: Requested SRTM file " + srtmFileName
+                                + " was not found on the download server.");
                 }
                 Logging.error("Elevation: Downloading SRTM file " + srtmFileName + " failed: " + e.toString());
                 downloadFailed(srtmTileID);

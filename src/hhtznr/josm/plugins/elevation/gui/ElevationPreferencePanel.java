@@ -55,7 +55,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
     private final JosmComboBox<SRTMTile.Type> cbSRTMType = new JosmComboBox<>(SRTMTile.Type.values());
     private final JLabel lblCacheSize = new JLabel("Max. Size of In-Memory Tile Cache (MiB):");
     private final JSpinner spCacheSize = new JSpinner(new SpinnerNumberModel(
-            ElevationPreferences.DEFAULT_RAM_CACHE_SIZE_LIMIT, ElevationPreferences.DISABLED_RAM_CACHE_SIZE_LIMIT,
+            ElevationPreferences.DEFAULT_RAM_CACHE_SIZE_LIMIT, ElevationPreferences.MIN_RAM_CACHE_SIZE_LIMIT,
             ElevationPreferences.MAX_RAM_CACHE_SIZE_LIMIT, ElevationPreferences.INCR_RAM_CACHE_SIZE_LIMIT));
     private final JMultilineLabel lblSRTM1Server = new JMultilineLabel(I18n.tr(
             "<html>STRM1 files (elevation sampled at 1 arc-seconds) can be downloaded from <a href=\"{0}\">{0}</a>.</html>",

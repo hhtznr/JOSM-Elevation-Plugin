@@ -44,7 +44,12 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
     private static SRTMFileReader srtmFileReader = null;
 
     private File srtmDirectory = null;
-    private final SRTMTileCache tileCache;
+
+    /**
+     * This SRTM file readers in-memory cache where read SRTM tiles are stored.
+     */
+    public final SRTMTileCache tileCache;
+
     private SRTMTile previousTile = null;
     private final ExecutorService fileReadExecutor = Executors.newSingleThreadExecutor();
 
@@ -94,7 +99,7 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
      */
     private SRTMFileReader(File srtmDirectory, int ramCacheMaxSize, SRTMTile.Type preferredSRTMType,
             boolean autoDownloadEnabled) {
-        tileCache = new SRTMTileCache(ramCacheMaxSize * 1024 * 1024);
+        tileCache = new SRTMTileCache(ramCacheMaxSize);
         setSrtmDirectory(srtmDirectory);
         this.preferredSRTMType = preferredSRTMType;
         setAutoDownloadEnabled(autoDownloadEnabled);

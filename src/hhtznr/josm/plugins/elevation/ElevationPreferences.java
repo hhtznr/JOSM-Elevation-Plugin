@@ -54,15 +54,14 @@ public class ElevationPreferences {
     public static final int DEFAULT_RAM_CACHE_SIZE_LIMIT = 128;
 
     /**
-     * Value for the size limit of the in-memory SRTM tile cache for setting an
-     * unlimited cache size: 0
+     * Minimum size limit of the in-memory SRTM tile cache in MiB: 32.
      */
-    public static final int DISABLED_RAM_CACHE_SIZE_LIMIT = 0;
+    public static final int MIN_RAM_CACHE_SIZE_LIMIT = 32;
 
     /**
-     * Maximum size limit of the in-memory SRTM tile cache in MiB: 1024.
+     * Maximum size limit of the in-memory SRTM tile cache in MiB: 8192.
      */
-    public static final int MAX_RAM_CACHE_SIZE_LIMIT = 1024;
+    public static final int MAX_RAM_CACHE_SIZE_LIMIT = 8192;
 
     /**
      * Increment of the size limit of the in-memory SRTM tile cache used by the

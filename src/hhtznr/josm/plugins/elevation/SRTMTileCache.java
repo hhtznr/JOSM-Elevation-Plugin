@@ -18,20 +18,41 @@ import hhtznr.josm.plugins.elevation.SRTMTile.Status;
 public class SRTMTileCache {
 
     private final HashMap<String, SRTMTile> cache = new HashMap<>();
+
+    /**
+     * Current size of the cache in bytes.
+     */
     private int cacheSize = 0;
+
+    /**
+     * Maximum size of the cache in bytes.
+     */
     private int cacheSizeLimit;
 
     /**
      * Creates a new cache for SRTM tiles.
      *
-     * @param cacheSizeLimit The maximum size of the cache in bytes. A value
-     *                       {@code <= 0} defines an unlimited cache size.
+     * @param cacheSizeLimit The maximum size of the cache in MiB.
      */
     public SRTMTileCache(int cacheSizeLimit) {
-        if (cacheSizeLimit <= ElevationPreferences.DISABLED_RAM_CACHE_SIZE_LIMIT)
-            this.cacheSizeLimit = ElevationPreferences.DISABLED_RAM_CACHE_SIZE_LIMIT;
-        else
-            this.cacheSizeLimit = cacheSizeLimit;
+        setCacheSizeLimit(cacheSizeLimit);
+    }
+
+    /**
+     * Sets the maximum cache size to a new value and cleans the cache if required
+     * to adopt to the new size limit.
+     *
+     * @param limit The maximum size of the cache in MiB.
+     */
+    public synchronized void setCacheSizeLimit(int limit) {
+        if (limit < ElevationPreferences.MIN_RAM_CACHE_SIZE_LIMIT)
+            limit = ElevationPreferences.MIN_RAM_CACHE_SIZE_LIMIT;
+        else if (limit > ElevationPreferences.MAX_RAM_CACHE_SIZE_LIMIT)
+            limit = ElevationPreferences.MAX_RAM_CACHE_SIZE_LIMIT;
+        cacheSizeLimit = limit * 1024 * 1024;
+        Logging.info("Elevation: Maximum size of the SRTM tile cache set to " + getSizeString(cacheSizeLimit));
+        if (cacheSize > cacheSizeLimit)
+            cleanCache();
     }
 
     /**
@@ -73,7 +94,7 @@ public class SRTMTileCache {
         }
         Logging.info("Elevation: Cached SRTM tile " + id + " with size " + getSizeString(srtmTile.getDataSize())
                 + " -> cache size: " + getSizeString(cacheSize));
-        if (cacheSizeLimit != ElevationPreferences.DISABLED_RAM_CACHE_SIZE_LIMIT && cacheSize > cacheSizeLimit)
+        if (cacheSize > cacheSizeLimit)
             cleanCache();
         return srtmTile;
     }

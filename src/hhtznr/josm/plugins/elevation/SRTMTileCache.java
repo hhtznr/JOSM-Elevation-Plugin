@@ -82,18 +82,24 @@ public class SRTMTileCache {
      */
     public synchronized SRTMTile putOrUpdateSRTMTile(String id, SRTMTile.Type type, short[][] elevationData,
             Status status) {
+        if (type == null)
+            type = SRTMTile.Type.UNKNOWN;
         SRTMTile srtmTile = cache.get(id);
         if (srtmTile == null) {
             srtmTile = new SRTMTile(id, type, elevationData, status);
             cache.put(id, srtmTile);
             cacheSize += srtmTile.getDataSize();
+            Logging.info("Elevation: Cached new SRTM tile " + id + " with type '" + type.getName() + "', status '"
+                    + srtmTile.getStatus().getName() + "' and size " + getSizeString(srtmTile.getDataSize())
+                    + "; cache size: " + getSizeString(cacheSize));
         } else {
             cacheSize -= srtmTile.getDataSize();
             srtmTile.update(type, elevationData, status);
             cacheSize += srtmTile.getDataSize();
+            Logging.info("Elevation: Updated cached SRTM tile " + id + " with type '" + type.getName() + "', status '"
+                    + srtmTile.getStatus().getName() + "' and size " + getSizeString(srtmTile.getDataSize())
+                    + "; cache size: " + getSizeString(cacheSize));
         }
-        Logging.info("Elevation: Cached SRTM tile " + id + " with size " + getSizeString(srtmTile.getDataSize())
-                + " -> cache size: " + getSizeString(cacheSize));
         if (cacheSize > cacheSizeLimit)
             cleanCache();
         return srtmTile;
@@ -127,20 +133,21 @@ public class SRTMTileCache {
         SRTMTile tile = cache.remove(srtmTileID);
         if (tile != null) {
             cacheSize -= tile.getDataSize();
-            Logging.info("Elevation: Removed SRTM tile " + srtmTileID + " with size "
-                    + getSizeString(tile.getDataSize()) + " from cache -> cache size: " + getSizeString(cacheSize));
+            Logging.info("Elevation: Removed SRTM tile " + srtmTileID + " with status '" + tile.getStatus().getName()
+                    + "' and size " + getSizeString(tile.getDataSize()) + " from cache; cache size: "
+                    + getSizeString(cacheSize));
         }
         return tile;
     }
 
     /**
-     * Cleans all SRTM tiles with the status {@link SRTMTile.Status#MISSING
-     * SRTMTile.Status.MISSING} from the cache.
+     * Cleans all SRTM tiles with the status {@link SRTMTile.Status#FILE_MISSING
+     * SRTMTile.Status.FILE_MISSING} from the cache.
      */
     public synchronized void cleanAllMissingTiles() {
         for (String srtmTileID : cache.keySet()) {
             SRTMTile srtmTile = cache.get(srtmTileID);
-            if (srtmTile.getStatus() == SRTMTile.Status.MISSING)
+            if (srtmTile.getStatus() == SRTMTile.Status.FILE_MISSING)
                 cache.remove(srtmTileID);
         }
     }

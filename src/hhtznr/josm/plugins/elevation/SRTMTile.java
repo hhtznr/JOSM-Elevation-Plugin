@@ -108,7 +108,12 @@ public class SRTMTile {
         /**
          * SRTM3: elevation sampled at 3 arc-seconds
          */
-        SRTM3("SRTM3");
+        SRTM3("SRTM3"),
+
+        /**
+         * Dummy type to be used as long as the actual SRTM type is not known.
+         */
+        UNKNOWN("unknown");
 
         private final String typeName;
 
@@ -145,7 +150,64 @@ public class SRTMTile {
      * downloading, download failed).
      */
     public enum Status {
-        LOADING_SCHEDULED, LOADING, VALID, MISSING, DOWNLOAD_SCHEDULED, DOWNLOADING, DOWNLOAD_FAILED
+        /**
+         * Status indicating that reading of the SRTM tile from disk has been scheduled.
+         */
+        READING_SCHEDULED("reading scheduled"),
+
+        /**
+         * Status indicating that the SRTM tile is currently being read from disk.
+         */
+        READING("reading"),
+
+        /**
+         * Status indicating that the SRTM tile holds valid elevation data.
+         */
+        VALID("valid"),
+
+        /**
+         * Status indicating that the SRTM file that should contain the elevation data
+         * of the SRTM tile was considered for reading, but was found to be invalid.
+         */
+        FILE_INVALID("file invalid"),
+
+        /**
+         * Status indicating that the SRTM file that should contain the elevation data
+         * of the SRTM tile is missing on disk and cannot be obtained (auto-download
+         * disabled).
+         */
+        FILE_MISSING("file missing"),
+
+        /**
+         * Status indicating that downloading of the SRTM tile has been scheduled.
+         */
+        DOWNLOAD_SCHEDULED("download scheduled"),
+
+        /**
+         * Status indicating that the SRTM tile is currently being downloaded from the
+         * SRTM server.
+         */
+        DOWNLOADING("downloading"),
+
+        /**
+         * Status indicating that downloading the SRTM tile failed.
+         */
+        DOWNLOAD_FAILED("download failed");
+
+        private final String statusName;
+
+        Status(String statusName) {
+            this.statusName = statusName;
+        }
+
+        /**
+         * Returns the name associated with this SRTM status.
+         *
+         * @return The name of the status.
+         */
+        public String getName() {
+            return statusName;
+        }
     }
 
     /**

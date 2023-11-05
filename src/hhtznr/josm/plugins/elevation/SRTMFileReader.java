@@ -188,12 +188,12 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
             // Data previously not in cache
             if (srtmTile == null) {
                 File srtmFile = getSrtmFile(srtmTileID);
-                // If an SRTM file with the data exists locally, read it in
+                // If an SRTM file with the data exists on disk, read it in
                 if (srtmFile != null) {
                     Logging.info("Elevation: Caching data of SRTM tile " + srtmTileID + " from file "
                             + srtmFile.getAbsolutePath());
                     // Read the SRTM file as task in a separate thread
-                    srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.LOADING_SCHEDULED);
+                    srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.READING_SCHEDULED);
                     fileReadExecutor.submit(new ReadSRTMFileTask(srtmFile));
                 }
                 // If auto-downloading of SRTM files is enabled, try to download the missing
@@ -202,9 +202,9 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
                     srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.DOWNLOAD_SCHEDULED);
                     srtmFileDownloader.downloadSRTMFile(srtmTileID, preferredSRTMType);
                 }
-                // Otherwise, put an empty data set with status "missing" into the cache
+                // Otherwise, put an empty data set with status "file missing" into the cache
                 else {
-                    srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.MISSING);
+                    srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.FILE_MISSING);
                 }
             }
             // If we have a valid tile now, remember it as the previous tile
@@ -227,7 +227,7 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
             Logging.error("Elevation: Cannot read SRTM file for tile " + srtmTileID + " as SRTM directory is not set");
             return null;
         }
-        Logging.info("Elevation: Looking for local SRTM file for tile ID " + srtmTileID);
+        Logging.info("Elevation: Looking for on-disk SRTM file for tile ID " + srtmTileID);
         // List the SRTM directory and filter out files that start with the SRTM tile ID
         // https://www.baeldung.com/java-list-directory-files
         Set<File> files = Stream.of(srtmDirectory.listFiles())
@@ -243,20 +243,20 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
         File nonPreferredSRTMFile = null;
         for (File file : files) {
             if (file.getName().contains(preferredSRTMFileID)) {
-                Logging.info("Elevation: Found preferred local SRTM file " + file.getName());
+                Logging.info("Elevation: Found preferred on-disk SRTM file " + file.getName());
                 return file;
             }
             if (file.getName().contains(nonPreferredSRTMFileID))
                 nonPreferredSRTMFile = file;
         }
         if (nonPreferredSRTMFile != null) {
-            Logging.info("Elevation: Found non-preferred local SRTM file " + nonPreferredSRTMFile.getName());
+            Logging.info("Elevation: Found non-preferred on-disk SRTM file " + nonPreferredSRTMFile.getName());
             // Download the SRTM file as the preferred type if auto-download enabled
             if (autoDownloadEnabled)
                 srtmFileDownloader.downloadSRTMFile(srtmTileID, preferredSRTMType);
         }
         else
-            Logging.info("Elevation: Did not find a local SRTM file for tile ID " + srtmTileID);
+            Logging.info("Elevation: Did not find an on-disk SRTM file for tile ID " + srtmTileID);
 
         return nonPreferredSRTMFile;
     }
@@ -304,12 +304,12 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
         @Override
         public SRTMTile call() {
             String srtmTileID = SRTMFiles.getSRTMTileIDFromFileName(srtmFile.getName());
-            SRTMFileReader.this.tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.LOADING);
+            SRTMFileReader.this.tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.READING);
             SRTMTile.Type type = SRTMFiles.getSRTMTileTypeFromFileName(srtmFile.getName());
             if (type == null) {
                 Logging.error(
                         "Elevation: Cannot identify whether file '" + srtmFile.getName() + "' is an SRTM1 or SRTM3 file.");
-                SRTMFileReader.this.tileCache.putOrUpdateSRTMTile(srtmTileID, type, null, SRTMTile.Status.MISSING);
+                SRTMFileReader.this.tileCache.putOrUpdateSRTMTile(srtmTileID, type, null, SRTMTile.Status.FILE_INVALID);
                 return null;
             }
 
@@ -348,7 +348,7 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
                 if (bytesRead != bytesExpected) {
                     Logging.error("Elevation: Wrong number of bytes in SRTM file '" + srtmFile.getName()
                             + "'. Expected: " + bytesExpected + " bytes; read: " + bytesRead + " bytes");
-                    SRTMFileReader.this.tileCache.putOrUpdateSRTMTile(srtmTileID, type, null, SRTMTile.Status.MISSING);
+                    SRTMFileReader.this.tileCache.putOrUpdateSRTMTile(srtmTileID, type, null, SRTMTile.Status.FILE_INVALID);
                 }
 
                 // Convert byte order

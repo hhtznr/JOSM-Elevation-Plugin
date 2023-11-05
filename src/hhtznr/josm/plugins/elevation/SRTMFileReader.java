@@ -172,7 +172,7 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
      * Triggers caching of all SRTM tiles needed to cover the defined area.
      *
      * @param southWest The south west (lower left) coordinate of the area.
-     * @param northEast The north east (upper right) coordiante of the area.
+     * @param northEast The north east (upper right) coordinate of the area.
      */
     public void cacheSRTMTiles(ILatLon southWest, ILatLon northEast) {
         int intLatSouth = (int) Math.floor(southWest.lat());

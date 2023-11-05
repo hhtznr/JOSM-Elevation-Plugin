@@ -65,7 +65,7 @@ public class SRTMTile {
      *
      * See https://lpdaac.usgs.gov/documents/179/SRTM_User_Guide_V3.pdf
      */
-    public static final int SRTM_DATA_VOID = -32768;
+    public static final short SRTM_DATA_VOID = -32768;
 
     /**
      * The number of rows and columns of elevation data points in an SRTM1 file.

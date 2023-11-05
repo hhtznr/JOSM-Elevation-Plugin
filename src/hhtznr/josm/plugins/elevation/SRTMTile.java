@@ -1,6 +1,8 @@
 package hhtznr.josm.plugins.elevation;
 
 import java.math.BigDecimal;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.openstreetmap.josm.data.coor.ILatLon;
 import org.openstreetmap.josm.tools.Logging;
@@ -90,7 +92,15 @@ public class SRTMTile {
      */
     public static double SRTM_TILE_ARC_DEGREES = 1.0;
 
+    /**
+     * Regular expression pattern for matching the components of an SRTM tile ID
+     * denoting the latitude and longitude of its south west corner.
+     */
+    public static final Pattern SRTM_TILE_ID_PATTERN = Pattern.compile("^(([NS])(\\d{2})([EW])(\\d{3}))");
+
     private final String id;
+    private final int idLat;
+    private final int idLon;
     private Type type;
     private short[][] elevationData;
     private Status status;
@@ -223,6 +233,9 @@ public class SRTMTile {
      */
     public SRTMTile(String id, Type type, short[][] elevationData, Status status) {
         this.id = id;
+        int[] latLon = parseLatLonFromTileID(id);
+        idLat = latLon[0];
+        idLon = latLon[1];
         update(type, elevationData, status);
     }
 
@@ -233,6 +246,24 @@ public class SRTMTile {
      */
     public String getID() {
         return id;
+    }
+
+    /**
+     * Returns the signed integer latitude of the tile ID.
+     *
+     * @return The latitude of the tile ID.
+     */
+    public int getLatID() {
+        return idLat;
+    }
+
+    /**
+     * Returns the signed integer longitude of the tile ID.
+     *
+     * @return The longitude of the tile ID.
+     */
+    public int getLonId() {
+        return idLon;
     }
 
     /**
@@ -460,6 +491,31 @@ public class SRTMTile {
         }
 
         return String.format("%s%02d%s%03d", latPrefix, lat, lonPrefix, lon);
+    }
+
+    /**
+     * Parses the latitude and longitude values from an SRTM tile ID.
+     *
+     * @param tileID The SRTM tile ID to parse.
+     * @return An array of length 2 with the latitude at index 0 and the longitude
+     *         at index 1.
+     */
+    public static int[] parseLatLonFromTileID(String tileID) {
+        Matcher matcher = SRTM_TILE_ID_PATTERN.matcher(tileID);
+        if (!matcher.matches())
+            throw new IllegalArgumentException("SRTM tile ID '" + tileID + "' is malformed");
+        String latPrefix = matcher.group(2);
+        int lat = Integer.parseInt(matcher.group(3));
+        String lonPrefix = matcher.group(4);
+        int lon = Integer.parseInt(matcher.group(5));
+        if (latPrefix.equals("S"))
+            lat = -lat;
+        if (lonPrefix.equals("W"))
+            lon = -lon;
+        if (lat >= 90 || lat < -90 || lon >= 180 || lon < -180)
+            throw new IllegalArgumentException("Latitude or longitude of SRTM tile ID '" + tileID
+                    + "' are outside bounds -90 <= lat < 90, -180 <= lon < 180.");
+        return new int[] { lat, lon };
     }
 
     private static class LonLatIndices {

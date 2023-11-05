@@ -3,6 +3,8 @@ package hhtznr.josm.plugins.elevation;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import hhtznr.josm.plugins.elevation.data.SRTMTile;
+
 /**
  * Static methods for working with SRTM files.
  *

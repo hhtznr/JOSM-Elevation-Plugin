@@ -19,6 +19,7 @@ import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
+import hhtznr.josm.plugins.elevation.data.SRTMTile;
 
 /**
  * Class {@code SRTMFileReader} reads elevation data from SRTM (Shuttle Radar

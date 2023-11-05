@@ -6,7 +6,7 @@ import java.util.HashMap;
 
 import org.openstreetmap.josm.tools.Logging;
 
-import hhtznr.josm.plugins.elevation.SRTMTile.Status;
+import hhtznr.josm.plugins.elevation.data.SRTMTile;
 
 /**
  * In-memory cache for SRTM tiles which can be limited in size. If the cache
@@ -81,7 +81,7 @@ public class SRTMTileCache {
      *         tile that was updated, never {@code null}.
      */
     public synchronized SRTMTile putOrUpdateSRTMTile(String id, SRTMTile.Type type, short[][] elevationData,
-            Status status) {
+            SRTMTile.Status status) {
         if (type == null)
             type = SRTMTile.Type.UNKNOWN;
         SRTMTile srtmTile = cache.get(id);

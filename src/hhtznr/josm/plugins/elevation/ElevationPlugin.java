@@ -1,5 +1,6 @@
 package hhtznr.josm.plugins.elevation;
 
+import hhtznr.josm.plugins.elevation.data.SRTMTile;
 import hhtznr.josm.plugins.elevation.gui.ElevationTabPreferenceSetting;
 import hhtznr.josm.plugins.elevation.gui.LocalElevationLabel;
 

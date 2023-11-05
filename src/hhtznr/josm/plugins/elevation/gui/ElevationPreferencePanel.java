@@ -27,7 +27,7 @@ import org.openstreetmap.josm.tools.I18n;
 import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
-import hhtznr.josm.plugins.elevation.SRTMTile;
+import hhtznr.josm.plugins.elevation.data.SRTMTile;
 
 /**
  * Component allowing to enable or disable the plugin functionality, define the

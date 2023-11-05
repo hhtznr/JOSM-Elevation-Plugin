@@ -5,6 +5,8 @@ import java.nio.file.Paths;
 
 import org.openstreetmap.josm.data.Preferences;
 
+import hhtznr.josm.plugins.elevation.data.SRTMTile;
+
 /**
  * Property keys and default values for elevation data preferences.
  *

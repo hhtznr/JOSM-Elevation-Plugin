@@ -19,6 +19,8 @@ import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.HttpClient;
 import org.openstreetmap.josm.tools.Logging;
 
+import hhtznr.josm.plugins.elevation.data.SRTMTile;
+
 /**
  * Class {@code SRTMFileDownloader} downloads files with elevation data from
  * SRTM (Shuttle Radar Topography Mission Height) from NASA's servers. It can

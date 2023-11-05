@@ -1,4 +1,4 @@
-package hhtznr.josm.plugins.elevation;
+package hhtznr.josm.plugins.elevation.data;
 
 import java.math.BigDecimal;
 import java.util.regex.Matcher;
@@ -6,8 +6,6 @@ import java.util.regex.Pattern;
 
 import org.openstreetmap.josm.data.coor.ILatLon;
 import org.openstreetmap.josm.tools.Logging;
-
-import hhtznr.josm.plugins.elevation.data.LatLonEle;
 
 /**
  * Class {@code SRTMTile} provides an in-memory representation of elevation data

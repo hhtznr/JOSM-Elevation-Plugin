@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.LinkedList;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -115,7 +116,7 @@ public class SRTMFileDownloader {
      * Task class to be executed by a thread executor service for downloading an
      * SRTM file from NASA's servers.
      */
-    private class DownloadSRTMFileTask implements Runnable {
+    private class DownloadSRTMFileTask implements Callable<File> {
 
         private final String srtmTileID;
         private final SRTMTile.Type srtmType;
@@ -126,7 +127,7 @@ public class SRTMFileDownloader {
         }
 
         @Override
-        public void run() {
+        public File call() {
             URL srtmBaseURL;
             if (srtmType == SRTMTile.Type.SRTM1)
                 srtmBaseURL = srtm1BaseURL;
@@ -143,7 +144,7 @@ public class SRTMFileDownloader {
                 url = new URL(srtmBaseURL + srtmFileName);
             } catch (MalformedURLException e) {
                 downloadFailed(srtmTileID);
-                return;
+                return null;
             }
             HttpClient httpClient = HttpClient.create(url);
             if (authHeader != null)
@@ -154,7 +155,7 @@ public class SRTMFileDownloader {
                 // https://urs.earthdata.nasa.gov/documentation/for_users/data_access/java
                 if (response.getResponseCode() != 200) {
                     downloadFailed(srtmTileID);
-                    return;
+                    return null;
                 }
                 InputStream in = response.getContent();
                 Path downloadedZipFile = Paths.get(SRTMFileDownloader.this.srtmDirectory.toString(), srtmFileName);
@@ -171,7 +172,7 @@ public class SRTMFileDownloader {
                 }
                 Logging.error("Elevation: Downloading SRTM file " + srtmFileName + " failed: " + e.toString());
                 downloadFailed(srtmTileID);
-                return;
+                return null;
             }
 
             // This would happen, if the downloaded file was uncompressed, but it does not
@@ -180,12 +181,13 @@ public class SRTMFileDownloader {
                 Logging.error("Elevation: Downloaded compressed SRTM file " + srtmFileName
                         + " did not contain a file with the expected STRM tile ID!");
                 downloadFailed(srtmTileID);
-                return;
+                return null;
             }
 
             Logging.info("Elevation: Successfully downloaded SRTM file " + srtmFile.getName() + " to SRTM directory: "
                     + SRTMFileDownloader.this.srtmDirectory.toString());
             downloadSucceeded(srtmFile);
+            return srtmFile;
         }
 
         private void downloadStarted(String strmTileID) {

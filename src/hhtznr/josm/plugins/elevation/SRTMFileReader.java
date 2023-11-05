@@ -7,6 +7,7 @@ import java.net.MalformedURLException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -287,7 +288,7 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
      * Voids in Versions 1.0 and 2.1 are flagged with the value -32,768. There are
      * no voids in Version 3.0.</i>
      */
-    private class ReadSRTMFileTask implements Runnable {
+    private class ReadSRTMFileTask implements Callable<SRTMTile> {
 
         private File srtmFile;
 
@@ -301,7 +302,7 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
         }
 
         @Override
-        public void run() {
+        public SRTMTile call() {
             String srtmTileID = SRTMFiles.getSRTMTileIDFromFileName(srtmFile.getName());
             SRTMFileReader.this.tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.LOADING);
             SRTMTile.Type type = SRTMFiles.getSRTMTileTypeFromFileName(srtmFile.getName());
@@ -309,7 +310,7 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
                 Logging.error(
                         "Elevation: Cannot identify whether file '" + srtmFile.getName() + "' is an SRTM1 or SRTM3 file.");
                 SRTMFileReader.this.tileCache.putOrUpdateSRTMTile(srtmTileID, type, null, SRTMTile.Status.MISSING);
-                return;
+                return null;
             }
 
             Logging.info("Elevation: Reading SRTM file '" + srtmFile.getName() + "' for tile ID " + srtmTileID);
@@ -338,7 +339,7 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
                     if (byteBuffer.position() >= bytesExpected) {
                         Logging.error("Elevation: SRTM file '" + srtmFile.getName()
                                 + "' contains more bytes than expected. Expected: " + bytesExpected + " bytes");
-                        return;
+                        return null;
                     }
                     byteBuffer.put((byte) b);
                 }
@@ -363,9 +364,9 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
                 }
             } catch (IOException e) {
                 Logging.error("Elevation: Exception reading SRTM file '" + srtmFile.getName() + "': " + e.toString());
-                return;
+                return null;
             }
-            SRTMFileReader.this.tileCache.putOrUpdateSRTMTile(srtmTileID, type, elevationData, SRTMTile.Status.VALID);
+            return SRTMFileReader.this.tileCache.putOrUpdateSRTMTile(srtmTileID, type, elevationData, SRTMTile.Status.VALID);
         }
     }
 

@@ -169,6 +169,41 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
     }
 
     /**
+     * Triggers caching of all SRTM tiles needed to cover the defined area.
+     *
+     * @param southWest The south west (lower left) coordinate of the area.
+     * @param northEast The north east (upper right) coordiante of the area.
+     */
+    public void cacheSRTMTiles(ILatLon southWest, ILatLon northEast) {
+        int intLatSouth = (int) Math.floor(southWest.lat());
+        int intLatNorth = (int) Math.floor(northEast.lat());
+        int intLonWest = (int) Math.floor(southWest.lon());
+        int intLonEast = (int) Math.floor(northEast.lon());
+        Logging.info("Elevation: Trigger caching of SRTM tiles covering current map bounds from  S = " + intLatSouth
+                + "°, E = " + intLonEast + "° to N = " + intLatNorth + "°, W = " + intLonWest + "°");
+
+        // Not across the Prime Meridian
+        if (intLonWest <= intLonEast) {
+            for (int lon = intLonWest; lon <= intLonEast; lon++) {
+                for (int lat = intLatSouth; lat <= intLatNorth; lat++)
+                    // Calling the getter method will ensure that tiles are being read or downloaded
+                    getSRTMTile(SRTMTile.getTileID(lat, lon));
+            }
+        }
+        // Across the Prime Meridian (+/-180 °C)
+        else {
+            for (int lon = intLonWest; lon <= 179; lon++) {
+                for (int lat = intLatSouth; lat <= intLatNorth; lat++)
+                    getSRTMTile(SRTMTile.getTileID(lat, lon));
+            }
+            for (int lon = -180; lon <= intLonEast; lon++) {
+                for (int lat = intLatSouth; lat <= intLatNorth; lat++)
+                    getSRTMTile(SRTMTile.getTileID(lat, lon));
+            }
+        }
+    }
+
+    /**
      * Returns an SRTM tile for the given SRTM tile ID.
      *
      * @param srtmTileID The SRTM tile ID.

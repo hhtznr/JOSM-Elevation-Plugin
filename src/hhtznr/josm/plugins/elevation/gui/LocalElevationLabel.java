@@ -3,6 +3,8 @@ package hhtznr.josm.plugins.elevation.gui;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionListener;
 import java.text.DecimalFormat;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import org.openstreetmap.josm.data.ProjectionBounds;
 import org.openstreetmap.josm.data.coor.ILatLon;
@@ -30,6 +32,9 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
     private MapFrame mapFrame = null;
 
     private boolean elevationZoomLevelEnabled = false;
+
+    private Timer timer = new Timer();
+    private TimerTask pendingTimerTask = null;
 
     public LocalElevationLabel(MapFrame mapFrame) {
         super("ele", "The terrain elevation at the mouse pointer.", 10, MapStatus.PROP_BACKGROUND_COLOR.get());
@@ -98,16 +103,50 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
     public void zoomChanged() {
         // Determine the projection bounds of the map view
         ProjectionBounds projectionBounds = mapFrame.mapView.getProjectionBounds();
-        LatLon southWest = mapFrame.mapView.getProjection().eastNorth2latlon(projectionBounds.getMin());
-        LatLon northEast = mapFrame.mapView.getProjection().eastNorth2latlon(projectionBounds.getMax());
-        double latRange = northEast.lat() - southWest.lat();
+        LatLon minLatLon = mapFrame.mapView.getProjection().eastNorth2latlon(projectionBounds.getMin());
+        LatLon maxLatLon = mapFrame.mapView.getProjection().eastNorth2latlon(projectionBounds.getMax());
+        double latSouth = minLatLon.lat();
+        double latNorth = maxLatLon.lat();
+        double lonWest = minLatLon.lon();
+        double lonEast = maxLatLon.lon();
+        double latRange = latNorth - latSouth;
         double lonRange;
-        if (southWest.lon() < northEast.lon())
-            lonRange = northEast.lon() - southWest.lon();
-        // Edges of the map: Prime Meridian +/- 180 °C
+        // Normal case: Bound do not cross the Prime Meridian
+        if (lonWest < lonEast)
+            lonRange = lonEast - lonWest;
+        // Special case: Bounds cross the Prime Meridian
         else
-            lonRange = northEast.lon() + southWest.lon();
-        elevationZoomLevelEnabled = latRange <= SRTMTile.SRTM_TILE_ARC_DEGREES && lonRange <= SRTMTile.SRTM_TILE_ARC_DEGREES;
+            lonRange = 180 - lonWest + 180 + lonEast;
+
+        LatLon southWest = new LatLon(latSouth, lonWest);
+        LatLon northEast = new LatLon(latNorth, lonEast);
+        elevationZoomLevelEnabled = latRange <= SRTMTile.SRTM_TILE_ARC_DEGREES
+                && lonRange <= SRTMTile.SRTM_TILE_ARC_DEGREES;
         updateEleText(null);
+
+        if (elevationZoomLevelEnabled) {
+            if (pendingTimerTask != null)
+                pendingTimerTask.cancel();
+            timer.purge();
+            pendingTimerTask = new CacheSRTMTilesInMapBounds(southWest, northEast);
+            // Ensure caching of SRTM tiles for current map bounds after 5 s
+            timer.schedule(pendingTimerTask, 5000L);
+        }
+    }
+
+    private class CacheSRTMTilesInMapBounds extends TimerTask {
+
+        private ILatLon southWest;
+        private ILatLon northEast;
+
+        CacheSRTMTilesInMapBounds(ILatLon southWest, ILatLon northEast) {
+            this.southWest = southWest;
+            this.northEast = northEast;
+        }
+
+        @Override
+        public void run() {
+            SRTMFileReader.getInstance().cacheSRTMTiles(southWest, northEast);
+        }
     }
 }

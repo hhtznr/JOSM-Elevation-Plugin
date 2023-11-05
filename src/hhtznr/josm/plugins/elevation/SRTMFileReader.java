@@ -18,6 +18,8 @@ import org.openstreetmap.josm.io.Compression;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.Logging;
 
+import hhtznr.josm.plugins.elevation.data.LatLonEle;
+
 /**
  * Class {@code SRTMFileReader} reads elevation data from SRTM (Shuttle Radar
  * Topography Mission Height) files. It can identify and read ZIP-compressed
@@ -154,18 +156,20 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
     }
 
     /**
-     * Returns the elevation at the provided location, if an appropriate SRTM file
-     * is available in the SRTM directory.
+     * Returns the elevation at the raster location that is closest to the provided
+     * location, if an appropriate SRTM file is available in the SRTM directory.
      *
-     * @param latLon The location at which the elevation is of interest.
-     * @return The elevation at the provided location or
-     *         {@link SRTMTile#SRTM_DATA_VOID SRTMTile.SRTM_DATA_VOID} if there is a
-     *         data void or no SRTM data covering the location is available.
+     * @param latLon The coordinate where the elevation is of interest.
+     * @return The closest raster location to the given location and its elevation
+     *         or the given location and {@link SRTMTile#SRTM_DATA_VOID
+     *         SRTMTile.SRTM_DATA_VOID} if there is a data void or no SRTM data
+     *         covering the location is available.
      */
-    public short getElevation(ILatLon latLon) {
+    public LatLonEle getLatLonEle(ILatLon latLon) {
         SRTMTile srtmTile = getSRTMTile(SRTMTile.getTileID(latLon));
-        // Retrieves and returns elevation value if SRTM data is valid
-        return srtmTile.getElevation(latLon);
+        // Retrieves and returns elevation and its actual coordinate if SRTM data is
+        // valid
+        return srtmTile.getLatLonEle(latLon);
     }
 
     /**

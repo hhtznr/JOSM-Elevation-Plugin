@@ -18,6 +18,7 @@ import org.openstreetmap.josm.tools.GBC;
 
 import hhtznr.josm.plugins.elevation.SRTMFileReader;
 import hhtznr.josm.plugins.elevation.SRTMTile;
+import hhtznr.josm.plugins.elevation.data.LatLonEle;
 
 /**
  * An image label for the status line of a map frame, which is intended to
@@ -92,7 +93,8 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
             setText("");
             return;
         }
-        short elevation = SRTMFileReader.getInstance().getElevation(latLon);
+        LatLonEle latLonEle = SRTMFileReader.getInstance().getLatLonEle(latLon);
+        short elevation = latLonEle.ele();
         if (elevation != SRTMTile.SRTM_DATA_VOID)
             setText(ELEVATION_FORMAT.format(elevation));
         else

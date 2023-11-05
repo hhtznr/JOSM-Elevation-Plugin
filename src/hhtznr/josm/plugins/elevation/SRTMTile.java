@@ -7,6 +7,8 @@ import java.util.regex.Pattern;
 import org.openstreetmap.josm.data.coor.ILatLon;
 import org.openstreetmap.josm.tools.Logging;
 
+import hhtznr.josm.plugins.elevation.data.LatLonEle;
+
 /**
  * Class {@code SRTMTile} provides an in-memory representation of elevation data
  * from SRTM files and methods to work with the data.
@@ -330,33 +332,33 @@ public class SRTMTile {
 
     /**
      * Returns the elevation value of the tile raster location that is closest to
-     * the given location.
+     * the given location along with the coordinates of this closest location.
      *
      * @param latLon The location.
      * @return The elevation for the given location or {@code SRTM_DATA_VOID} if no
      *         data is available.
      */
-    public synchronized short getElevation(ILatLon latLon) {
+    public synchronized LatLonEle getLatLonEle(ILatLon latLon) {
         // Update the access time
         accessTime = System.currentTimeMillis();
         int tileLength = getTileLength();
         if (status != Status.VALID || elevationData == null || tileLength == INVALID_TILE_LENGTH)
-            return SRTM_DATA_VOID;
+            return new LatLonEle(latLon, SRTM_DATA_VOID);
 
-        LonLatIndices indices = getIndices(latLon, tileLength);
-
+        LatLonEleIndices latLonElevationIndices = getLatLonEleIndices(latLon);
         try {
-            return elevationData[indices.lonIndex][indices.latIndex];
+            short elevation = elevationData[latLonElevationIndices.lonEleIndex][latLonElevationIndices.latEleIndex];
+            return new LatLonEle(latLonElevationIndices.lat, latLonElevationIndices.lon, elevation);
         } catch (ArrayIndexOutOfBoundsException e) {
             // Should not happen
             Logging.error("Elevation: Error reading elevation data from SRTM tile " + id + ": " + e.toString());
-            return SRTM_DATA_VOID;
+            return new LatLonEle(latLon, SRTM_DATA_VOID);
         }
     }
 
     /**
-     * Returns the array indices of the elevation value of the tile raster location
-     * that is closest to the given location.
+     * Returns the tile raster location that is closest to the given location along
+     * with the array indices of the elevation value.
      *
      * Note: This method only uses the sign of latitude and longitude as well as
      * their decimal part to identify and return the appropriate elevation value. It
@@ -406,17 +408,22 @@ public class SRTMTile {
      *    * tile name: south west (lower left) corner
      * }</pre>
      *
-     * @param latLon     The location.
-     * @param tileLength The number of data points in latitude respectively
-     *                   longitude dimension of the tile.
-     * @return The array indices of the elevation value where the raster location is
-     *         closest to the given location.
+     * @param latLon The location.
+     * @return The raster location that is closest to the given location along with
+     *         the array indices of the elevation value.
      */
-    private static LonLatIndices getIndices(ILatLon latLon, int tileLength) {
+    private LatLonEleIndices getLatLonEleIndices(ILatLon latLon) {
         // Determine the array index at which to retrieve the elevation at the given
         // location
         double lat = latLon.lat();
         double lon = latLon.lon();
+        if (lat < idLat || lat > idLat + 1)
+            throw new IllegalArgumentException("Given latitude " + lat
+                    + " is not within latitude range of SRTM tile of " + idLat + " to " + (idLat + 1));
+        if (lon < idLon || lon > idLon + 1)
+            throw new IllegalArgumentException("Given longitude " + lon
+                    + " is not within longitude range of SRTM tile of " + idLon + " to " + (idLon + 1));
+
         double latDecimalPart = getDecimalPart(lat);
         double lonDecimalPart = getDecimalPart(lon);
 
@@ -430,9 +437,17 @@ public class SRTMTile {
 
         // Map latDecimalPart and lonDecimalPart = [0, 1] to latIndex and lonIndex = [0,
         // tileLength - 1]
-        int latIndex = (int) Math.round(latDecimalPart * (tileLength - 1));
-        int lonIndex = (int) Math.round(lonDecimalPart * (tileLength - 1));
-        return new LonLatIndices(lonIndex, latIndex);
+        int tileLength = getTileLength();
+        int latEleIndex = (int) Math.round(latDecimalPart * (tileLength - 1));
+        int lonEleIndex = (int) Math.round(lonDecimalPart * (tileLength - 1));
+
+        // Compute the tile raster coordinates of the elevation value
+        // Signed latitude increases in opposite direction of data order
+        double latEleRaster = idLat + (1.0 - Double.valueOf(latEleIndex) / (tileLength - 1));
+        // Signed longitude increases in same direction as data order
+        double lonEleRaster = idLon + Double.valueOf(lonEleIndex) / (tileLength - 1);
+
+        return new LatLonEleIndices(latEleRaster, lonEleRaster, latEleIndex, lonEleIndex);
     }
 
     /**
@@ -518,13 +533,17 @@ public class SRTMTile {
         return new int[] { lat, lon };
     }
 
-    private static class LonLatIndices {
-        public final int lonIndex;
-        public final int latIndex;
+    private static class LatLonEleIndices {
+        public final double lat;
+        public final double lon;
+        public final int latEleIndex;
+        public final int lonEleIndex;
 
-        public LonLatIndices(int lonIndex, int latIndex) {
-            this.lonIndex = lonIndex;
-            this.latIndex = latIndex;
+        public LatLonEleIndices(double lat, double lon, int latEleIndex, int lonEleIndex) {
+            this.lat = lat;
+            this.lon = lon;
+            this.latEleIndex = latEleIndex;
+            this.lonEleIndex = lonEleIndex;
         }
     }
 }

@@ -85,12 +85,12 @@ public class SRTMTile {
      * Value indicating that the data point length of the tile is not known due to
      * inappropriate information on the SRTM type.
      */
-    public static int INVALID_TILE_LENGTH = -1;
+    public static final int INVALID_TILE_LENGTH = -1;
 
     /**
      * The geographic vertical and horizontal dimensions of an SRTM tile: 1°.
      */
-    public static double SRTM_TILE_ARC_DEGREES = 1.0;
+    public static final double SRTM_TILE_ARC_DEGREES = 1.0;
 
     /**
      * Regular expression pattern for matching the components of an SRTM tile ID
@@ -345,7 +345,7 @@ public class SRTMTile {
 
         LatLonEleIndices latLonElevationIndices = getLatLonEleIndices(latLon);
         try {
-            short elevation = elevationData[latLonElevationIndices.lonEleIndex][latLonElevationIndices.latEleIndex];
+            short elevation = elevationData[latLonElevationIndices.latEleIndex][latLonElevationIndices.lonEleIndex];
             return new LatLonEle(latLonElevationIndices.lat, latLonElevationIndices.lon, elevation);
         } catch (ArrayIndexOutOfBoundsException e) {
             // Should not happen

@@ -395,12 +395,12 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
                 byteBuffer.order(ByteOrder.BIG_ENDIAN);
 
                 // Array of arrays for storing the elevation values at the raster locations
-                // 1st dimension = longitude = x
-                // 2nd dimension = latitude = y
+                // 1st dimension = column = latitude = y
+                // 2nd dimension = row = longitude = x
                 elevationData = new short[srtmTileLength][srtmTileLength];
                 for (int latIndex = 0; latIndex < srtmTileLength; latIndex++) {
                     for (int lonIndex = 0; lonIndex < srtmTileLength; lonIndex ++)
-                        elevationData[lonIndex][latIndex] = byteBuffer.getShort((latIndex * srtmTileLength + lonIndex) * 2);
+                        elevationData[latIndex][lonIndex] = byteBuffer.getShort((latIndex * srtmTileLength + lonIndex) * 2);
                 }
             } catch (IOException e) {
                 Logging.error("Elevation: Exception reading SRTM file '" + srtmFile.getName() + "': " + e.toString());

@@ -5,6 +5,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.openstreetmap.josm.data.coor.ILatLon;
+import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.tools.Logging;
 
 /**
@@ -346,7 +347,7 @@ public class SRTMTile {
         LatLonEleIndices latLonElevationIndices = getLatLonEleIndices(latLon);
         try {
             short elevation = elevationData[latLonElevationIndices.latEleIndex][latLonElevationIndices.lonEleIndex];
-            return new LatLonEle(latLonElevationIndices.lat, latLonElevationIndices.lon, elevation);
+            return new LatLonEle(latLonElevationIndices.latLon, elevation);
         } catch (ArrayIndexOutOfBoundsException e) {
             // Should not happen
             Logging.error("Elevation: Error reading elevation data from SRTM tile " + id + ": " + e.toString());
@@ -440,12 +441,9 @@ public class SRTMTile {
         int lonEleIndex = (int) Math.round(lonDecimalPart * (tileLength - 1));
 
         // Compute the tile raster coordinates of the elevation value
-        // Signed latitude increases in opposite direction of data order
-        double latEleRaster = idLat + (1.0 - Double.valueOf(latEleIndex) / (tileLength - 1));
-        // Signed longitude increases in same direction as data order
-        double lonEleRaster = idLon + Double.valueOf(lonEleIndex) / (tileLength - 1);
+        LatLon latLonRaster = getRasterLatLon(latEleIndex, lonEleIndex);
 
-        return new LatLonEleIndices(latEleRaster, lonEleRaster, latEleIndex, lonEleIndex);
+        return new LatLonEleIndices(latLonRaster, latEleIndex, lonEleIndex);
     }
 
     /**
@@ -459,6 +457,24 @@ public class SRTMTile {
         BigDecimal bd = new BigDecimal(String.valueOf(d)).abs();
         long intPart = bd.longValue();
         return bd.subtract(new BigDecimal(intPart)).doubleValue();
+    }
+
+    /**
+     * Computes the coordinate of a tile raster location specified by its indices.
+     *
+     * @param latIndex The index in latitude dimension.
+     * @param lonIndex The index in longitude dimension.
+     * @return The latitude-longitude coordinate that corresponds with the given
+     *         raster indices.
+     */
+    public LatLon getRasterLatLon(int latIndex, int lonIndex) {
+        int tileLength = getTileLength();
+        // Compute the tile raster coordinates of the elevation value
+        // Signed latitude increases in opposite direction of data order
+        double latEleRaster = idLat + (1.0 - Double.valueOf(latIndex) / (tileLength - 1));
+        // Signed longitude increases in same direction as data order
+        double lonEleRaster = idLon + Double.valueOf(lonIndex) / (tileLength - 1);
+        return new LatLon(latEleRaster, lonEleRaster);
     }
 
     /**
@@ -532,14 +548,12 @@ public class SRTMTile {
     }
 
     private static class LatLonEleIndices {
-        public final double lat;
-        public final double lon;
+        public final LatLon latLon;
         public final int latEleIndex;
         public final int lonEleIndex;
 
-        public LatLonEleIndices(double lat, double lon, int latEleIndex, int lonEleIndex) {
-            this.lat = lat;
-            this.lon = lon;
+        public LatLonEleIndices(LatLon latLon, int latEleIndex, int lonEleIndex) {
+            this.latLon = latLon;
             this.latEleIndex = latEleIndex;
             this.lonEleIndex = lonEleIndex;
         }

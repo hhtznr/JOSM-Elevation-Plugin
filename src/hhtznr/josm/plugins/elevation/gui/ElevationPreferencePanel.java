@@ -38,7 +38,11 @@ import hhtznr.josm.plugins.elevation.data.SRTMTile;
  */
 public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
+    private static final long serialVersionUID = 1L;
+
     static final class AutoSizePanel extends JPanel {
+        private static final long serialVersionUID = 1L;
+
         AutoSizePanel() {
             super(new GridBagLayout());
         }

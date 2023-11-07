@@ -28,6 +28,8 @@ import hhtznr.josm.plugins.elevation.data.SRTMTile;
  */
 public class LocalElevationLabel extends ImageLabel implements MouseMotionListener, ZoomChangeListener {
 
+    private static final long serialVersionUID = 1L;
+
     private final DecimalFormat ELEVATION_FORMAT_NO_INTERPOLATION = new DecimalFormat("0 m");
 
     private final DecimalFormat ELEVATION_FORMAT_INTERPOLATION = new DecimalFormat("0.0 m");

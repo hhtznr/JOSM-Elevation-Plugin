@@ -12,7 +12,12 @@ public class LatLonEle extends LatLon {
 
     private static final long serialVersionUID = 1L;
 
-    private final short ele;
+    /**
+     * {@code Double.NaN} to indicate that no valid elevation is provided.
+     */
+    public static final double NO_VALID_ELEVATION = Double.NaN;
+
+    private final double ele;
 
     /**
      * Creates a new LatLon coordinate with assigned elevation value.
@@ -21,7 +26,7 @@ public class LatLonEle extends LatLon {
      * @param lon The longitude in degrees.
      * @param ele The elevation in meters.
      */
-    public LatLonEle(double lat, double lon, short ele) {
+    public LatLonEle(double lat, double lon, double ele) {
         super(lat, lon);
         this.ele = ele;
     }
@@ -32,7 +37,7 @@ public class LatLonEle extends LatLon {
      * @param latLon The LatLon coordinate.
      * @param ele    The elevation in meters.
      */
-    public LatLonEle(ILatLon latLon, short ele) {
+    public LatLonEle(ILatLon latLon, double ele) {
         this(latLon.lat(), latLon.lon(), ele);
     }
 
@@ -41,7 +46,17 @@ public class LatLonEle extends LatLon {
      *
      * @return The elevation in meters.
      */
-    public short ele() {
+    public double ele() {
         return ele;
+    }
+
+    /**
+     * Returns whether this {@code LatLonEle} provides a valid elevation value.
+     *
+     * @return {@code true} if a valid elevation value is provided, {@code false}
+     *         otherwise.
+     */
+    public boolean hasValidEle() {
+        return !Double.isNaN(ele);
     }
 }

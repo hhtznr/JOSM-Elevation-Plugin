@@ -59,6 +59,7 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
 
     private SRTMFileDownloader srtmFileDownloader;
     private SRTMTile.Type preferredSRTMType;
+    private SRTMTile.Interpolation eleInterpolation;
     private boolean autoDownloadEnabled = false;
 
     /**
@@ -84,8 +85,10 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
         this(ElevationPreferences.DEFAULT_SRTM_DIRECTORY,
                 Config.getPref().getInt(ElevationPreferences.RAM_CACHE_SIZE_LIMIT,
                         ElevationPreferences.DEFAULT_RAM_CACHE_SIZE_LIMIT),
-                SRTMTile.Type.fromName(Config.getPref().get(ElevationPreferences.PREFERRED_SRTM_TYPE,
-                        ElevationPreferences.DEFAULT_PREFERRED_SRTM_TYPE.getName())),
+                SRTMTile.Type.fromString(Config.getPref().get(ElevationPreferences.PREFERRED_SRTM_TYPE,
+                        ElevationPreferences.DEFAULT_PREFERRED_SRTM_TYPE.toString())),
+                SRTMTile.Interpolation.fromString(Config.getPref().get(ElevationPreferences.ELEVATION_INTERPOLATION,
+                        ElevationPreferences.DEFAULT_ELEVATION_INTERPOLATION.toString())),
                 Config.getPref().getBoolean(ElevationPreferences.ELEVATION_AUTO_DOWNLOAD_ENABLED,
                         ElevationPreferences.DEFAULT_ELEVATION_AUTO_DOWNLOAD_ENABLED));
     }
@@ -98,14 +101,16 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
      * @param ramCacheMaxSize     The maximum size of the in-memory SRTM tile cache
      *                            in MiB.
      * @param preferredSRTMType   The preferred SRTM type (SRTM1 or SRTM3).
+     * @param eleInterpolation    The type of elevation interpolation.
      * @param autoDownloadEnabled If {@code true} automatic downloading of missing
      *                            SRTM tiles will be attempted.
      */
-    private SRTMFileReader(File srtmDirectory, int ramCacheMaxSize, SRTMTile.Type preferredSRTMType,
+    private SRTMFileReader(File srtmDirectory, int ramCacheMaxSize, SRTMTile.Type preferredSRTMType, SRTMTile.Interpolation eleInterpolation,
             boolean autoDownloadEnabled) {
         tileCache = new SRTMTileCache(ramCacheMaxSize);
         setSrtmDirectory(srtmDirectory);
         this.preferredSRTMType = preferredSRTMType;
+        this.eleInterpolation = eleInterpolation;
         setAutoDownloadEnabled(autoDownloadEnabled);
     }
 
@@ -157,6 +162,24 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
     }
 
     /**
+     * Returns the type of elevation interpolation.
+     *
+     * @return The type of elevation interpolation.
+     */
+    public SRTMTile.Interpolation getElevationInterpolation() {
+        return eleInterpolation;
+    }
+
+    /**
+     * Sets the type of elevation interpolation.
+     *
+     * @param eleInterpolation The type of elevation interpolation to set.
+     */
+    public void setElevationInterpolation(SRTMTile.Interpolation eleInterpolation) {
+        this.eleInterpolation = eleInterpolation;
+    }
+
+    /**
      * Returns the elevation at the raster location that is closest to the provided
      * location, if an appropriate SRTM file is available in the SRTM directory.
      *
@@ -170,7 +193,7 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
         SRTMTile srtmTile = getSRTMTile(SRTMTile.getTileID(latLon));
         // Retrieves and returns elevation and its actual coordinate if SRTM data is
         // valid
-        return srtmTile.getLatLonEle(latLon);
+        return srtmTile.getLatLonEle(latLon, eleInterpolation);
     }
 
     /**

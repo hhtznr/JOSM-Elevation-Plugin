@@ -25,6 +25,11 @@ public class ElevationPreferences {
     public static final String PREFERRED_SRTM_TYPE = "elevation.srtm.type.preferred";
 
     /**
+     * Property key for defining the elevation interpolation method.
+     */
+    public static final String ELEVATION_INTERPOLATION = "elevation.interpolation";
+
+    /**
      * Property key for size limit of the in-memory SRTM tile cache.
      */
     public static final String RAM_CACHE_SIZE_LIMIT = "elevation.cache.ram.size.limit";
@@ -48,6 +53,11 @@ public class ElevationPreferences {
      * Default property value for the preferred SRTM type.
      */
     public static final SRTMTile.Type DEFAULT_PREFERRED_SRTM_TYPE = SRTMTile.Type.SRTM1;
+
+    /**
+     * Default property value of the elevation interpolation method.
+     */
+    public static final SRTMTile.Interpolation DEFAULT_ELEVATION_INTERPOLATION = SRTMTile.Interpolation.BILINEAR;
 
     /**
      * Default property value for the size limit of the in-memory SRTM tile cache in

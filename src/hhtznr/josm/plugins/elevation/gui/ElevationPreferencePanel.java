@@ -53,6 +53,8 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
     private final JLabel lblSRTMType = new JLabel("Preferred SRTM Type:");
     private final JosmComboBox<SRTMTile.Type> cbSRTMType = new JosmComboBox<>(SRTMTile.Type.values());
+    private final JLabel lblInterpolation = new JLabel("Elevation Value Interpolation:");
+    private final JosmComboBox<SRTMTile.Interpolation> cbInterpolation = new JosmComboBox<>(SRTMTile.Interpolation.values());
     private final JLabel lblCacheSize = new JLabel("Max. Size of In-Memory Tile Cache (MiB):");
     private final JSpinner spCacheSize = new JSpinner(new SpinnerNumberModel(
             ElevationPreferences.DEFAULT_RAM_CACHE_SIZE_LIMIT, ElevationPreferences.MIN_RAM_CACHE_SIZE_LIMIT,
@@ -132,6 +134,18 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.fill = GridBagConstraints.NONE;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
+        pnl.add(lblInterpolation, gc);
+
+        gc.gridx++;
+        gc.fill = GridBagConstraints.NONE;
+        gc.weightx = 1.0;
+        pnl.add(cbInterpolation, gc);
+
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.fill = GridBagConstraints.NONE;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
         pnl.add(lblCacheSize, gc);
 
         gc.gridx++;
@@ -185,8 +199,10 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
         cbEnableElevation.setSelected(pref.getBoolean(ElevationPreferences.ELEVATION_ENABLED,
                 ElevationPreferences.DEFAULT_ELEVATION_ENABLED));
-        cbSRTMType.setSelectedItem(SRTMTile.Type.fromName(pref.get(ElevationPreferences.PREFERRED_SRTM_TYPE,
-                ElevationPreferences.DEFAULT_PREFERRED_SRTM_TYPE.getName())));
+        cbSRTMType.setSelectedItem(SRTMTile.Type.fromString(pref.get(ElevationPreferences.PREFERRED_SRTM_TYPE,
+                ElevationPreferences.DEFAULT_PREFERRED_SRTM_TYPE.toString())));
+        cbInterpolation.setSelectedItem(SRTMTile.Interpolation.fromString(pref.get(ElevationPreferences.ELEVATION_INTERPOLATION,
+                ElevationPreferences.DEFAULT_ELEVATION_INTERPOLATION.toString())));
         spCacheSize.setValue(pref.getInt(ElevationPreferences.RAM_CACHE_SIZE_LIMIT,
                 ElevationPreferences.DEFAULT_RAM_CACHE_SIZE_LIMIT));
         cbEnableAutoDownload.setSelected(pref.getBoolean(ElevationPreferences.ELEVATION_AUTO_DOWNLOAD_ENABLED,
@@ -199,6 +215,8 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         if (cbEnableElevation.isSelected()) {
             lblSRTMType.setEnabled(true);
             cbSRTMType.setEnabled(true);
+            lblInterpolation.setEnabled(true);
+            cbInterpolation.setEnabled(true);
             lblCacheSize.setEnabled(true);
             spCacheSize.setEnabled(true);
             lblSRTM1Server.setEnabled(true);
@@ -210,6 +228,8 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         } else {
             lblSRTMType.setEnabled(false);
             cbSRTMType.setEnabled(false);
+            lblInterpolation.setEnabled(false);
+            cbInterpolation.setEnabled(false);
             lblCacheSize.setEnabled(false);
             spCacheSize.setEnabled(false);
             lblSRTM1Server.setEnabled(false);
@@ -240,7 +260,8 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
     public void saveToPreferences() {
         IPreferences pref = Config.getPref();
         pref.putBoolean(ElevationPreferences.ELEVATION_ENABLED, cbEnableElevation.isSelected());
-        pref.put(ElevationPreferences.PREFERRED_SRTM_TYPE, ((SRTMTile.Type) cbSRTMType.getSelectedItem()).getName());
+        pref.put(ElevationPreferences.PREFERRED_SRTM_TYPE, ((SRTMTile.Type) cbSRTMType.getSelectedItem()).toString());
+        pref.put(ElevationPreferences.ELEVATION_INTERPOLATION, ((SRTMTile.Interpolation) cbInterpolation.getSelectedItem()).toString());
         pref.putInt(ElevationPreferences.RAM_CACHE_SIZE_LIMIT, (Integer) spCacheSize.getValue());
         pref.putBoolean(ElevationPreferences.ELEVATION_AUTO_DOWNLOAD_ENABLED, cbEnableAutoDownload.isSelected());
         pref.put(ElevationPreferences.ELEVATION_SERVER_AUTH_BEARER, tfAuthBearer.getText());

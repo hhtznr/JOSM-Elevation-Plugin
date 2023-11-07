@@ -28,7 +28,9 @@ import hhtznr.josm.plugins.elevation.data.SRTMTile;
  */
 public class LocalElevationLabel extends ImageLabel implements MouseMotionListener, ZoomChangeListener {
 
-    private final DecimalFormat ELEVATION_FORMAT = new DecimalFormat("0 m");
+    private final DecimalFormat ELEVATION_FORMAT_NO_INTERPOLATION = new DecimalFormat("0 m");
+
+    private final DecimalFormat ELEVATION_FORMAT_INTERPOLATION = new DecimalFormat("0.0 m");
 
     private MapFrame mapFrame = null;
 
@@ -94,9 +96,13 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
             return;
         }
         LatLonEle latLonEle = SRTMFileReader.getInstance().getLatLonEle(latLon);
-        short elevation = latLonEle.ele();
-        if (elevation != SRTMTile.SRTM_DATA_VOID)
-            setText(ELEVATION_FORMAT.format(elevation));
+        DecimalFormat eleFormat;
+        if (SRTMFileReader.getInstance().getElevationInterpolation() == SRTMTile.Interpolation.NONE)
+            eleFormat = ELEVATION_FORMAT_NO_INTERPOLATION;
+        else
+            eleFormat = ELEVATION_FORMAT_INTERPOLATION;
+        if (latLonEle.hasValidEle())
+            setText(eleFormat.format(latLonEle.ele()));
         else
             setText("No data");
     }
@@ -136,7 +142,7 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
         }
     }
 
-    private class CacheSRTMTilesInMapBounds extends TimerTask {
+    private static class CacheSRTMTilesInMapBounds extends TimerTask {
 
         private ILatLon southWest;
         private ILatLon northEast;

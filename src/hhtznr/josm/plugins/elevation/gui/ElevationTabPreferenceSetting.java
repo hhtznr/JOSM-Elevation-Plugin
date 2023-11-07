@@ -12,6 +12,7 @@ import org.openstreetmap.josm.tools.I18n;
 import hhtznr.josm.plugins.elevation.ElevationPlugin;
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
 import hhtznr.josm.plugins.elevation.SRTMFileReader;
+import hhtznr.josm.plugins.elevation.data.SRTMTile;
 
 /**
  * Elevation tab in preferences.
@@ -47,9 +48,13 @@ public final class ElevationTabPreferenceSetting extends DefaultTabPreferenceSet
         boolean elevationEnabled = pref.getBoolean(ElevationPreferences.ELEVATION_ENABLED,
                 ElevationPreferences.DEFAULT_ELEVATION_ENABLED);
         ElevationPlugin.getInstance().setElevationEnabled(elevationEnabled);
-        if (elevationEnabled)
+        if (elevationEnabled) {
+            SRTMFileReader.getInstance().setElevationInterpolation(
+                    SRTMTile.Interpolation.fromString(pref.get(ElevationPreferences.ELEVATION_INTERPOLATION,
+                            ElevationPreferences.DEFAULT_ELEVATION_INTERPOLATION.toString())));
             SRTMFileReader.getInstance().tileCache.setCacheSizeLimit(pref.getInt(
                     ElevationPreferences.RAM_CACHE_SIZE_LIMIT, ElevationPreferences.DEFAULT_RAM_CACHE_SIZE_LIMIT));
+        }
 
         return false;
     }

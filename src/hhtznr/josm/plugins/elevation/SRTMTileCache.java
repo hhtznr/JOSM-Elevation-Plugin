@@ -89,15 +89,15 @@ public class SRTMTileCache {
             srtmTile = new SRTMTile(id, type, elevationData, status);
             cache.put(id, srtmTile);
             cacheSize += srtmTile.getDataSize();
-            Logging.info("Elevation: Cached new SRTM tile " + id + " with type '" + type.getName() + "', status '"
-                    + srtmTile.getStatus().getName() + "' and size " + getSizeString(srtmTile.getDataSize())
+            Logging.info("Elevation: Cached new SRTM tile " + id + " with type '" + type.toString() + "', status '"
+                    + srtmTile.getStatus().toString() + "' and size " + getSizeString(srtmTile.getDataSize())
                     + "; cache size: " + getSizeString(cacheSize));
         } else {
             cacheSize -= srtmTile.getDataSize();
             srtmTile.update(type, elevationData, status);
             cacheSize += srtmTile.getDataSize();
-            Logging.info("Elevation: Updated cached SRTM tile " + id + " with type '" + type.getName() + "', status '"
-                    + srtmTile.getStatus().getName() + "' and size " + getSizeString(srtmTile.getDataSize())
+            Logging.info("Elevation: Updated cached SRTM tile " + id + " with type '" + type.toString() + "', status '"
+                    + srtmTile.getStatus().toString() + "' and size " + getSizeString(srtmTile.getDataSize())
                     + "; cache size: " + getSizeString(cacheSize));
         }
         if (cacheSize > cacheSizeLimit)
@@ -133,7 +133,7 @@ public class SRTMTileCache {
         SRTMTile tile = cache.remove(srtmTileID);
         if (tile != null) {
             cacheSize -= tile.getDataSize();
-            Logging.info("Elevation: Removed SRTM tile " + srtmTileID + " with status '" + tile.getStatus().getName()
+            Logging.info("Elevation: Removed SRTM tile " + srtmTileID + " with status '" + tile.getStatus().toString()
                     + "' and size " + getSizeString(tile.getDataSize()) + " from cache; cache size: "
                     + getSizeString(cacheSize));
         }

@@ -99,14 +99,19 @@ public class ElevationPlugin extends Plugin {
         if (enabled) {
             // STRM file type that is preferred for reading and downloading
             SRTMTile.Type preferredSRTMType = SRTMTile.Type
-                    .fromName(Config.getPref().get(ElevationPreferences.PREFERRED_SRTM_TYPE,
-                            ElevationPreferences.DEFAULT_PREFERRED_SRTM_TYPE.getName()));
+                    .fromString(Config.getPref().get(ElevationPreferences.PREFERRED_SRTM_TYPE,
+                            ElevationPreferences.DEFAULT_PREFERRED_SRTM_TYPE.toString()));
+            // Elevation interpolation method
+            SRTMTile.Interpolation elevationInterpolation = SRTMTile.Interpolation
+                    .fromString(Config.getPref().get(ElevationPreferences.ELEVATION_INTERPOLATION,
+                            ElevationPreferences.DEFAULT_ELEVATION_INTERPOLATION.toString()));
             // Auto-download of SRTM files
             boolean elevationAutoDownloadEnabled = Config.getPref().getBoolean(
                     ElevationPreferences.ELEVATION_AUTO_DOWNLOAD_ENABLED,
                     ElevationPreferences.DEFAULT_ELEVATION_AUTO_DOWNLOAD_ENABLED);
             // Initialize and configure the SRTM file reader
             SRTMFileReader.getInstance().setPreferredSRTMType(preferredSRTMType);
+            SRTMFileReader.getInstance().setElevationInterpolation(elevationInterpolation);
             SRTMFileReader.getInstance().setAutoDownloadEnabled(elevationAutoDownloadEnabled);
         } else {
             if (localElevationLabel != null) {

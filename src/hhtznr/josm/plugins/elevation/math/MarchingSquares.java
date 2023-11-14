@@ -21,17 +21,6 @@ public class MarchingSquares {
     private final short[] isovalues;
 
     /**
-     * Bit value used to indicate that a cell vertex is equal to or above an
-     * isovalue.
-     */
-    private static final byte ABOVE = 0x1;
-
-    /**
-     * Bit value used to indicate that a cell vertex is below an isovalue.
-     */
-    private static final byte BELOW = 0x0;
-
-    /**
      * Creates a new instance of the Marching Squares algorithm dedicated to
      * computing contour lines from elevation raster data.
      *
@@ -95,44 +84,42 @@ public class MarchingSquares {
             double latSouth = southWest.lat()
                     + latRange * (1.0 - Double.valueOf(latIndex + 1) / (eleValues.length - 1));
 
+            // The cell to the west of the currently processed cell
+            Cell cellToWest = null;
             for (int lonIndex = 0; lonIndex < eleValues[latIndex].length - 1; lonIndex++) {
-                double lonWest = southWest.lon() + lonRange * Double.valueOf(lonIndex) / (eleValues[latIndex].length - 1);
-                double lonEast = southWest.lon() + lonRange * Double.valueOf(lonIndex + 1) / (eleValues[latIndex].length - 1);
-
+                // Get the elevation values and the edge longitudes
                 short eleNorthWest;
                 short eleNorthEast;
                 short eleSouthEast;
                 short eleSouthWest;
-                byte[] binaryVertices = new byte[4];
-                /**
-                 * Clockwise traversal of the vertices of the cell
-                 *
-                 * <pre>
-                 *    8    4
-                 * NW o--->o NE
-                 *         |
-                 *         v
-                 * SW o<---o SE
-                 *    1    2
-                 * </pre>
-                 */
-                // NW (North west)
-                eleNorthWest = eleValues[latIndex][lonIndex];
-                binaryVertices[0] = getVertexState(eleNorthWest, isovalue);
-                // NE (North east)
-                eleNorthEast = eleValues[latIndex][lonIndex + 1];
-                binaryVertices[1] = getVertexState(eleNorthEast, isovalue);
-                // SE (South east)
-                eleSouthEast = eleValues[latIndex + 1][lonIndex + 1];
-                binaryVertices[2] = getVertexState(eleSouthEast, isovalue);
-                // SW (South west)
-                eleSouthWest = eleValues[latIndex + 1][lonIndex];
-                binaryVertices[3] = getVertexState(eleSouthWest, isovalue);
+                double lonWest;
+                double lonEast;
 
-                Cell cell = new Cell(latSouth, lonWest, latNorth, lonEast, eleNorthWest, eleNorthEast, eleSouthEast,
+                // If there is no previous cell to the west,
+                // compute these values from the elevation raster
+                if (cellToWest == null) {
+                    eleNorthWest = eleValues[latIndex][lonIndex];
+                    eleSouthWest = eleValues[latIndex + 1][lonIndex];
+                    lonWest = southWest.lon() + lonRange * Double.valueOf(lonIndex) / (eleValues[latIndex].length - 1);
+                }
+                // If there is a previous cell to the west,
+                // copy values of shared edge and vertices instead
+                else {
+                    eleNorthWest = cellToWest.eleNorthEast;
+                    eleSouthWest = cellToWest.eleSouthEast;
+                    lonWest = cellToWest.lonEast;
+                }
+                eleNorthEast = eleValues[latIndex][lonIndex + 1];
+                eleSouthEast = eleValues[latIndex + 1][lonIndex + 1];
+                lonEast = southWest.lon() + lonRange * Double.valueOf(lonIndex + 1) / (eleValues[latIndex].length - 1);
+
+                Cell currentCell = new Cell(latSouth, lonWest, latNorth, lonEast, eleNorthWest, eleNorthEast, eleSouthEast,
                         eleSouthWest);
 
-                switch (getCase(binaryVertices)) {
+                // Determine the Marching Squares cell case with respect to the given isoline
+                int cellCase = currentCell.getCase(isovalue);
+
+                switch (cellCase) {
                 case 0:
                     /**
                      * 0-0-0-0 = 0
@@ -164,9 +151,12 @@ public class MarchingSquares {
                      *
                      * Isoline intersects from western to southern edge
                      */
-                    cell.setIntersectionWest(isovalue);
-                    cell.setIntersectionSouth(isovalue);
-                    isolineSegments.add(new LatLonLine(cell.getIntersectionWest(), cell.getIntersectionSouth()));
+                    if (cellToWest == null)
+                        currentCell.setIntersectionWest(isovalue);
+                    else
+                        currentCell.edgeWest = cellToWest.edgeEast;
+                    currentCell.setIntersectionSouth(isovalue);
+                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionWest(), currentCell.getIntersectionSouth()));
                     break;
                 case 2:
                     /**
@@ -183,9 +173,9 @@ public class MarchingSquares {
                      *
                      * Isoline intersects from southern to eastern edge
                      */
-                    cell.setIntersectionSouth(isovalue);
-                    cell.setIntersectionEast(isovalue);
-                    isolineSegments.add(new LatLonLine(cell.getIntersectionSouth(), cell.getIntersectionEast()));
+                    currentCell.setIntersectionSouth(isovalue);
+                    currentCell.setIntersectionEast(isovalue);
+                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionSouth(), currentCell.getIntersectionEast()));
                     break;
                 case 3:
                     /**
@@ -202,9 +192,12 @@ public class MarchingSquares {
                      *
                      * Isoline intersects from western to eastern edge
                      */
-                    cell.setIntersectionWest(isovalue);
-                    cell.setIntersectionEast(isovalue);
-                    isolineSegments.add(new LatLonLine(cell.getIntersectionWest(), cell.getIntersectionEast()));
+                    if (cellToWest == null)
+                        currentCell.setIntersectionWest(isovalue);
+                    else
+                        currentCell.edgeWest = cellToWest.edgeEast;
+                    currentCell.setIntersectionEast(isovalue);
+                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionWest(), currentCell.getIntersectionEast()));
                     break;
                 case 4:
                     /**
@@ -221,9 +214,9 @@ public class MarchingSquares {
                      *
                      * Isoline intersects from eastern to northern edge
                      */
-                    cell.setIntersectionEast(isovalue);
-                    cell.setIntersectionNorth(isovalue);
-                    isolineSegments.add(new LatLonLine(cell.getIntersectionEast(), cell.getIntersectionNorth()));
+                    currentCell.setIntersectionEast(isovalue);
+                    currentCell.setIntersectionNorth(isovalue);
+                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionEast(), currentCell.getIntersectionNorth()));
                     break;
                 case 5:
                     /**
@@ -241,12 +234,15 @@ public class MarchingSquares {
                      * Two isolines intersect (saddle point case): Isoline intersects from western
                      * to southern edge Isoline intersects from eastern to northern edge
                      */
-                    cell.setIntersectionWest(isovalue);
-                    cell.setIntersectionSouth(isovalue);
-                    cell.setIntersectionEast(isovalue);
-                    cell.setIntersectionNorth(isovalue);
-                    isolineSegments.add(new LatLonLine(cell.getIntersectionWest(), cell.getIntersectionSouth()));
-                    isolineSegments.add(new LatLonLine(cell.getIntersectionEast(), cell.getIntersectionNorth()));
+                    if (cellToWest == null)
+                        currentCell.setIntersectionWest(isovalue);
+                    else
+                        currentCell.edgeWest = cellToWest.edgeEast;
+                    currentCell.setIntersectionSouth(isovalue);
+                    currentCell.setIntersectionEast(isovalue);
+                    currentCell.setIntersectionNorth(isovalue);
+                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionWest(), currentCell.getIntersectionSouth()));
+                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionEast(), currentCell.getIntersectionNorth()));
                     break;
                 case 6:
                     /**
@@ -263,9 +259,9 @@ public class MarchingSquares {
                      *
                      * Isoline intersects from southern to northern edge
                      */
-                    cell.setIntersectionSouth(isovalue);
-                    cell.setIntersectionNorth(isovalue);
-                    isolineSegments.add(new LatLonLine(cell.getIntersectionSouth(), cell.getIntersectionNorth()));
+                    currentCell.setIntersectionSouth(isovalue);
+                    currentCell.setIntersectionNorth(isovalue);
+                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionSouth(), currentCell.getIntersectionNorth()));
                     break;
                 case 7:
                     /**
@@ -282,9 +278,12 @@ public class MarchingSquares {
                      *
                      * Isoline intersects from western to northern edge
                      */
-                    cell.setIntersectionWest(isovalue);
-                    cell.setIntersectionNorth(isovalue);
-                    isolineSegments.add(new LatLonLine(cell.getIntersectionWest(), cell.getIntersectionNorth()));
+                    if (cellToWest == null)
+                        currentCell.setIntersectionWest(isovalue);
+                    else
+                        currentCell.edgeWest = cellToWest.edgeEast;
+                    currentCell.setIntersectionNorth(isovalue);
+                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionWest(), currentCell.getIntersectionNorth()));
                     break;
                 case 8:
                     /**
@@ -301,9 +300,12 @@ public class MarchingSquares {
                      *
                      * Isoline intersects from northern to western edge
                      */
-                    cell.setIntersectionNorth(isovalue);
-                    cell.setIntersectionWest(isovalue);
-                    isolineSegments.add(new LatLonLine(cell.getIntersectionNorth(), cell.getIntersectionWest()));
+                    currentCell.setIntersectionNorth(isovalue);
+                    if (cellToWest == null)
+                        currentCell.setIntersectionWest(isovalue);
+                    else
+                        currentCell.edgeWest = cellToWest.edgeEast;
+                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionNorth(), currentCell.getIntersectionWest()));
                     break;
                 case 9:
                     /**
@@ -320,9 +322,9 @@ public class MarchingSquares {
                      *
                      * Isoline intersects from northern to southern edge
                      */
-                    cell.setIntersectionNorth(isovalue);
-                    cell.setIntersectionSouth(isovalue);
-                    isolineSegments.add(new LatLonLine(cell.getIntersectionNorth(), cell.getIntersectionSouth()));
+                    currentCell.setIntersectionNorth(isovalue);
+                    currentCell.setIntersectionSouth(isovalue);
+                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionNorth(), currentCell.getIntersectionSouth()));
                     break;
                 case 10:
                     /**
@@ -340,12 +342,15 @@ public class MarchingSquares {
                      * Two isolines intersect (saddle point case): Isoline intersects from northern
                      * to eastern edge Isoline intersects from southern to western edge
                      */
-                    cell.setIntersectionNorth(isovalue);
-                    cell.setIntersectionEast(isovalue);
-                    cell.setIntersectionSouth(isovalue);
-                    cell.setIntersectionWest(isovalue);
-                    isolineSegments.add(new LatLonLine(cell.getIntersectionNorth(), cell.getIntersectionEast()));
-                    isolineSegments.add(new LatLonLine(cell.getIntersectionSouth(), cell.getIntersectionWest()));
+                    currentCell.setIntersectionNorth(isovalue);
+                    currentCell.setIntersectionEast(isovalue);
+                    currentCell.setIntersectionSouth(isovalue);
+                    if (cellToWest == null)
+                        currentCell.setIntersectionWest(isovalue);
+                    else
+                        currentCell.edgeWest = cellToWest.edgeEast;
+                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionNorth(), currentCell.getIntersectionEast()));
+                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionSouth(), currentCell.getIntersectionWest()));
                     break;
                 case 11:
                     /**
@@ -362,9 +367,9 @@ public class MarchingSquares {
                      *
                      * Isoline intersects from northern to eastern edge
                      */
-                    cell.setIntersectionNorth(isovalue);
-                    cell.setIntersectionEast(isovalue);
-                    isolineSegments.add(new LatLonLine(cell.getIntersectionNorth(), cell.getIntersectionEast()));
+                    currentCell.setIntersectionNorth(isovalue);
+                    currentCell.setIntersectionEast(isovalue);
+                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionNorth(), currentCell.getIntersectionEast()));
                     break;
                 case 12:
                     /**
@@ -381,9 +386,12 @@ public class MarchingSquares {
                      *
                      * Isoline intersects from eastern to western edge
                      */
-                    cell.setIntersectionEast(isovalue);
-                    cell.setIntersectionWest(isovalue);
-                    isolineSegments.add(new LatLonLine(cell.getIntersectionEast(), cell.getIntersectionWest()));
+                    currentCell.setIntersectionEast(isovalue);
+                    if (cellToWest == null)
+                        currentCell.setIntersectionWest(isovalue);
+                    else
+                        currentCell.edgeWest = cellToWest.edgeEast;
+                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionEast(), currentCell.getIntersectionWest()));
                     break;
                 case 13:
                     /**
@@ -400,9 +408,9 @@ public class MarchingSquares {
                      *
                      * Isoline intersects from eastern to southern edge
                      */
-                    cell.setIntersectionEast(isovalue);
-                    cell.setIntersectionSouth(isovalue);
-                    isolineSegments.add(new LatLonLine(cell.getIntersectionEast(), cell.getIntersectionSouth()));
+                    currentCell.setIntersectionEast(isovalue);
+                    currentCell.setIntersectionSouth(isovalue);
+                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionEast(), currentCell.getIntersectionSouth()));
                     break;
                 case 14:
                     /**
@@ -419,9 +427,12 @@ public class MarchingSquares {
                      *
                      * Isoline intersects from southern to western edge
                      */
-                    cell.setIntersectionSouth(isovalue);
-                    cell.setIntersectionWest(isovalue);
-                    isolineSegments.add(new LatLonLine(cell.getIntersectionSouth(), cell.getIntersectionWest()));
+                    currentCell.setIntersectionSouth(isovalue);
+                    if (cellToWest == null)
+                        currentCell.setIntersectionWest(isovalue);
+                    else
+                        currentCell.edgeWest = cellToWest.edgeEast;
+                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionSouth(), currentCell.getIntersectionWest()));
                     break;
                 case 15:
                     /**
@@ -442,39 +453,11 @@ public class MarchingSquares {
                 default:
                     break;
                 }
+                cellToWest = currentCell;
             }
+            cellToWest = null;
         }
         return isolineSegments;
-    }
-
-    /**
-     * Determines the binary state of a cell vertex with respect to a given
-     * isovalue, i.e. if the vertex is equal to or above the isovalue or below the
-     * isovalue.
-     *
-     * @param value    The value at the vertex.
-     * @param isovalue The isovalue.
-     * @return {@link ABOVE} if the value is equal to or above the isovalue.
-     *         {@link BELOW} if the value is below the isovalue.
-     */
-    private static byte getVertexState(short value, short isovalue) {
-        return value >= isovalue ? ABOVE : BELOW;
-    }
-
-    /**
-     * Determines the Marching Squares cell case
-     *
-     * @param binaryVertices
-     * @return The integer code associated with the appropriate Marching Squares
-     *         Cell case.
-     */
-    private static int getCase(byte[] binaryVertices) {
-        if (binaryVertices.length != 4)
-            throw new IllegalArgumentException("There must be exactly for binary vertex values per grid cell.");
-        int caseCode = 0;
-        for (int i = 0; i < binaryVertices.length; i++)
-            caseCode = (caseCode << 1) | binaryVertices[i];
-        return caseCode;
     }
 
     /**
@@ -483,6 +466,17 @@ public class MarchingSquares {
      * interpolated edge intersection coordinate values.
      */
     private static class Cell {
+        /**
+         * Bit value used to indicate that a cell vertex is equal to or above an
+         * isovalue.
+         */
+        private static final byte ABOVE = 0x1;
+
+        /**
+         * Bit value used to indicate that a cell vertex is below an isovalue.
+         */
+        private static final byte BELOW = 0x0;
+
         public final double latSouth;
         public final double lonWest;
         public final double latNorth;
@@ -508,6 +502,63 @@ public class MarchingSquares {
             this.eleNorthEast = eleNorthEast;
             this.eleSouthEast = eleSouthEast;
             this.eleSouthWest = eleSouthWest;
+        }
+
+        /**
+         * Determines the Marching Squares cell case,
+         *
+         * @param isovalue The isovalue for which to determine the Marching Squares cell case.
+         * @return The integer code in the range {@code 0...15} which is associated with
+         *         the appropriate Marching Squares Cell case.
+         */
+        public int getCase(short isovalue) {
+            byte[] binaryVertexStates = getBinaryVertexStates(isovalue);
+            int caseCode = 0;
+            for (int i = 0; i < binaryVertexStates.length; i++)
+                caseCode = (caseCode << 1) | binaryVertexStates[i];
+            return caseCode;
+        }
+
+        /**
+         * Determines and returns the binary vertex states for the given isovalue. The
+         * cell is traversed clockwise:
+         *
+         * <pre>
+         *    8    4
+         * NW o--->o NE
+         *         |
+         *         v
+         * SW o<---o SE
+         *    1    2
+         * </pre>
+         *
+         * @param isovalue The isovalue for which to determine the binary states
+         *                 ({@code ABOVE} or {@code BELOW} of the elevation values at
+         *                 the cell's vertices.
+         * @return An array of {@code length = 4} which contains the binary vertex
+         *         states in order {@code {NW, NE, SE, SW}}.
+         */
+        private byte[] getBinaryVertexStates(short isovalue) {
+            byte[] binaryVertexStates = new byte[4];
+            binaryVertexStates[0] = getVertexState(eleNorthWest, isovalue);
+            binaryVertexStates[1] = getVertexState(eleNorthEast, isovalue);
+            binaryVertexStates[2] = getVertexState(eleSouthEast, isovalue);
+            binaryVertexStates[3] = getVertexState(eleSouthWest, isovalue);
+            return binaryVertexStates;
+        }
+
+        /**
+         * Determines the binary state of a cell vertex with respect to a given
+         * isovalue, i.e. if the vertex is equal to or above the isovalue or below the
+         * isovalue.
+         *
+         * @param value    The value at the vertex.
+         * @param isovalue The isovalue.
+         * @return {@link ABOVE} if the value is equal to or above the isovalue.
+         *         {@link BELOW} if the value is below the isovalue.
+         */
+        private static byte getVertexState(short value, short isovalue) {
+            return value >= isovalue ? ABOVE : BELOW;
         }
 
         /**

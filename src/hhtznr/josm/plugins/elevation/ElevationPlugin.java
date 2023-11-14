@@ -1,9 +1,11 @@
 package hhtznr.josm.plugins.elevation;
 
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
+import hhtznr.josm.plugins.elevation.gui.ElevationLayer;
 import hhtznr.josm.plugins.elevation.gui.ElevationTabPreferenceSetting;
 import hhtznr.josm.plugins.elevation.gui.LocalElevationLabel;
 
+import org.openstreetmap.josm.gui.IconToggleButton;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.MapFrame;
 import org.openstreetmap.josm.gui.preferences.PreferenceSetting;
@@ -26,6 +28,8 @@ public class ElevationPlugin extends Plugin {
             ElevationPreferences.DEFAULT_ELEVATION_ENABLED);
 
     private LocalElevationLabel localElevationLabel = null;
+
+    private ElevationLayer elevationLayer = null;
 
     private static ElevationPlugin instance = null;
 
@@ -88,14 +92,6 @@ public class ElevationPlugin extends Plugin {
     }
 
     private void setElevationEnabled(boolean enabled, MapFrame mapFrame) {
-        if (mapFrame != null && enabled) {
-            if (localElevationLabel == null)
-                localElevationLabel = new LocalElevationLabel(mapFrame);
-            else
-                localElevationLabel.addToMapFrame(mapFrame);
-            localElevationLabel.setVisible(true);
-        }
-
         if (enabled) {
             // STRM file type that is preferred for reading and downloading
             SRTMTile.Type preferredSRTMType = SRTMTile.Type
@@ -105,6 +101,9 @@ public class ElevationPlugin extends Plugin {
             SRTMTile.Interpolation elevationInterpolation = SRTMTile.Interpolation
                     .fromString(Config.getPref().get(ElevationPreferences.ELEVATION_INTERPOLATION,
                             ElevationPreferences.DEFAULT_ELEVATION_INTERPOLATION.toString()));
+            // Elevation layer
+            boolean elevationLayerEnabled = Config.getPref().getBoolean(ElevationPreferences.ELEVATION_LAYER_ENABLED,
+                    ElevationPreferences.DEFAULT_ELEVATION_LAYER_ENABLED);
             // Auto-download of SRTM files
             boolean elevationAutoDownloadEnabled = Config.getPref().getBoolean(
                     ElevationPreferences.ELEVATION_AUTO_DOWNLOAD_ENABLED,
@@ -113,10 +112,27 @@ public class ElevationPlugin extends Plugin {
             SRTMFileReader.getInstance().setPreferredSRTMType(preferredSRTMType);
             SRTMFileReader.getInstance().setElevationInterpolation(elevationInterpolation);
             SRTMFileReader.getInstance().setAutoDownloadEnabled(elevationAutoDownloadEnabled);
+            if (mapFrame != null) {
+                if (localElevationLabel == null)
+                    localElevationLabel = new LocalElevationLabel(mapFrame);
+                else
+                    localElevationLabel.addToMapFrame(mapFrame);
+
+                if (elevationLayerEnabled && elevationLayer == null) {
+                    elevationLayer = new ElevationLayer();
+                    MainApplication.getLayerManager().addLayer(elevationLayer);
+                    mapFrame.addMapMode(new IconToggleButton(new ElevationMapMode(elevationLayer)));
+                }
+            }
         } else {
             if (localElevationLabel != null) {
                 localElevationLabel.remove();
                 localElevationLabel = null;
+            }
+            if (elevationLayer != null) {
+                MainApplication.getLayerManager().removeLayer(elevationLayer);
+                elevationLayer = null;
+                // TODO: Map mode?
             }
             SRTMFileReader.destroyInstance();
         }

@@ -35,6 +35,11 @@ public class ElevationPreferences {
     public static final String RAM_CACHE_SIZE_LIMIT = "elevation.cache.ram.size.limit";
 
     /**
+     * Property key for enabling or disabling elevation contour line layer.
+     */
+    public static final String ELEVATION_LAYER_ENABLED = "elevation.layer.enabled";
+
+    /**
      * Property key for enabling or disabling automatic download of elevation data.
      */
     public static final String ELEVATION_AUTO_DOWNLOAD_ENABLED = "elevation.autodownload";
@@ -80,6 +85,12 @@ public class ElevationPreferences {
      * spinner in the elevation preferences in MiB: 1.
      */
     public static final int INCR_RAM_CACHE_SIZE_LIMIT = 1;
+
+    /**
+     * Default property value for enabling the elevation contour lines layer:
+     * {@code true}.
+     */
+    public static final boolean DEFAULT_ELEVATION_LAYER_ENABLED = true;
 
     /**
      * Default property value for authentication bearer token for SRTM HGT server:

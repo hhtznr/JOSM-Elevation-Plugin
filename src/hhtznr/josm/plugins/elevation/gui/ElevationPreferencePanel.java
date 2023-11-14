@@ -54,7 +54,12 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
     }
 
     private final JCheckBox cbEnableElevation = new JCheckBox(I18n.tr("Enable Use of Elevation Data"));
-
+    private final JMultilineLabel lblSRTM1Server = new JMultilineLabel(I18n.tr(
+            "<html>STRM1 files (elevation sampled at 1 arc-seconds) can be downloaded from <a href=\"{0}\">{0}</a>.</html>",
+            ElevationPreferences.SRTM1_SERVER_BASE_URL));
+    private final JMultilineLabel lblSRTM3Server = new JMultilineLabel(I18n.tr(
+            "<html>STRM3 files (elevation sampled at 3 arc-seconds) can be downloaded from <a href=\"{0}\">{0}</a>.</html>",
+            ElevationPreferences.SRTM3_SERVER_BASE_URL));
     private final JLabel lblSRTMType = new JLabel("Preferred SRTM Type:");
     private final JosmComboBox<SRTMTile.Type> cbSRTMType = new JosmComboBox<>(SRTMTile.Type.values());
     private final JLabel lblInterpolation = new JLabel("Elevation Value Interpolation:");
@@ -63,12 +68,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
     private final JSpinner spCacheSize = new JSpinner(new SpinnerNumberModel(
             ElevationPreferences.DEFAULT_RAM_CACHE_SIZE_LIMIT, ElevationPreferences.MIN_RAM_CACHE_SIZE_LIMIT,
             ElevationPreferences.MAX_RAM_CACHE_SIZE_LIMIT, ElevationPreferences.INCR_RAM_CACHE_SIZE_LIMIT));
-    private final JMultilineLabel lblSRTM1Server = new JMultilineLabel(I18n.tr(
-            "<html>STRM1 files (elevation sampled at 1 arc-seconds) can be downloaded from <a href=\"{0}\">{0}</a>.</html>",
-            ElevationPreferences.SRTM1_SERVER_BASE_URL));
-    private final JMultilineLabel lblSRTM3Server = new JMultilineLabel(I18n.tr(
-            "<html>STRM3 files (elevation sampled at 3 arc-seconds) can be downloaded from <a href=\"{0}\">{0}</a>.</html>",
-            ElevationPreferences.SRTM3_SERVER_BASE_URL));
+    private final JCheckBox cbEnableElevationLayer = new JCheckBox("Enable Elevation Contour Line Layer");
     private final JCheckBox cbEnableAutoDownload = new JCheckBox("Enable Automatic Downloading of Elevation Data");
     private final JLabel lblAuthBearer = new JLabel("Authorization Bearer Token:");
     private final JosmTextField tfAuthBearer = new JosmTextField();
@@ -114,6 +114,8 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         JPanel pnl = new AutoSizePanel();
         GridBagConstraints gc = new GridBagConstraints();
 
+        gc.gridy++;
+        gc.gridx = 0;
         gc.anchor = GridBagConstraints.LINE_START;
         gc.insets = new Insets(5, 5, 0, 0);
         gc.fill = GridBagConstraints.HORIZONTAL;
@@ -121,8 +123,13 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.weightx = 1.0;
         pnl.add(cbEnableElevation, gc);
 
-        gc.gridy = 1;
-        gc.gridx = 0;
+        gc.gridy++;
+        pnl.add(lblSRTM1Server, gc);
+
+        gc.gridy++;
+        pnl.add(lblSRTM3Server, gc);
+
+        gc.gridy++;
         gc.fill = GridBagConstraints.NONE;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
@@ -161,10 +168,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.gridx = 0;
         gc.fill = GridBagConstraints.HORIZONTAL;
         gc.gridwidth = 2;
-        pnl.add(lblSRTM1Server, gc);
-
-        gc.gridy = 4;
-        pnl.add(lblSRTM3Server, gc);
+        pnl.add(cbEnableElevationLayer, gc);
 
         gc.gridy++;
         pnl.add(cbEnableAutoDownload, gc);
@@ -209,6 +213,8 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
                 ElevationPreferences.DEFAULT_ELEVATION_INTERPOLATION.toString())));
         spCacheSize.setValue(pref.getInt(ElevationPreferences.RAM_CACHE_SIZE_LIMIT,
                 ElevationPreferences.DEFAULT_RAM_CACHE_SIZE_LIMIT));
+        cbEnableElevationLayer.setSelected(pref.getBoolean(ElevationPreferences.ELEVATION_LAYER_ENABLED,
+                ElevationPreferences.DEFAULT_ELEVATION_LAYER_ENABLED));
         cbEnableAutoDownload.setSelected(pref.getBoolean(ElevationPreferences.ELEVATION_AUTO_DOWNLOAD_ENABLED,
                 ElevationPreferences.DEFAULT_ELEVATION_AUTO_DOWNLOAD_ENABLED));
         tfAuthBearer.setText(pref.get(ElevationPreferences.ELEVATION_SERVER_AUTH_BEARER,
@@ -223,6 +229,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
             cbInterpolation.setEnabled(true);
             lblCacheSize.setEnabled(true);
             spCacheSize.setEnabled(true);
+            cbEnableElevationLayer.setEnabled(true);
             lblSRTM1Server.setEnabled(true);
             lblSRTM3Server.setEnabled(true);
             cbEnableAutoDownload.setEnabled(true);
@@ -236,6 +243,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
             cbInterpolation.setEnabled(false);
             lblCacheSize.setEnabled(false);
             spCacheSize.setEnabled(false);
+            cbEnableElevationLayer.setEnabled(false);
             lblSRTM1Server.setEnabled(false);
             lblSRTM3Server.setEnabled(false);
             cbEnableAutoDownload.setEnabled(false);
@@ -267,6 +275,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         pref.put(ElevationPreferences.PREFERRED_SRTM_TYPE, ((SRTMTile.Type) cbSRTMType.getSelectedItem()).toString());
         pref.put(ElevationPreferences.ELEVATION_INTERPOLATION, ((SRTMTile.Interpolation) cbInterpolation.getSelectedItem()).toString());
         pref.putInt(ElevationPreferences.RAM_CACHE_SIZE_LIMIT, (Integer) spCacheSize.getValue());
+        pref.putBoolean(ElevationPreferences.ELEVATION_LAYER_ENABLED, cbEnableElevationLayer.isSelected());
         pref.putBoolean(ElevationPreferences.ELEVATION_AUTO_DOWNLOAD_ENABLED, cbEnableAutoDownload.isSelected());
         pref.put(ElevationPreferences.ELEVATION_SERVER_AUTH_BEARER, tfAuthBearer.getText());
     }

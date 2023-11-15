@@ -77,6 +77,7 @@ public class MarchingSquares {
         double latRange = northEast.lat() - southWest.lat();
         double lonRange = northEast.lon() - southWest.lon();
 
+        Cell[] cellRowToNorth = new Cell[eleValues.length];
         // Iterate through the grid, accessing the data as "square" 2 x 2 cells
         // Therefore, we stop to iterate at index "length - 2" in both dimensions
         for (int latIndex = 0; latIndex < eleValues.length - 1; latIndex++) {
@@ -84,6 +85,8 @@ public class MarchingSquares {
             double latSouth = southWest.lat()
                     + latRange * (1.0 - Double.valueOf(latIndex + 1) / (eleValues.length - 1));
 
+            // The cell to the north of the currently processed cell
+            Cell cellToNorth = cellRowToNorth[latIndex];
             // The cell to the west of the currently processed cell
             Cell cellToWest = null;
             for (int lonIndex = 0; lonIndex < eleValues[latIndex].length - 1; lonIndex++) {
@@ -109,9 +112,16 @@ public class MarchingSquares {
                     eleSouthWest = cellToWest.eleSouthEast;
                     lonWest = cellToWest.lonEast;
                 }
-                eleNorthEast = eleValues[latIndex][lonIndex + 1];
+                // Same under consideration of a previous cell to the north
+                if (cellToNorth == null) {
+                    eleNorthEast = eleValues[latIndex][lonIndex + 1];
+                    lonEast = southWest.lon() + lonRange * Double.valueOf(lonIndex + 1) / (eleValues[latIndex].length - 1);
+                }
+                else {
+                    eleNorthEast = cellToNorth.eleSouthEast;
+                    lonEast = cellToNorth.lonEast;
+                }
                 eleSouthEast = eleValues[latIndex + 1][lonIndex + 1];
-                lonEast = southWest.lon() + lonRange * Double.valueOf(lonIndex + 1) / (eleValues[latIndex].length - 1);
 
                 Cell currentCell = new Cell(latSouth, lonWest, latNorth, lonEast, eleNorthWest, eleNorthEast, eleSouthEast,
                         eleSouthWest);
@@ -215,7 +225,10 @@ public class MarchingSquares {
                      * Isoline intersects from eastern to northern edge
                      */
                     currentCell.setIntersectionEast(isovalue);
-                    currentCell.setIntersectionNorth(isovalue);
+                    if (cellToNorth == null)
+                        currentCell.setIntersectionNorth(isovalue);
+                    else
+                        currentCell.edgeNorth = cellToNorth.edgeSouth;
                     isolineSegments.add(new LatLonLine(currentCell.getIntersectionEast(), currentCell.getIntersectionNorth()));
                     break;
                 case 5:
@@ -240,7 +253,10 @@ public class MarchingSquares {
                         currentCell.edgeWest = cellToWest.edgeEast;
                     currentCell.setIntersectionSouth(isovalue);
                     currentCell.setIntersectionEast(isovalue);
-                    currentCell.setIntersectionNorth(isovalue);
+                    if (cellToNorth == null)
+                        currentCell.setIntersectionNorth(isovalue);
+                    else
+                        currentCell.edgeNorth = cellToNorth.edgeSouth;
                     isolineSegments.add(new LatLonLine(currentCell.getIntersectionWest(), currentCell.getIntersectionSouth()));
                     isolineSegments.add(new LatLonLine(currentCell.getIntersectionEast(), currentCell.getIntersectionNorth()));
                     break;
@@ -260,7 +276,10 @@ public class MarchingSquares {
                      * Isoline intersects from southern to northern edge
                      */
                     currentCell.setIntersectionSouth(isovalue);
-                    currentCell.setIntersectionNorth(isovalue);
+                    if (cellToNorth == null)
+                        currentCell.setIntersectionNorth(isovalue);
+                    else
+                        currentCell.edgeNorth = cellToNorth.edgeSouth;
                     isolineSegments.add(new LatLonLine(currentCell.getIntersectionSouth(), currentCell.getIntersectionNorth()));
                     break;
                 case 7:
@@ -282,7 +301,10 @@ public class MarchingSquares {
                         currentCell.setIntersectionWest(isovalue);
                     else
                         currentCell.edgeWest = cellToWest.edgeEast;
-                    currentCell.setIntersectionNorth(isovalue);
+                    if (cellToNorth == null)
+                        currentCell.setIntersectionNorth(isovalue);
+                    else
+                        currentCell.edgeNorth = cellToNorth.edgeSouth;
                     isolineSegments.add(new LatLonLine(currentCell.getIntersectionWest(), currentCell.getIntersectionNorth()));
                     break;
                 case 8:
@@ -300,7 +322,10 @@ public class MarchingSquares {
                      *
                      * Isoline intersects from northern to western edge
                      */
-                    currentCell.setIntersectionNorth(isovalue);
+                    if (cellToNorth == null)
+                        currentCell.setIntersectionNorth(isovalue);
+                    else
+                        currentCell.edgeNorth = cellToNorth.edgeSouth;
                     if (cellToWest == null)
                         currentCell.setIntersectionWest(isovalue);
                     else
@@ -322,7 +347,10 @@ public class MarchingSquares {
                      *
                      * Isoline intersects from northern to southern edge
                      */
-                    currentCell.setIntersectionNorth(isovalue);
+                    if (cellToNorth == null)
+                        currentCell.setIntersectionNorth(isovalue);
+                    else
+                        currentCell.edgeNorth = cellToNorth.edgeSouth;
                     currentCell.setIntersectionSouth(isovalue);
                     isolineSegments.add(new LatLonLine(currentCell.getIntersectionNorth(), currentCell.getIntersectionSouth()));
                     break;
@@ -342,7 +370,10 @@ public class MarchingSquares {
                      * Two isolines intersect (saddle point case): Isoline intersects from northern
                      * to eastern edge Isoline intersects from southern to western edge
                      */
-                    currentCell.setIntersectionNorth(isovalue);
+                    if (cellToNorth == null)
+                        currentCell.setIntersectionNorth(isovalue);
+                    else
+                        currentCell.edgeNorth = cellToNorth.edgeSouth;
                     currentCell.setIntersectionEast(isovalue);
                     currentCell.setIntersectionSouth(isovalue);
                     if (cellToWest == null)
@@ -367,7 +398,10 @@ public class MarchingSquares {
                      *
                      * Isoline intersects from northern to eastern edge
                      */
-                    currentCell.setIntersectionNorth(isovalue);
+                    if (cellToNorth == null)
+                        currentCell.setIntersectionNorth(isovalue);
+                    else
+                        currentCell.edgeNorth = cellToNorth.edgeSouth;
                     currentCell.setIntersectionEast(isovalue);
                     isolineSegments.add(new LatLonLine(currentCell.getIntersectionNorth(), currentCell.getIntersectionEast()));
                     break;
@@ -453,6 +487,10 @@ public class MarchingSquares {
                 default:
                     break;
                 }
+                // Remember the cell to reuse data
+                // when iterating over the next cell row to the south
+                cellRowToNorth[latIndex] = currentCell;
+                // when handling the next cell to the east in the current row
                 cellToWest = currentCell;
             }
             cellToWest = null;

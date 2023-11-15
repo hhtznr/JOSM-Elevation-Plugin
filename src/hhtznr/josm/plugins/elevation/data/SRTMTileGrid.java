@@ -412,6 +412,17 @@ public class SRTMTileGrid {
     }
 
     /**
+     * Returns whether the given bounds are covered by this grid.
+     *
+     * @param bounds The bounds for which to check if they are covered by this grid.
+     * @return {@code true} if the given bounds are contained in this grid's bounds,
+     *         {@code false} otherwise.
+     */
+    public boolean covers(Bounds bounds) {
+        return new Bounds(southWest, northEast).contains(bounds);
+    }
+
+    /**
      * Helper class representing an SRTM tile which is clipped, i.e. from which only
      * that portion of the elevation values which is located within the clipping
      * bounds should be obtained.

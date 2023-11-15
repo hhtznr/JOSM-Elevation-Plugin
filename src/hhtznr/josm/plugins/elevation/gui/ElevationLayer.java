@@ -78,8 +78,12 @@ public class ElevationLayer extends Layer implements SRTMFileReadListener {
                 g.drawString("Contour lines disabled for this zoom level", 10, mv.getHeight() - 10);
             } else {
                 if (!bbox.equals(bounds)) {
-                    srtmTileGrid = new SRTMTileGrid(bbox);
-                    contourLineSegments = null;
+                    // Create a new SRTM tile grid for the map bounds if no grid was created or an
+                    // existing grid does not cover the current bounds
+                    if (srtmTileGrid == null || !srtmTileGrid.covers(bbox)) {
+                        srtmTileGrid = new SRTMTileGrid(bbox);
+                        contourLineSegments = null;
+                    }
                     bounds = bbox;
                 }
                 if (srtmTileGrid != null) {

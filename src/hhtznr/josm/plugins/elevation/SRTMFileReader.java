@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -295,13 +296,26 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
                             + srtmFile.getAbsolutePath());
                     // Read the SRTM file as task in a separate thread
                     srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.READING_SCHEDULED);
-                    fileReadExecutor.submit(new ReadSRTMFileTask(srtmFile));
+                    try {
+                        fileReadExecutor.submit(new ReadSRTMFileTask(srtmFile));
+                    } catch (RejectedExecutionException e) {
+                        Logging.info("Elevation: Execution of file read task for SRTM tile " + srtmTileID
+                                + " from file " + srtmFile.getAbsolutePath() + " rejected: " + e.toString());
+                        srtmTile = tileCache.remove(srtmTileID);
+                    }
                 }
                 // If auto-downloading of SRTM files is enabled, try to download the missing
                 // file
                 else if (autoDownloadEnabled) {
-                    srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.DOWNLOAD_SCHEDULED);
-                    srtmFileDownloader.downloadSRTMFile(srtmTileID, preferredSRTMType);
+                    srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, null, null,
+                            SRTMTile.Status.DOWNLOAD_SCHEDULED);
+                    try {
+                        srtmFileDownloader.downloadSRTMFile(srtmTileID, preferredSRTMType);
+                    } catch (RejectedExecutionException e) {
+                        Logging.info("Elevation: Execution of download task for SRTM tile " + srtmTileID + " rejected: "
+                                + e.toString());
+                        srtmFileDownloadFailed(srtmTileID);
+                    }
                 }
                 // Otherwise, put an empty data set with status "file missing" into the cache
                 else {

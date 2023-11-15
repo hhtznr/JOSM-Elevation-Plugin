@@ -14,6 +14,8 @@ import java.util.LinkedList;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
 
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.HttpClient;
@@ -109,9 +111,12 @@ public class SRTMFileDownloader {
      *
      * @param srtmTileID The SRTM tile ID for which to download the SRTM file.
      * @param srtmType   The SRTM type, SRTM1 or SRTM3.
+     * @return A future to synchronize on availability of the downloaded file.
+     * @throws RejectedExecutionException Thrown if the download task cannot be accepted for execution.
      */
-    public void downloadSRTMFile(String srtmTileID, SRTMTile.Type srtmType) {
-        downloadExecutor.submit(new DownloadSRTMFileTask(srtmTileID, srtmType));
+    public Future<File> downloadSRTMFile(String srtmTileID, SRTMTile.Type srtmType) throws RejectedExecutionException {
+        DownloadSRTMFileTask downloadTask = new DownloadSRTMFileTask(srtmTileID, srtmType);
+        return downloadExecutor.submit(downloadTask);
     }
 
     /**
@@ -145,7 +150,7 @@ public class SRTMFileDownloader {
             try {
                 url = new URL(srtmBaseURL + srtmFileName);
             } catch (MalformedURLException e) {
-                downloadFailed(srtmTileID);
+                downloadFailed();
                 return null;
             }
             HttpClient httpClient = HttpClient.create(url);
@@ -156,7 +161,7 @@ public class SRTMFileDownloader {
                 response = httpClient.connect();
                 // https://urs.earthdata.nasa.gov/documentation/for_users/data_access/java
                 if (response.getResponseCode() != 200) {
-                    downloadFailed(srtmTileID);
+                    downloadFailed();
                     return null;
                 }
                 InputStream in = response.getContent();
@@ -176,7 +181,7 @@ public class SRTMFileDownloader {
                                 + " was not found on the download server.");
                 }
                 Logging.error("Elevation: Downloading SRTM file " + srtmFileName + " failed: " + e.toString());
-                downloadFailed(srtmTileID);
+                downloadFailed();
                 return null;
             }
 
@@ -185,7 +190,7 @@ public class SRTMFileDownloader {
             if (srtmFile == null) {
                 Logging.error("Elevation: Downloaded compressed SRTM file " + srtmFileName
                         + " did not contain a file with the expected STRM tile ID!");
-                downloadFailed(srtmTileID);
+                downloadFailed();
                 return null;
             }
 
@@ -205,9 +210,9 @@ public class SRTMFileDownloader {
                 listener.srtmFileDownloadSucceeded(srtmFile);
         }
 
-        private void downloadFailed(String strmTileID) {
+        private void downloadFailed() {
             for (SRTMFileDownloadListener listener : SRTMFileDownloader.this.downloadListeners)
-                listener.srtmFileDownloadFailed(strmTileID);
+                listener.srtmFileDownloadFailed(srtmTileID);
         }
     }
 }

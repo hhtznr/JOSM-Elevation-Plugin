@@ -2,14 +2,20 @@ package hhtznr.josm.plugins.elevation.math;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
 
 import org.openstreetmap.josm.data.coor.LatLon;
 
 import hhtznr.josm.plugins.elevation.data.LatLonLine;
 
 /**
- * Naive implementation of the Marching Squares algorithm to compute contour
- * lines from elevation raster data.
+ * Implementation of the Marching Squares algorithm to compute contour lines
+ * from elevation raster data.
  *
  * @author Harald Hetzner
  */
@@ -19,6 +25,8 @@ public class MarchingSquares {
     private final LatLon southWest;
     private final LatLon northEast;
     private final short[] isovalues;
+
+    private static final ExecutorService executor = Executors.newFixedThreadPool(4);
 
     /**
      * Creates a new instance of the Marching Squares algorithm dedicated to
@@ -55,9 +63,31 @@ public class MarchingSquares {
      *         were computed or that they could easily be joined.
      */
     public List<LatLonLine> getIsolineSegments() {
+        ArrayList<Callable<List<LatLonLine>>> isolineTasks = new ArrayList<>(isovalues.length);
+        for (int i = 0; i < isovalues.length; i++) {
+            short isovalue = isovalues[i];
+            Callable<List<LatLonLine>> task = () -> {
+                return getIsolineSegments(isovalue);
+            };
+            isolineTasks.add(task);
+        }
+
+        List<Future<List<LatLonLine>>> isolineResultList;
+        try {
+            isolineResultList = executor.invokeAll(isolineTasks);
+        } catch (InterruptedException | RejectedExecutionException e) {
+            return new ArrayList<>(0);
+        }
+
         ArrayList<LatLonLine> isolineSegments = new ArrayList<>();
-        for (short isovalue : isovalues)
-            isolineSegments.addAll(getIsolineSegments(isovalue));
+        for (Future<List<LatLonLine>> isolineResult : isolineResultList) {
+            try {
+                isolineSegments.addAll(isolineResult.get());
+            } catch (InterruptedException | ExecutionException e) {
+                break;
+            }
+        }
+
         return isolineSegments;
     }
 

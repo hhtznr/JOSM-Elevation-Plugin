@@ -95,7 +95,7 @@ public class ElevationPlugin extends Plugin {
 
     private void setElevationEnabled(boolean enabled, MapFrame mapFrame) {
         if (enabled) {
-            // STRM file type that is preferred for reading and downloading
+            // SRTM file type that is preferred for reading and downloading
             SRTMTile.Type preferredSRTMType = SRTMTile.Type
                     .fromString(Config.getPref().get(ElevationPreferences.PREFERRED_SRTM_TYPE,
                             ElevationPreferences.DEFAULT_PREFERRED_SRTM_TYPE.toString()));

@@ -143,7 +143,7 @@ public class SRTMFileDownloader {
                 srtmBaseURL = srtm3BaseURL;
             String srtmFileName = SRTMFiles.getSRTMFileName(srtmTileID, srtmType);
 
-            Logging.info("Elevation: Downloading STRM file " + srtmFileName);
+            Logging.info("Elevation: Downloading SRTM file " + srtmFileName);
             downloadStarted(srtmTileID);
             File srtmFile = null;
 
@@ -190,7 +190,7 @@ public class SRTMFileDownloader {
             // contain an appropriately named file (prefixed with SRTM tile ID)
             if (srtmFile == null) {
                 Logging.error("Elevation: Downloaded compressed SRTM file " + srtmFileName
-                        + " did not contain a file with the expected STRM tile ID!");
+                        + " did not contain a file with the expected SRTM tile ID!");
                 downloadFailed();
                 return null;
             }
@@ -201,9 +201,9 @@ public class SRTMFileDownloader {
             return srtmFile;
         }
 
-        private void downloadStarted(String strmTileID) {
+        private void downloadStarted(String srtmTileID) {
             for (SRTMFileDownloadListener listener : SRTMFileDownloader.this.downloadListeners)
-                listener.srtmFileDownloadStarted(strmTileID);
+                listener.srtmFileDownloadStarted(srtmTileID);
         }
 
         private void downloadSucceeded(File srtmFile) {

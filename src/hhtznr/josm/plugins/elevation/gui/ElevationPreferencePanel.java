@@ -55,10 +55,10 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
     private final JCheckBox cbEnableElevation = new JCheckBox(I18n.tr("Enable Use of Elevation Data"));
     private final JMultilineLabel lblSRTM1Server = new JMultilineLabel(I18n.tr(
-            "<html>STRM1 files (elevation sampled at 1 arc-seconds) can be downloaded from <a href=\"{0}\">{0}</a>.</html>",
+            "<html>SRTM1 files (elevation sampled at 1 arc-seconds) can be downloaded from <a href=\"{0}\">{0}</a>.</html>",
             ElevationPreferences.SRTM1_SERVER_BASE_URL));
     private final JMultilineLabel lblSRTM3Server = new JMultilineLabel(I18n.tr(
-            "<html>STRM3 files (elevation sampled at 3 arc-seconds) can be downloaded from <a href=\"{0}\">{0}</a>.</html>",
+            "<html>SRTM3 files (elevation sampled at 3 arc-seconds) can be downloaded from <a href=\"{0}\">{0}</a>.</html>",
             ElevationPreferences.SRTM3_SERVER_BASE_URL));
     private final JLabel lblSRTMType = new JLabel("Preferred SRTM Type:");
     private final JosmComboBox<SRTMTile.Type> cbSRTMType = new JosmComboBox<>(SRTMTile.Type.values());
@@ -94,7 +94,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
      * @return Panel with elevation preferences
      */
     private final JPanel buildPreferencePanel() {
-        cbEnableElevation.setToolTipText(I18n.tr("STRM files need to be placed in {0}",
+        cbEnableElevation.setToolTipText(I18n.tr("SRTM files need to be placed in {0}",
                 ElevationPreferences.DEFAULT_SRTM_DIRECTORY.getAbsolutePath()));
         cbEnableElevation.addItemListener(event -> updateEnabledState());
 
@@ -104,7 +104,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         lblSRTM3Server.setEditable(false);
         lblSRTM3Server.addHyperlinkListener(event -> browseHyperlink(event));
 
-        cbEnableAutoDownload.setToolTipText(I18n.tr("STRM files will be downloaded from {0} or {0}",
+        cbEnableAutoDownload.setToolTipText(I18n.tr("SRTM files will be downloaded from {0} or {0}",
                 ElevationPreferences.SRTM1_SERVER_BASE_URL, ElevationPreferences.SRTM3_SERVER_BASE_URL));
         cbEnableAutoDownload.addItemListener(event -> updateEnabledState());
 

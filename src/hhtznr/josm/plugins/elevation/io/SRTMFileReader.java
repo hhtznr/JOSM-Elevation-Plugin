@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -111,8 +112,8 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
      * @param autoDownloadEnabled If {@code true} automatic downloading of missing
      *                            SRTM tiles will be attempted.
      */
-    private SRTMFileReader(File srtmDirectory, int ramCacheMaxSize, SRTMTile.Type preferredSRTMType, SRTMTile.Interpolation eleInterpolation,
-            boolean autoDownloadEnabled) {
+    private SRTMFileReader(File srtmDirectory, int ramCacheMaxSize, SRTMTile.Type preferredSRTMType,
+            SRTMTile.Interpolation eleInterpolation, boolean autoDownloadEnabled) {
         tileCache = new SRTMTileCache(ramCacheMaxSize);
         setSrtmDirectory(srtmDirectory);
         this.preferredSRTMType = preferredSRTMType;
@@ -213,8 +214,10 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
         int intLatNorth = (int) Math.floor(northEast.lat());
         int intLonWest = (int) Math.floor(southWest.lon());
         int intLonEast = (int) Math.floor(northEast.lon());
-        //Logging.info("Elevation: Trigger caching of SRTM tiles covering current map bounds from  S = " + intLatSouth
-        //        + "°, E = " + intLonEast + "° to N = " + intLatNorth + "°, W = " + intLonWest + "°");
+        // Logging.info("Elevation: Trigger caching of SRTM tiles covering current map
+        // bounds from S = " + intLatSouth
+        // + "°, E = " + intLonEast + "° to N = " + intLatNorth + "°, W = " + intLonWest
+        // + "°");
 
         // Not across the Prime Meridian
         if (intLonWest <= intLonEast) {
@@ -243,13 +246,15 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
      * west (lower left) corner of the SRTM tiles to be cached.
      *
      * @param intLatSouth The southern most latitude.
-     * @param intLonWest The western most longitude.
+     * @param intLonWest  The western most longitude.
      * @param intLatNorth The northern most latitude.
-     * @param intLonEast The eastern most latitude
+     * @param intLonEast  The eastern most latitude
      */
     public void cacheSRTMTiles(int intLatSouth, int intLonWest, int intLatNorth, int intLonEast) {
-        //Logging.info("Elevation: Trigger caching of SRTM tiles covering current map bounds from  S = " + intLatSouth
-        //        + "°, E = " + intLonEast + "° to N = " + intLatNorth + "°, W = " + intLonWest + "°");
+        // Logging.info("Elevation: Trigger caching of SRTM tiles covering current map
+        // bounds from S = " + intLatSouth
+        // + "°, E = " + intLonEast + "° to N = " + intLatNorth + "°, W = " + intLonWest
+        // + "°");
 
         // Not across the Prime Meridian
         if (intLonWest <= intLonEast) {
@@ -299,7 +304,7 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
                     // Read the SRTM file as task in a separate thread
                     srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.READING_SCHEDULED);
                     try {
-                        fileReadExecutor.submit(new ReadSRTMFileTask(srtmFile));
+                        readSRTMFilex(srtmFile);
                     } catch (RejectedExecutionException e) {
                         Logging.info("Elevation: Execution of file read task for SRTM tile " + srtmTileID
                                 + " from file " + srtmFile.getAbsolutePath() + " rejected: " + e.toString());
@@ -371,8 +376,7 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
             // Download the SRTM file as the preferred type if auto-download enabled
             if (autoDownloadEnabled)
                 srtmFileDownloader.downloadSRTMFile(srtmTileID, preferredSRTMType);
-        }
-        else
+        } else
             Logging.info("Elevation: Did not find an on-disk SRTM file for tile ID " + srtmTileID);
 
         return nonPreferredSRTMFile;
@@ -403,8 +407,8 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
     }
 
     /**
-     * Task class to be executed by a thread executor service for reading an SRTM
-     * tile from a ZIP-compressed SRTM file as obtained from NASA.
+     * Reads an SRTM tile from a ZIP-compressed SRTM file as obtained from NASA in a
+     * separate thread.
      *
      * The types SRTM1 and SRTM3 are automatically distinguished based on the file
      * name. If both, an SRTM1 and SRTM3 file, are available for the same tile,
@@ -428,29 +432,21 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
      *
      * Voids in Versions 1.0 and 2.1 are flagged with the value -32,768. There are
      * no voids in Version 3.0.</i>
+     *
+     * @param srtmFile The SRTM file to read.
+     * @return A {@code Future} from which the read SRTM tile can be obtained.
+     * @throws RejectedExecutionException Thrown if the file read task cannot be
+     *                                    accepted by the thread executor.
      */
-    private class ReadSRTMFileTask implements Callable<SRTMTile> {
-
-        private File srtmFile;
-
-        /**
-         * Creates a new SRTM file read task.
-         *
-         * @param srtmFile The SRTM file to read.
-         */
-        public ReadSRTMFileTask(File srtmFile) {
-            this.srtmFile = srtmFile;
-        }
-
-        @Override
-        public SRTMTile call() {
+    public Future<SRTMTile> readSRTMFilex(File srtmFile) throws RejectedExecutionException {
+        Callable<SRTMTile> fileReadTask = () -> {
             String srtmTileID = SRTMFiles.getSRTMTileIDFromFileName(srtmFile.getName());
-            SRTMFileReader.this.tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.READING);
+            tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.READING);
             SRTMTile.Type type = SRTMFiles.getSRTMTileTypeFromFileName(srtmFile.getName());
             if (type == null) {
-                Logging.error(
-                        "Elevation: Cannot identify whether file '" + srtmFile.getName() + "' is an SRTM1 or SRTM3 file.");
-                SRTMFileReader.this.tileCache.putOrUpdateSRTMTile(srtmTileID, type, null, SRTMTile.Status.FILE_INVALID);
+                Logging.error("Elevation: Cannot identify whether file '" + srtmFile.getName()
+                        + "' is an SRTM1 or SRTM3 file.");
+                tileCache.putOrUpdateSRTMTile(srtmTileID, type, null, SRTMTile.Status.FILE_INVALID);
                 return null;
             }
 
@@ -489,7 +485,7 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
                 if (bytesRead != bytesExpected) {
                     Logging.error("Elevation: Wrong number of bytes in SRTM file '" + srtmFile.getName()
                             + "'. Expected: " + bytesExpected + " bytes; read: " + bytesRead + " bytes");
-                    SRTMFileReader.this.tileCache.putOrUpdateSRTMTile(srtmTileID, type, null, SRTMTile.Status.FILE_INVALID);
+                    tileCache.putOrUpdateSRTMTile(srtmTileID, type, null, SRTMTile.Status.FILE_INVALID);
                 }
 
                 // Convert byte order
@@ -500,20 +496,23 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
                 // 2nd dimension = row = longitude = x
                 elevationData = new short[srtmTileLength][srtmTileLength];
                 for (int latIndex = 0; latIndex < srtmTileLength; latIndex++) {
-                    for (int lonIndex = 0; lonIndex < srtmTileLength; lonIndex ++)
-                        elevationData[latIndex][lonIndex] = byteBuffer.getShort((latIndex * srtmTileLength + lonIndex) * 2);
+                    for (int lonIndex = 0; lonIndex < srtmTileLength; lonIndex++)
+                        elevationData[latIndex][lonIndex] = byteBuffer
+                                .getShort((latIndex * srtmTileLength + lonIndex) * 2);
                 }
             } catch (IOException e) {
                 Logging.error("Elevation: Exception reading SRTM file '" + srtmFile.getName() + "': " + e.toString());
                 return null;
             }
-            SRTMTile srtmTile = SRTMFileReader.this.tileCache.putOrUpdateSRTMTile(srtmTileID, type, elevationData, SRTMTile.Status.VALID);
-            synchronized (SRTMFileReader.this.fileReadListeners) {
-                for (SRTMFileReadListener listener : SRTMFileReader.this.fileReadListeners)
+            SRTMTile srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, type, elevationData, SRTMTile.Status.VALID);
+            synchronized (fileReadListeners) {
+                for (SRTMFileReadListener listener : fileReadListeners)
                     listener.srtmTileRead(srtmTile);
             }
             return srtmTile;
-        }
+        };
+
+        return fileReadExecutor.submit(fileReadTask);
     }
 
     public void setAutoDownloadEnabled(boolean enabled) {
@@ -558,7 +557,14 @@ public class SRTMFileReader implements SRTMFileDownloadListener {
     @Override
     public void srtmFileDownloadSucceeded(File srtmFile) {
         // Read the SRTM file as task in a separate thread
-        fileReadExecutor.submit(new ReadSRTMFileTask(srtmFile));
+        try {
+            readSRTMFilex(srtmFile);
+        } catch (RejectedExecutionException e) {
+            String srtmTileID = SRTMFiles.getSRTMTileIDFromFileName(srtmFile.getName());
+            Logging.info("Elevation: Execution of file read task for SRTM tile " + srtmTileID + " from file "
+                    + srtmFile.getAbsolutePath() + " rejected: " + e.toString());
+            tileCache.remove(srtmTileID);
+        }
     }
 
     @Override

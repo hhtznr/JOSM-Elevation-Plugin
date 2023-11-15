@@ -113,107 +113,94 @@ public class SRTMFileDownloader {
      * @param srtmTileID The SRTM tile ID for which to download the SRTM file.
      * @param srtmType   The SRTM type, SRTM1 or SRTM3.
      * @return A future to synchronize on availability of the downloaded file.
-     * @throws RejectedExecutionException Thrown if the download task cannot be accepted for execution.
+     * @throws RejectedExecutionException Thrown if the download task cannot be
+     *                                    accepted for execution.
      */
     public Future<File> downloadSRTMFile(String srtmTileID, SRTMTile.Type srtmType) throws RejectedExecutionException {
-        DownloadSRTMFileTask downloadTask = new DownloadSRTMFileTask(srtmTileID, srtmType);
+        Callable<File> downloadTask = () -> {
+            return download(srtmTileID, srtmType);
+        };
         return downloadExecutor.submit(downloadTask);
     }
 
-    /**
-     * Task class to be executed by a thread executor service for downloading an
-     * SRTM file from NASA's servers.
-     */
-    private class DownloadSRTMFileTask implements Callable<File> {
+    private File download(String srtmTileID, SRTMTile.Type srtmType) {
+        URL srtmBaseURL;
+        if (srtmType == SRTMTile.Type.SRTM1)
+            srtmBaseURL = srtm1BaseURL;
+        else
+            srtmBaseURL = srtm3BaseURL;
+        String srtmFileName = SRTMFiles.getSRTMFileName(srtmTileID, srtmType);
 
-        private final String srtmTileID;
-        private final SRTMTile.Type srtmType;
+        Logging.info("Elevation: Downloading SRTM file " + srtmFileName);
+        downloadStarted(srtmTileID);
+        File srtmFile = null;
 
-        public DownloadSRTMFileTask(String srtmTileID, SRTMTile.Type srtmType) {
-            this.srtmTileID = srtmTileID;
-            this.srtmType = srtmType;
+        URL url = null;
+        try {
+            url = new URL(srtmBaseURL + srtmFileName);
+        } catch (MalformedURLException e) {
+            downloadFailed(srtmTileID);
+            return null;
         }
-
-        @Override
-        public File call() {
-            URL srtmBaseURL;
-            if (srtmType == SRTMTile.Type.SRTM1)
-                srtmBaseURL = srtm1BaseURL;
-            else
-                srtmBaseURL = srtm3BaseURL;
-            String srtmFileName = SRTMFiles.getSRTMFileName(srtmTileID, srtmType);
-
-            Logging.info("Elevation: Downloading SRTM file " + srtmFileName);
-            downloadStarted(srtmTileID);
-            File srtmFile = null;
-
-            URL url = null;
-            try {
-                url = new URL(srtmBaseURL + srtmFileName);
-            } catch (MalformedURLException e) {
-                downloadFailed();
+        HttpClient httpClient = HttpClient.create(url);
+        if (authHeader != null)
+            httpClient.setHeader("Authorization", authHeader);
+        HttpClient.Response response = null;
+        try {
+            response = httpClient.connect();
+            // https://urs.earthdata.nasa.gov/documentation/for_users/data_access/java
+            if (response.getResponseCode() != 200) {
+                downloadFailed(srtmTileID);
                 return null;
             }
-            HttpClient httpClient = HttpClient.create(url);
-            if (authHeader != null)
-                httpClient.setHeader("Authorization", authHeader);
-            HttpClient.Response response = null;
-            try {
-                response = httpClient.connect();
-                // https://urs.earthdata.nasa.gov/documentation/for_users/data_access/java
-                if (response.getResponseCode() != 200) {
-                    downloadFailed();
-                    return null;
-                }
-                InputStream in = response.getContent();
-                Path downloadedZipFile = Paths.get(SRTMFileDownloader.this.srtmDirectory.toString(), srtmFileName);
-                Files.copy(in, downloadedZipFile, StandardCopyOption.REPLACE_EXISTING);
-                srtmFile = downloadedZipFile.toFile();
-            } catch (IOException e) {
-                if (response != null) {
-                    int responseCode = response.getResponseCode();
-                    String responseMessage = response.getResponseMessage();
-                    Logging.error("Elevation: SRTM server responded: " + responseCode + " " + responseMessage);
-                    if (responseCode == HttpURLConnection.HTTP_UNAUTHORIZED)
-                        Logging.info(
-                                "Elevation: SRTM download server did not grant authorization. You may need to renew your authorization bearer token!");
-                    else if (responseCode == HttpURLConnection.HTTP_NOT_FOUND)
-                        Logging.info("Elevation: Requested SRTM file " + srtmFileName
-                                + " was not found on the download server.");
-                }
-                Logging.error("Elevation: Downloading SRTM file " + srtmFileName + " failed: " + e.toString());
-                downloadFailed();
-                return null;
+            InputStream in = response.getContent();
+            Path downloadedZipFile = Paths.get(SRTMFileDownloader.this.srtmDirectory.toString(), srtmFileName);
+            Files.copy(in, downloadedZipFile, StandardCopyOption.REPLACE_EXISTING);
+            srtmFile = downloadedZipFile.toFile();
+        } catch (IOException e) {
+            if (response != null) {
+                int responseCode = response.getResponseCode();
+                String responseMessage = response.getResponseMessage();
+                Logging.error("Elevation: SRTM server responded: " + responseCode + " " + responseMessage);
+                if (responseCode == HttpURLConnection.HTTP_UNAUTHORIZED)
+                    Logging.info(
+                            "Elevation: SRTM download server did not grant authorization. You may need to renew your authorization bearer token!");
+                else if (responseCode == HttpURLConnection.HTTP_NOT_FOUND)
+                    Logging.info("Elevation: Requested SRTM file " + srtmFileName
+                            + " was not found on the download server.");
             }
-
-            // This would happen, if the downloaded file was uncompressed, but it does not
-            // contain an appropriately named file (prefixed with SRTM tile ID)
-            if (srtmFile == null) {
-                Logging.error("Elevation: Downloaded compressed SRTM file " + srtmFileName
-                        + " did not contain a file with the expected SRTM tile ID!");
-                downloadFailed();
-                return null;
-            }
-
-            Logging.info("Elevation: Successfully downloaded SRTM file " + srtmFile.getName() + " to SRTM directory: "
-                    + SRTMFileDownloader.this.srtmDirectory.toString());
-            downloadSucceeded(srtmFile);
-            return srtmFile;
+            Logging.error("Elevation: Downloading SRTM file " + srtmFileName + " failed: " + e.toString());
+            downloadFailed(srtmTileID);
+            return null;
         }
 
-        private void downloadStarted(String srtmTileID) {
-            for (SRTMFileDownloadListener listener : SRTMFileDownloader.this.downloadListeners)
-                listener.srtmFileDownloadStarted(srtmTileID);
+        // This would happen, if the downloaded file was uncompressed, but it does not
+        // contain an appropriately named file (prefixed with SRTM tile ID)
+        if (srtmFile == null) {
+            Logging.error("Elevation: Downloaded compressed SRTM file " + srtmFileName
+                    + " did not contain a file with the expected SRTM tile ID!");
+            downloadFailed(srtmTileID);
+            return null;
         }
 
-        private void downloadSucceeded(File srtmFile) {
-            for (SRTMFileDownloadListener listener : SRTMFileDownloader.this.downloadListeners)
-                listener.srtmFileDownloadSucceeded(srtmFile);
-        }
+        Logging.info("Elevation: Successfully downloaded SRTM file " + srtmFile.getName() + " to SRTM directory: "
+                + SRTMFileDownloader.this.srtmDirectory.toString());
+        downloadSucceeded(srtmFile);
+        return srtmFile;
+    }
 
-        private void downloadFailed() {
-            for (SRTMFileDownloadListener listener : SRTMFileDownloader.this.downloadListeners)
-                listener.srtmFileDownloadFailed(srtmTileID);
-        }
+    private void downloadStarted(String srtmTileID) {
+        for (SRTMFileDownloadListener listener : SRTMFileDownloader.this.downloadListeners)
+            listener.srtmFileDownloadStarted(srtmTileID);
+    }
+
+    private void downloadFailed(String srtmTileID) {
+        for (SRTMFileDownloadListener listener : SRTMFileDownloader.this.downloadListeners)
+            listener.srtmFileDownloadFailed(srtmTileID);
+    }
+
+    private void downloadSucceeded(File srtmFile) {
+        for (SRTMFileDownloadListener listener : SRTMFileDownloader.this.downloadListeners)
+            listener.srtmFileDownloadSucceeded(srtmFile);
     }
 }

@@ -1,4 +1,4 @@
-package hhtznr.josm.plugins.elevation;
+package hhtznr.josm.plugins.elevation.io;
 
 import java.io.File;
 import java.io.IOException;
@@ -21,6 +21,7 @@ import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.HttpClient;
 import org.openstreetmap.josm.tools.Logging;
 
+import hhtznr.josm.plugins.elevation.ElevationPreferences;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
 
 /**

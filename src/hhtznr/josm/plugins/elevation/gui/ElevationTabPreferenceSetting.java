@@ -11,8 +11,8 @@ import org.openstreetmap.josm.tools.I18n;
 
 import hhtznr.josm.plugins.elevation.ElevationPlugin;
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
-import hhtznr.josm.plugins.elevation.SRTMFileReader;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
+import hhtznr.josm.plugins.elevation.io.SRTMFileReader;
 
 /**
  * Elevation tab in preferences.

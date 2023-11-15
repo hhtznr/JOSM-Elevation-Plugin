@@ -24,12 +24,12 @@ import org.openstreetmap.josm.gui.layer.Layer;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Logging;
 
-import hhtznr.josm.plugins.elevation.SRTMFileReadListener;
-import hhtznr.josm.plugins.elevation.SRTMFileReader;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.LatLonLine;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
 import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
+import hhtznr.josm.plugins.elevation.io.SRTMFileReadListener;
+import hhtznr.josm.plugins.elevation.io.SRTMFileReader;
 
 public class ElevationLayer extends Layer implements SRTMFileReadListener {
 

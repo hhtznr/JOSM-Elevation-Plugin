@@ -16,9 +16,9 @@ import org.openstreetmap.josm.gui.NavigatableComponent.ZoomChangeListener;
 import org.openstreetmap.josm.gui.widgets.ImageLabel;
 import org.openstreetmap.josm.tools.GBC;
 
-import hhtznr.josm.plugins.elevation.SRTMFileReader;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
+import hhtznr.josm.plugins.elevation.io.SRTMFileReader;
 
 /**
  * An image label for the status line of a map frame, which is intended to

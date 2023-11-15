@@ -1,4 +1,4 @@
-package hhtznr.josm.plugins.elevation;
+package hhtznr.josm.plugins.elevation.data;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -6,7 +6,7 @@ import java.util.HashMap;
 
 import org.openstreetmap.josm.tools.Logging;
 
-import hhtznr.josm.plugins.elevation.data.SRTMTile;
+import hhtznr.josm.plugins.elevation.ElevationPreferences;
 
 /**
  * In-memory cache for SRTM tiles which can be limited in size. If the cache

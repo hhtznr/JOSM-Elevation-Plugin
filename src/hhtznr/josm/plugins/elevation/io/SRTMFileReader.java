@@ -1,4 +1,4 @@
-package hhtznr.josm.plugins.elevation;
+package hhtznr.josm.plugins.elevation.io;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,8 +20,10 @@ import org.openstreetmap.josm.io.Compression;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.Logging;
 
+import hhtznr.josm.plugins.elevation.ElevationPreferences;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
+import hhtznr.josm.plugins.elevation.data.SRTMTileCache;
 
 /**
  * Class {@code SRTMFileReader} reads elevation data from SRTM (Shuttle Radar

@@ -1,4 +1,4 @@
-package hhtznr.josm.plugins.elevation;
+package hhtznr.josm.plugins.elevation.io;
 
 import java.io.File;
 

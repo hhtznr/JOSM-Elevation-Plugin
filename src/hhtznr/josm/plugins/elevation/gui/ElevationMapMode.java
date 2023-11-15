@@ -1,11 +1,9 @@
-package hhtznr.josm.plugins.elevation;
+package hhtznr.josm.plugins.elevation.gui;
 
 import java.awt.Cursor;
 
 import org.openstreetmap.josm.actions.mapmode.MapMode;
 import org.openstreetmap.josm.tools.Logging;
-
-import hhtznr.josm.plugins.elevation.gui.ElevationLayer;
 
 /**
  * Map mode associated with the elevation layer.

@@ -2,8 +2,10 @@ package hhtznr.josm.plugins.elevation;
 
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
 import hhtznr.josm.plugins.elevation.gui.ElevationLayer;
+import hhtznr.josm.plugins.elevation.gui.ElevationMapMode;
 import hhtznr.josm.plugins.elevation.gui.ElevationTabPreferenceSetting;
 import hhtznr.josm.plugins.elevation.gui.LocalElevationLabel;
+import hhtznr.josm.plugins.elevation.io.SRTMFileReader;
 
 import org.openstreetmap.josm.gui.IconToggleButton;
 import org.openstreetmap.josm.gui.MainApplication;

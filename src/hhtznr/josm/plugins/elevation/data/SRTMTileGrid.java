@@ -6,7 +6,7 @@ import java.util.List;
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
 
-import hhtznr.josm.plugins.elevation.SRTMFileReader;
+import hhtznr.josm.plugins.elevation.io.SRTMFileReader;
 import hhtznr.josm.plugins.elevation.math.MarchingSquares;
 
 /**

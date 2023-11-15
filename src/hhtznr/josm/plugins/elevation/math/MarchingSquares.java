@@ -592,12 +592,14 @@ public class MarchingSquares {
          * cell is traversed clockwise:
          *
          * <pre>
+         * {@code
          *    8    4
          * NW o--->o NE
          *         |
          *         v
          * SW o<---o SE
          *    1    2
+         * }
          * </pre>
          *
          * @param isovalue The isovalue for which to determine the binary states

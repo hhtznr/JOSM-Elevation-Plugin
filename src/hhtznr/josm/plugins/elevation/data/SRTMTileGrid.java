@@ -7,6 +7,7 @@ import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
 
 import hhtznr.josm.plugins.elevation.io.SRTMFileReader;
+import hhtznr.josm.plugins.elevation.math.Hillshade;
 import hhtznr.josm.plugins.elevation.math.MarchingSquares;
 
 /**
@@ -44,14 +45,13 @@ public class SRTMTileGrid {
         else
             latLonIncr = SRTMTile.SRTM_TILE_ARC_DEGREES / (SRTMTile.SRTM3_TILE_LENGTH - 1);
 
-        // Increase the bound by one raster increment, but not more as the coordinate
-        // range
+        // Increase the boundss by three raster increments, but not more as the maximum
+        // possible coordinate range (-90 <= lat <= 90, -180 <= lon <= 180)
         // This will ensure that computed contour lines actually cover the bounds
-        double latMin = Math.max(bounds.getMinLat() - latLonIncr, -90.0);
-        double latMax = Math.min(bounds.getMaxLat() + latLonIncr, 90.0);
-        double lonMin = Math.max(bounds.getMinLon() - latLonIncr, -180.0);
-        ;
-        double lonMax = Math.min(bounds.getMaxLon() + latLonIncr, 180.0);
+        double latMin = Math.max(bounds.getMinLat() - 3 * latLonIncr, -90.0);
+        double latMax = Math.min(bounds.getMaxLat() + 3 * latLonIncr, 90.0);
+        double lonMin = Math.max(bounds.getMinLon() - 3 * latLonIncr, -180.0);
+        double lonMax = Math.min(bounds.getMaxLon() + 3 * latLonIncr, 180.0);
 
         // Determine south west and north east corner coordinate from bounds
         int gridIntLatSouth = (int) Math.floor(latMin);
@@ -239,6 +239,35 @@ public class SRTMTileGrid {
             }
         }
         return list;
+    }
+
+    /**
+     * Creates a buffered image with the computed hillshade ARGB values for the
+     * elevation values of this SRTM tile grid.
+     *
+     * @param withPerimeter   If {@code} true, the a first and last row as well as
+     *                        the a first and last column without computed values
+     *                        will be added such that the size of the 2D array
+     *                        corresponds to that of the input data. If
+     *                        {@code false}, these rows and columns will be omitted.
+     * @param altitudeDeg     The altitude is the angle of the illumination source
+     *                        above the horizon. The units are in degrees, from 0
+     *                        (on the horizon) to 90 (overhead).
+     * @param azimuthDeg      The azimuth is the angular direction of the sun,
+     *                        measured from north in clockwise degrees from 0 to
+     *                        360.
+     * @return An image with the computed hillshade values or {@code null} if this
+     *         SRTM tile grid cannot deliver elevation values or there are less than
+     *         3 elevation values in one of the two dimensions.
+     */
+    public Hillshade.ImageTile getHillshadeImage(boolean withPerimeter, double altitudeDeg,
+            double azimuthDeg) {
+        short[][] eleValues = getGridEleValues();
+        // Avoid working on null or zero length data
+        if (eleValues == null)
+            return null;
+        Hillshade hillshade = new Hillshade(eleValues, southWest, northEast, altitudeDeg, azimuthDeg);
+        return hillshade.getHillshadeImage(withPerimeter);
     }
 
     /**

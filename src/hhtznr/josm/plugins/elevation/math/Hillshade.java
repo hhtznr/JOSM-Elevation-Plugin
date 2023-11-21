@@ -1,6 +1,14 @@
 package hhtznr.josm.plugins.elevation.math;
 
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
 
 import org.openstreetmap.josm.data.coor.ILatLon;
 import org.openstreetmap.josm.data.coor.LatLon;
@@ -41,6 +49,13 @@ public class Hillshade {
     private final LatLon northEast;
     private double zenithRad;
     private double azimuthRad;
+
+    private static final ExecutorService executor;
+    static {
+        int cores = Runtime.getRuntime().availableProcessors();
+        int threads = Math.min(1, cores - 1);
+        executor = Executors.newFixedThreadPool(threads);
+    }
 
     /**
      * Creates a new hillshade instance.
@@ -283,41 +298,70 @@ public class Hillshade {
             return null;
 
         // Determine the z-factor and the cell size
-        double zFactor = getZFactor(southWest, northEast);
-        double cellSize = (northEast.lat() - southWest.lat()) / (latLength - 1);
+        final double zFactor = getZFactor(southWest, northEast);
+        final double cellSize = (northEast.lat() - southWest.lat()) / (latLength - 1);
 
-        int perimeterOffset = 0;
-
-        if (withPerimeter)
-            perimeterOffset = 1;
+        final int perimeterOffset = withPerimeter ? 1 : 0;
 
         int width = lonLength + 2 * perimeterOffset;
         int height = latLength + 2 * perimeterOffset;
-        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        final BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+
+        // List of tasks to be executed by the thread executor service
+        // Each task will compute one row of the hillshade image
+        ArrayList<Callable<BufferedImage>> hillshadeRowTasks = new ArrayList<>(latLength - 2);
 
         // Iterate over the grid of elevation data processing 3 x 3 subgrids
         // As we copy 3 values in each direction in each iteration, we have to stop 2
         // values before the ends
         for (int latIndex = 0; latIndex < latLength - 2; latIndex++) {
-            for (int lonIndex = 0; lonIndex < lonLength - 2; lonIndex++) {
-                // Get 3 x 3 elevation values
-                short[][] ele3x3 = new short[3][3];
-                for (int lat = 0; lat < 3; lat++) {
-                    short[] src = eleValues[latIndex];
-                    int srcPos = lonIndex;
-                    short[] dest = ele3x3[lat];
-                    int destPos = 0;
-                    int length = 3;
-                    System.arraycopy(src, srcPos, dest, destPos, length);
-                }
-                // Compute the hillshade value
-                int hillshade = getHillshadeValue(ele3x3, cellSize, zFactor);
-                int alpha = 255 - hillshade;
-                int argb = alpha << 24;
+            // Final copy of the current latIndex for internal reference in the task
+            int taskLatIndex = latIndex;
+            // Create a task for computing each of the rows of the image
+            Callable<BufferedImage> task = () -> {
+                for (int lonIndex = 0; lonIndex < lonLength - 2; lonIndex++) {
+                    // Get 3 x 3 elevation values
+                    short[][] ele3x3 = new short[3][3];
+                    for (int lat = 0; lat < 3; lat++) {
+                        short[] src = eleValues[taskLatIndex];
+                        int srcPos = lonIndex;
+                        short[] dest = ele3x3[lat];
+                        int destPos = 0;
+                        int length = 3;
+                        System.arraycopy(src, srcPos, dest, destPos, length);
+                    }
+                    // Compute the hillshade value
+                    int hillshade = getHillshadeValue(ele3x3, cellSize, zFactor);
+                    int alpha = 255 - hillshade;
+                    int argb = alpha << 24;
 
-                int x = lonIndex + perimeterOffset;
-                int y = latIndex + perimeterOffset;
-                image.setRGB(x, y, argb);
+                    int x = lonIndex + perimeterOffset;
+                    int y = taskLatIndex + perimeterOffset;
+                    image.setRGB(x, y, argb);
+                }
+                // This is just because Callable needs to return some object
+                return image;
+            };
+            // Add the task for the current row to the list of compute tasks
+            hillshadeRowTasks.add(task);
+        }
+
+        // Submit all tasks to the thread executor and get a list of Futures to
+        // synchronize on the tasks
+        List<Future<BufferedImage>> futures;
+        try {
+            futures = executor.invokeAll(hillshadeRowTasks);
+        } catch (InterruptedException | RejectedExecutionException e) {
+            return null;
+        }
+
+        // Iterate over the Futures and wait for each task to complete if it has not
+        // completed yet
+        for (Future<BufferedImage> future : futures) {
+            try {
+                future.get();
+            } catch (InterruptedException | ExecutionException e) {
+                return null;
             }
         }
 

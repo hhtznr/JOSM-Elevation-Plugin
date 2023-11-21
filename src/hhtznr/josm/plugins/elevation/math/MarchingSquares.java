@@ -26,7 +26,12 @@ public class MarchingSquares {
     private final LatLon northEast;
     private final short[] isovalues;
 
-    private static final ExecutorService executor = Executors.newFixedThreadPool(4);
+    private static final ExecutorService executor;
+    static {
+        int cores = Runtime.getRuntime().availableProcessors();
+        int threads = Math.min(1, cores - 1);
+        executor = Executors.newFixedThreadPool(threads);
+    }
 
     /**
      * Creates a new instance of the Marching Squares algorithm dedicated to
@@ -84,7 +89,7 @@ public class MarchingSquares {
             try {
                 isolineSegments.addAll(isolineResult.get());
             } catch (InterruptedException | ExecutionException e) {
-                break;
+                return null;
             }
         }
 

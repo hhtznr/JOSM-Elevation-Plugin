@@ -10,7 +10,7 @@
     -->
     <property name="plugin.author" value="Harald Hetzner"/>
     <property name="plugin.class" value="hhtznr.josm.plugins.elevation.ElevationPlugin"/>
-    <property name="plugin.description" value="Displays terrain elevation at the mouse pointer location on the map based on SRTM data."/>
+    <property name="plugin.description" value="Displays elevation contour lines, hillshade and elevation at the mouse pointer location on the map based on SRTM data."/>
     <property name="plugin.icon" value="images/elevation.png"/>
     <property name="plugin.link" value="https://github.com/hhtznr/JOSM-Elevation-Plugin"/>
 

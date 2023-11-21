@@ -3,7 +3,7 @@
     <!-- enter the SVN commit message -->
     <property name="commit.message" value="[josm_elevation]"/>
     <!-- enter the *lowest* JOSM version this plugin is currently compatible with -->
-    <property name="plugin.main.version" value="18494"/>
+    <property name="plugin.main.version" value="18619"/>
 
     <!-- Configure these properties (replace "..." accordingly).
          See https://josm.openstreetmap.de/wiki/DevelopersGuide/DevelopingPlugins
@@ -11,7 +11,7 @@
     <property name="plugin.author" value="Harald Hetzner"/>
     <property name="plugin.class" value="hhtznr.josm.plugins.elevation.ElevationPlugin"/>
     <property name="plugin.description" value="Displays terrain elevation at the mouse pointer location on the map based on SRTM data."/>
-    <property name="plugin.icon" value="images/elevation.svg"/>
+    <property name="plugin.icon" value="images/elevation.png"/>
     <property name="plugin.link" value="https://github.com/hhtznr/JOSM-Elevation-Plugin"/>
 
     <!-- ** include targets that all plugins have in common ** -->

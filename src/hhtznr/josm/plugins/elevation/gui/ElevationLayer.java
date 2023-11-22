@@ -49,6 +49,8 @@ public class ElevationLayer extends Layer implements SRTMFileReadListener {
 
     private double renderingLimitArcDegrees;
     private int contourLineIsostep;
+    private int hillshadeAltitude;
+    private int hillshadeAzimuth;
     private Bounds bounds = null;
     SRTMTileGrid contourLineTileGrid = null;
     SRTMTileGrid hillshadeTileGrid = null;
@@ -68,11 +70,18 @@ public class ElevationLayer extends Layer implements SRTMFileReadListener {
      *                                 avoid excessive CPU and memory usage.
      * @param contourLineIsostep       Step between neighboring elevation contour
      *                                 lines.
+     * @param hillshadeAltitude        The altitude (degrees) of the illumination
+     *                                 source in hillshade computation.
+     * @param hillshadeAzimuth         The azimuth (degrees) of the illumination
+     *                                 source in hillshade computation.
      */
-    public ElevationLayer(double renderingLimitArcDegrees, int contourLineIsostep) {
+    public ElevationLayer(double renderingLimitArcDegrees, int contourLineIsostep, int hillshadeAltitude,
+            int hillshadeAzimuth) {
         super("Elevation Layer");
         this.renderingLimitArcDegrees = renderingLimitArcDegrees;
         this.contourLineIsostep = contourLineIsostep;
+        this.hillshadeAltitude = hillshadeAltitude;
+        this.hillshadeAzimuth = hillshadeAzimuth;
         SRTMFileReader.getInstance().addFileReadListener(this);
     }
 
@@ -99,7 +108,25 @@ public class ElevationLayer extends Layer implements SRTMFileReadListener {
     public void setContourLineIsostep(int isostep) {
         if (contourLineIsostep != isostep) {
             contourLineIsostep = isostep;
-            contourLineTileGrid = null;
+            contourLineSegments = null;
+            repaint();
+        }
+    }
+
+    /**
+     * Set a new altitude and azimuth of the illumination source in hillshade
+     * computation.
+     *
+     * @param altitude The altitude (degrees) of the illumination source in
+     *                 hillshade computation.
+     * @param azimuth  The azimuth (degrees) of the illumination source in hillshade
+     *                 computation.
+     */
+    public void setHillshadeIllumination(int altitude, int azimuth) {
+        if (hillshadeAltitude != altitude || hillshadeAzimuth != azimuth) {
+            hillshadeAltitude = altitude;
+            hillshadeAzimuth = azimuth;
+            hillshadeImage = null;
             repaint();
         }
     }
@@ -166,9 +193,8 @@ public class ElevationLayer extends Layer implements SRTMFileReadListener {
     private void drawHillshade(Graphics2D g, MapView mv) {
         Point upperLeft = null;
         if (hillshadeImage == null) {
-            // System.out.println("Hillshade image is null");
-            Hillshade.ImageTile hillshadeTile = hillshadeTileGrid.getHillshadeImage(false,
-                    Hillshade.DEFAULT_ALTITUDE_DEG, Hillshade.DEFAULT_AZIMUTH_DEG);
+            Hillshade.ImageTile hillshadeTile = hillshadeTileGrid.getHillshadeImage(false, hillshadeAltitude,
+                    hillshadeAzimuth);
             if (hillshadeTile == null)
                 return;
             // The dimensions of the unscaled hillshade image

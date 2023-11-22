@@ -25,16 +25,6 @@ import org.openstreetmap.josm.data.coor.LatLon;
 public class Hillshade {
 
     /**
-     * The default value of the altitude: 45°.
-     */
-    public static final double DEFAULT_ALTITUDE_DEG = 45.0;
-
-    /**
-     * The default value of the azimuth: 315° (NW).
-     */
-    public static final double DEFAULT_AZIMUTH_DEG = 315.0;
-
-    /**
      * Gray scale value "white".
      */
     public static final int NO_HILLSHADE = 255;

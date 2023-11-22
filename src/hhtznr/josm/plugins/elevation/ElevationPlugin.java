@@ -128,9 +128,13 @@ public class ElevationPlugin extends Plugin {
                 if (elevationLayerEnabled && elevationLayer == null) {
                     double renderingLimit = pref.getDouble(ElevationPreferences.ELEVATION_LAYER_RENDERING_LIMIT,
                             ElevationPreferences.DEFAULT_ELEVATION_LAYER_RENDERING_LIMIT);
-                    int contourLineIsostep = pref.getInt(ElevationPreferences.CONTOUR_LINE_ISOSTEP,
+                    int isostep = pref.getInt(ElevationPreferences.CONTOUR_LINE_ISOSTEP,
                             ElevationPreferences.DEFAULT_CONTOUR_LINE_ISOSTEP);
-                    elevationLayer = new ElevationLayer(renderingLimit, contourLineIsostep);
+                    int altitude = pref.getInt(ElevationPreferences.HILLSHADE_ALTITUDE,
+                            ElevationPreferences.DEFAULT_HILLSHADE_ALTITUDE);
+                    int azimuth = pref.getInt(ElevationPreferences.HILLSHADE_AZIMUTH,
+                            ElevationPreferences.DEFAULT_HILLSHADE_AZIMUTH);
+                    elevationLayer = new ElevationLayer(renderingLimit, isostep, altitude, azimuth);
                     MainApplication.getLayerManager().addLayer(elevationLayer);
                     mapFrame.addMapMode(new IconToggleButton(new ElevationMapMode(elevationLayer)));
                 }

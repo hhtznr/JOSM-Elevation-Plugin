@@ -60,11 +60,17 @@ public final class ElevationTabPreferenceSetting extends DefaultTabPreferenceSet
             if (elevationLayerEnabled) {
                 ElevationLayer elevationLayer = ElevationPlugin.getInstance().getElevationLayer();
                 if (elevationLayer != null) {
-                    elevationLayer
-                            .setRenderingLimit(pref.getDouble(ElevationPreferences.ELEVATION_LAYER_RENDERING_LIMIT,
-                                    ElevationPreferences.DEFAULT_ELEVATION_LAYER_RENDERING_LIMIT));
-                    elevationLayer.setContourLineIsostep(pref.getInt(ElevationPreferences.CONTOUR_LINE_ISOSTEP,
-                            ElevationPreferences.DEFAULT_CONTOUR_LINE_ISOSTEP));
+                    double renderingLimit = pref.getDouble(ElevationPreferences.ELEVATION_LAYER_RENDERING_LIMIT,
+                            ElevationPreferences.DEFAULT_ELEVATION_LAYER_RENDERING_LIMIT);
+                    int isostep = pref.getInt(ElevationPreferences.CONTOUR_LINE_ISOSTEP,
+                            ElevationPreferences.DEFAULT_CONTOUR_LINE_ISOSTEP);
+                    int altitude = pref.getInt(ElevationPreferences.HILLSHADE_ALTITUDE,
+                            ElevationPreferences.DEFAULT_HILLSHADE_ALTITUDE);
+                    int azimuth = pref.getInt(ElevationPreferences.HILLSHADE_AZIMUTH,
+                            ElevationPreferences.DEFAULT_HILLSHADE_AZIMUTH);
+                    elevationLayer.setRenderingLimit(renderingLimit);
+                    elevationLayer.setContourLineIsostep(isostep);
+                    elevationLayer.setHillshadeIllumination(altitude, azimuth);
                 }
             }
         }

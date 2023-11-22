@@ -52,6 +52,18 @@ public class ElevationPreferences {
     public static final String CONTOUR_LINE_ISOSTEP = "elevation.contour-line.isostep";
 
     /**
+     * Property key for the altitude of the illumination source in hillshade
+     * computation.
+     */
+    public static final String HILLSHADE_ALTITUDE = "elevation.hillshade.altitude";
+
+    /**
+     * Property key for the azimuth of the illumination source in hillshade
+     * computation.
+     */
+    public static final String HILLSHADE_AZIMUTH = "elevation.hillshade.azimuth";
+
+    /**
      * Property key for enabling or disabling automatic download of elevation data.
      */
     public static final String ELEVATION_AUTO_DOWNLOAD_ENABLED = "elevation.autodownload";
@@ -128,25 +140,67 @@ public class ElevationPreferences {
     public static final double INCR_ELEVATION_LAYER_RENDERING_LIMIT = 0.01;
 
     /**
-     * Default property value of the iso step between two neighboring elevation
+     * Default property value of the isostep between two neighboring elevation
      * contour lines: {@code 10}.
      */
     public static final int DEFAULT_CONTOUR_LINE_ISOSTEP = 10;
 
     /**
-     * Minimum value of the contour line iso step: {@code 5}.
+     * Minimum value of the contour line isostep: {@code 5}.
      */
     public static final int MIN_CONTOUR_LINE_ISOSTEP = 5;
 
     /**
-     * Maximum value of the contour line iso step: {@code 200}.
+     * Maximum value of the contour line isostep: {@code 200}.
      */
     public static final int MAX_CONTOUR_LINE_ISOSTEP = 200;
 
     /**
-     * Increment of the contour line iso step: {@code 5}.
+     * Increment of the contour line isostep: {@code 5}.
      */
     public static final int INCR_CONTOUR_LINE_ISOSTEP = 5;
+
+    /**
+     * Default property value of the altitude (degrees) of the illumination source
+     * in hillshade computation: {@code 45}.
+     */
+    public static final int DEFAULT_HILLSHADE_ALTITUDE = 45;
+
+    /**
+     * Minimum value of the hillshade illumination source altitude: {@code 0}.
+     */
+    public static final int MIN_HILLSHADE_ALTITUDE = 0;
+
+    /**
+     * Maximum value of the hillshade illumination source altitude: {@code 90}.
+     */
+    public static final int MAX_HILLSHADE_ALTITUDE = 90;
+
+    /**
+     * Increment of the hillshade illumination source altitude: {@code 1}.
+     */
+    public static final int INCR_HILLSHADE_ALTITUDE = 1;
+
+    /**
+     * Default property value of the azimuth (degrees) of the illumination source in
+     * hillshade computation: {@code 315} (NW).
+     */
+    public static final int DEFAULT_HILLSHADE_AZIMUTH = 315;
+
+    /**
+     * Minimum value of the hillshade illumination source azimuth: {@code 0}.
+     */
+    public static final int MIN_HILLSHADE_AZIMUTH = 0;
+
+    /**
+     * Maximum value of the hillshade illumination source azimuth: {@code 360}.
+     */
+    public static final int MAX_HILLSHADE_AZIMUTH = 360;
+
+    /**
+     * Increment of the hillshade illumination source azimuth: {@code 1}.
+     */
+    public static final int INCR_HILLSHADE_AZIMUTH = 1;
 
     /**
      * Default property value for authentication bearer token for SRTM HGT server:

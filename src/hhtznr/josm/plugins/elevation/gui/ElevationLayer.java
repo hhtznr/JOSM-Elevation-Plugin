@@ -48,8 +48,9 @@ public class ElevationLayer extends Layer implements SRTMFileReadListener {
     public static final Color CONTOUR_LINE_COLOR = new Color(210, 180, 115);
 
     private double renderingLimitArcDegrees;
+    private int contourLineIsostep;
     private Bounds bounds = null;
-    SRTMTileGrid srtmTileGrid = null;
+    SRTMTileGrid contourLineTileGrid = null;
     SRTMTileGrid hillshadeTileGrid = null;
     private boolean drawContourLines = true;
     private boolean drawHillshade = true;
@@ -65,10 +66,13 @@ public class ElevationLayer extends Layer implements SRTMFileReadListener {
      *                                 (latitude or longitude) where, if exceeded,
      *                                 rendering of the layer is switched off to
      *                                 avoid excessive CPU and memory usage.
+     * @param contourLineIsostep       Step between neighboring elevation contour
+     *                                 lines.
      */
-    public ElevationLayer(double renderingLimitArcDegrees) {
+    public ElevationLayer(double renderingLimitArcDegrees, int contourLineIsostep) {
         super("Elevation Layer");
         this.renderingLimitArcDegrees = renderingLimitArcDegrees;
+        this.contourLineIsostep = contourLineIsostep;
         SRTMFileReader.getInstance().addFileReadListener(this);
     }
 
@@ -81,15 +85,30 @@ public class ElevationLayer extends Layer implements SRTMFileReadListener {
      *                                 avoid excessive CPU and memory usage.
      */
     public void setRenderingLimit(double renderingLimitArcDegrees) {
-        this.renderingLimitArcDegrees = renderingLimitArcDegrees;
-        repaint();
+        if (this.renderingLimitArcDegrees != renderingLimitArcDegrees) {
+            this.renderingLimitArcDegrees = renderingLimitArcDegrees;
+            repaint();
+        }
+    }
+
+    /**
+     * Sets a new isostep.
+     *
+     * @param isostep Step between neighboring elevation contour lines.
+     */
+    public void setContourLineIsostep(int isostep) {
+        if (contourLineIsostep != isostep) {
+            contourLineIsostep = isostep;
+            contourLineTileGrid = null;
+            repaint();
+        }
     }
 
     @Override
     public void paint(Graphics2D g, MapView mv, Bounds bbox) {
         if (mv == null) {
             bounds = null;
-            srtmTileGrid = null;
+            contourLineTileGrid = null;
             contourLineSegments = null;
             hillshadeTileGrid = null;
             hillshadeImage = null;
@@ -115,8 +134,8 @@ public class ElevationLayer extends Layer implements SRTMFileReadListener {
                     // Create a new SRTM tile grid for the map bounds if no grid was created or an
                     // existing grid does not cover the current bounds
                     if ((drawContourLines || drawElevationRaster)
-                            && (srtmTileGrid == null || !srtmTileGrid.covers(bbox))) {
-                        srtmTileGrid = new SRTMTileGrid(bbox);
+                            && (contourLineTileGrid == null || !contourLineTileGrid.covers(bbox))) {
+                        contourLineTileGrid = new SRTMTileGrid(bbox);
                         contourLineSegments = null;
                     }
                     // Create a new SRTM tile grid for hillshade use
@@ -128,10 +147,10 @@ public class ElevationLayer extends Layer implements SRTMFileReadListener {
                 if (drawHillshade && hillshadeTileGrid != null)
                     drawHillshade(g, mv);
 
-                if (drawContourLines && srtmTileGrid != null)
+                if (drawContourLines && contourLineTileGrid != null)
                     drawSRTMIsolines(g, mv);
 
-                if (drawElevationRaster && srtmTileGrid != null)
+                if (drawElevationRaster && contourLineTileGrid != null)
                     drawSRTMRaster(g, mv);
 
                 bounds = bbox;
@@ -200,7 +219,7 @@ public class ElevationLayer extends Layer implements SRTMFileReadListener {
         g.setColor(CONTOUR_LINE_COLOR);
         g.setStroke(new BasicStroke(1, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         if (contourLineSegments == null)
-            contourLineSegments = srtmTileGrid.getIsolineSegments();
+            contourLineSegments = contourLineTileGrid.getIsolineSegments(contourLineIsostep);
         if (contourLineSegments == null)
             return;
         for (LatLonLine segment : contourLineSegments) {
@@ -212,7 +231,7 @@ public class ElevationLayer extends Layer implements SRTMFileReadListener {
 
     private void drawSRTMRaster(Graphics2D g, MapView mv) {
         g.setColor(Color.RED);
-        for (LatLonEle latLonEle : srtmTileGrid.getLatLonEleList()) {
+        for (LatLonEle latLonEle : contourLineTileGrid.getLatLonEleList()) {
             Point p = mv.getPoint(latLonEle);
             String ele = Integer.toString((int) latLonEle.ele());
             g.fillOval(p.x - 1, p.y - 1, 3, 3);

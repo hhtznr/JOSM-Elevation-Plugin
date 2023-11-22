@@ -20,11 +20,6 @@ import hhtznr.josm.plugins.elevation.math.MarchingSquares;
  */
 public class SRTMTileGrid {
 
-    /**
-     * The step in between two neighboring elevation contour lines.
-     */
-    public static final short ISO_STEP = 10;
-
     private LatLon southWest;
     private LatLon northEast;
 
@@ -276,13 +271,14 @@ public class SRTMTileGrid {
      * slightly adjust the bounds to the closest coordinates of the elevation
      * raster.
      *
+     * @param isostep Step between neighboring elevation contour lines.
      * @return A list of isoline segments defining elevation contour lines within
      *         the bounds.or {@code null} if not all of the SRTM tiles have the same
      *         type (i.e. different raster dimensions) or if at least one of the
      *         tiles is not valid (i.e. the data was not loaded yet or is not
      *         available at all).
      */
-    public List<LatLonLine> getIsolineSegments() {
+    public List<LatLonLine> getIsolineSegments(int isostep) {
         short[][] eleValues = getGridEleValues();
         // Avoid working on null or zero length data
         if (eleValues == null)
@@ -300,18 +296,18 @@ public class SRTMTileGrid {
         // lines should be computed
         short minIsovalue;
         short maxIsovalue;
-        if (minEle % ISO_STEP == 0)
+        if (minEle % isostep == 0)
             minIsovalue = minEle;
         else
-            minIsovalue = (short) ((minEle / ISO_STEP) * ISO_STEP);
-        if (maxEle % ISO_STEP == 0)
+            minIsovalue = (short) ((minEle / isostep) * isostep);
+        if (maxEle % isostep == 0)
             maxIsovalue = maxEle;
         else
-            maxIsovalue = (short) ((maxEle / ISO_STEP) * ISO_STEP);
-        int nSteps = (maxIsovalue - minIsovalue) / ISO_STEP + 1;
+            maxIsovalue = (short) ((maxEle / isostep) * isostep);
+        int nSteps = (maxIsovalue - minIsovalue) / isostep + 1;
         short[] isovalues = new short[nSteps];
         for (int i = 0; i < nSteps; i++)
-            isovalues[i] = (short) (minIsovalue + i * ISO_STEP);
+            isovalues[i] = (short) (minIsovalue + i * isostep);
 
         MarchingSquares marchingSquares = new MarchingSquares(eleValues, southWest, northEast, isovalues);
         return marchingSquares.getIsolineSegments();

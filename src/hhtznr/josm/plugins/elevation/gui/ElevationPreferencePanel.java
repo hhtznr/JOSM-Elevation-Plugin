@@ -75,6 +75,11 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
             ElevationPreferences.DEFAULT_ELEVATION_LAYER_RENDERING_LIMIT, ElevationPreferences.MIN_ELEVATION_LAYER_RENDERING_LIMIT,
             ElevationPreferences.MAX_ELEVATION_LAYER_RENDERING_LIMIT, ElevationPreferences.INCR_ELEVATION_LAYER_RENDERING_LIMIT));
     private final JLabel lblRenderingLimitUnit = new JLabel("°");
+    private final JLabel lblIsostep = new JLabel("Contour Line Isostep:");
+    private final JSpinner spIsostep = new JSpinner(new SpinnerNumberModel(
+            ElevationPreferences.DEFAULT_CONTOUR_LINE_ISOSTEP, ElevationPreferences.MIN_CONTOUR_LINE_ISOSTEP,
+            ElevationPreferences.MAX_CONTOUR_LINE_ISOSTEP, ElevationPreferences.INCR_CONTOUR_LINE_ISOSTEP));
+    private final JLabel lblIsostepUnit = new JLabel("m");
     private final JCheckBox cbEnableAutoDownload = new JCheckBox("Enable Automatic Downloading of Elevation Data");
     private final JLabel lblAuthBearer = new JLabel("Authorization Bearer Token:");
     private final JosmTextField tfAuthBearer = new JosmTextField();
@@ -199,12 +204,27 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         pnl.add(lblRenderingLimit, gc);
 
         gc.gridx++;
+        gc.fill = GridBagConstraints.HORIZONTAL;
         pnl.add(spRenderingLimit, gc);
+
+        gc.gridx++;
+        gc.weightx = 1.0;
+        pnl.add(lblRenderingLimitUnit, gc);
+
+        // Row "Contour line isostep"
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnl.add(lblIsostep, gc);
+
+        gc.gridx++;
+        pnl.add(spIsostep, gc);
 
         gc.gridx++;
         gc.fill = GridBagConstraints.HORIZONTAL;
         gc.weightx = 1.0;
-        pnl.add(lblRenderingLimitUnit, gc);
+        pnl.add(lblIsostepUnit, gc);
 
         // Row "Auto-download enabled"
         gc.gridy++;
@@ -259,6 +279,8 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
                 ElevationPreferences.DEFAULT_ELEVATION_LAYER_ENABLED));
         spRenderingLimit.setValue(pref.getDouble(ElevationPreferences.ELEVATION_LAYER_RENDERING_LIMIT,
                 ElevationPreferences.DEFAULT_ELEVATION_LAYER_RENDERING_LIMIT));
+        spIsostep.setValue(pref.getInt(ElevationPreferences.CONTOUR_LINE_ISOSTEP,
+                ElevationPreferences.DEFAULT_CONTOUR_LINE_ISOSTEP));
         cbEnableAutoDownload.setSelected(pref.getBoolean(ElevationPreferences.ELEVATION_AUTO_DOWNLOAD_ENABLED,
                 ElevationPreferences.DEFAULT_ELEVATION_AUTO_DOWNLOAD_ENABLED));
         tfAuthBearer.setText(pref.get(ElevationPreferences.ELEVATION_SERVER_AUTH_BEARER,
@@ -277,6 +299,9 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
             lblRenderingLimit.setEnabled(true);
             spRenderingLimit.setEnabled(true);
             lblRenderingLimitUnit.setEnabled(true);
+            lblIsostep.setEnabled(true);
+            spIsostep.setEnabled(true);
+            lblIsostepUnit.setEnabled(true);
             lblSRTM1Server.setEnabled(true);
             lblSRTM3Server.setEnabled(true);
             cbEnableAutoDownload.setEnabled(true);
@@ -294,6 +319,9 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
             lblRenderingLimit.setEnabled(false);
             spRenderingLimit.setEnabled(false);
             lblRenderingLimitUnit.setEnabled(false);
+            lblIsostep.setEnabled(false);
+            spIsostep.setEnabled(false);
+            lblIsostepUnit.setEnabled(false);
             lblSRTM1Server.setEnabled(false);
             lblSRTM3Server.setEnabled(false);
             cbEnableAutoDownload.setEnabled(false);
@@ -327,6 +355,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         pref.putInt(ElevationPreferences.RAM_CACHE_SIZE_LIMIT, (Integer) spCacheSize.getValue());
         pref.putBoolean(ElevationPreferences.ELEVATION_LAYER_ENABLED, cbEnableElevationLayer.isSelected());
         pref.putDouble(ElevationPreferences.ELEVATION_LAYER_RENDERING_LIMIT, (Double) spRenderingLimit.getValue());
+        pref.putInt(ElevationPreferences.CONTOUR_LINE_ISOSTEP, (Integer) spIsostep.getValue());
         pref.putBoolean(ElevationPreferences.ELEVATION_AUTO_DOWNLOAD_ENABLED, cbEnableAutoDownload.isSelected());
         pref.put(ElevationPreferences.ELEVATION_SERVER_AUTH_BEARER, tfAuthBearer.getText());
     }

@@ -59,10 +59,13 @@ public final class ElevationTabPreferenceSetting extends DefaultTabPreferenceSet
                     ElevationPreferences.DEFAULT_ELEVATION_LAYER_ENABLED);
             if (elevationLayerEnabled) {
                 ElevationLayer elevationLayer = ElevationPlugin.getInstance().getElevationLayer();
-                if (elevationLayer != null)
+                if (elevationLayer != null) {
                     elevationLayer
                             .setRenderingLimit(pref.getDouble(ElevationPreferences.ELEVATION_LAYER_RENDERING_LIMIT,
                                     ElevationPreferences.DEFAULT_ELEVATION_LAYER_RENDERING_LIMIT));
+                    elevationLayer.setContourLineIsostep(pref.getInt(ElevationPreferences.CONTOUR_LINE_ISOSTEP,
+                            ElevationPreferences.DEFAULT_CONTOUR_LINE_ISOSTEP));
+                }
             }
         }
 

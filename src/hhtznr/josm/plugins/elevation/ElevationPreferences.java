@@ -47,6 +47,11 @@ public class ElevationPreferences {
     public static final String ELEVATION_LAYER_RENDERING_LIMIT = "elevation.layer.rendering.limit";
 
     /**
+     * Property key for step between neighboring elevation contour lines.
+     */
+    public static final String CONTOUR_LINE_ISOSTEP = "elevation.contour-line.isostep";
+
+    /**
      * Property key for enabling or disabling automatic download of elevation data.
      */
     public static final String ELEVATION_AUTO_DOWNLOAD_ENABLED = "elevation.autodownload";
@@ -121,6 +126,27 @@ public class ElevationPreferences {
      * Increment of the elevation layer rendering limit: {@code 0.01}.
      */
     public static final double INCR_ELEVATION_LAYER_RENDERING_LIMIT = 0.01;
+
+    /**
+     * Default property value of the iso step between two neighboring elevation
+     * contour lines: {@code 10}.
+     */
+    public static final int DEFAULT_CONTOUR_LINE_ISOSTEP = 10;
+
+    /**
+     * Minimum value of the contour line iso step: {@code 5}.
+     */
+    public static final int MIN_CONTOUR_LINE_ISOSTEP = 5;
+
+    /**
+     * Maximum value of the contour line iso step: {@code 200}.
+     */
+    public static final int MAX_CONTOUR_LINE_ISOSTEP = 200;
+
+    /**
+     * Increment of the contour line iso step: {@code 5}.
+     */
+    public static final int INCR_CONTOUR_LINE_ISOSTEP = 5;
 
     /**
      * Default property value for authentication bearer token for SRTM HGT server:

@@ -36,19 +36,18 @@ import hhtznr.josm.plugins.elevation.io.SRTMFileReadListener;
 import hhtznr.josm.plugins.elevation.io.SRTMFileReader;
 import hhtznr.josm.plugins.elevation.math.Hillshade;
 
+/**
+ * Class implementing a map layer for displaying elevation contour lines and
+ * hillshade.
+ */
 public class ElevationLayer extends Layer implements SRTMFileReadListener {
-
-    /**
-     * The maximum value of arc degrees in latitude or longitude of the map view
-     * where the elevation layer will display contour lines.
-     */
-    public static final double ELEVATION_LAYER_MAX_ARC_DEGREES = 0.1;
 
     /**
      * The color in which the contour lines are painted on the map.
      */
     public static final Color CONTOUR_LINE_COLOR = new Color(210, 180, 115);
 
+    private double renderingLimitArcDegrees;
     private Bounds bounds = null;
     SRTMTileGrid srtmTileGrid = null;
     SRTMTileGrid hillshadeTileGrid = null;
@@ -59,9 +58,31 @@ public class ElevationLayer extends Layer implements SRTMFileReadListener {
     private LatLon hillshadeNorthWest = null;
     List<LatLonLine> contourLineSegments = null;
 
-    public ElevationLayer() {
+    /**
+     * Creates a new elevation layer.
+     *
+     * @param renderingLimitArcDegrees The maximum size of the displayed map
+     *                                 (latitude or longitude) where, if exceeded,
+     *                                 rendering of the layer is switched off to
+     *                                 avoid excessive CPU and memory usage.
+     */
+    public ElevationLayer(double renderingLimitArcDegrees) {
         super("Elevation Layer");
+        this.renderingLimitArcDegrees = renderingLimitArcDegrees;
         SRTMFileReader.getInstance().addFileReadListener(this);
+    }
+
+    /**
+     * Sets a new rendering limit.
+     *
+     * @param renderingLimitArcDegrees The maximum size of the displayed map
+     *                                 (latitude or longitude) where, if exceeded,
+     *                                 rendering of the layer is switched off to
+     *                                 avoid excessive CPU and memory usage.
+     */
+    public void setRenderingLimit(double renderingLimitArcDegrees) {
+        this.renderingLimitArcDegrees = renderingLimitArcDegrees;
+        repaint();
     }
 
     @Override
@@ -77,8 +98,8 @@ public class ElevationLayer extends Layer implements SRTMFileReadListener {
 
         // Disable drawing of contour lines if the map is zoomed out too much
         // This prevents high CPU and I/O usage
-        boolean zoomLevelDisabled = bbox.getMaxLat() - bbox.getMinLat() > ELEVATION_LAYER_MAX_ARC_DEGREES
-                || bbox.getMaxLon() - bbox.getMinLon() > ELEVATION_LAYER_MAX_ARC_DEGREES;
+        boolean zoomLevelDisabled = bbox.getMaxLat() - bbox.getMinLat() > renderingLimitArcDegrees
+                || bbox.getMaxLon() - bbox.getMinLon() > renderingLimitArcDegrees;
 
         Color previousColor = g.getColor();
         Font previousFont = g.getFont();
@@ -126,17 +147,19 @@ public class ElevationLayer extends Layer implements SRTMFileReadListener {
     private void drawHillshade(Graphics2D g, MapView mv) {
         Point upperLeft = null;
         if (hillshadeImage == null) {
-            //System.out.println("Hillshade image is null");
-            Hillshade.ImageTile hillshadeTile = hillshadeTileGrid.getHillshadeImage(false, Hillshade.DEFAULT_ALTITUDE_DEG,
-                    Hillshade.DEFAULT_AZIMUTH_DEG);
+            // System.out.println("Hillshade image is null");
+            Hillshade.ImageTile hillshadeTile = hillshadeTileGrid.getHillshadeImage(false,
+                    Hillshade.DEFAULT_ALTITUDE_DEG, Hillshade.DEFAULT_AZIMUTH_DEG);
             if (hillshadeTile == null)
                 return;
             // The dimensions of the unscaled hillshade image
             int imageWidth = hillshadeTile.getImage().getWidth();
             int imageHeight = hillshadeTile.getImage().getHeight();
-            //System.out.println("Hillshade image size: w = " + imageWidth + ", h = " + imageHeight);
+            // System.out.println("Hillshade image size: w = " + imageWidth + ", h = " +
+            // imageHeight);
             if (imageWidth <= 0 || imageHeight <= 0) {
-                Logging.error("Elevation: Hillshade size too small: width = " + imageWidth + ", height = " + imageHeight);
+                Logging.error(
+                        "Elevation: Hillshade size too small: width = " + imageWidth + ", height = " + imageHeight);
                 return;
             }
 
@@ -151,19 +174,26 @@ public class ElevationLayer extends Layer implements SRTMFileReadListener {
             // https://stackoverflow.com/questions/4216123/how-to-scale-a-bufferedimage
             double sx = Double.valueOf(screenWidth) / Double.valueOf(imageWidth);
             double sy = Double.valueOf(screenHeight) / Double.valueOf(imageHeight);
-            //System.out.println("Hillshade image scale factors: sx = " + sx + ", sy = " + sy);
+            // System.out.println("Hillshade image scale factors: sx = " + sx + ", sy = " +
+            // sy);
             AffineTransform at = new AffineTransform();
             at.scale(sx, sy);
             AffineTransformOp scaleOp = new AffineTransformOp(at, AffineTransformOp.TYPE_BILINEAR);
             hillshadeImage = scaleOp.filter(hillshadeTile.getImage(), null);
-            //System.out.println("Hillshade image scaled size: width = " + hillshadeImage.getWidth() + ", height = " + hillshadeImage.getHeight());
-            //System.out.println("Map size: width = " + mv.getWidth() + ", height = " + mv.getHeight());
+            // System.out.println("Hillshade image scaled size: width = " +
+            // hillshadeImage.getWidth() + ", height = " + hillshadeImage.getHeight());
+            // System.out.println("Map size: width = " + mv.getWidth() + ", height = " +
+            // mv.getHeight());
         }
         if (upperLeft == null)
             upperLeft = mv.getPoint(hillshadeNorthWest);
-        //System.out.println("Hillshade upper right corner (px): x = " + upperLeft.x + ", x = " + upperLeft.y);
-        //System.out.println("Hillshade image scaled cropped size: width = " + (hillshadeImage.getWidth() + upperLeft.x) + ", height = " + (hillshadeImage.getHeight() + upperLeft.y));
-        g.drawImage(hillshadeImage, upperLeft.x, upperLeft.y, hillshadeImage.getWidth(), hillshadeImage.getHeight(), null);
+        // System.out.println("Hillshade upper right corner (px): x = " + upperLeft.x +
+        // ", x = " + upperLeft.y);
+        // System.out.println("Hillshade image scaled cropped size: width = " +
+        // (hillshadeImage.getWidth() + upperLeft.x) + ", height = " +
+        // (hillshadeImage.getHeight() + upperLeft.y));
+        g.drawImage(hillshadeImage, upperLeft.x, upperLeft.y, hillshadeImage.getWidth(), hillshadeImage.getHeight(),
+                null);
     }
 
     private void drawSRTMIsolines(Graphics2D g, MapView mv) {

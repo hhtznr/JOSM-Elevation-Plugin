@@ -40,6 +40,13 @@ public class ElevationPreferences {
     public static final String ELEVATION_LAYER_ENABLED = "elevation.layer.enabled";
 
     /**
+     * Property key for the limit value of arc degrees in latitude or longitude
+     * covered by the map view, where, if exceeded, elevation data caching as well
+     * as contour line and hillshade rendering will be temporarily switched off.
+     */
+    public static final String ELEVATION_LAYER_RENDERING_LIMIT = "elevation.layer.rendering.limit";
+
+    /**
      * Property key for enabling or disabling automatic download of elevation data.
      */
     public static final String ELEVATION_AUTO_DOWNLOAD_ENABLED = "elevation.autodownload";
@@ -91,6 +98,29 @@ public class ElevationPreferences {
      * {@code true}.
      */
     public static final boolean DEFAULT_ELEVATION_LAYER_ENABLED = true;
+
+    /**
+     * Default property value for the limit value of arc degrees in latitude or
+     * longitude covered by the map view, where, if exceeded, elevation data caching
+     * as well as contour line and hillshade rendering will be temporarily switched
+     * off: {@code 0.1}.
+     */
+    public static final double DEFAULT_ELEVATION_LAYER_RENDERING_LIMIT = 0.1;
+
+    /**
+     * Minimum value of the elevation layer rendering limit: {@code 0.01}.
+     */
+    public static final double MIN_ELEVATION_LAYER_RENDERING_LIMIT = 0.01;
+
+    /**
+     * Maximum value of the elevation layer rendering limit: {@code 2.0}.
+     */
+    public static final double MAX_ELEVATION_LAYER_RENDERING_LIMIT = 2.0;
+
+    /**
+     * Increment of the elevation layer rendering limit: {@code 0.01}.
+     */
+    public static final double INCR_ELEVATION_LAYER_RENDERING_LIMIT = 0.01;
 
     /**
      * Default property value for authentication bearer token for SRTM HGT server:

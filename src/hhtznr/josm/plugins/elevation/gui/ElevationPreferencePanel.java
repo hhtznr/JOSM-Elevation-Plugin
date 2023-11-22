@@ -64,11 +64,17 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
     private final JosmComboBox<SRTMTile.Type> cbSRTMType = new JosmComboBox<>(SRTMTile.Type.values());
     private final JLabel lblInterpolation = new JLabel("Elevation Value Interpolation:");
     private final JosmComboBox<SRTMTile.Interpolation> cbInterpolation = new JosmComboBox<>(SRTMTile.Interpolation.values());
-    private final JLabel lblCacheSize = new JLabel("Max. Size of In-Memory Tile Cache (MiB):");
+    private final JLabel lblCacheSize = new JLabel("Max. Size of In-Memory Tile Cache:");
     private final JSpinner spCacheSize = new JSpinner(new SpinnerNumberModel(
             ElevationPreferences.DEFAULT_RAM_CACHE_SIZE_LIMIT, ElevationPreferences.MIN_RAM_CACHE_SIZE_LIMIT,
             ElevationPreferences.MAX_RAM_CACHE_SIZE_LIMIT, ElevationPreferences.INCR_RAM_CACHE_SIZE_LIMIT));
+    private final JLabel lblCacheSizeUnit = new JLabel("MiB");
     private final JCheckBox cbEnableElevationLayer = new JCheckBox("Enable Elevation Contour Line Layer");
+    private final JLabel lblRenderingLimit = new JLabel("Layer Rendering Map Size Limit:");
+    private final JSpinner spRenderingLimit = new JSpinner(new SpinnerNumberModel(
+            ElevationPreferences.DEFAULT_ELEVATION_LAYER_RENDERING_LIMIT, ElevationPreferences.MIN_ELEVATION_LAYER_RENDERING_LIMIT,
+            ElevationPreferences.MAX_ELEVATION_LAYER_RENDERING_LIMIT, ElevationPreferences.INCR_ELEVATION_LAYER_RENDERING_LIMIT));
+    private final JLabel lblRenderingLimitUnit = new JLabel("°");
     private final JCheckBox cbEnableAutoDownload = new JCheckBox("Enable Automatic Downloading of Elevation Data");
     private final JLabel lblAuthBearer = new JLabel("Authorization Bearer Token:");
     private final JosmTextField tfAuthBearer = new JosmTextField();
@@ -98,6 +104,8 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
                 ElevationPreferences.DEFAULT_SRTM_DIRECTORY.getAbsolutePath()));
         cbEnableElevation.addItemListener(event -> updateEnabledState());
 
+        spRenderingLimit.setToolTipText("Layer rendering will be switched off if the map size (latitude, longitude) exceeds this value");
+
         lblSRTM1Server.setEditable(false);
         lblSRTM1Server.addHyperlinkListener(event -> browseHyperlink(event));
 
@@ -114,21 +122,25 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         JPanel pnl = new AutoSizePanel();
         GridBagConstraints gc = new GridBagConstraints();
 
+        // Row "Enable elevation"
         gc.gridy++;
         gc.gridx = 0;
         gc.anchor = GridBagConstraints.LINE_START;
         gc.insets = new Insets(5, 5, 0, 0);
         gc.fill = GridBagConstraints.HORIZONTAL;
-        gc.gridwidth = 2;
+        gc.gridwidth = 3;
         gc.weightx = 1.0;
         pnl.add(cbEnableElevation, gc);
 
+        // Row "SRTM1 server"
         gc.gridy++;
         pnl.add(lblSRTM1Server, gc);
 
+        // Row "SRTM3 server"
         gc.gridy++;
         pnl.add(lblSRTM3Server, gc);
 
+        // Row "SRTM type"
         gc.gridy++;
         gc.fill = GridBagConstraints.NONE;
         gc.gridwidth = 1;
@@ -137,9 +149,11 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
         gc.gridx++;
         gc.fill = GridBagConstraints.NONE;
+        gc.gridwidth = 2;
         gc.weightx = 1.0;
         pnl.add(cbSRTMType, gc);
 
+        // Row "Interpolation"
         gc.gridy++;
         gc.gridx = 0;
         gc.fill = GridBagConstraints.NONE;
@@ -149,9 +163,11 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
         gc.gridx++;
         gc.fill = GridBagConstraints.NONE;
+        gc.gridwidth = 2;
         gc.weightx = 1.0;
         pnl.add(cbInterpolation, gc);
 
+        // Row "Cache size"
         gc.gridy++;
         gc.gridx = 0;
         gc.fill = GridBagConstraints.NONE;
@@ -161,18 +177,42 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
         gc.gridx++;
         gc.fill = GridBagConstraints.NONE;
-        gc.weightx = 1.0;
         pnl.add(spCacheSize, gc);
 
+        gc.gridx++;
+        gc.fill = GridBagConstraints.HORIZONTAL;
+        gc.weightx = 1.0;
+        pnl.add(lblCacheSizeUnit, gc);
+
+        // Row "Enable elevation layer"
         gc.gridy++;
         gc.gridx = 0;
-        gc.fill = GridBagConstraints.HORIZONTAL;
-        gc.gridwidth = 2;
+        gc.gridwidth = 3;
         pnl.add(cbEnableElevationLayer, gc);
 
+        // Row "Layer rendering limit"
         gc.gridy++;
+        gc.gridx = 0;
+        gc.fill = GridBagConstraints.NONE;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnl.add(lblRenderingLimit, gc);
+
+        gc.gridx++;
+        pnl.add(spRenderingLimit, gc);
+
+        gc.gridx++;
+        gc.fill = GridBagConstraints.HORIZONTAL;
+        gc.weightx = 1.0;
+        pnl.add(lblRenderingLimitUnit, gc);
+
+        // Row "Auto-download enabled"
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.gridwidth = 3;
         pnl.add(cbEnableAutoDownload, gc);
 
+        // Row "Auth bearer token"
         gc.gridy++;
         gc.fill = GridBagConstraints.NONE;
         gc.gridwidth = 1;
@@ -181,18 +221,20 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
         gc.gridx++;
         gc.fill = GridBagConstraints.HORIZONTAL;
+        gc.gridwidth = 2;
         gc.weightx = 1.0;
         pnl.add(tfAuthBearer, gc);
 
+        // Row "Auth bearer notes"
         gc.gridy++;
         gc.gridx = 0;
-        gc.gridwidth = 2;
+        gc.gridwidth = 3;
         gc.weightx = 1.0;
         pnl.add(lblAuthBearerNotes, gc);
 
         // add an extra spacer, otherwise the layout is broken
         gc.gridy++;
-        gc.gridwidth = 2;
+        gc.gridwidth = 3;
         gc.fill = GridBagConstraints.BOTH;
         gc.weighty = 1.0;
         pnl.add(new JPanel(), gc);
@@ -215,6 +257,8 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
                 ElevationPreferences.DEFAULT_RAM_CACHE_SIZE_LIMIT));
         cbEnableElevationLayer.setSelected(pref.getBoolean(ElevationPreferences.ELEVATION_LAYER_ENABLED,
                 ElevationPreferences.DEFAULT_ELEVATION_LAYER_ENABLED));
+        spRenderingLimit.setValue(pref.getDouble(ElevationPreferences.ELEVATION_LAYER_RENDERING_LIMIT,
+                ElevationPreferences.DEFAULT_ELEVATION_LAYER_RENDERING_LIMIT));
         cbEnableAutoDownload.setSelected(pref.getBoolean(ElevationPreferences.ELEVATION_AUTO_DOWNLOAD_ENABLED,
                 ElevationPreferences.DEFAULT_ELEVATION_AUTO_DOWNLOAD_ENABLED));
         tfAuthBearer.setText(pref.get(ElevationPreferences.ELEVATION_SERVER_AUTH_BEARER,
@@ -230,6 +274,9 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
             lblCacheSize.setEnabled(true);
             spCacheSize.setEnabled(true);
             cbEnableElevationLayer.setEnabled(true);
+            lblRenderingLimit.setEnabled(true);
+            spRenderingLimit.setEnabled(true);
+            lblRenderingLimitUnit.setEnabled(true);
             lblSRTM1Server.setEnabled(true);
             lblSRTM3Server.setEnabled(true);
             cbEnableAutoDownload.setEnabled(true);
@@ -244,6 +291,9 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
             lblCacheSize.setEnabled(false);
             spCacheSize.setEnabled(false);
             cbEnableElevationLayer.setEnabled(false);
+            lblRenderingLimit.setEnabled(false);
+            spRenderingLimit.setEnabled(false);
+            lblRenderingLimitUnit.setEnabled(false);
             lblSRTM1Server.setEnabled(false);
             lblSRTM3Server.setEnabled(false);
             cbEnableAutoDownload.setEnabled(false);
@@ -276,6 +326,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         pref.put(ElevationPreferences.ELEVATION_INTERPOLATION, ((SRTMTile.Interpolation) cbInterpolation.getSelectedItem()).toString());
         pref.putInt(ElevationPreferences.RAM_CACHE_SIZE_LIMIT, (Integer) spCacheSize.getValue());
         pref.putBoolean(ElevationPreferences.ELEVATION_LAYER_ENABLED, cbEnableElevationLayer.isSelected());
+        pref.putDouble(ElevationPreferences.ELEVATION_LAYER_RENDERING_LIMIT, (Double) spRenderingLimit.getValue());
         pref.putBoolean(ElevationPreferences.ELEVATION_AUTO_DOWNLOAD_ENABLED, cbEnableAutoDownload.isSelected());
         pref.put(ElevationPreferences.ELEVATION_SERVER_AUTH_BEARER, tfAuthBearer.getText());
     }

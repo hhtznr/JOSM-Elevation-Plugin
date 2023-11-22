@@ -48,6 +48,8 @@ public class Hillshade {
     private final LatLon southWest;
     private final LatLon northEast;
     private double zenithRad;
+    private double sinZenithRad;
+    private double cosZenithRad;
     private double azimuthRad;
 
     private static final ExecutorService executor;
@@ -74,6 +76,9 @@ public class Hillshade {
         this.southWest = southWest;
         this.northEast = northEast;
         zenithRad = getZenithRad(altitudeDeg);
+        // Compute sinus and cosinus of zenith in order not to recompute it
+        sinZenithRad = Math.sin(zenithRad);
+        cosZenithRad = Math.cos(zenithRad);
         azimuthRad = getAzimuthRad(azimuthDeg);
     }
 
@@ -303,8 +308,9 @@ public class Hillshade {
 
         final int perimeterOffset = withPerimeter ? 1 : 0;
 
-        int width = lonLength + 2 * perimeterOffset;
+        final int width = lonLength + 2 * perimeterOffset;
         int height = latLength + 2 * perimeterOffset;
+        // Create a new image with alpha channel  which is black by default (RGB = [0, 0, 0])
         final BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
 
         // List of tasks to be executed by the thread executor service
@@ -319,6 +325,8 @@ public class Hillshade {
             int taskLatIndex = latIndex;
             // Create a task for computing each of the rows of the image
             Callable<BufferedImage> task = () -> {
+                // Array to collect the alpha values of the pixel row
+                int[] pixels = new int[width];
                 for (int lonIndex = 0; lonIndex < lonLength - 2; lonIndex++) {
                     // Get 3 x 3 elevation values
                     short[][] ele3x3 = new short[3][3];
@@ -332,13 +340,19 @@ public class Hillshade {
                     }
                     // Compute the hillshade value
                     int hillshade = getHillshadeValue(ele3x3, cellSize, zFactor);
+                    // Convert to alpha value, which makes the black image more or less transparent
                     int alpha = 255 - hillshade;
-                    int argb = alpha << 24;
-
-                    int x = lonIndex + perimeterOffset;
-                    int y = taskLatIndex + perimeterOffset;
-                    image.setRGB(x, y, argb);
+                    // Add the alpha value to the pixel row
+                    pixels[lonIndex] = alpha;
                 }
+                int x = perimeterOffset;
+                int y = taskLatIndex + perimeterOffset;
+                /*
+                 * Write the row of alpha values directly to the image: The alpha values will
+                 * leave the image black/opaque (alpha = 255), make it more or less
+                 * gray/semi-transparent (alpha = 1...254) or fully transparent (alpha = 0)
+                 */
+                image.getAlphaRaster().setPixels(x, y, width, 1, pixels);
                 // This is just because Callable needs to return some object
                 return image;
             };
@@ -427,8 +441,8 @@ public class Hillshade {
      */
     private int getHillshadeValue(double slopeRad, double aspectRad) {
         // https://pro.arcgis.com/en/pro-app/latest/tool-reference/3d-analyst/how-hillshade-works.htm
-        double hillshade = Math.cos(zenithRad) * Math.cos(slopeRad)
-                + Math.sin(zenithRad) * Math.sin(slopeRad) * Math.cos(azimuthRad - aspectRad);
+        double hillshade = cosZenithRad * Math.cos(slopeRad)
+                + sinZenithRad * Math.sin(slopeRad) * Math.cos(azimuthRad - aspectRad);
 
         if (hillshade < 0.0)
             return MAX_HILLSHADE;

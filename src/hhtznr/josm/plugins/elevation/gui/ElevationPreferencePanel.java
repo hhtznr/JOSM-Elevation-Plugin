@@ -134,6 +134,8 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         lblSRTM3Server.setEditable(false);
         lblSRTM3Server.addHyperlinkListener(event -> browseHyperlink(event));
 
+        cbEnableElevationLayer.addItemListener(event -> updateEnabledState());
+
         spRenderingLimit.setToolTipText("Layer rendering will be switched off if the map size (latitude, longitude) exceeds this value");
 
         spHillshadeAltitude.setToolTipText("The altitude is the angle of the illumination source above the horizon in the range from 0 (horizon) to 90° (overhead)");
@@ -346,6 +348,8 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
     private final void updateEnabledState() {
         if (cbEnableElevation.isSelected()) {
+            lblSRTM1Server.setEnabled(true);
+            lblSRTM3Server.setEnabled(true);
             lblSRTMType.setEnabled(true);
             cbSRTMType.setEnabled(true);
             lblInterpolation.setEnabled(true);
@@ -353,25 +357,25 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
             lblCacheSize.setEnabled(true);
             spCacheSize.setEnabled(true);
             cbEnableElevationLayer.setEnabled(true);
-            lblRenderingLimit.setEnabled(true);
-            spRenderingLimit.setEnabled(true);
-            lblRenderingLimitUnit.setEnabled(true);
-            lblIsostep.setEnabled(true);
-            spIsostep.setEnabled(true);
-            lblIsostepUnit.setEnabled(true);
-            lblHillshadeAltitude.setEnabled(true);
-            spHillshadeAltitude.setEnabled(true);
-            lblHillshadeAltitudeUnit.setEnabled(true);
-            lblHillshadeAzimuth.setEnabled(true);
-            spHillshadeAzimuth.setEnabled(true);
-            lblHillshadeAzimuthUnit.setEnabled(true);
-            lblSRTM1Server.setEnabled(true);
-            lblSRTM3Server.setEnabled(true);
+            lblRenderingLimit.setEnabled(cbEnableElevationLayer.isSelected());
+            spRenderingLimit.setEnabled(cbEnableElevationLayer.isSelected());
+            lblRenderingLimitUnit.setEnabled(cbEnableElevationLayer.isSelected());
+            lblIsostep.setEnabled(cbEnableElevationLayer.isSelected());
+            spIsostep.setEnabled(cbEnableElevationLayer.isSelected());
+            lblIsostepUnit.setEnabled(cbEnableElevationLayer.isSelected());
+            lblHillshadeAltitude.setEnabled(cbEnableElevationLayer.isSelected());
+            spHillshadeAltitude.setEnabled(cbEnableElevationLayer.isSelected());
+            lblHillshadeAltitudeUnit.setEnabled(cbEnableElevationLayer.isSelected());
+            lblHillshadeAzimuth.setEnabled(cbEnableElevationLayer.isSelected());
+            spHillshadeAzimuth.setEnabled(cbEnableElevationLayer.isSelected());
+            lblHillshadeAzimuthUnit.setEnabled(cbEnableElevationLayer.isSelected());
             cbEnableAutoDownload.setEnabled(true);
             lblAuthBearer.setEnabled(cbEnableAutoDownload.isSelected());
             tfAuthBearer.setEnabled(cbEnableAutoDownload.isSelected());
             lblAuthBearerNotes.setEnabled(cbEnableAutoDownload.isSelected());
         } else {
+            lblSRTM1Server.setEnabled(false);
+            lblSRTM3Server.setEnabled(false);
             lblSRTMType.setEnabled(false);
             cbSRTMType.setEnabled(false);
             lblInterpolation.setEnabled(false);
@@ -391,8 +395,6 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
             lblHillshadeAzimuth.setEnabled(false);
             spHillshadeAzimuth.setEnabled(false);
             lblHillshadeAzimuthUnit.setEnabled(false);
-            lblSRTM1Server.setEnabled(false);
-            lblSRTM3Server.setEnabled(false);
             cbEnableAutoDownload.setEnabled(false);
             lblAuthBearer.setEnabled(false);
             tfAuthBearer.setEnabled(false);

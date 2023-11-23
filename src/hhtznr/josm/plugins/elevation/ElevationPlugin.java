@@ -51,6 +51,11 @@ public class ElevationPlugin extends Plugin {
         Logging.info("Elevation: Plugin initialized");
     }
 
+    /**
+     * Returns the elevation layer.
+     *
+     * @return The elevation layer which displays contour lines and hillshade.
+     */
     public ElevationLayer getElevationLayer() {
         return elevationLayer;
     }

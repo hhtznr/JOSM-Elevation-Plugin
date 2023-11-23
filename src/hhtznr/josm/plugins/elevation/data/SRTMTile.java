@@ -334,6 +334,16 @@ public class SRTMTile {
     }
 
     /**
+     * Returns the elevation data of this tile.
+     *
+     * @return The elevation data of this tile or {@code null} if the tile does not
+     *         contain data.
+     */
+    protected synchronized short[][] getElevationData() {
+        return elevationData;
+    }
+
+    /**
      * Updates type, data and status of this SRTM tile.
      *
      * @param type          The type of the SRTM tile.

@@ -1,11 +1,11 @@
 package hhtznr.josm.plugins.elevation;
 
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
+import hhtznr.josm.plugins.elevation.data.SRTMTileProvider;
 import hhtznr.josm.plugins.elevation.gui.ElevationLayer;
 import hhtznr.josm.plugins.elevation.gui.ElevationMapMode;
 import hhtznr.josm.plugins.elevation.gui.ElevationTabPreferenceSetting;
 import hhtznr.josm.plugins.elevation.gui.LocalElevationLabel;
-import hhtznr.josm.plugins.elevation.io.SRTMFileReader;
 
 import org.openstreetmap.josm.gui.IconToggleButton;
 import org.openstreetmap.josm.gui.MainApplication;
@@ -116,9 +116,9 @@ public class ElevationPlugin extends Plugin {
             boolean elevationAutoDownloadEnabled = pref.getBoolean(ElevationPreferences.ELEVATION_AUTO_DOWNLOAD_ENABLED,
                     ElevationPreferences.DEFAULT_ELEVATION_AUTO_DOWNLOAD_ENABLED);
             // Initialize and configure the SRTM file reader
-            SRTMFileReader.getInstance().setPreferredSRTMType(preferredSRTMType);
-            SRTMFileReader.getInstance().setElevationInterpolation(elevationInterpolation);
-            SRTMFileReader.getInstance().setAutoDownloadEnabled(elevationAutoDownloadEnabled);
+            SRTMTileProvider.getInstance().setPreferredSRTMType(preferredSRTMType);
+            SRTMTileProvider.getInstance().setElevationInterpolation(elevationInterpolation);
+            SRTMTileProvider.getInstance().setAutoDownloadEnabled(elevationAutoDownloadEnabled);
             if (mapFrame != null) {
                 if (localElevationLabel == null)
                     localElevationLabel = new LocalElevationLabel(mapFrame);
@@ -149,7 +149,7 @@ public class ElevationPlugin extends Plugin {
                 elevationLayer = null;
                 // TODO: Map mode?
             }
-            SRTMFileReader.destroyInstance();
+            SRTMTileProvider.destroyInstance();
         }
         elevationEnabled = enabled;
     }

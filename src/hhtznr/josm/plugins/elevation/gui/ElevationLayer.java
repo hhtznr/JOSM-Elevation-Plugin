@@ -32,15 +32,15 @@ import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.LatLonLine;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
 import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
-import hhtznr.josm.plugins.elevation.io.SRTMFileReadListener;
-import hhtznr.josm.plugins.elevation.io.SRTMFileReader;
+import hhtznr.josm.plugins.elevation.data.SRTMTileProvider;
+import hhtznr.josm.plugins.elevation.data.SRTMTileProviderListener;
 import hhtznr.josm.plugins.elevation.math.Hillshade;
 
 /**
  * Class implementing a map layer for displaying elevation contour lines and
  * hillshade.
  */
-public class ElevationLayer extends Layer implements SRTMFileReadListener {
+public class ElevationLayer extends Layer implements SRTMTileProviderListener {
 
     /**
      * The color in which the contour lines are painted on the map.
@@ -82,7 +82,7 @@ public class ElevationLayer extends Layer implements SRTMFileReadListener {
         this.contourLineIsostep = contourLineIsostep;
         this.hillshadeAltitude = hillshadeAltitude;
         this.hillshadeAzimuth = hillshadeAzimuth;
-        SRTMFileReader.getInstance().addFileReadListener(this);
+        SRTMTileProvider.getInstance().removeSRTMTileProviderListener(this);
     }
 
     /**
@@ -307,12 +307,12 @@ public class ElevationLayer extends Layer implements SRTMFileReadListener {
 
     @Override
     public synchronized void destroy() {
-        SRTMFileReader.getInstance().removeFileReadListener(this);
+        SRTMTileProvider.getInstance().removeSRTMTileProviderListener(this);
         super.destroy();
     }
 
     @Override
-    public void srtmTileRead(SRTMTile tile) {
+    public void elevationDataAvailable(SRTMTile tile) {
         if (isVisible())
             repaint();
     }

@@ -45,6 +45,8 @@ public class SRTMTileCache {
      * @param limit The maximum size of the cache in MiB.
      */
     public synchronized void setCacheSizeLimit(int limit) {
+        if (limit == cacheSizeLimit)
+            return;
         if (limit < ElevationPreferences.MIN_RAM_CACHE_SIZE_LIMIT)
             limit = ElevationPreferences.MIN_RAM_CACHE_SIZE_LIMIT;
         else if (limit > ElevationPreferences.MAX_RAM_CACHE_SIZE_LIMIT)
@@ -103,6 +105,19 @@ public class SRTMTileCache {
         if (cacheSize > cacheSizeLimit)
             cleanCache();
         return srtmTile;
+    }
+
+    /**
+     * Puts a new SRTM tile with the data and attributes from the given SRTM tile
+     * into the cache or updates an existing SRTM tile with this data and attributes
+     * if a tile with the provided ID already exists in the cache.
+     *
+     * @param tile An SRTM tile with the data and attributes to be cached.
+     * @return The new SRTM tile that was put into the cache or the existing SRTM
+     *         tile that was updated, never {@code null}.
+     */
+    public synchronized SRTMTile putOrUpdateSRTMTile(SRTMTile tile) {
+        return putOrUpdateSRTMTile(tile.getID(), tile.getType(), tile.getElevationData(), tile.getStatus());
     }
 
     /**

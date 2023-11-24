@@ -40,7 +40,7 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
 
     private boolean elevationZoomLevelEnabled = false;
 
-    private Timer timer = new Timer();
+    private final Timer timer = new Timer();
     private TimerTask pendingTimerTask = null;
 
     /**
@@ -139,35 +139,29 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
         else
             lonRange = 180 - lonWest + 180 + lonEast;
 
-        LatLon southWest = new LatLon(latSouth, lonWest);
-        LatLon northEast = new LatLon(latNorth, lonEast);
+        final LatLon southWest = new LatLon(latSouth, lonWest);
+        final LatLon northEast = new LatLon(latNorth, lonEast);
         elevationZoomLevelEnabled = latRange <= SRTMTile.SRTM_TILE_ARC_DEGREES
                 && lonRange <= SRTMTile.SRTM_TILE_ARC_DEGREES;
         updateEleText(null);
 
         if (elevationZoomLevelEnabled) {
-            if (pendingTimerTask != null)
-                pendingTimerTask.cancel();
-            timer.purge();
-            pendingTimerTask = new CacheSRTMTilesInMapBounds(southWest, northEast);
-            // Ensure caching of SRTM tiles for current map bounds after 5 s
-            timer.schedule(pendingTimerTask, 5000L);
-        }
-    }
-
-    private class CacheSRTMTilesInMapBounds extends TimerTask {
-
-        private ILatLon southWest;
-        private ILatLon northEast;
-
-        CacheSRTMTilesInMapBounds(ILatLon southWest, ILatLon northEast) {
-            this.southWest = southWest;
-            this.northEast = northEast;
-        }
-
-        @Override
-        public void run() {
-            LocalElevationLabel.this.srtmTileProvider.cacheSRTMTiles(southWest, northEast);
+            synchronized (timer) {
+                if (pendingTimerTask != null)
+                    pendingTimerTask.cancel();
+                timer.purge();
+                pendingTimerTask = new TimerTask() {
+                    @Override
+                    public void run() {
+                        srtmTileProvider.cacheSRTMTiles(southWest, northEast);
+                        synchronized (timer) {
+                            pendingTimerTask = null;
+                        }
+                    }
+                };
+                // Ensure caching of SRTM tiles for current map bounds after 5 s
+                timer.schedule(pendingTimerTask, 5000L);
+            }
         }
     }
 }

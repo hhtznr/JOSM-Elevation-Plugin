@@ -30,6 +30,8 @@ public class ElevationPlugin extends Plugin {
     private boolean elevationEnabled = Config.getPref().getBoolean(ElevationPreferences.ELEVATION_ENABLED,
             ElevationPreferences.DEFAULT_ELEVATION_ENABLED);
 
+    private SRTMTileProvider srtmTileProvider = null;
+
     private LocalElevationLabel localElevationLabel = null;
 
     private ElevationLayer elevationLayer = null;
@@ -104,6 +106,7 @@ public class ElevationPlugin extends Plugin {
     }
 
     private void setElevationEnabled(boolean enabled, MapFrame mapFrame) {
+        // Elevation enabled
         if (enabled) {
             IPreferences pref = Config.getPref();
             // SRTM file type that is preferred for reading and downloading
@@ -114,23 +117,30 @@ public class ElevationPlugin extends Plugin {
             SRTMTile.Interpolation elevationInterpolation = SRTMTile.Interpolation
                     .fromString(pref.get(ElevationPreferences.ELEVATION_INTERPOLATION,
                             ElevationPreferences.DEFAULT_ELEVATION_INTERPOLATION.toString()));
+
+            // Maximum size of the SRTM tile cache
+            int cacheSizeLimit = pref.getInt(ElevationPreferences.RAM_CACHE_SIZE_LIMIT,
+                    ElevationPreferences.DEFAULT_RAM_CACHE_SIZE_LIMIT);
             // Elevation layer
             boolean elevationLayerEnabled = pref.getBoolean(ElevationPreferences.ELEVATION_LAYER_ENABLED,
                     ElevationPreferences.DEFAULT_ELEVATION_LAYER_ENABLED);
             // Auto-download of SRTM files
             boolean elevationAutoDownloadEnabled = pref.getBoolean(ElevationPreferences.ELEVATION_AUTO_DOWNLOAD_ENABLED,
                     ElevationPreferences.DEFAULT_ELEVATION_AUTO_DOWNLOAD_ENABLED);
-            // Initialize and configure the SRTM file reader
-            SRTMTileProvider.getInstance().setPreferredSRTMType(preferredSRTMType);
-            SRTMTileProvider.getInstance().setElevationInterpolation(elevationInterpolation);
-            SRTMTileProvider.getInstance().setAutoDownloadEnabled(elevationAutoDownloadEnabled);
+            // Initialize and configure the SRTM tile provider
+            if (srtmTileProvider == null)
+                srtmTileProvider = new SRTMTileProvider();
+            srtmTileProvider.setPreferredSRTMType(preferredSRTMType);
+            srtmTileProvider.setElevationInterpolation(elevationInterpolation);
+            srtmTileProvider.setCacheSizeLimit(cacheSizeLimit);
+            srtmTileProvider.setAutoDownloadEnabled(elevationAutoDownloadEnabled);
             if (mapFrame != null) {
                 if (localElevationLabel == null)
-                    localElevationLabel = new LocalElevationLabel(mapFrame);
+                    localElevationLabel = new LocalElevationLabel(mapFrame, srtmTileProvider);
                 else
                     localElevationLabel.addToMapFrame(mapFrame);
 
-                if (elevationLayerEnabled && elevationLayer == null) {
+                if (elevationLayerEnabled) {
                     double renderingLimit = pref.getDouble(ElevationPreferences.ELEVATION_LAYER_RENDERING_LIMIT,
                             ElevationPreferences.DEFAULT_ELEVATION_LAYER_RENDERING_LIMIT);
                     int isostep = pref.getInt(ElevationPreferences.CONTOUR_LINE_ISOSTEP,
@@ -139,12 +149,21 @@ public class ElevationPlugin extends Plugin {
                             ElevationPreferences.DEFAULT_HILLSHADE_ALTITUDE);
                     int azimuth = pref.getInt(ElevationPreferences.HILLSHADE_AZIMUTH,
                             ElevationPreferences.DEFAULT_HILLSHADE_AZIMUTH);
-                    elevationLayer = new ElevationLayer(renderingLimit, isostep, altitude, azimuth);
-                    MainApplication.getLayerManager().addLayer(elevationLayer);
-                    mapFrame.addMapMode(new IconToggleButton(new ElevationMapMode(elevationLayer)));
+                    if (elevationLayer == null) {
+                        elevationLayer = new ElevationLayer(srtmTileProvider, renderingLimit, isostep, altitude,
+                                azimuth);
+                        MainApplication.getLayerManager().addLayer(elevationLayer);
+                        mapFrame.addMapMode(new IconToggleButton(new ElevationMapMode(elevationLayer)));
+                    } else {
+                        elevationLayer.setRenderingLimit(renderingLimit);
+                        elevationLayer.setContourLineIsostep(isostep);
+                        elevationLayer.setHillshadeIllumination(altitude, azimuth);
+                    }
                 }
             }
-        } else {
+        }
+        // Elevation disabled
+        else {
             if (localElevationLabel != null) {
                 localElevationLabel.remove();
                 localElevationLabel = null;
@@ -154,7 +173,7 @@ public class ElevationPlugin extends Plugin {
                 elevationLayer = null;
                 // TODO: Map mode?
             }
-            SRTMTileProvider.destroyInstance();
+            srtmTileProvider = null;
         }
         elevationEnabled = enabled;
     }

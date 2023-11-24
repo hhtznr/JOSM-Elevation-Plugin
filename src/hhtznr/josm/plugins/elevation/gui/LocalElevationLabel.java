@@ -34,6 +34,8 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
 
     private final DecimalFormat ELEVATION_FORMAT_INTERPOLATION = new DecimalFormat("0.0 m");
 
+    private final SRTMTileProvider srtmTileProvider;
+
     private MapFrame mapFrame = null;
 
     private boolean elevationZoomLevelEnabled = false;
@@ -41,9 +43,18 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
     private Timer timer = new Timer();
     private TimerTask pendingTimerTask = null;
 
-    public LocalElevationLabel(MapFrame mapFrame) {
-        super("ele", "The terrain elevation at the mouse pointer.", 10, MapStatus.PROP_BACKGROUND_COLOR.get());
-
+    /**
+     * Creates a new map status label which displays the terrain elevation at the
+     * location of the mouse pointer.
+     *
+     * @param mapFrame     The map frame, where the label is to be located in the
+     *                     status bar.
+     * @param tileProvider The SRTM tile provider providing the elevation data to
+     *                     update this label.
+     */
+    public LocalElevationLabel(MapFrame mapFrame, SRTMTileProvider tileProvider) {
+        super("ele", "Terrain elevation at the mouse pointer.", 10, MapStatus.PROP_BACKGROUND_COLOR.get());
+        srtmTileProvider = tileProvider;
         setForeground(MapStatus.PROP_FOREGROUND_COLOR.get());
         addToMapFrame(mapFrame);
     }
@@ -97,9 +108,9 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
             setText("");
             return;
         }
-        LatLonEle latLonEle = SRTMTileProvider.getInstance().getLatLonEle(latLon);
+        LatLonEle latLonEle = srtmTileProvider.getLatLonEle(latLon);
         DecimalFormat eleFormat;
-        if (SRTMTileProvider.getInstance().getElevationInterpolation() == SRTMTile.Interpolation.NONE)
+        if (srtmTileProvider.getElevationInterpolation() == SRTMTile.Interpolation.NONE)
             eleFormat = ELEVATION_FORMAT_NO_INTERPOLATION;
         else
             eleFormat = ELEVATION_FORMAT_INTERPOLATION;
@@ -144,7 +155,7 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
         }
     }
 
-    private static class CacheSRTMTilesInMapBounds extends TimerTask {
+    private class CacheSRTMTilesInMapBounds extends TimerTask {
 
         private ILatLon southWest;
         private ILatLon northEast;
@@ -156,7 +167,7 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
 
         @Override
         public void run() {
-            SRTMTileProvider.getInstance().cacheSRTMTiles(southWest, northEast);
+            LocalElevationLabel.this.srtmTileProvider.cacheSRTMTiles(southWest, northEast);
         }
     }
 }

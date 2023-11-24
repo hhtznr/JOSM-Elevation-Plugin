@@ -47,6 +47,7 @@ public class ElevationLayer extends Layer implements SRTMTileProviderListener {
      */
     public static final Color CONTOUR_LINE_COLOR = new Color(210, 180, 115);
 
+    private final SRTMTileProvider srtmTileProvider;
     private double renderingLimitArcDegrees;
     private int contourLineIsostep;
     private int hillshadeAltitude;
@@ -64,6 +65,8 @@ public class ElevationLayer extends Layer implements SRTMTileProviderListener {
     /**
      * Creates a new elevation layer.
      *
+     * @param tileProvider             The SRTM tile provider providing the
+     *                                 elevation data for this layer.
      * @param renderingLimitArcDegrees The maximum size of the displayed map
      *                                 (latitude or longitude) where, if exceeded,
      *                                 rendering of the layer is switched off to
@@ -75,14 +78,15 @@ public class ElevationLayer extends Layer implements SRTMTileProviderListener {
      * @param hillshadeAzimuth         The azimuth (degrees) of the illumination
      *                                 source in hillshade computation.
      */
-    public ElevationLayer(double renderingLimitArcDegrees, int contourLineIsostep, int hillshadeAltitude,
+    public ElevationLayer(SRTMTileProvider tileProvider, double renderingLimitArcDegrees, int contourLineIsostep, int hillshadeAltitude,
             int hillshadeAzimuth) {
         super("Elevation Layer");
         this.renderingLimitArcDegrees = renderingLimitArcDegrees;
         this.contourLineIsostep = contourLineIsostep;
         this.hillshadeAltitude = hillshadeAltitude;
         this.hillshadeAzimuth = hillshadeAzimuth;
-        SRTMTileProvider.getInstance().removeSRTMTileProviderListener(this);
+        srtmTileProvider = tileProvider;
+        srtmTileProvider.addSRTMTileProviderListener(this);
     }
 
     /**
@@ -162,12 +166,12 @@ public class ElevationLayer extends Layer implements SRTMTileProviderListener {
                     // existing grid does not cover the current bounds
                     if ((drawContourLines || drawElevationRaster)
                             && (contourLineTileGrid == null || !contourLineTileGrid.covers(bbox))) {
-                        contourLineTileGrid = new SRTMTileGrid(bbox);
+                        contourLineTileGrid = new SRTMTileGrid(srtmTileProvider, bbox);
                         contourLineSegments = null;
                     }
                     // Create a new SRTM tile grid for hillshade use
                     if (drawHillshade) {
-                        hillshadeTileGrid = new SRTMTileGrid(bbox);
+                        hillshadeTileGrid = new SRTMTileGrid(srtmTileProvider, bbox);
                         hillshadeImage = null;
                     }
                 }
@@ -307,7 +311,7 @@ public class ElevationLayer extends Layer implements SRTMTileProviderListener {
 
     @Override
     public synchronized void destroy() {
-        SRTMTileProvider.getInstance().removeSRTMTileProviderListener(this);
+        srtmTileProvider.removeSRTMTileProviderListener(this);
         super.destroy();
     }
 

@@ -32,8 +32,6 @@ import hhtznr.josm.plugins.elevation.io.SRTMFiles;
  */
 public class SRTMTileProvider implements SRTMFileDownloadListener {
 
-    private static SRTMTileProvider srtmTileProvider = null;
-
     private File srtmDirectory = null;
 
     /**
@@ -54,26 +52,7 @@ public class SRTMTileProvider implements SRTMFileDownloadListener {
 
     private final ExecutorService fileReadExecutor = Executors.newSingleThreadExecutor();
 
-    /**
-     * Returns a singleton instance of the SRTM tile provider which is initialized
-     * with values from JOSM preferences or default values if these are not defined.
-     *
-     * @return Singleton instance.
-     */
-    public static SRTMTileProvider getInstance() {
-        if (srtmTileProvider == null)
-            srtmTileProvider = new SRTMTileProvider();
-        return srtmTileProvider;
-    }
-
-    /**
-     * Destroys the singleton instance.
-     */
-    public static void destroyInstance() {
-        srtmTileProvider = null;
-    }
-
-    private SRTMTileProvider() {
+    public SRTMTileProvider() {
         this(ElevationPreferences.DEFAULT_SRTM_DIRECTORY,
                 Config.getPref().getInt(ElevationPreferences.RAM_CACHE_SIZE_LIMIT,
                         ElevationPreferences.DEFAULT_RAM_CACHE_SIZE_LIMIT),

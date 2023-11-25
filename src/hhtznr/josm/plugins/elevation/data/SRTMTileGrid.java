@@ -31,14 +31,14 @@ public class SRTMTileGrid {
      * @param tileProvider The SRTM tile provider providing tiles for this grid.
      * @param bounds       The bounds in latitude-longitude coordinate space.
      */
-    public SRTMTileGrid(SRTMTileProvider tileProvider, Bounds bounds) {
+    protected SRTMTileGrid(SRTMTileProvider tileProvider, Bounds bounds) {
         double latLonIncr;
         if (tileProvider.getPreferredSRTMType() == SRTMTile.Type.SRTM1)
             latLonIncr = SRTMTile.SRTM_TILE_ARC_DEGREES / (SRTMTile.SRTM1_TILE_LENGTH - 1);
         else
             latLonIncr = SRTMTile.SRTM_TILE_ARC_DEGREES / (SRTMTile.SRTM3_TILE_LENGTH - 1);
 
-        // Increase the boundss by three raster increments, but not more as the maximum
+        // Increase the bounds by three raster increments, but not more as the maximum
         // possible coordinate range (-90 <= lat <= 90, -180 <= lon <= 180)
         // This will ensure that computed contour lines actually cover the bounds
         double latMin = Math.max(bounds.getMinLat() - 3 * latLonIncr, -90.0);

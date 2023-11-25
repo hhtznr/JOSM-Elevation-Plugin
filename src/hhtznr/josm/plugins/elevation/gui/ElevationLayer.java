@@ -166,12 +166,12 @@ public class ElevationLayer extends Layer implements SRTMTileProviderListener {
                     // existing grid does not cover the current bounds
                     if ((drawContourLines || drawElevationRaster)
                             && (contourLineTileGrid == null || !contourLineTileGrid.covers(bbox))) {
-                        contourLineTileGrid = new SRTMTileGrid(srtmTileProvider, bbox);
+                        contourLineTileGrid = srtmTileProvider.getSRTMTileGrid(bbox);
                         contourLineSegments = null;
                     }
                     // Create a new SRTM tile grid for hillshade use
                     if (drawHillshade) {
-                        hillshadeTileGrid = new SRTMTileGrid(srtmTileProvider, bbox);
+                        hillshadeTileGrid = srtmTileProvider.getSRTMTileGrid(bbox);
                         hillshadeImage = null;
                     }
                 }

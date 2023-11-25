@@ -69,7 +69,6 @@ public class ElevationPlugin extends Plugin {
      */
     @Override
     public void mapFrameInitialized(MapFrame oldFrame, MapFrame newFrame) {
-        super.mapFrameInitialized(oldFrame, newFrame);
         setElevationEnabled(elevationEnabled, newFrame);
     }
 

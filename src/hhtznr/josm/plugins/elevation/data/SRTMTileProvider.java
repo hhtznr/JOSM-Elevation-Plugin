@@ -13,6 +13,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.ILatLon;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.Logging;
@@ -52,6 +53,9 @@ public class SRTMTileProvider implements SRTMFileDownloadListener {
 
     private final ExecutorService fileReadExecutor = Executors.newSingleThreadExecutor();
 
+    /**
+     * Creates a new SRTM tile provider based on preferences or defaults.
+     */
     public SRTMTileProvider() {
         this(ElevationPreferences.DEFAULT_SRTM_DIRECTORY,
                 Config.getPref().getInt(ElevationPreferences.RAM_CACHE_SIZE_LIMIT,
@@ -80,7 +84,7 @@ public class SRTMTileProvider implements SRTMFileDownloadListener {
             SRTMTile.Interpolation eleInterpolation, boolean autoDownloadEnabled) {
         srtmFileReader = new SRTMFileReader(srtmDirectory);
         tileCache = new SRTMTileCache(ramCacheMaxSize);
-        setSrtmDirectory(srtmDirectory);
+        setSRTMDirectory(srtmDirectory);
         this.preferredSRTMType = preferredSRTMType;
         this.eleInterpolation = eleInterpolation;
         setAutoDownloadEnabled(autoDownloadEnabled);
@@ -91,7 +95,7 @@ public class SRTMTileProvider implements SRTMFileDownloadListener {
      *
      * @return The SRTM directory.
      */
-    public File getSrtmDirectory() {
+    public File getSRTMDirectory() {
         return srtmDirectory;
     }
 
@@ -101,7 +105,7 @@ public class SRTMTileProvider implements SRTMFileDownloadListener {
      *
      * @param srtmDirectory The directory to set as SRTM directory.
      */
-    public void setSrtmDirectory(File srtmDirectory) {
+    public void setSRTMDirectory(File srtmDirectory) {
         if (!srtmDirectory.exists() && srtmDirectory.mkdirs())
             Logging.info("Elevation: Created directory for SRTM files: " + srtmDirectory.toString());
         if (srtmDirectory.isDirectory()) {
@@ -272,7 +276,7 @@ public class SRTMTileProvider implements SRTMFileDownloadListener {
 
             // Data previously not in cache
             if (srtmTile == null) {
-                File srtmFile = getSrtmFile(srtmTileID, preferredSRTMType);
+                File srtmFile = getSRTMFile(srtmTileID, preferredSRTMType);
                 // If an SRTM file with the data exists on disk, read it in
                 if (srtmFile != null) {
                     Logging.info("Elevation: Caching data of SRTM tile " + srtmTileID + " from file "
@@ -323,7 +327,7 @@ public class SRTMTileProvider implements SRTMFileDownloadListener {
      * @return The SRTM file or {@code null} if no file is available for the given
      *         tile ID.
      */
-    private File getSrtmFile(String srtmTileID, SRTMTile.Type preferredSRTMType) {
+    private File getSRTMFile(String srtmTileID, SRTMTile.Type preferredSRTMType) {
         if (srtmDirectory == null) {
             Logging.error("Elevation: Cannot read SRTM file for tile " + srtmTileID + " as SRTM directory is not set");
             return null;
@@ -396,6 +400,19 @@ public class SRTMTileProvider implements SRTMFileDownloadListener {
         };
 
         return fileReadExecutor.submit(fileReadTask);
+    }
+
+    /**
+     * Returns a new SRTM tile grid that is able to provide elevation raster data
+     * for the specified bounds. The elevation data is provided regardless of the
+     * bounds intersecting one ore multiple SRTM tiles. The only precondition is
+     * that the needed SRTM tiles are available or can be loaded.
+     *
+     * @param bounds The bounds to be covered by the SRTM tile grid.
+     * @return The SRTM tile grid.
+     */
+    public SRTMTileGrid getSRTMTileGrid(Bounds bounds) {
+        return new SRTMTileGrid(this, bounds);
     }
 
     public void setAutoDownloadEnabled(boolean enabled) {

@@ -285,8 +285,6 @@ public class SRTMTileProvider implements SRTMFileDownloadListener {
                     srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.READING_SCHEDULED);
                     try {
                         getSRTMTile(srtmFile);
-                        // TODO: Case non-preferred tile received
-
                     } catch (RejectedExecutionException e) {
                         Logging.info("Elevation: Execution of file read task for SRTM tile " + srtmTileID
                                 + " from file " + srtmFile.getAbsolutePath() + " rejected: " + e.toString());

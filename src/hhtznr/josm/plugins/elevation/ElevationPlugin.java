@@ -1,7 +1,7 @@
 package hhtznr.josm.plugins.elevation;
 
+import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
-import hhtznr.josm.plugins.elevation.data.SRTMTileProvider;
 import hhtznr.josm.plugins.elevation.gui.ElevationLayer;
 import hhtznr.josm.plugins.elevation.gui.ElevationMapMode;
 import hhtznr.josm.plugins.elevation.gui.ElevationTabPreferenceSetting;
@@ -30,7 +30,7 @@ public class ElevationPlugin extends Plugin {
     private boolean elevationEnabled = Config.getPref().getBoolean(ElevationPreferences.ELEVATION_ENABLED,
             ElevationPreferences.DEFAULT_ELEVATION_ENABLED);
 
-    private SRTMTileProvider srtmTileProvider = null;
+    private ElevationDataProvider elevationDataProvider = null;
 
     private LocalElevationLabel localElevationLabel = null;
 
@@ -126,16 +126,16 @@ public class ElevationPlugin extends Plugin {
             // Auto-download of SRTM files
             boolean elevationAutoDownloadEnabled = pref.getBoolean(ElevationPreferences.ELEVATION_AUTO_DOWNLOAD_ENABLED,
                     ElevationPreferences.DEFAULT_ELEVATION_AUTO_DOWNLOAD_ENABLED);
-            // Initialize and configure the SRTM tile provider
-            if (srtmTileProvider == null)
-                srtmTileProvider = new SRTMTileProvider();
-            srtmTileProvider.setPreferredSRTMType(preferredSRTMType);
-            srtmTileProvider.setElevationInterpolation(elevationInterpolation);
-            srtmTileProvider.setCacheSizeLimit(cacheSizeLimit);
-            srtmTileProvider.setAutoDownloadEnabled(elevationAutoDownloadEnabled);
+            // Initialize and configure the elevation data provider
+            if (elevationDataProvider == null)
+                elevationDataProvider = new ElevationDataProvider();
+            elevationDataProvider.setPreferredSRTMType(preferredSRTMType);
+            elevationDataProvider.setElevationInterpolation(elevationInterpolation);
+            elevationDataProvider.setCacheSizeLimit(cacheSizeLimit);
+            elevationDataProvider.setAutoDownloadEnabled(elevationAutoDownloadEnabled);
             if (mapFrame != null) {
                 if (localElevationLabel == null)
-                    localElevationLabel = new LocalElevationLabel(mapFrame, srtmTileProvider);
+                    localElevationLabel = new LocalElevationLabel(mapFrame, elevationDataProvider);
                 else
                     localElevationLabel.addToMapFrame(mapFrame);
 
@@ -149,7 +149,7 @@ public class ElevationPlugin extends Plugin {
                     int azimuth = pref.getInt(ElevationPreferences.HILLSHADE_AZIMUTH,
                             ElevationPreferences.DEFAULT_HILLSHADE_AZIMUTH);
                     if (elevationLayer == null) {
-                        elevationLayer = new ElevationLayer(srtmTileProvider, renderingLimit, isostep, altitude,
+                        elevationLayer = new ElevationLayer(elevationDataProvider, renderingLimit, isostep, altitude,
                                 azimuth);
                         MainApplication.getLayerManager().addLayer(elevationLayer);
                         mapFrame.addMapMode(new IconToggleButton(new ElevationMapMode(elevationLayer)));
@@ -172,7 +172,7 @@ public class ElevationPlugin extends Plugin {
                 elevationLayer = null;
                 // TODO: Map mode?
             }
-            srtmTileProvider = null;
+            elevationDataProvider = null;
         }
         elevationEnabled = enabled;
     }

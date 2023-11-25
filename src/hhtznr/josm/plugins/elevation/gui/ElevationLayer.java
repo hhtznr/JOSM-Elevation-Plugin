@@ -28,26 +28,26 @@ import org.openstreetmap.josm.gui.layer.Layer;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Logging;
 
+import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
+import hhtznr.josm.plugins.elevation.data.ElevationDataProviderListener;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.LatLonLine;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
 import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
-import hhtznr.josm.plugins.elevation.data.SRTMTileProvider;
-import hhtznr.josm.plugins.elevation.data.SRTMTileProviderListener;
 import hhtznr.josm.plugins.elevation.math.Hillshade;
 
 /**
  * Class implementing a map layer for displaying elevation contour lines and
  * hillshade.
  */
-public class ElevationLayer extends Layer implements SRTMTileProviderListener {
+public class ElevationLayer extends Layer implements ElevationDataProviderListener {
 
     /**
      * The color in which the contour lines are painted on the map.
      */
     public static final Color CONTOUR_LINE_COLOR = new Color(210, 180, 115);
 
-    private final SRTMTileProvider srtmTileProvider;
+    private final ElevationDataProvider elevationDataProvider;
     private double renderingLimitArcDegrees;
     private int contourLineIsostep;
     private int hillshadeAltitude;
@@ -65,8 +65,8 @@ public class ElevationLayer extends Layer implements SRTMTileProviderListener {
     /**
      * Creates a new elevation layer.
      *
-     * @param tileProvider             The SRTM tile provider providing the
-     *                                 elevation data for this layer.
+     * @param elevationDataProvider    The elevation data provider providing the
+     *                                 data for this layer.
      * @param renderingLimitArcDegrees The maximum size of the displayed map
      *                                 (latitude or longitude) where, if exceeded,
      *                                 rendering of the layer is switched off to
@@ -78,15 +78,15 @@ public class ElevationLayer extends Layer implements SRTMTileProviderListener {
      * @param hillshadeAzimuth         The azimuth (degrees) of the illumination
      *                                 source in hillshade computation.
      */
-    public ElevationLayer(SRTMTileProvider tileProvider, double renderingLimitArcDegrees, int contourLineIsostep, int hillshadeAltitude,
-            int hillshadeAzimuth) {
+    public ElevationLayer(ElevationDataProvider elevationDataProvider, double renderingLimitArcDegrees,
+            int contourLineIsostep, int hillshadeAltitude, int hillshadeAzimuth) {
         super("Elevation Layer");
         this.renderingLimitArcDegrees = renderingLimitArcDegrees;
         this.contourLineIsostep = contourLineIsostep;
         this.hillshadeAltitude = hillshadeAltitude;
         this.hillshadeAzimuth = hillshadeAzimuth;
-        srtmTileProvider = tileProvider;
-        srtmTileProvider.addSRTMTileProviderListener(this);
+        this.elevationDataProvider = elevationDataProvider;
+        elevationDataProvider.addElevationDataProviderListener(this);
     }
 
     /**
@@ -166,12 +166,12 @@ public class ElevationLayer extends Layer implements SRTMTileProviderListener {
                     // existing grid does not cover the current bounds
                     if ((drawContourLines || drawElevationRaster)
                             && (contourLineTileGrid == null || !contourLineTileGrid.covers(bbox))) {
-                        contourLineTileGrid = srtmTileProvider.getSRTMTileGrid(bbox);
+                        contourLineTileGrid = elevationDataProvider.getSRTMTileGrid(bbox);
                         contourLineSegments = null;
                     }
                     // Create a new SRTM tile grid for hillshade use
                     if (drawHillshade) {
-                        hillshadeTileGrid = srtmTileProvider.getSRTMTileGrid(bbox);
+                        hillshadeTileGrid = elevationDataProvider.getSRTMTileGrid(bbox);
                         hillshadeImage = null;
                     }
                 }
@@ -311,7 +311,7 @@ public class ElevationLayer extends Layer implements SRTMTileProviderListener {
 
     @Override
     public synchronized void destroy() {
-        srtmTileProvider.removeSRTMTileProviderListener(this);
+        elevationDataProvider.removeElevationDataProviderListener(this);
         super.destroy();
     }
 

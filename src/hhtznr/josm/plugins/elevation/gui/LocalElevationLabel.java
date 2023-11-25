@@ -16,9 +16,9 @@ import org.openstreetmap.josm.gui.NavigatableComponent.ZoomChangeListener;
 import org.openstreetmap.josm.gui.widgets.ImageLabel;
 import org.openstreetmap.josm.tools.GBC;
 
+import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
-import hhtznr.josm.plugins.elevation.data.SRTMTileProvider;
 
 /**
  * An image label for the status line of a map frame, which is intended to
@@ -34,7 +34,7 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
 
     private final DecimalFormat ELEVATION_FORMAT_INTERPOLATION = new DecimalFormat("0.0 m");
 
-    private final SRTMTileProvider srtmTileProvider;
+    private final ElevationDataProvider elevationDataProvider;
 
     private MapFrame mapFrame = null;
 
@@ -47,14 +47,14 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
      * Creates a new map status label which displays the terrain elevation at the
      * location of the mouse pointer.
      *
-     * @param mapFrame     The map frame, where the label is to be located in the
-     *                     status bar.
-     * @param tileProvider The SRTM tile provider providing the elevation data to
-     *                     update this label.
+     * @param mapFrame              The map frame, where the label is to be located
+     *                              in the status bar.
+     * @param elevationDataProvider The elevation data provider providing the data
+     *                              to update this label.
      */
-    public LocalElevationLabel(MapFrame mapFrame, SRTMTileProvider tileProvider) {
+    public LocalElevationLabel(MapFrame mapFrame, ElevationDataProvider elevationDataProvider) {
         super("ele", "Terrain elevation at the mouse pointer.", 10, MapStatus.PROP_BACKGROUND_COLOR.get());
-        srtmTileProvider = tileProvider;
+        this.elevationDataProvider = elevationDataProvider;
         setForeground(MapStatus.PROP_FOREGROUND_COLOR.get());
         addToMapFrame(mapFrame);
     }
@@ -108,9 +108,9 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
             setText("");
             return;
         }
-        LatLonEle latLonEle = srtmTileProvider.getLatLonEle(latLon);
+        LatLonEle latLonEle = elevationDataProvider.getLatLonEle(latLon);
         DecimalFormat eleFormat;
-        if (srtmTileProvider.getElevationInterpolation() == SRTMTile.Interpolation.NONE)
+        if (elevationDataProvider.getElevationInterpolation() == SRTMTile.Interpolation.NONE)
             eleFormat = ELEVATION_FORMAT_NO_INTERPOLATION;
         else
             eleFormat = ELEVATION_FORMAT_INTERPOLATION;
@@ -153,7 +153,7 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
                 pendingTimerTask = new TimerTask() {
                     @Override
                     public void run() {
-                        srtmTileProvider.cacheSRTMTiles(southWest, northEast);
+                        elevationDataProvider.cacheSRTMTiles(southWest, northEast);
                         synchronized (timer) {
                             pendingTimerTask = null;
                         }

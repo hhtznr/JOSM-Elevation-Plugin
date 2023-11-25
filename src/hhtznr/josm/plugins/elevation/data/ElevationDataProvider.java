@@ -25,18 +25,18 @@ import hhtznr.josm.plugins.elevation.io.SRTMFileReader;
 import hhtznr.josm.plugins.elevation.io.SRTMFiles;
 
 /**
- * Class {@code SRTMTileProvider} provides SRTM tiles and elevation data
+ * Class {@code ElevationDataProvider} provides SRTM tiles and elevation data
  * obtained from these tiles. The data is read from on-disk SRTM files and
  * cached in RAM. Optionally, missing SRTM files can be downloaded.
  *
  * @author Harald Hetzner
  */
-public class SRTMTileProvider implements SRTMFileDownloadListener {
+public class ElevationDataProvider implements SRTMFileDownloadListener {
 
     private File srtmDirectory = null;
 
     /**
-     * This SRTM tile provider's in-memory cache where SRTM tiles read from file are
+     * This elevation data provider's in-memory cache where SRTM tiles read from file are
      * stored.
      */
     private final SRTMTileCache tileCache;
@@ -49,14 +49,14 @@ public class SRTMTileProvider implements SRTMFileDownloadListener {
     private SRTMTile.Interpolation eleInterpolation;
     private boolean autoDownloadEnabled = false;
 
-    private final LinkedList<SRTMTileProviderListener> listeners = new LinkedList<>();
+    private final LinkedList<ElevationDataProviderListener> listeners = new LinkedList<>();
 
     private final ExecutorService fileReadExecutor = Executors.newSingleThreadExecutor();
 
     /**
-     * Creates a new SRTM tile provider based on preferences or defaults.
+     * Creates a new elevation data provider based on preferences or defaults.
      */
-    public SRTMTileProvider() {
+    public ElevationDataProvider() {
         this(ElevationPreferences.DEFAULT_SRTM_DIRECTORY,
                 Config.getPref().getInt(ElevationPreferences.RAM_CACHE_SIZE_LIMIT,
                         ElevationPreferences.DEFAULT_RAM_CACHE_SIZE_LIMIT),
@@ -69,7 +69,7 @@ public class SRTMTileProvider implements SRTMFileDownloadListener {
     }
 
     /**
-     * Creates a new SRTM tile provider.
+     * Creates a new elevation data provider.
      *
      * @param srtmDirectory       The directory from which to read and to which to
      *                            download SRTM files.
@@ -80,7 +80,7 @@ public class SRTMTileProvider implements SRTMFileDownloadListener {
      * @param autoDownloadEnabled If {@code true} automatic downloading of missing
      *                            SRTM tiles will be attempted.
      */
-    private SRTMTileProvider(File srtmDirectory, int ramCacheMaxSize, SRTMTile.Type preferredSRTMType,
+    private ElevationDataProvider(File srtmDirectory, int ramCacheMaxSize, SRTMTile.Type preferredSRTMType,
             SRTMTile.Interpolation eleInterpolation, boolean autoDownloadEnabled) {
         srtmFileReader = new SRTMFileReader(srtmDirectory);
         tileCache = new SRTMTileCache(ramCacheMaxSize);
@@ -130,7 +130,7 @@ public class SRTMTileProvider implements SRTMFileDownloadListener {
     }
 
     /**
-     * Sets the SRTM type which is preferred by this SRTM tile provider.
+     * Sets the SRTM type which is preferred by this elevation data provider.
      *
      * @param type The SRTM type to be preferred.
      */
@@ -387,7 +387,7 @@ public class SRTMTileProvider implements SRTMFileDownloadListener {
             try {
                 srtmTile = tileCache.putOrUpdateSRTMTile(srtmFileReader.readSRTMFile(srtmFile));
                 synchronized (listeners) {
-                    for (SRTMTileProviderListener listener : listeners)
+                    for (ElevationDataProviderListener listener : listeners)
                         listener.elevationDataAvailable(srtmTile);
                 }
                 return srtmTile;
@@ -448,12 +448,13 @@ public class SRTMTileProvider implements SRTMFileDownloadListener {
     }
 
     /**
-     * Adds a tile provider listener to this SRTM tile provider. All listeners are
-     * informed if elevation data for a particular SRTM tile is available.
+     * Adds an elevation data provider listener to this elevation data provider. All
+     * listeners are informed if elevation data for a particular SRTM tile is
+     * available.
      *
      * @param listener The listener to add.
      */
-    public void addSRTMTileProviderListener(SRTMTileProviderListener listener) {
+    public void addElevationDataProviderListener(ElevationDataProviderListener listener) {
         synchronized (listeners) {
             if (!listeners.contains(listener))
                 listeners.add(listener);
@@ -461,11 +462,11 @@ public class SRTMTileProvider implements SRTMFileDownloadListener {
     }
 
     /**
-     * Removes a listener from this SRTM tile provider.
+     * Removes a listener from this elevation data provider.
      *
      * @param listener The listener to be removed.
      */
-    public void removeSRTMTileProviderListener(SRTMTileProviderListener listener) {
+    public void removeElevationDataProviderListener(ElevationDataProviderListener listener) {
         synchronized (listeners) {
             listeners.remove(listener);
         }

@@ -6,7 +6,7 @@ package hhtznr.josm.plugins.elevation.data;
  *
  * @author Harald Hetzner
  */
-public interface SRTMTileProviderListener {
+public interface ElevationDataProviderListener {
 
     /**
      * Informs the implementing class that elevation data from a requested SRTM tile

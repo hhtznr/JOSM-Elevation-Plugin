@@ -28,12 +28,12 @@ public class SRTMTileGrid {
      * Creates a new 2D grid of SRTM tiles to cover the given latitude-longitude
      * bound with elevation data.
      *
-     * @param tileProvider The SRTM tile provider providing tiles for this grid.
+     * @param elevationDataProvider The elevation data provider providing tiles for this grid.
      * @param bounds       The bounds in latitude-longitude coordinate space.
      */
-    protected SRTMTileGrid(SRTMTileProvider tileProvider, Bounds bounds) {
+    protected SRTMTileGrid(ElevationDataProvider elevationDataProvider, Bounds bounds) {
         double latLonIncr;
-        if (tileProvider.getPreferredSRTMType() == SRTMTile.Type.SRTM1)
+        if (elevationDataProvider.getPreferredSRTMType() == SRTMTile.Type.SRTM1)
             latLonIncr = SRTMTile.SRTM_TILE_ARC_DEGREES / (SRTMTile.SRTM1_TILE_LENGTH - 1);
         else
             latLonIncr = SRTMTile.SRTM_TILE_ARC_DEGREES / (SRTMTile.SRTM3_TILE_LENGTH - 1);
@@ -67,7 +67,7 @@ public class SRTMTileGrid {
         }
 
         // Trigger needed tiles being cached, if they are not cached yet
-        tileProvider.cacheSRTMTiles(gridIntLatSouth, gridIntLonWest, gridIntLatNorth, gridIntLonEast);
+        elevationDataProvider.cacheSRTMTiles(gridIntLatSouth, gridIntLonWest, gridIntLatNorth, gridIntLonEast);
 
         // Create an array, which stores the clipped SRTM tiles covering the bounds
         clippedTiles = new ClippedSRTMTile[gridIntLatNorth - gridIntLatSouth + 1][gridIntLonEast - gridIntLonWest + 1];
@@ -100,7 +100,7 @@ public class SRTMTileGrid {
                     // Calling the getter method will ensure that tiles are being read or downloaded
                     // System.out.println("SRMTTileGrid(): Get SRTM tile for lat = " + gridLat + ",
                     // lon = " + gridLon);
-                    SRTMTile tile = tileProvider.getSRTMTile(SRTMTile.getTileID(gridLat, gridLon));
+                    SRTMTile tile = elevationDataProvider.getSRTMTile(SRTMTile.getTileID(gridLat, gridLon));
                     // For the most southern tile, its southern edge needs to be clipped
                     if (gridLat == gridIntLatSouth)
                         tileLatSouth = southWest.lat();
@@ -141,7 +141,7 @@ public class SRTMTileGrid {
                     tileLonEast = lon + 1;
 
                 for (int lat = gridIntLatSouth; lat <= gridIntLatNorth; lat++) {
-                    SRTMTile tile = tileProvider.getSRTMTile(SRTMTile.getTileID(lat, lon));
+                    SRTMTile tile = elevationDataProvider.getSRTMTile(SRTMTile.getTileID(lat, lon));
                     if (lat == gridIntLatSouth)
                         tileLatSouth = southWest.lat();
                     else
@@ -167,7 +167,7 @@ public class SRTMTileGrid {
                     tileLonEast = lon + 1;
 
                 for (int lat = gridIntLatSouth; lat <= gridIntLatNorth; lat++) {
-                    SRTMTile tile = tileProvider.getSRTMTile(SRTMTile.getTileID(lat, lon));
+                    SRTMTile tile = elevationDataProvider.getSRTMTile(SRTMTile.getTileID(lat, lon));
                     if (lat == gridIntLatSouth)
                         tileLatSouth = southWest.lat();
                     else

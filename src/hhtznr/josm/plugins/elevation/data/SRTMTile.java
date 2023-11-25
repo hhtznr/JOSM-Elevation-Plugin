@@ -110,7 +110,7 @@ public class SRTMTile {
     /**
      * SRTM file types (SRTM1, SRTM3).
      */
-    public enum Type {
+    public static enum Type {
         /**
          * SRTM1: elevation sampled at 1 arc-second
          */
@@ -161,7 +161,7 @@ public class SRTMTile {
      * Status of SRTM tiles (loading, valid, missing, download scheduled,
      * downloading, download failed).
      */
-    public enum Status {
+    public static enum Status {
         /**
          * Status indicating that reading of the SRTM tile from disk has been scheduled.
          */
@@ -226,7 +226,7 @@ public class SRTMTile {
     /**
      * Type of elevation data interpolation.
      */
-    public enum Interpolation {
+    public static enum Interpolation {
         /**
          * No interpolation.
          */

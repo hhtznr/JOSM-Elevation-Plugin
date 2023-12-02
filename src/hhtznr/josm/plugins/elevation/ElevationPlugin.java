@@ -35,12 +35,6 @@ public class ElevationPlugin extends Plugin {
 
     private ElevationLayer elevationLayer = null;
 
-    private static ElevationPlugin instance = null;
-
-    public static ElevationPlugin getInstance() {
-        return instance;
-    }
-
     /**
      * Initializes the plugin.
      *
@@ -48,7 +42,6 @@ public class ElevationPlugin extends Plugin {
      */
     public ElevationPlugin(PluginInformation info) {
         super(info);
-        instance = this;
         Logging.info("Elevation: Plugin initialized");
     }
 
@@ -80,7 +73,7 @@ public class ElevationPlugin extends Plugin {
     @Override
     public PreferenceSetting getPreferenceSetting() {
         if (tabPreferenceSetting == null)
-            tabPreferenceSetting = new ElevationTabPreferenceSetting();
+            tabPreferenceSetting = new ElevationTabPreferenceSetting(this);
         return tabPreferenceSetting;
     }
 

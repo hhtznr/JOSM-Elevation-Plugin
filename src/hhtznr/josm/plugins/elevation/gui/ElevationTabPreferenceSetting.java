@@ -19,11 +19,19 @@ import hhtznr.josm.plugins.elevation.ElevationPreferences;
  */
 public final class ElevationTabPreferenceSetting extends DefaultTabPreferenceSetting {
 
+    private final ElevationPlugin plugin;
+
     private ElevationPreferencePanel pnlElevationPreferences;
 
-    public ElevationTabPreferenceSetting() {
+    /**
+     * Creates a new tab for elevation preference settings.
+     *
+     * @param plugin The plugin instance for which this tab is created.
+     */
+    public ElevationTabPreferenceSetting(ElevationPlugin plugin) {
         super("elevation", I18n.tr("Elevation Data"),
                 I18n.tr("Elevation preferences and connection settings for the SRTM server."));
+        this.plugin = plugin;
     }
 
     @Override
@@ -42,10 +50,9 @@ public final class ElevationTabPreferenceSetting extends DefaultTabPreferenceSet
         pnlElevationPreferences.saveToPreferences();
 
         // Apply preferences
-        IPreferences pref = Config.getPref();
-        boolean elevationEnabled = pref.getBoolean(ElevationPreferences.ELEVATION_ENABLED,
+        boolean elevationEnabled = Config.getPref().getBoolean(ElevationPreferences.ELEVATION_ENABLED,
                 ElevationPreferences.DEFAULT_ELEVATION_ENABLED);
-        ElevationPlugin.getInstance().setElevationEnabled(elevationEnabled);
+        plugin.setElevationEnabled(elevationEnabled);
         return false;
     }
 

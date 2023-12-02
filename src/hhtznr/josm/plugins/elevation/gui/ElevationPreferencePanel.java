@@ -107,7 +107,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
             ElevationPreferences.SRTM_SERVER_REGISTRATION_URL));
 
     /**
-     * Constructs a new {@code ElevationPreferencesPanel}.
+     * Constructs a new {@code ElevationPreferencePanel}.
      */
     public ElevationPreferencePanel() {
         setLayout(new GridBagLayout());
@@ -121,7 +121,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
     /**
      * Builds the panel for the elevation preferences.
      *
-     * @return Panel with elevation preferences
+     * @return Panel with elevation preferences.
      */
     private final JPanel buildPreferencePanel() {
         cbEnableElevation.setToolTipText(I18n.tr("SRTM files need to be placed in {0}",

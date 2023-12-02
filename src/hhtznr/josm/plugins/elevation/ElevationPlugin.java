@@ -18,8 +18,7 @@ import org.openstreetmap.josm.spi.preferences.IPreferences;
 import org.openstreetmap.josm.tools.Logging;
 
 /**
- * Plugin class for displaying an the local elevation at the mouse location on
- * the map.
+ * Plugin class for displaying and visualizing elevation data.
  *
  * @author Harald Hetzner
  */

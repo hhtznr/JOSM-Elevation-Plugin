@@ -1,24 +1,15 @@
 package hhtznr.josm.plugins.elevation.gui;
 
-import java.awt.BasicStroke;
-import java.awt.Color;
-import java.awt.Font;
 import java.awt.Graphics2D;
-import java.awt.Point;
-import java.awt.Stroke;
 import java.awt.event.ActionEvent;
-import java.awt.geom.AffineTransform;
-import java.awt.image.AffineTransformOp;
-import java.awt.image.BufferedImage;
+
 import java.util.ArrayList;
-import java.util.List;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.Icon;
 
 import org.openstreetmap.josm.data.Bounds;
-import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.visitor.BoundingXYVisitor;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.MapFrame;
@@ -30,11 +21,8 @@ import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProviderListener;
-import hhtznr.josm.plugins.elevation.data.LatLonEle;
-import hhtznr.josm.plugins.elevation.data.LatLonLine;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
 import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
-import hhtznr.josm.plugins.elevation.math.Hillshade;
 
 /**
  * Class implementing a map layer for displaying elevation contour lines and
@@ -42,25 +30,19 @@ import hhtznr.josm.plugins.elevation.math.Hillshade;
  */
 public class ElevationLayer extends Layer implements ElevationDataProviderListener {
 
-    /**
-     * The color in which the contour lines are painted on the map.
-     */
-    public static final Color CONTOUR_LINE_COLOR = new Color(210, 180, 115);
-
     private final ElevationDataProvider elevationDataProvider;
     private double renderingLimitArcDegrees;
     private int contourLineIsostep;
+
+    SRTMTileGrid contourLineTileGrid = null;
+
     private int hillshadeAltitude;
     private int hillshadeAzimuth;
-    private Bounds bounds = null;
-    SRTMTileGrid contourLineTileGrid = null;
     SRTMTileGrid hillshadeTileGrid = null;
-    private boolean drawContourLines = true;
-    private boolean drawHillshade = true;
-    private boolean drawElevationRaster = false;
-    BufferedImage hillshadeImage = null;
-    private LatLon hillshadeNorthWest = null;
-    List<LatLonLine> contourLineSegments = null;
+
+    private boolean contourLinesEnabled = true;
+    private boolean hillshadeEnabled = true;
+    private boolean elevationRasterEnabled = false;
 
     /**
      * Creates a new elevation layer.
@@ -90,6 +72,17 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
     }
 
     /**
+     * Returns the rendering limit.
+     *
+     * @return The maximum size of the displayed map (latitude or longitude) where,
+     *         if exceeded, rendering of the layer is switched off to avoid
+     *         excessive CPU and memory usage.
+     */
+    public double getRenderingLimit() {
+        return renderingLimitArcDegrees;
+    }
+
+    /**
      * Sets a new rendering limit.
      *
      * @param renderingLimitArcDegrees The maximum size of the displayed map
@@ -105,6 +98,42 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
     }
 
     /**
+     * Returns whether elevation contour lines are enabled.
+     *
+     * @return {@code true} if displaying of elevation contour lines is enabled.
+     */
+    public boolean isContourLinesEnabled() {
+        return contourLinesEnabled;
+    }
+
+    /**
+     * Returns whether hillshade is enabled.
+     *
+     * @return {@code true} if displaying hillshade is enabled.
+     */
+    public boolean isHillshadeEnabled() {
+        return hillshadeEnabled;
+    }
+
+    /**
+     * Returns whether the elevation data raster is enabled.
+     *
+     * @return {@code true} if displaying of the elevation data raster is enabled.
+     */
+    public boolean isElevationRasterEnabled() {
+        return elevationRasterEnabled;
+    }
+
+    /**
+     * Returns the step between adjacent elevation contour lines.
+     *
+     * @return The step between adjacent elevation contour lines.
+     */
+    public int getContourLineIsostep() {
+        return contourLineIsostep;
+    }
+
+    /**
      * Sets a new isostep.
      *
      * @param isostep Step between neighboring elevation contour lines.
@@ -112,9 +141,39 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
     public void setContourLineIsostep(int isostep) {
         if (contourLineIsostep != isostep) {
             contourLineIsostep = isostep;
-            contourLineSegments = null;
             repaint();
         }
+    }
+
+    /**
+     * Returns an SRTM tile grid used for contour lines computation provided by this
+     * layer's elevation data provider.
+     *
+     * @param clipBounds The bounds for which to create the SRTM tile grid.
+     * @return The SRTM tile grid.
+     */
+    public SRTMTileGrid getContourLineTileGrid(Bounds clipBounds) {
+        if (clipBounds != null)
+            contourLineTileGrid = elevationDataProvider.getSRTMTileGrid(clipBounds);
+        return contourLineTileGrid;
+    }
+
+    /**
+     * Returns the hillshade alitude.
+     *
+     * @return The altitude of the hillshade illumination source.
+     */
+    public int getHillshadeAltitude() {
+        return hillshadeAltitude;
+    }
+
+    /**
+     * Returns the hillshade azimuth.
+     *
+     * @return The azimuth of the hillshade illumination source.
+     */
+    public int getHillshadeAzimuth() {
+        return hillshadeAzimuth;
     }
 
     /**
@@ -130,144 +189,31 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         if (hillshadeAltitude != altitude || hillshadeAzimuth != azimuth) {
             hillshadeAltitude = altitude;
             hillshadeAzimuth = azimuth;
-            hillshadeImage = null;
             repaint();
         }
     }
 
+    /**
+     * Returns an SRTM tile grid used for hillshade computation provided by this
+     * layer's elevation data provider.
+     *
+     * @param clipBounds The bounds for which to create the SRTM tile grid.
+     * @return The SRTM tile grid.
+     */
+    public SRTMTileGrid getHillshadeTileGrid(Bounds clipBounds) {
+        if (clipBounds != null)
+            hillshadeTileGrid = elevationDataProvider.getSRTMTileGrid(clipBounds);
+        return hillshadeTileGrid;
+    }
+
     @Override
     public void paint(Graphics2D g, MapView mv, Bounds bbox) {
-        if (mv == null) {
-            bounds = null;
-            contourLineTileGrid = null;
-            contourLineSegments = null;
-            hillshadeTileGrid = null;
-            hillshadeImage = null;
-            return;
-        }
-
-        // Disable drawing of contour lines if the map is zoomed out too much
-        // This prevents high CPU and I/O usage
-        boolean zoomLevelDisabled = bbox.getMaxLat() - bbox.getMinLat() > renderingLimitArcDegrees
-                || bbox.getMaxLon() - bbox.getMinLon() > renderingLimitArcDegrees;
-
-        Color previousColor = g.getColor();
-        Font previousFont = g.getFont();
-        Stroke previousStroke = g.getStroke();
-        try {
-            if (zoomLevelDisabled) {
-                g.setColor(Color.RED);
-                g.setFont(g.getFont().deriveFont(Font.BOLD, 16));
-                g.drawString("Contour lines disabled for this zoom level", 10, mv.getHeight() - 10);
-            } else {
-                // If the bounds changed since the last paint operation
-                if (!bbox.equals(bounds)) {
-                    // Create a new SRTM tile grid for the map bounds if no grid was created or an
-                    // existing grid does not cover the current bounds
-                    if ((drawContourLines || drawElevationRaster)
-                            && (contourLineTileGrid == null || !contourLineTileGrid.covers(bbox))) {
-                        contourLineTileGrid = elevationDataProvider.getSRTMTileGrid(bbox);
-                        contourLineSegments = null;
-                    }
-                    // Create a new SRTM tile grid for hillshade use
-                    if (drawHillshade) {
-                        hillshadeTileGrid = elevationDataProvider.getSRTMTileGrid(bbox);
-                        hillshadeImage = null;
-                    }
-                }
-                if (drawHillshade && hillshadeTileGrid != null)
-                    drawHillshade(g, mv);
-
-                if (drawContourLines && contourLineTileGrid != null)
-                    drawSRTMIsolines(g, mv);
-
-                if (drawElevationRaster && contourLineTileGrid != null)
-                    drawSRTMRaster(g, mv);
-
-                bounds = bbox;
-            }
-        } finally {
-            // Restore previous graphics configuration
-            g.setColor(previousColor);
-            g.setFont(previousFont);
-            g.setStroke(previousStroke);
-        }
+        // LayerPainter created by createMapViewPainter() is used instead
     }
 
-    private void drawHillshade(Graphics2D g, MapView mv) {
-        Point upperLeft = null;
-        if (hillshadeImage == null) {
-            Hillshade.ImageTile hillshadeTile = hillshadeTileGrid.getHillshadeImage(false, hillshadeAltitude,
-                    hillshadeAzimuth);
-            if (hillshadeTile == null)
-                return;
-            // The dimensions of the unscaled hillshade image
-            int imageWidth = hillshadeTile.getImage().getWidth();
-            int imageHeight = hillshadeTile.getImage().getHeight();
-            // System.out.println("Hillshade image size: w = " + imageWidth + ", h = " +
-            // imageHeight);
-            if (imageWidth <= 0 || imageHeight <= 0) {
-                Logging.error(
-                        "Elevation: Hillshade size too small: width = " + imageWidth + ", height = " + imageHeight);
-                return;
-            }
-
-            hillshadeNorthWest = hillshadeTile.getNorthWest();
-            // Bounds of the hillshade tile in screen coordinates (x, y)
-            upperLeft = mv.getPoint(hillshadeNorthWest);
-            Point lowerRight = mv.getPoint(hillshadeTile.getSouthEast());
-            // The dimensions of the hillshade tile in screen coordinates
-            int screenWidth = lowerRight.x - upperLeft.x;
-            int screenHeight = lowerRight.y - upperLeft.y;
-            // Scale the hillshade image to screen dimensions
-            // https://stackoverflow.com/questions/4216123/how-to-scale-a-bufferedimage
-            double sx = Double.valueOf(screenWidth) / Double.valueOf(imageWidth);
-            double sy = Double.valueOf(screenHeight) / Double.valueOf(imageHeight);
-            // System.out.println("Hillshade image scale factors: sx = " + sx + ", sy = " +
-            // sy);
-            AffineTransform at = new AffineTransform();
-            at.scale(sx, sy);
-            AffineTransformOp scaleOp = new AffineTransformOp(at, AffineTransformOp.TYPE_BILINEAR);
-            hillshadeImage = scaleOp.filter(hillshadeTile.getImage(), null);
-            // System.out.println("Hillshade image scaled size: width = " +
-            // hillshadeImage.getWidth() + ", height = " + hillshadeImage.getHeight());
-            // System.out.println("Map size: width = " + mv.getWidth() + ", height = " +
-            // mv.getHeight());
-        }
-        if (upperLeft == null)
-            upperLeft = mv.getPoint(hillshadeNorthWest);
-        // System.out.println("Hillshade upper right corner (px): x = " + upperLeft.x +
-        // ", x = " + upperLeft.y);
-        // System.out.println("Hillshade image scaled cropped size: width = " +
-        // (hillshadeImage.getWidth() + upperLeft.x) + ", height = " +
-        // (hillshadeImage.getHeight() + upperLeft.y));
-        g.drawImage(hillshadeImage, upperLeft.x, upperLeft.y, hillshadeImage.getWidth(), hillshadeImage.getHeight(),
-                null);
-    }
-
-    private void drawSRTMIsolines(Graphics2D g, MapView mv) {
-        g.setColor(CONTOUR_LINE_COLOR);
-        g.setStroke(new BasicStroke(1, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        if (contourLineSegments == null)
-            contourLineSegments = contourLineTileGrid.getIsolineSegments(contourLineIsostep);
-        if (contourLineSegments == null)
-            return;
-        for (LatLonLine segment : contourLineSegments) {
-            Point p1 = mv.getPoint(segment.getLatLon1());
-            Point p2 = mv.getPoint(segment.getLatLon2());
-            g.drawLine(p1.x, p1.y, p2.x, p2.y);
-        }
-    }
-
-    private void drawSRTMRaster(Graphics2D g, MapView mv) {
-        g.setColor(Color.RED);
-        for (LatLonEle latLonEle : contourLineTileGrid.getLatLonEleList()) {
-            Point p = mv.getPoint(latLonEle);
-            String ele = Integer.toString((int) latLonEle.ele());
-            g.fillOval(p.x - 1, p.y - 1, 3, 3);
-            g.setFont(g.getFont().deriveFont(Font.PLAIN, 10));
-            g.drawString(ele, p.x + 2, p.y + 5);
-        }
+    @Override
+    protected LayerPainter createMapViewPainter(MapViewEvent event) {
+        return new ElevationDrawHelper(this);
     }
 
     @Override
@@ -340,8 +286,8 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            layer.drawContourLines = !layer.drawContourLines;
-            if (layer.drawContourLines)
+            layer.contourLinesEnabled = !layer.contourLinesEnabled;
+            if (layer.contourLinesEnabled)
                 Logging.info("Elevation: Contour lines enabled");
             else
                 Logging.info("Elevation: Contour lines disabled");
@@ -362,8 +308,8 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            layer.drawHillshade = !layer.drawHillshade;
-            if (layer.drawHillshade)
+            layer.hillshadeEnabled = !layer.hillshadeEnabled;
+            if (layer.hillshadeEnabled)
                 Logging.info("Elevation: Hillshade enabled");
             else
                 Logging.info("Elevation: Hillshade disabled");
@@ -384,8 +330,8 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            layer.drawElevationRaster = !layer.drawElevationRaster;
-            if (layer.drawElevationRaster)
+            layer.elevationRasterEnabled = !layer.elevationRasterEnabled;
+            if (layer.elevationRasterEnabled)
                 Logging.info("Elevation: Elevation raster points enabled");
             else
                 Logging.info("Elevation: Elevation raster points disabled");

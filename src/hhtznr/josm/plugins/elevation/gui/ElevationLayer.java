@@ -258,7 +258,6 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
     @Override
     public synchronized void destroy() {
         elevationDataProvider.removeElevationDataProviderListener(this);
-        super.destroy();
     }
 
     @Override

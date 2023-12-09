@@ -251,12 +251,9 @@ public class Hillshade {
         ILatLon latLon2 = new LatLon(meanLat, lonEast);
         double lonDistanceInMeters = latLon1.greatCircleDistance(latLon2);
         // z-factor: 1 meter = x degrees
-        double zFactor = lonDistanceInDegrees / lonDistanceInMeters;
         // Can be checked against
         // https://thenauticalalmanac.com/Bowditch-%20American%20Practical%20Navigator/TABLE%207-%20LENGTH%20OF%20A%20DEGREE%20OF%20LATITUDE%20AND%20LONGITUDE.pdf
-        //System.out.println("Mean lat = " + meanLat + "°, distance: lon = " + lonDistanceInDegrees + "°, great circle = "
-        //        + lonDistanceInMeters + " m, z-factor = " + zFactor);
-        return zFactor;
+        return lonDistanceInDegrees / lonDistanceInMeters;
     }
 
     /**

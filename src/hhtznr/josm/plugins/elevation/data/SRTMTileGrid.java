@@ -98,8 +98,6 @@ public class SRTMTileGrid {
 
                 for (int gridLat = gridIntLatSouth; gridLat <= gridIntLatNorth; gridLat++) {
                     // Calling the getter method will ensure that tiles are being read or downloaded
-                    // System.out.println("SRMTTileGrid(): Get SRTM tile for lat = " + gridLat + ",
-                    // lon = " + gridLon);
                     SRTMTile tile = elevationDataProvider.getSRTMTile(SRTMTile.getTileID(gridLat, gridLon));
                     // For the most southern tile, its southern edge needs to be clipped
                     if (gridLat == gridIntLatSouth)
@@ -117,11 +115,6 @@ public class SRTMTileGrid {
                         tileLatNorth = gridLat + 1;
                     LatLon tileSouthWest = new LatLon(tileLatSouth, tileLonWest);
                     LatLon tileNorthEast = new LatLon(tileLatNorth, tileLonEast);
-                    // System.out.println("SRMTTileGrid(): Clip SRTM tile for lat = " + gridLat + ",
-                    // lon = " + gridLon
-                    // + ": S = " + tileLatSouth + ", N = " + tileLatNorth + ", W = " + tileLonWest
-                    // + ", E = "
-                    // + tileLonEast);
                     clippedTiles[gridIntLatNorth - gridLat][gridLon - gridIntLonWest] = new ClippedSRTMTile(tile,
                             tileSouthWest, tileNorthEast);
 
@@ -322,9 +315,6 @@ public class SRTMTileGrid {
      *         valid (i.e. the data was not loaded yet or is not available at all).
      */
     private short[][] getGridEleValues() {
-        // System.out.println("SRTMTileGrid.getGridEleValues(): Given bounds: S = " +
-        // southWest.lat() + ", N = "
-        // + northEast.lat() + ", W = " + southWest.lon() + ", E = " + northEast.lon());
         // Pre-check if all tiles have the preferred SRTM type and are valid
         SRTMTile.Type srtmTileType = null;
         for (int gridLatIndex = 0; gridLatIndex < clippedTiles.length; gridLatIndex++) {
@@ -350,9 +340,6 @@ public class SRTMTileGrid {
 
             for (int gridLonIndex = 0; gridLonIndex < clippedTiles[gridLatIndex].length; gridLonIndex++) {
                 ClippedSRTMTile clippedTile = clippedTiles[gridLatIndex][gridLonIndex];
-                // System.out.println("SRTMTileGrid.getGridEleValues(): Storing ele values of
-                // tile " + clippedTile.tile.getID() + " at grid indices lat/lon = " +
-                // gridLatIndex + "/" + gridLonIndex);
                 // Retrieve the elevation values in the clipped area of the raster
                 // Do not retrieve values that overlap with the adjacent tile, so we do not add
                 // them twice
@@ -360,7 +347,6 @@ public class SRTMTileGrid {
                 // Skip the grid row, if the clipped and cropped tile area does not contain data
                 // points
                 if (tileEleValues == null) {
-                    // System.out.println("SRTMTileGrid.getGridEleValues(): Skipping empty grid row
                     // with lat index = " + gridLatIndex + " (lon index = " + gridLonIndex + ")");
                     skipGridRow = true;
                     break;
@@ -429,9 +415,6 @@ public class SRTMTileGrid {
         // Correct the grid bounds to the coordinates of the actual raster
         southWest = clippedTiles[clippedTiles.length - 1][0].southWest;
         northEast = clippedTiles[0][clippedTiles[0].length - 1].northEast;
-        // System.out.println("SRTMTileGrid.getGridEleValues(): Raster bounds: S = " +
-        // southWest.lat() + ", N = "
-        // + northEast.lat() + ", W = " + southWest.lon() + ", E = " + northEast.lon());
 
         return allEleValues;
     }
@@ -481,15 +464,7 @@ public class SRTMTileGrid {
             int indexLonWest = indicesSouthWest[1];
             int indexLatNorth = indicesNorthEast[0];
             int indexLonEast = indicesNorthEast[1];
-            // System.out.println(
-            // "SRTMTileGrid.getTileEleValues(): For tile " + tile.getID() + ": Bounds: S =
-            // " + southWest.lat()
-            // + ", N = " + northEast.lat() + ", W = " + southWest.lon() + ", E = " +
-            // northEast.lon());
-            // System.out.println("SRTMTileGrid.getTileEleValues(): For tile " +
-            // tile.getID() + ": Indices: S = "
-            // + indexLatSouth + ", N = " + indexLatNorth + ", W = " + indexLonWest + ", E =
-            // " + indexLonEast);
+
             if (cropOverlap) {
                 int tileLength = tile.getTileLength();
                 if (indexLatNorth == 0)

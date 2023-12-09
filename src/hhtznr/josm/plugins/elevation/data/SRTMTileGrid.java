@@ -19,7 +19,7 @@ import hhtznr.josm.plugins.elevation.math.MarchingSquares;
  */
 public class SRTMTileGrid {
 
-    private Bounds nominalBounds;
+    private final Bounds nominalBounds;
     private LatLon actualSouthWest;
     private LatLon actualNorthEast;
 
@@ -181,7 +181,7 @@ public class SRTMTileGrid {
     }
 
     /**
-     * Returns the south west coordinate of the bounds.
+     * Returns the south west coordinate of the actual bounds.
      *
      * @return The south west (lower left) coordinate of the bounds.
      */
@@ -190,12 +190,21 @@ public class SRTMTileGrid {
     }
 
     /**
-     * Returns the north east coordinate of the bounds.
+     * Returns the north east coordinate of the actual bounds.
      *
-     * @return The north east (upper right) coordinate of the bounds.
+     * @return The north east (upper right) coordinate of the actual bounds.
      */
     public LatLon getActualNorthEast() {
         return actualNorthEast;
+    }
+
+    /**
+     * Returns the nominal bounds.
+     *
+     * @return The nominal bounds.
+     */
+    public Bounds getNominalBounds() {
+        return nominalBounds;
     }
 
     /**

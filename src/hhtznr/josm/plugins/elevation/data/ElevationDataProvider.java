@@ -190,8 +190,9 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
      */
     public List<LatLonEle> getLatLonEleList(Bounds bounds) {
         synchronized (tileGridLock) {
-            // TODO: Always confine the returned data to the bounds
-            if (previousTileGrid == null || !previousTileGrid.covers(bounds))
+            if (previousTileGrid == null || !previousTileGrid.covers(bounds)
+                    || previousTileGrid.getNominalBounds().getWidth() > 1.5 * bounds.getWidth()
+                    || previousTileGrid.getNominalBounds().getHeight() > 1.5 * bounds.getHeight())
                 previousTileGrid = new SRTMTileGrid(this, bounds);
             return previousTileGrid.getLatLonEleList();
         }
@@ -211,8 +212,9 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
      */
     public List<LatLonLine> getIsolineSegments(Bounds bounds, int isostep) {
         synchronized (tileGridLock) {
-            // TODO: Always confine the returned data to the bounds
-            if (previousTileGrid == null || !previousTileGrid.covers(bounds))
+            if (previousTileGrid == null || !previousTileGrid.covers(bounds)
+                    || previousTileGrid.getNominalBounds().getWidth() > 1.5 * bounds.getWidth()
+                    || previousTileGrid.getNominalBounds().getHeight() > 1.5 * bounds.getHeight())
                 previousTileGrid = new SRTMTileGrid(this, bounds);
             return previousTileGrid.getIsolineSegments(isostep);
         }
@@ -241,12 +243,14 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
     public Hillshade.ImageTile getHillshadeImage(Bounds bounds, double altitudeDeg, double azimuthDeg,
             boolean withPerimeter) {
         synchronized (tileGridLock) {
-            // TODO: Always confine the returned data to the bounds
-            if (previousTileGrid == null || !previousTileGrid.covers(bounds))
+            if (previousTileGrid == null || !previousTileGrid.covers(bounds)
+                    || previousTileGrid.getNominalBounds().getWidth() > 1.5 * bounds.getWidth()
+                    || previousTileGrid.getNominalBounds().getHeight() > 1.5 * bounds.getHeight())
                 previousTileGrid = new SRTMTileGrid(this, bounds);
             return previousTileGrid.getHillshadeImage(altitudeDeg, azimuthDeg, withPerimeter);
         }
     }
+
     /**
      * Sets the maximum cache size to a new value and cleans the cache if required
      * to adopt to the new size limit.

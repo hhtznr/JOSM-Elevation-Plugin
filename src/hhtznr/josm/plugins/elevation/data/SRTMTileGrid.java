@@ -240,21 +240,21 @@ public class SRTMTileGrid {
      * Creates a buffered image with the computed hillshade ARGB values for the
      * elevation values of this SRTM tile grid.
      *
-     * @param withPerimeter If {@code} true, the a first and last row as well as the
-     *                      a first and last column without computed values will be
-     *                      added such that the size of the 2D array corresponds to
-     *                      that of the input data. If {@code false}, these rows and
-     *                      columns will be omitted.
      * @param altitudeDeg   The altitude is the angle of the illumination source
      *                      above the horizon. The units are in degrees, from 0 (on
      *                      the horizon) to 90 (overhead).
      * @param azimuthDeg    The azimuth is the angular direction of the sun,
      *                      measured from north in clockwise degrees from 0 to 360.
+     * @param withPerimeter If {@code} true, the a first and last row as well as the
+     *                      a first and last column without computed values will be
+     *                      added such that the size of the 2D array corresponds to
+     *                      that of the input data. If {@code false}, these rows and
+     *                      columns will be omitted.
      * @return An image with the computed hillshade values or {@code null} if this
      *         SRTM tile grid cannot deliver elevation values or there are less than
      *         3 elevation values in one of the two dimensions.
      */
-    public Hillshade.ImageTile getHillshadeImage(boolean withPerimeter, double altitudeDeg, double azimuthDeg) {
+    public Hillshade.ImageTile getHillshadeImage(double altitudeDeg, double azimuthDeg, boolean withPerimeter) {
         short[][] eleValues = getGridEleValues();
         // Avoid working on null or zero length data
         if (eleValues == null)

@@ -115,8 +115,8 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
                 || hillshadeAzimuth != layer.getHillshadeAzimuth()) {
             hillshadeAltitude = layer.getHillshadeAltitude();
             hillshadeAzimuth = layer.getHillshadeAzimuth();
-            Hillshade.ImageTile hillshadeTile = srtmTileGrid.getHillshadeImage(false, hillshadeAltitude,
-                    hillshadeAzimuth);
+            Hillshade.ImageTile hillshadeTile = srtmTileGrid.getHillshadeImage(hillshadeAltitude, hillshadeAzimuth,
+                    false);
             if (hillshadeTile == null)
                 return;
             // The dimensions of the unscaled hillshade image

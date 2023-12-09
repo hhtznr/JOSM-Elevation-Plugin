@@ -281,7 +281,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
 
         private static final long serialVersionUID = 1L;
 
-        private ElevationLayer layer;
+        private final ElevationLayer layer;
 
         public ShowContourLinesAction(ElevationLayer layer) {
             this.layer = layer;
@@ -304,7 +304,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
 
         private static final long serialVersionUID = 1L;
 
-        private ElevationLayer layer;
+        private final ElevationLayer layer;
 
         public ShowHillshadeAction(ElevationLayer layer) {
             this.layer = layer;
@@ -327,7 +327,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
 
         private static final long serialVersionUID = 1L;
 
-        private ElevationLayer layer;
+        private final ElevationLayer layer;
 
         public ShowElevationRasterAction(ElevationLayer layer) {
             this.layer = layer;

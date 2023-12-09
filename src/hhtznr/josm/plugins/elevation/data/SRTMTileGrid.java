@@ -51,14 +51,14 @@ public class SRTMTileGrid {
         int gridIntLatNorth = (int) Math.floor(latMax);
         int gridIntLonWest;
         int gridIntLonEast;
-        // Not across Prime Meridian +/-180 °C
+        // Not across 180th meridian
         if (lonMin <= lonMax) {
             gridIntLonWest = (int) Math.floor(lonMin);
             gridIntLonEast = (int) Math.floor(lonMax);
             southWest = new LatLon(latMin, lonMin);
             northEast = new LatLon(latMax, lonMax);
         }
-        // Across Prime Meridian +/-180 °C
+        // Across 180th meridian
         else {
             gridIntLonWest = (int) Math.floor(lonMax);
             gridIntLonEast = (int) Math.floor(lonMin);
@@ -78,7 +78,7 @@ public class SRTMTileGrid {
         double tileLonEast;
 
         // Fill the 2D array with clipped SRTM tiles
-        // Not across the Prime Meridian
+        // Not across 180th meridian
         if (gridIntLonWest <= gridIntLonEast) {
             for (int gridLon = gridIntLonWest; gridLon <= gridIntLonEast; gridLon++) {
                 // For the most western tile, its western edge needs to be clipped
@@ -121,7 +121,7 @@ public class SRTMTileGrid {
                 }
             }
         }
-        // Across the Prime Meridian (+/-180 °C)
+        // Across 180th meridian
         else {
             for (int lon = gridIntLonWest; lon <= 179; lon++) {
                 if (lon == gridIntLonWest)

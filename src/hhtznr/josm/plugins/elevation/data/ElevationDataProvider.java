@@ -273,7 +273,7 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
         // + "°, E = " + intLonEast + "° to N = " + intLatNorth + "°, W = " + intLonWest
         // + "°");
 
-        // Not across the Prime Meridian
+        // Not across 180th meridian
         if (intLonWest <= intLonEast) {
             for (int lon = intLonWest; lon <= intLonEast; lon++) {
                 for (int lat = intLatSouth; lat <= intLatNorth; lat++)
@@ -281,7 +281,7 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
                     getSRTMTile(SRTMTile.getTileID(lat, lon));
             }
         }
-        // Across the Prime Meridian (+/-180 °C)
+        // Across 180th meridian
         else {
             for (int lon = intLonWest; lon <= 179; lon++) {
                 for (int lat = intLatSouth; lat <= intLatNorth; lat++)
@@ -310,7 +310,7 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
         // + "°, E = " + intLonEast + "° to N = " + intLatNorth + "°, W = " + intLonWest
         // + "°");
 
-        // Not across the Prime Meridian
+        // Not across 180th meridian
         if (intLonWest <= intLonEast) {
             for (int lon = intLonWest; lon <= intLonEast; lon++) {
                 for (int lat = intLatSouth; lat <= intLatNorth; lat++)
@@ -318,7 +318,7 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
                     getSRTMTile(SRTMTile.getTileID(lat, lon));
             }
         }
-        // Across the Prime Meridian (+/-180 °C)
+        // Across 180th meridian
         else {
             for (int lon = intLonWest; lon <= 179; lon++) {
                 for (int lat = intLatSouth; lat <= intLatNorth; lat++)

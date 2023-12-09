@@ -132,10 +132,10 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
         double lonEast = maxLatLon.lon();
         double latRange = latNorth - latSouth;
         double lonRange;
-        // Normal case: Bound do not cross the Prime Meridian +/- 180°
+        // Normal case: Bound do not cross 180th meridian
         if (lonWest < lonEast)
             lonRange = lonEast - lonWest;
-        // Special case: Bounds cross the Prime Meridian +/- 180°
+        // Special case: Bounds cross 180th meridian
         else
             lonRange = 180 - lonWest + 180 + lonEast;
 

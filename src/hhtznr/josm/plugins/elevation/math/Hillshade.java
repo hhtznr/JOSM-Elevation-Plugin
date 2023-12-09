@@ -243,7 +243,7 @@ public class Hillshade {
         double lonDistanceInDegrees;
         if (lonWest < lonEast)
             lonDistanceInDegrees = lonEast - lonWest;
-        // Across the Prime Meridian (+/-180 °C)
+        // Across 180th meridian
         else
             lonDistanceInDegrees = 180.0 - lonEast + lonWest + 180.0;
 

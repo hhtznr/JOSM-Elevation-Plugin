@@ -6,6 +6,7 @@ import java.text.DecimalFormat;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.ProjectionBounds;
 import org.openstreetmap.josm.data.coor.ILatLon;
 import org.openstreetmap.josm.data.coor.LatLon;
@@ -122,29 +123,11 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
 
     @Override
     public void zoomChanged() {
-        // Determine the projection bounds of the map view
-        ProjectionBounds projectionBounds = mapFrame.mapView.getProjectionBounds();
-        LatLon minLatLon = mapFrame.mapView.getProjection().eastNorth2latlon(projectionBounds.getMin());
-        LatLon maxLatLon = mapFrame.mapView.getProjection().eastNorth2latlon(projectionBounds.getMax());
-        double latSouth = minLatLon.lat();
-        double latNorth = maxLatLon.lat();
-        double lonWest = minLatLon.lon();
-        double lonEast = maxLatLon.lon();
-        double latRange = latNorth - latSouth;
-        double lonRange;
-        // Normal case: Bound do not cross 180th meridian
-        if (lonWest < lonEast)
-            lonRange = lonEast - lonWest;
-        // Special case: Bounds cross 180th meridian
-        else
-            lonRange = 180 - lonWest + 180 + lonEast;
-
-        final LatLon southWest = new LatLon(latSouth, lonWest);
-        final LatLon northEast = new LatLon(latNorth, lonEast);
-        elevationZoomLevelEnabled = latRange <= SRTMTile.SRTM_TILE_ARC_DEGREES
-                && lonRange <= SRTMTile.SRTM_TILE_ARC_DEGREES;
         updateEleText(null);
 
+        final Bounds bounds = mapFrame.mapView.getLatLonBounds(mapFrame.mapView.getBounds());
+        elevationZoomLevelEnabled = bounds.getHeight() <= SRTMTile.SRTM_TILE_ARC_DEGREES
+                && bounds.getWidth() <= SRTMTile.SRTM_TILE_ARC_DEGREES;
         if (elevationZoomLevelEnabled) {
             synchronized (timer) {
                 if (pendingTimerTask != null)
@@ -153,6 +136,14 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
                 pendingTimerTask = new TimerTask() {
                     @Override
                     public void run() {
+                        double latSouth = bounds.getMinLat();
+                        double latNorth = bounds.getMaxLat();
+                        // minLon does always seem to be west, see Bounds.crosses180thMeridian()
+                        double lonWest = bounds.getMinLon();
+                        // maxLon does always seem to be east, see Bounds.crosses180thMeridian()
+                        double lonEast = bounds.getMaxLon();
+                        LatLon southWest = new LatLon(latSouth, lonWest);
+                        LatLon northEast = new LatLon(latNorth, lonEast);
                         elevationDataProvider.cacheSRTMTiles(southWest, northEast);
                         synchronized (timer) {
                             pendingTimerTask = null;

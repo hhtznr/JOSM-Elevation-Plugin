@@ -7,7 +7,6 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import org.openstreetmap.josm.data.Bounds;
-import org.openstreetmap.josm.data.ProjectionBounds;
 import org.openstreetmap.josm.data.coor.ILatLon;
 import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.gui.MapFrame;

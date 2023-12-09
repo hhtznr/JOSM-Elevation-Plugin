@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -23,6 +24,7 @@ import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
 import hhtznr.josm.plugins.elevation.io.SRTMFileDownloadListener;
 import hhtznr.josm.plugins.elevation.io.SRTMFileReader;
 import hhtznr.josm.plugins.elevation.io.SRTMFiles;
+import hhtznr.josm.plugins.elevation.math.Hillshade;
 
 /**
  * Class {@code ElevationDataProvider} provides SRTM tiles and elevation data
@@ -42,6 +44,9 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
     private final SRTMTileCache tileCache;
 
     private SRTMTile previousTile = null;
+
+    private final Object tileGridLock = new Object();
+    private SRTMTileGrid previousTileGrid = null;
 
     private SRTMFileReader srtmFileReader;
     private SRTMFileDownloader srtmFileDownloader;
@@ -173,6 +178,75 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
         return srtmTile.getLatLonEle(latLon, eleInterpolation);
     }
 
+    /**
+     * Returns a list of all raster coordinates and the associated elevation values
+     * within the bounds. If this method does not return {@code null}, the raster
+     * coordinates will always cover the bounds. However, the method may return a
+     * larger raster as is needed.
+     *
+     * @param bounds The bounds in latitude-longitude coordinate space.
+     * @return A list with raster coordinates and associated elevation values or
+     *         {@code null} if insufficient cached elevation data is available.
+     */
+    public List<LatLonEle> getLatLonEleList(Bounds bounds) {
+        synchronized (tileGridLock) {
+            // TODO: Always confine the returned data to the bounds
+            if (previousTileGrid == null || !previousTileGrid.covers(bounds))
+                previousTileGrid = new SRTMTileGrid(this, bounds);
+            return previousTileGrid.getLatLonEleList();
+        }
+    }
+
+    /**
+     * Returns a list of isoline segments defining elevation contour lines within
+     * the bounds. The segments do not have a useful order. If this method does not
+     * return {@code null}, the contour lines will always cover the bounds. However,
+     * the method may return contour lines for a larger area as needed.
+     *
+     * @param bounds  The bounds in latitude-longitude coordinate space.
+     * @param isostep Step between adjacent elevation contour lines.
+     * @return A list of isoline segments defining elevation contour lines within
+     *         the bounds or {@code null} if no suitable elevation data is cached to
+     *         compute the contour lines.
+     */
+    public List<LatLonLine> getIsolineSegments(Bounds bounds, int isostep) {
+        synchronized (tileGridLock) {
+            // TODO: Always confine the returned data to the bounds
+            if (previousTileGrid == null || !previousTileGrid.covers(bounds))
+                previousTileGrid = new SRTMTileGrid(this, bounds);
+            return previousTileGrid.getIsolineSegments(isostep);
+        }
+    }
+
+    /**
+     * Returns a buffered image with the computed hillshade ARGB values for the
+     * elevation values within the given bounds. If this method does not return
+     * {@code null}, the hillshade image will always cover the bounds. However, the
+     * method may return an image for a larger area as needed.
+     *
+     * @param bounds        The bounds in latitude-longitude coordinate space.
+     * @param altitudeDeg   The altitude is the angle of the illumination source
+     *                      above the horizon. The units are in degrees, from 0 (on
+     *                      the horizon) to 90 (overhead).
+     * @param azimuthDeg    The azimuth is the angular direction of the sun,
+     *                      measured from north in clockwise degrees from 0 to 360.
+     * @param withPerimeter If {@code} true, the a first and last row as well as the
+     *                      a first and last column without computed values will be
+     *                      added such that the size of the 2D array corresponds to
+     *                      that of the input data. If {@code false}, these rows and
+     *                      columns will be omitted.
+     * @return An image with the computed hillshade values or {@code null} if no
+     *         suitable elevation data is cached to compute the hillshades.
+     */
+    public Hillshade.ImageTile getHillshadeImage(Bounds bounds, double altitudeDeg, double azimuthDeg,
+            boolean withPerimeter) {
+        synchronized (tileGridLock) {
+            // TODO: Always confine the returned data to the bounds
+            if (previousTileGrid == null || !previousTileGrid.covers(bounds))
+                previousTileGrid = new SRTMTileGrid(this, bounds);
+            return previousTileGrid.getHillshadeImage(altitudeDeg, azimuthDeg, withPerimeter);
+        }
+    }
     /**
      * Sets the maximum cache size to a new value and cleans the cache if required
      * to adopt to the new size limit.

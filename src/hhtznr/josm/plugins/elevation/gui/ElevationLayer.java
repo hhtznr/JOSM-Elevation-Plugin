@@ -24,7 +24,6 @@ import hhtznr.josm.plugins.elevation.ElevationPreferences;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProviderListener;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
-import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
 
 /**
  * Class implementing a map layer for displaying elevation contour lines and
@@ -36,11 +35,11 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
     private double renderingLimitArcDegrees;
     private int contourLineIsostep;
 
-    SRTMTileGrid contourLineTileGrid = null;
+    // SRTMTileGrid contourLineTileGrid = null;
 
     private int hillshadeAltitude;
     private int hillshadeAzimuth;
-    SRTMTileGrid hillshadeTileGrid = null;
+    // SRTMTileGrid hillshadeTileGrid = null;
 
     private boolean contourLinesEnabled;
     private boolean hillshadeEnabled;
@@ -71,9 +70,21 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         this.hillshadeAzimuth = hillshadeAzimuth;
         this.elevationDataProvider = elevationDataProvider;
         elevationDataProvider.addElevationDataProviderListener(this);
-        contourLinesEnabled = Config.getPref().getBoolean(ElevationPreferences.ELEVATION_CONTOUR_LINES_ENABLED, ElevationPreferences.DEFAULT_ELEVATION_CONTOUR_LINES_ENABLED);
-        hillshadeEnabled = Config.getPref().getBoolean(ElevationPreferences.ELEVATION_HILLSHADE_ENABLED, ElevationPreferences.DEFAULT_ELEVATION_HILLSHADE_ENABLED);
-        elevationRasterEnabled = Config.getPref().getBoolean(ElevationPreferences.ELEVATION_RASTER_ENABLED, ElevationPreferences.DEFAULT_ELEVATION_RASTER_ENABLED);
+        contourLinesEnabled = Config.getPref().getBoolean(ElevationPreferences.ELEVATION_CONTOUR_LINES_ENABLED,
+                ElevationPreferences.DEFAULT_ELEVATION_CONTOUR_LINES_ENABLED);
+        hillshadeEnabled = Config.getPref().getBoolean(ElevationPreferences.ELEVATION_HILLSHADE_ENABLED,
+                ElevationPreferences.DEFAULT_ELEVATION_HILLSHADE_ENABLED);
+        elevationRasterEnabled = Config.getPref().getBoolean(ElevationPreferences.ELEVATION_RASTER_ENABLED,
+                ElevationPreferences.DEFAULT_ELEVATION_RASTER_ENABLED);
+    }
+
+    /**
+     * Returns the elevation data provider of this elevation layer.
+     *
+     * @return The elevation data provider.
+     */
+    public ElevationDataProvider getElevationDataProvider() {
+        return elevationDataProvider;
     }
 
     /**
@@ -151,19 +162,6 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
     }
 
     /**
-     * Returns an SRTM tile grid used for contour lines computation provided by this
-     * layer's elevation data provider.
-     *
-     * @param clipBounds The bounds for which to create the SRTM tile grid.
-     * @return The SRTM tile grid.
-     */
-    public SRTMTileGrid getContourLineTileGrid(Bounds clipBounds) {
-        if (clipBounds != null)
-            contourLineTileGrid = elevationDataProvider.getSRTMTileGrid(clipBounds);
-        return contourLineTileGrid;
-    }
-
-    /**
      * Returns the hillshade alitude.
      *
      * @return The altitude of the hillshade illumination source.
@@ -196,19 +194,6 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
             hillshadeAzimuth = azimuth;
             repaint();
         }
-    }
-
-    /**
-     * Returns an SRTM tile grid used for hillshade computation provided by this
-     * layer's elevation data provider.
-     *
-     * @param clipBounds The bounds for which to create the SRTM tile grid.
-     * @return The SRTM tile grid.
-     */
-    public SRTMTileGrid getHillshadeTileGrid(Bounds clipBounds) {
-        if (clipBounds != null)
-            hillshadeTileGrid = elevationDataProvider.getSRTMTileGrid(clipBounds);
-        return hillshadeTileGrid;
     }
 
     @Override
@@ -291,7 +276,8 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         @Override
         public void actionPerformed(ActionEvent e) {
             layer.contourLinesEnabled = !layer.contourLinesEnabled;
-            Config.getPref().putBoolean(ElevationPreferences.ELEVATION_CONTOUR_LINES_ENABLED, layer.contourLinesEnabled);
+            Config.getPref().putBoolean(ElevationPreferences.ELEVATION_CONTOUR_LINES_ENABLED,
+                    layer.contourLinesEnabled);
             if (layer.contourLinesEnabled)
                 Logging.info("Elevation: Contour lines enabled");
             else

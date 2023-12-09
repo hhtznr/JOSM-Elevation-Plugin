@@ -51,14 +51,14 @@ public class SRTMTileGrid {
         int gridIntLatNorth = (int) Math.floor(latMax);
         int gridIntLonWest;
         int gridIntLonEast;
-        // Not across the Prime Meridian
+        // Not across Prime Meridian +/-180 °C
         if (lonMin <= lonMax) {
             gridIntLonWest = (int) Math.floor(lonMin);
             gridIntLonEast = (int) Math.floor(lonMax);
             southWest = new LatLon(latMin, lonMin);
             northEast = new LatLon(latMax, lonMax);
         }
-        // Across the Prime Meridian (+/-180 °C)
+        // Across Prime Meridian +/-180 °C
         else {
             gridIntLonWest = (int) Math.floor(lonMax);
             gridIntLonEast = (int) Math.floor(lonMin);
@@ -201,7 +201,7 @@ public class SRTMTileGrid {
      * within the bounds. This method will slightly adjust the bounds to the closest
      * coordinates of the elevation raster.
      *
-     * @return a list of all raster coordinates and the associated elevation values
+     * @return A list of all raster coordinates and the associated elevation values
      *         within the bounds or an empty list if not all of the SRTM tiles have
      *         the same type (i.e. different raster dimensions) or if at least one
      *         of the tiles is not valid (i.e. the data was not loaded yet or is not
@@ -264,7 +264,7 @@ public class SRTMTileGrid {
      *
      * @param isostep Step between neighboring elevation contour lines.
      * @return A list of isoline segments defining elevation contour lines within
-     *         the bounds.or {@code null} if not all of the SRTM tiles have the same
+     *         the bounds or {@code null} if not all of the SRTM tiles have the same
      *         type (i.e. different raster dimensions) or if at least one of the
      *         tiles is not valid (i.e. the data was not loaded yet or is not
      *         available at all).

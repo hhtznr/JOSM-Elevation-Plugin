@@ -61,8 +61,18 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
      * @return The elevation layer which displays contour lines and hillshade.
      */
     public ElevationLayer getElevationLayer() {
-        if (elevationLayerEnabled && elevationLayer == null)
-            createElevationLayer();
+        if (elevationLayerEnabled && elevationLayer == null) {
+            IPreferences pref = Config.getPref();
+            double renderingLimit = pref.getDouble(ElevationPreferences.ELEVATION_LAYER_RENDERING_LIMIT,
+                    ElevationPreferences.DEFAULT_ELEVATION_LAYER_RENDERING_LIMIT);
+            int isostep = pref.getInt(ElevationPreferences.CONTOUR_LINE_ISOSTEP,
+                    ElevationPreferences.DEFAULT_CONTOUR_LINE_ISOSTEP);
+            int altitude = pref.getInt(ElevationPreferences.HILLSHADE_ALTITUDE,
+                    ElevationPreferences.DEFAULT_HILLSHADE_ALTITUDE);
+            int azimuth = pref.getInt(ElevationPreferences.HILLSHADE_AZIMUTH,
+                    ElevationPreferences.DEFAULT_HILLSHADE_AZIMUTH);
+            elevationLayer = new ElevationLayer(elevationDataProvider, renderingLimit, isostep, altitude, azimuth);
+        }
         return elevationLayer;
     }
 
@@ -144,8 +154,23 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                     localElevationLabel.addToMapFrame(mapFrame);
 
                 if (elevationLayerEnabled) {
-                    createElevationLayer();
-                    MainApplication.getLayerManager().addLayer(elevationLayer);
+                    double renderingLimit = pref.getDouble(ElevationPreferences.ELEVATION_LAYER_RENDERING_LIMIT,
+                            ElevationPreferences.DEFAULT_ELEVATION_LAYER_RENDERING_LIMIT);
+                    int isostep = pref.getInt(ElevationPreferences.CONTOUR_LINE_ISOSTEP,
+                            ElevationPreferences.DEFAULT_CONTOUR_LINE_ISOSTEP);
+                    int altitude = pref.getInt(ElevationPreferences.HILLSHADE_ALTITUDE,
+                            ElevationPreferences.DEFAULT_HILLSHADE_ALTITUDE);
+                    int azimuth = pref.getInt(ElevationPreferences.HILLSHADE_AZIMUTH,
+                            ElevationPreferences.DEFAULT_HILLSHADE_AZIMUTH);
+                    if (elevationLayer == null) {
+                        elevationLayer = new ElevationLayer(elevationDataProvider, renderingLimit, isostep, altitude, azimuth);
+                        MainApplication.getLayerManager().addLayer(elevationLayer);
+                    }
+                    else {
+                        elevationLayer.setRenderingLimit(renderingLimit);
+                        elevationLayer.setContourLineIsostep(isostep);
+                        elevationLayer.setHillshadeIllumination(altitude, azimuth);
+                    }
                 }
             }
             if (!elevationLayerEnabled) {
@@ -171,19 +196,6 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
             elevationDataProvider = null;
         }
         elevationEnabled = enabled;
-    }
-
-    private void createElevationLayer() {
-        IPreferences pref = Config.getPref();
-        double renderingLimit = pref.getDouble(ElevationPreferences.ELEVATION_LAYER_RENDERING_LIMIT,
-                ElevationPreferences.DEFAULT_ELEVATION_LAYER_RENDERING_LIMIT);
-        int isostep = pref.getInt(ElevationPreferences.CONTOUR_LINE_ISOSTEP,
-                ElevationPreferences.DEFAULT_CONTOUR_LINE_ISOSTEP);
-        int altitude = pref.getInt(ElevationPreferences.HILLSHADE_ALTITUDE,
-                ElevationPreferences.DEFAULT_HILLSHADE_ALTITUDE);
-        int azimuth = pref.getInt(ElevationPreferences.HILLSHADE_AZIMUTH,
-                ElevationPreferences.DEFAULT_HILLSHADE_AZIMUTH);
-        elevationLayer = new ElevationLayer(elevationDataProvider, renderingLimit, isostep, altitude, azimuth);
     }
 
     @Override

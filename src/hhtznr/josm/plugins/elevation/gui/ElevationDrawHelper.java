@@ -22,7 +22,6 @@ import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.LatLonLine;
-import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
 import hhtznr.josm.plugins.elevation.math.Hillshade;
 
 /**
@@ -63,6 +62,13 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
 
     @Override
     public void paint(MapViewGraphics graphics) {
+        if (!layer.isContourLinesEnabled())
+            contourLineSegments = null;
+        if (!layer.isHillshadeEnabled())
+            hillshadeImage = null;
+        if (!layer.isContourLinesEnabled() && !layer.isElevationRasterEnabled() && !layer.isHillshadeEnabled())
+            return;
+
         Bounds clipBounds = graphics.getClipBounds().getLatLonBoundsBox();
 
         // Disable drawing of contour lines if the map is zoomed out too much
@@ -73,31 +79,14 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         if (zoomLevelDisabled) {
             drawZoomLevelDisabled(graphics.getDefaultGraphics(), graphics.getMapView());
         } else {
-            SRTMTileGrid contourLineTileGrid = layer.getContourLineTileGrid(null);
-            SRTMTileGrid hillshadeTileGrid = layer.getHillshadeTileGrid(null);
-            // If the bounds changed since the last paint operation
-            if (!clipBounds.equals(previousClipBounds)) {
-                // Create a new SRTM tile grid for the map bounds if no grid was created or an
-                // existing grid does not cover the current bounds
-                if ((layer.isContourLinesEnabled() || layer.isElevationRasterEnabled())
-                        && (contourLineTileGrid == null || !contourLineTileGrid.covers(clipBounds))) {
-                    contourLineTileGrid = layer.getContourLineTileGrid(clipBounds);
-                    contourLineSegments = null;
-                }
-                // Create a new SRTM tile grid for hillshade use
-                if (layer.isHillshadeEnabled()) {
-                    hillshadeTileGrid = layer.getHillshadeTileGrid(clipBounds);
-                    hillshadeImage = null;
-                }
-            }
-            if (layer.isHillshadeEnabled() && hillshadeTileGrid != null)
-                drawHillshade(graphics.getDefaultGraphics(), graphics.getMapView(), hillshadeTileGrid);
+            if (layer.isHillshadeEnabled())
+                drawHillshade(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
 
-            if (layer.isContourLinesEnabled() && contourLineTileGrid != null)
-                drawSRTMIsolines(graphics.getDefaultGraphics(), graphics.getMapView(), contourLineTileGrid);
+            if (layer.isContourLinesEnabled())
+                drawSRTMIsolines(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
 
-            if (layer.isElevationRasterEnabled() && contourLineTileGrid != null)
-                drawSRTMRaster(graphics.getDefaultGraphics(), graphics.getMapView(), contourLineTileGrid);
+            if (layer.isElevationRasterEnabled())
+                drawSRTMRaster(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
 
             previousClipBounds = clipBounds;
         }
@@ -109,14 +98,14 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         g.drawString("Contour lines disabled for this zoom level", 10, mv.getHeight() - 10);
     }
 
-    private void drawHillshade(Graphics2D g, MapView mv, SRTMTileGrid srtmTileGrid) {
+    private void drawHillshade(Graphics2D g, MapView mv, Bounds bounds) {
         Point upperLeft = null;
         if (hillshadeImage == null || hillshadeAltitude != layer.getHillshadeAltitude()
-                || hillshadeAzimuth != layer.getHillshadeAzimuth()) {
+                || hillshadeAzimuth != layer.getHillshadeAzimuth() || !bounds.equals(previousClipBounds)) {
             hillshadeAltitude = layer.getHillshadeAltitude();
             hillshadeAzimuth = layer.getHillshadeAzimuth();
-            Hillshade.ImageTile hillshadeTile = srtmTileGrid.getHillshadeImage(hillshadeAltitude, hillshadeAzimuth,
-                    false);
+            Hillshade.ImageTile hillshadeTile = layer.getElevationDataProvider().getHillshadeImage(bounds,
+                    hillshadeAltitude, hillshadeAzimuth, false);
             if (hillshadeTile == null)
                 return;
             // The dimensions of the unscaled hillshade image
@@ -150,10 +139,11 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
                 null);
     }
 
-    private void drawSRTMIsolines(Graphics2D g, MapView mv, SRTMTileGrid srtmTileGrid) {
-        if (contourLineSegments == null || contourLineIsostep != layer.getContourLineIsostep()) {
+    private void drawSRTMIsolines(Graphics2D g, MapView mv, Bounds bounds) {
+        if (contourLineSegments == null || contourLineIsostep != layer.getContourLineIsostep()
+                || !bounds.equals(previousClipBounds)) {
             contourLineIsostep = layer.getContourLineIsostep();
-            contourLineSegments = srtmTileGrid.getIsolineSegments(contourLineIsostep);
+            contourLineSegments = layer.getElevationDataProvider().getIsolineSegments(bounds, contourLineIsostep);
         }
         if (contourLineSegments == null)
             return;
@@ -166,9 +156,9 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         }
     }
 
-    private void drawSRTMRaster(Graphics2D g, MapView mv, SRTMTileGrid srtmTileGrid) {
+    private void drawSRTMRaster(Graphics2D g, MapView mv, Bounds bounds) {
         g.setColor(Color.RED);
-        for (LatLonEle latLonEle : srtmTileGrid.getLatLonEleList()) {
+        for (LatLonEle latLonEle : layer.getElevationDataProvider().getLatLonEleList(bounds)) {
             Point p = mv.getPoint(latLonEle);
             String ele = Integer.toString((int) latLonEle.ele());
             g.fillOval(p.x - 1, p.y - 1, 3, 3);

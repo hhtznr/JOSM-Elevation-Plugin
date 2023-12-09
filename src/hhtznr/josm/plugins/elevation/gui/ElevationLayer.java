@@ -274,7 +274,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
     private void repaint() {
         MapFrame map = MainApplication.getMap();
         if (map != null)
-            map.repaint();
+            map.mapView.repaint();
     }
 
     private static class ShowContourLinesAction extends AbstractAction {

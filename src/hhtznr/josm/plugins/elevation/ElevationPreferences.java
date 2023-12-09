@@ -35,9 +35,24 @@ public class ElevationPreferences {
     public static final String RAM_CACHE_SIZE_LIMIT = "elevation.cache.ram.size.limit";
 
     /**
-     * Property key for enabling or disabling elevation contour line layer.
+     * Property key for enabling or disabling elevation visualization layer.
      */
     public static final String ELEVATION_LAYER_ENABLED = "elevation.layer.enabled";
+
+    /**
+     * Property key for enabling or disabling contour line rendering.
+     */
+    public static final String ELEVATION_CONTOUR_LINES_ENABLED = "elevation.layer.contour-lines.enabled";
+
+    /**
+     * Property key for enabling or disabling hillshade rendering.
+     */
+    public static final String ELEVATION_HILLSHADE_ENABLED = "elevation.layer.hillshade.enabled";
+
+    /**
+     * Property key for enabling or disabling rendering of the elevation data point raster.
+     */
+    public static final String ELEVATION_RASTER_ENABLED = "elevation.layer.raster.enabled";
 
     /**
      * Property key for the limit value of arc degrees in latitude or longitude
@@ -111,10 +126,25 @@ public class ElevationPreferences {
     public static final int INCR_RAM_CACHE_SIZE_LIMIT = 1;
 
     /**
-     * Default property value for enabling the elevation contour lines layer:
+     * Default property value for enabling the elevation visualization layer:
      * {@code true}.
      */
     public static final boolean DEFAULT_ELEVATION_LAYER_ENABLED = true;
+
+    /**
+     * Default property value for enabling contour line rendering: {@code true}.
+     */
+    public static final boolean DEFAULT_ELEVATION_CONTOUR_LINES_ENABLED = true;
+
+    /**
+     * Default property value for enabling hillshade rendering: {@code true}.
+     */
+    public static final boolean DEFAULT_ELEVATION_HILLSHADE_ENABLED = true;
+
+    /**
+     * Default property value for enabling rendering of the elevation data point raster: {@code false}.
+     */
+    public static final boolean DEFAULT_ELEVATION_RASTER_ENABLED = false;
 
     /**
      * Default property value for the limit value of arc degrees in latitude or

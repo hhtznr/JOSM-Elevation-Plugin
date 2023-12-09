@@ -73,7 +73,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
             ElevationPreferences.MAX_RAM_CACHE_SIZE_LIMIT, ElevationPreferences.INCR_RAM_CACHE_SIZE_LIMIT));
     private final JLabel lblCacheSizeUnit = new JLabel("MiB");
 
-    private final JCheckBox cbEnableElevationLayer = new JCheckBox("Enable Elevation Contour Line Layer");
+    private final JCheckBox cbEnableElevationLayer = new JCheckBox("Enable Elevation Visualization Layer");
 
     private final JLabel lblRenderingLimit = new JLabel("Layer Rendering Map Size Limit:");
     private final JSpinner spRenderingLimit = new JSpinner(new SpinnerNumberModel(

@@ -16,9 +16,11 @@ import org.openstreetmap.josm.gui.MapFrame;
 import org.openstreetmap.josm.gui.MapView;
 import org.openstreetmap.josm.gui.dialogs.LayerListDialog;
 import org.openstreetmap.josm.gui.layer.Layer;
+import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Logging;
 
+import hhtznr.josm.plugins.elevation.ElevationPreferences;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProviderListener;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
@@ -40,9 +42,9 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
     private int hillshadeAzimuth;
     SRTMTileGrid hillshadeTileGrid = null;
 
-    private boolean contourLinesEnabled = true;
-    private boolean hillshadeEnabled = true;
-    private boolean elevationRasterEnabled = false;
+    private boolean contourLinesEnabled;
+    private boolean hillshadeEnabled;
+    private boolean elevationRasterEnabled;
 
     /**
      * Creates a new elevation layer.
@@ -69,6 +71,9 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         this.hillshadeAzimuth = hillshadeAzimuth;
         this.elevationDataProvider = elevationDataProvider;
         elevationDataProvider.addElevationDataProviderListener(this);
+        contourLinesEnabled = Config.getPref().getBoolean(ElevationPreferences.ELEVATION_CONTOUR_LINES_ENABLED, ElevationPreferences.DEFAULT_ELEVATION_CONTOUR_LINES_ENABLED);
+        hillshadeEnabled = Config.getPref().getBoolean(ElevationPreferences.ELEVATION_HILLSHADE_ENABLED, ElevationPreferences.DEFAULT_ELEVATION_HILLSHADE_ENABLED);
+        elevationRasterEnabled = Config.getPref().getBoolean(ElevationPreferences.ELEVATION_RASTER_ENABLED, ElevationPreferences.DEFAULT_ELEVATION_RASTER_ENABLED);
     }
 
     /**
@@ -286,6 +291,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         @Override
         public void actionPerformed(ActionEvent e) {
             layer.contourLinesEnabled = !layer.contourLinesEnabled;
+            Config.getPref().putBoolean(ElevationPreferences.ELEVATION_CONTOUR_LINES_ENABLED, layer.contourLinesEnabled);
             if (layer.contourLinesEnabled)
                 Logging.info("Elevation: Contour lines enabled");
             else
@@ -308,6 +314,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         @Override
         public void actionPerformed(ActionEvent e) {
             layer.hillshadeEnabled = !layer.hillshadeEnabled;
+            Config.getPref().putBoolean(ElevationPreferences.ELEVATION_HILLSHADE_ENABLED, layer.hillshadeEnabled);
             if (layer.hillshadeEnabled)
                 Logging.info("Elevation: Hillshade enabled");
             else
@@ -330,6 +337,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         @Override
         public void actionPerformed(ActionEvent e) {
             layer.elevationRasterEnabled = !layer.elevationRasterEnabled;
+            Config.getPref().putBoolean(ElevationPreferences.ELEVATION_RASTER_ENABLED, layer.elevationRasterEnabled);
             if (layer.elevationRasterEnabled)
                 Logging.info("Elevation: Elevation raster points enabled");
             else

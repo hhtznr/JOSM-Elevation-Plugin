@@ -10,8 +10,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 
+import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.ILatLon;
 import org.openstreetmap.josm.data.coor.LatLon;
+
+import hhtznr.josm.plugins.elevation.gui.HillshadeImageTile;
 
 /**
  * This class implements hill shading.
@@ -35,8 +38,8 @@ public class Hillshade {
     public static final int MAX_HILLSHADE = 0;
 
     private final short[][] eleValues;
-    private final LatLon southWest;
-    private final LatLon northEast;
+    private final Bounds nominalBounds;
+    private final Bounds actualBounds;
     private double zenithRad;
     private double sinZenithRad;
     private double cosZenithRad;
@@ -52,19 +55,20 @@ public class Hillshade {
     /**
      * Creates a new hillshade instance.
      *
-     * @param eleValues   The elevation values for which to compute the hillshade.
-     * @param southWest   The south west corner of the elevation raster.
-     * @param northEast   The north east corner of the elevation raster.
-     * @param altitudeDeg The altitude is the angle of the illumination source above
-     *                    the horizon. The units are in degrees, from 0 (on the
-     *                    horizon) to 90 (overhead).
-     * @param azimuthDeg  The azimuth is the angular direction of the sun, measured
-     *                    from north in clockwise degrees from 0 to 360.
+     * @param eleValues     The elevation values for which to compute the hillshade.
+     * @param nominalBounds The nominal bounds of the elevation raster.
+     * @param actualBounds  The actual bounds of the elevation raster.
+     * @param altitudeDeg   The altitude is the angle of the illumination source
+     *                      above the horizon. The units are in degrees, from 0 (on
+     *                      the horizon) to 90 (overhead).
+     * @param azimuthDeg    The azimuth is the angular direction of the sun,
+     *                      measured from north in clockwise degrees from 0 to 360.
      */
-    public Hillshade(short[][] eleValues, LatLon southWest, LatLon northEast, double altitudeDeg, double azimuthDeg) {
+    public Hillshade(short[][] eleValues, Bounds nominalBounds, Bounds actualBounds, double altitudeDeg,
+            double azimuthDeg) {
         this.eleValues = eleValues;
-        this.southWest = southWest;
-        this.northEast = northEast;
+        this.nominalBounds = nominalBounds;
+        this.actualBounds = actualBounds;
         zenithRad = getZenithRad(altitudeDeg);
         // Compute sinus and cosinus of zenith in order not to recompute it
         sinZenithRad = Math.sin(zenithRad);
@@ -223,17 +227,16 @@ public class Hillshade {
     /**
      * Computes the z-factor which is applicable within the given bounds.
      *
-     * @param southWest The south west corner of the bounds.
-     * @param northEast The north east corner of the bounds.
+     * @param bounds The bounds for which to compute the z-factor.
      * @return The z-factor, i.e. the conversion factor from latitude-longitude
      *         (x-y) dimension of arc degrees to (z) elevation dimension of meters.
      */
-    public static double getZFactor(ILatLon southWest, ILatLon northEast) {
+    public static double getZFactor(Bounds bounds) {
         // https://pro.arcgis.com/en/pro-app/latest/tool-reference/3d-analyst/applying-a-z-factor.htm
-        double latSouth = southWest.lat();
-        double latNorth = northEast.lat();
-        double lonWest = southWest.lon();
-        double lonEast = northEast.lon();
+        double latSouth = bounds.getMinLat();
+        double latNorth = bounds.getMaxLat();
+        double lonWest = bounds.getMinLon();
+        double lonEast = bounds.getMaxLon();
         if (lonWest == lonEast)
             throw new IllegalArgumentException(
                     "The z-factor cannot be computed if both longitude values are the same as this would result in a division by zero (longitudes: "
@@ -280,7 +283,7 @@ public class Hillshade {
      *         SRTM tile grid cannot deliver elevation values or there are less than
      *         3 elevation values in one of the two dimensions.
      */
-    public ImageTile getHillshadeImage(boolean withPerimeter) {
+    public HillshadeImageTile getHillshadeImage(boolean withPerimeter) {
         if (eleValues == null)
             return null;
 
@@ -290,14 +293,14 @@ public class Hillshade {
             return null;
 
         // Determine the z-factor and the cell size
-        final double zFactor = getZFactor(southWest, northEast);
-        final double cellSize = (northEast.lat() - southWest.lat()) / (latLength - 1);
+        final double zFactor = getZFactor(actualBounds);
+        final double cellSize = actualBounds.getHeight() / (latLength - 1);
 
         final int perimeterOffset = withPerimeter ? 1 : 0;
 
         final int width = lonLength + 2 * perimeterOffset;
         int height = latLength + 2 * perimeterOffset;
-        // Create a new image with alpha channel  which is black by default (RGB = [0, 0, 0])
+        // Create image with alpha channel which is black by default (RGB = [0, 0, 0])
         final BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
 
         // List of tasks to be executed by the thread executor service
@@ -375,10 +378,10 @@ public class Hillshade {
         if (withPerimeter) {
             // The hillshade bounds are 1/2 of the cell size wider in each direction than
             // the elevation raster bounds
-            north = northEast.lat() + cellSize / 2;
-            south = southWest.lat() - cellSize / 2;
-            west = southWest.lon() - cellSize / 2;
-            east = northEast.lon() + cellSize / 2;
+            north = actualBounds.getMaxLat() + cellSize / 2;
+            south = actualBounds.getMinLat() - cellSize / 2;
+            west = actualBounds.getMinLon() - cellSize / 2;
+            east = actualBounds.getMaxLon() + cellSize / 2;
             // Correct coordinates if outside of world map
             if (north > 90.0)
                 north = 90.0;
@@ -390,13 +393,13 @@ public class Hillshade {
                 east = east - 360.0;
         } else {
             // As above, but accommodate for the perimeter having been skipped
-            north = northEast.lat() - cellSize / 2;
-            south = southWest.lat() + cellSize / 2;
-            west = southWest.lon() + cellSize / 2;
-            east = northEast.lon() - cellSize / 2;
+            north = actualBounds.getMaxLat() - cellSize / 2;
+            south = actualBounds.getMinLat() + cellSize / 2;
+            west = actualBounds.getMinLon() + cellSize / 2;
+            east = actualBounds.getMaxLon() - cellSize / 2;
         }
 
-        return new ImageTile(image, new LatLon(north, west), new LatLon(south, east));
+        return new HillshadeImageTile(image, nominalBounds, new Bounds(south, west, north, east));
     }
 
     /**
@@ -435,58 +438,5 @@ public class Hillshade {
             return MAX_HILLSHADE;
 
         return (int) Math.round(NO_HILLSHADE * hillshade);
-    }
-
-    /**
-     * Class implementing a hillshade tile which is an image with the hillshade
-     * color values and the latitude-longitude coordinates of its edges.
-     */
-    public static class ImageTile {
-
-        private final BufferedImage image;
-        private final LatLon northWest;
-        private final LatLon southEast;
-
-        /**
-         * Creates a new hillshade image tile.
-         *
-         * @param image     The image with the hillshade color values.
-         * @param northWest The north west corner of the tile in latitude-longitude
-         *                  coordinates.
-         * @param southEast The south east corner of the tile in latitude-longitude
-         *                  coordinates.
-         */
-        public ImageTile(BufferedImage image, LatLon northWest, LatLon southEast) {
-            this.image = image;
-            this.northWest = northWest;
-            this.southEast = southEast;
-        }
-
-        /**
-         * Returns the image with the hillshade color values of this tile.
-         *
-         * @return The image with the hillshade color values.
-         */
-        public BufferedImage getImage() {
-            return image;
-        }
-
-        /**
-         * Returns the north west corner of the tile in latitude-longitude coordinates
-         *
-         * @return The north west corner of the tile in latitude-longitude coordinates
-         */
-        public LatLon getNorthWest() {
-            return northWest;
-        }
-
-        /**
-         * Returns the south east corner of the tile in latitude-longitude coordinates.
-         *
-         * @return The south east corner of the tile in latitude-longitude coordinates.
-         */
-        public LatLon getSouthEast() {
-            return southEast;
-        }
     }
 }

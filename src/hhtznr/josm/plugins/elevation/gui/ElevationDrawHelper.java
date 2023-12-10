@@ -5,10 +5,7 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.Point;
-import java.awt.geom.AffineTransform;
-import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
-import java.util.List;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
@@ -18,11 +15,9 @@ import org.openstreetmap.josm.gui.layer.MapViewPaintable;
 import org.openstreetmap.josm.gui.layer.MapViewPaintable.MapViewEvent;
 import org.openstreetmap.josm.gui.layer.MapViewPaintable.PaintableInvalidationEvent;
 import org.openstreetmap.josm.gui.layer.MapViewPaintable.PaintableInvalidationListener;
-import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.LatLonLine;
-import hhtznr.josm.plugins.elevation.math.Hillshade;
 
 /**
  * The class that helps drawing elevation contour lines, elevation data raster
@@ -40,10 +35,11 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
     private final ElevationLayer layer;
 
     private int contourLineIsostep;
-    List<LatLonLine> contourLineSegments = null;
+    ContourLines contourLines = null;
 
     private int hillshadeAltitude;
     private int hillshadeAzimuth;
+    HillshadeImageTile hillshadeTile = null;
     BufferedImage hillshadeImage = null;
     private LatLon hillshadeNorthWest = null;
 
@@ -63,9 +59,11 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
     @Override
     public void paint(MapViewGraphics graphics) {
         if (!layer.isContourLinesEnabled())
-            contourLineSegments = null;
-        if (!layer.isHillshadeEnabled())
+            contourLines = null;
+        if (!layer.isHillshadeEnabled()) {
+            hillshadeTile = null;
             hillshadeImage = null;
+        }
         if (!layer.isContourLinesEnabled() && !layer.isElevationRasterEnabled() && !layer.isHillshadeEnabled())
             return;
 
@@ -83,10 +81,10 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
                 drawHillshade(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
 
             if (layer.isContourLinesEnabled())
-                drawSRTMIsolines(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
+                drawContourLines(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
 
             if (layer.isElevationRasterEnabled())
-                drawSRTMRaster(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
+                drawElevationRaster(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
 
             previousClipBounds = clipBounds;
         }
@@ -104,34 +102,21 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
                 || hillshadeAzimuth != layer.getHillshadeAzimuth() || !bounds.equals(previousClipBounds)) {
             hillshadeAltitude = layer.getHillshadeAltitude();
             hillshadeAzimuth = layer.getHillshadeAzimuth();
-            Hillshade.ImageTile hillshadeTile = layer.getElevationDataProvider().getHillshadeImage(bounds,
-                    hillshadeAltitude, hillshadeAzimuth, false);
+            if (hillshadeTile == null || !hillshadeTile.covers(bounds))
+                hillshadeTile = layer.getElevationDataProvider().getHillshadeImageTile(bounds,
+                        hillshadeAltitude, hillshadeAzimuth, false);
             if (hillshadeTile == null)
                 return;
-            // The dimensions of the unscaled hillshade image
-            int imageWidth = hillshadeTile.getImage().getWidth();
-            int imageHeight = hillshadeTile.getImage().getHeight();
-            if (imageWidth <= 0 || imageHeight <= 0) {
-                Logging.error(
-                        "Elevation: Hillshade size too small: width = " + imageWidth + ", height = " + imageHeight);
-                return;
-            }
-
-            hillshadeNorthWest = hillshadeTile.getNorthWest();
+            Bounds actualHillshadeBounds = hillshadeTile.getActualBounds();
+            hillshadeNorthWest = new LatLon(actualHillshadeBounds.getMaxLat(), actualHillshadeBounds.getMinLon());
             // Bounds of the hillshade tile in screen coordinates (x, y)
             upperLeft = mv.getPoint(hillshadeNorthWest);
-            Point lowerRight = mv.getPoint(hillshadeTile.getSouthEast());
+            Point lowerRight = mv.getPoint(new LatLon(actualHillshadeBounds.getMinLat(), actualHillshadeBounds.getMaxLon()));
             // The dimensions of the hillshade tile in screen coordinates
             int screenWidth = lowerRight.x - upperLeft.x;
             int screenHeight = lowerRight.y - upperLeft.y;
             // Scale the hillshade image to screen dimensions
-            // https://stackoverflow.com/questions/4216123/how-to-scale-a-bufferedimage
-            double sx = Double.valueOf(screenWidth) / Double.valueOf(imageWidth);
-            double sy = Double.valueOf(screenHeight) / Double.valueOf(imageHeight);
-            AffineTransform at = new AffineTransform();
-            at.scale(sx, sy);
-            AffineTransformOp scaleOp = new AffineTransformOp(at, AffineTransformOp.TYPE_BILINEAR);
-            hillshadeImage = scaleOp.filter(hillshadeTile.getImage(), null);
+            hillshadeImage = hillshadeTile.getScaledImage(screenWidth, screenHeight);
         }
         if (upperLeft == null)
             upperLeft = mv.getPoint(hillshadeNorthWest);
@@ -139,26 +124,27 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
                 null);
     }
 
-    private void drawSRTMIsolines(Graphics2D g, MapView mv, Bounds bounds) {
-        if (contourLineSegments == null || contourLineIsostep != layer.getContourLineIsostep()
-                || !bounds.equals(previousClipBounds)) {
+    private void drawContourLines(Graphics2D g, MapView mv, Bounds bounds) {
+        if (contourLines == null || contourLineIsostep != layer.getContourLineIsostep()
+                || !contourLines.covers(bounds)) {
             contourLineIsostep = layer.getContourLineIsostep();
-            contourLineSegments = layer.getElevationDataProvider().getIsolineSegments(bounds, contourLineIsostep);
+            contourLines = layer.getElevationDataProvider().getContourLines(bounds, contourLineIsostep);
         }
-        if (contourLineSegments == null)
+        if (contourLines == null)
             return;
         g.setColor(CONTOUR_LINE_COLOR);
         g.setStroke(new BasicStroke(1, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        for (LatLonLine segment : contourLineSegments) {
+        for (LatLonLine segment : contourLines.getIsolineSegments()) {
             Point p1 = mv.getPoint(segment.getLatLon1());
             Point p2 = mv.getPoint(segment.getLatLon2());
             g.drawLine(p1.x, p1.y, p2.x, p2.y);
         }
     }
 
-    private void drawSRTMRaster(Graphics2D g, MapView mv, Bounds bounds) {
+    private void drawElevationRaster(Graphics2D g, MapView mv, Bounds bounds) {
+        ElevationRaster elevationRaster = layer.getElevationDataProvider().getElevationRaster(bounds);
         g.setColor(Color.RED);
-        for (LatLonEle latLonEle : layer.getElevationDataProvider().getLatLonEleList(bounds)) {
+        for (LatLonEle latLonEle : elevationRaster.getLatLonEleList()) {
             Point p = mv.getPoint(latLonEle);
             String ele = Integer.toString((int) latLonEle.ele());
             g.fillOval(p.x - 1, p.y - 1, 3, 3);
@@ -175,5 +161,4 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
     @Override
     public void paintableInvalidated(PaintableInvalidationEvent event) {
     }
-
 }

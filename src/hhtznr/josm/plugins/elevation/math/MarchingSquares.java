@@ -9,6 +9,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 
+import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
 
 import hhtznr.josm.plugins.elevation.data.LatLonLine;
@@ -22,8 +23,7 @@ import hhtznr.josm.plugins.elevation.data.LatLonLine;
 public class MarchingSquares {
 
     private final short[][] eleValues;
-    private final LatLon southWest;
-    private final LatLon northEast;
+    private final Bounds bounds;
     private final short[] isovalues;
 
     private static final ExecutorService executor;
@@ -38,10 +38,7 @@ public class MarchingSquares {
      * computing contour lines from elevation raster data.
      *
      * @param eleValues The elevation raster data, e.g. obtained from SRTM tiles.
-     * @param southWest The coordinates of the south west corner of the elevation
-     *                  raster data.
-     * @param northEast The coordinates of the north east corner of the elevation
-     *                  raster data.
+     * @param bounds    The bounds of the elevation raster data.
      * @param isovalues An array of elevation values defining the isolevels, i.e.
      *                  the elevation values for which contour lines should be
      *                  generated, e.g. {@code { 650, 660, 670, 680 }}. The
@@ -50,10 +47,9 @@ public class MarchingSquares {
      *                  of the elevation raster. Otherwise, computation effort will
      *                  be wasted.
      */
-    public MarchingSquares(short[][] eleValues, LatLon southWest, LatLon northEast, short[] isovalues) {
+    public MarchingSquares(short[][] eleValues, Bounds bounds, short[] isovalues) {
         this.eleValues = eleValues;
-        this.southWest = southWest;
-        this.northEast = northEast;
+        this.bounds = bounds;
         this.isovalues = isovalues;
     }
 
@@ -109,16 +105,17 @@ public class MarchingSquares {
     private List<LatLonLine> getIsolineSegments(short isovalue) {
         ArrayList<LatLonLine> isolineSegments = new ArrayList<>();
 
-        double latRange = northEast.lat() - southWest.lat();
-        double lonRange = northEast.lon() - southWest.lon();
+        double latRange = bounds.getHeight();
+        double lonRange = bounds.getWidth();
+        double minLatSouth = bounds.getMinLat();
+        double minLonWest = bounds.getMinLon();
 
         Cell[] cellRowToNorth = new Cell[eleValues.length];
         // Iterate through the grid, accessing the data as "square" 2 x 2 cells
         // Therefore, we stop to iterate at index "length - 2" in both dimensions
         for (int latIndex = 0; latIndex < eleValues.length - 1; latIndex++) {
-            double latNorth = southWest.lat() + latRange * (1.0 - Double.valueOf(latIndex) / (eleValues.length - 1));
-            double latSouth = southWest.lat()
-                    + latRange * (1.0 - Double.valueOf(latIndex + 1) / (eleValues.length - 1));
+            double latNorth = minLatSouth + latRange * (1.0 - Double.valueOf(latIndex) / (eleValues.length - 1));
+            double latSouth = minLatSouth + latRange * (1.0 - Double.valueOf(latIndex + 1) / (eleValues.length - 1));
 
             // The cell to the north of the currently processed cell
             Cell cellToNorth = cellRowToNorth[latIndex];
@@ -138,7 +135,7 @@ public class MarchingSquares {
                 if (cellToWest == null) {
                     eleNorthWest = eleValues[latIndex][lonIndex];
                     eleSouthWest = eleValues[latIndex + 1][lonIndex];
-                    lonWest = southWest.lon() + lonRange * Double.valueOf(lonIndex) / (eleValues[latIndex].length - 1);
+                    lonWest = minLonWest + lonRange * Double.valueOf(lonIndex) / (eleValues[latIndex].length - 1);
                 }
                 // If there is a previous cell to the west,
                 // copy values of shared edge and vertices instead
@@ -150,16 +147,15 @@ public class MarchingSquares {
                 // Same under consideration of a previous cell to the north
                 if (cellToNorth == null) {
                     eleNorthEast = eleValues[latIndex][lonIndex + 1];
-                    lonEast = southWest.lon() + lonRange * Double.valueOf(lonIndex + 1) / (eleValues[latIndex].length - 1);
-                }
-                else {
+                    lonEast = minLonWest + lonRange * Double.valueOf(lonIndex + 1) / (eleValues[latIndex].length - 1);
+                } else {
                     eleNorthEast = cellToNorth.eleSouthEast;
                     lonEast = cellToNorth.lonEast;
                 }
                 eleSouthEast = eleValues[latIndex + 1][lonIndex + 1];
 
-                Cell currentCell = new Cell(latSouth, lonWest, latNorth, lonEast, eleNorthWest, eleNorthEast, eleSouthEast,
-                        eleSouthWest);
+                Cell currentCell = new Cell(latSouth, lonWest, latNorth, lonEast, eleNorthWest, eleNorthEast,
+                        eleSouthEast, eleSouthWest);
 
                 // Determine the Marching Squares cell case with respect to the given isoline
                 int cellCase = currentCell.getCase(isovalue);
@@ -201,7 +197,8 @@ public class MarchingSquares {
                     else
                         currentCell.edgeWest = cellToWest.edgeEast;
                     currentCell.setIntersectionSouth(isovalue);
-                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionWest(), currentCell.getIntersectionSouth()));
+                    isolineSegments
+                            .add(new LatLonLine(currentCell.getIntersectionWest(), currentCell.getIntersectionSouth()));
                     break;
                 case 2:
                     /**
@@ -220,7 +217,8 @@ public class MarchingSquares {
                      */
                     currentCell.setIntersectionSouth(isovalue);
                     currentCell.setIntersectionEast(isovalue);
-                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionSouth(), currentCell.getIntersectionEast()));
+                    isolineSegments
+                            .add(new LatLonLine(currentCell.getIntersectionSouth(), currentCell.getIntersectionEast()));
                     break;
                 case 3:
                     /**
@@ -242,7 +240,8 @@ public class MarchingSquares {
                     else
                         currentCell.edgeWest = cellToWest.edgeEast;
                     currentCell.setIntersectionEast(isovalue);
-                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionWest(), currentCell.getIntersectionEast()));
+                    isolineSegments
+                            .add(new LatLonLine(currentCell.getIntersectionWest(), currentCell.getIntersectionEast()));
                     break;
                 case 4:
                     /**
@@ -264,7 +263,8 @@ public class MarchingSquares {
                         currentCell.setIntersectionNorth(isovalue);
                     else
                         currentCell.edgeNorth = cellToNorth.edgeSouth;
-                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionEast(), currentCell.getIntersectionNorth()));
+                    isolineSegments
+                            .add(new LatLonLine(currentCell.getIntersectionEast(), currentCell.getIntersectionNorth()));
                     break;
                 case 5:
                     /**
@@ -292,8 +292,10 @@ public class MarchingSquares {
                         currentCell.setIntersectionNorth(isovalue);
                     else
                         currentCell.edgeNorth = cellToNorth.edgeSouth;
-                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionWest(), currentCell.getIntersectionSouth()));
-                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionEast(), currentCell.getIntersectionNorth()));
+                    isolineSegments
+                            .add(new LatLonLine(currentCell.getIntersectionWest(), currentCell.getIntersectionSouth()));
+                    isolineSegments
+                            .add(new LatLonLine(currentCell.getIntersectionEast(), currentCell.getIntersectionNorth()));
                     break;
                 case 6:
                     /**
@@ -315,7 +317,8 @@ public class MarchingSquares {
                         currentCell.setIntersectionNorth(isovalue);
                     else
                         currentCell.edgeNorth = cellToNorth.edgeSouth;
-                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionSouth(), currentCell.getIntersectionNorth()));
+                    isolineSegments.add(
+                            new LatLonLine(currentCell.getIntersectionSouth(), currentCell.getIntersectionNorth()));
                     break;
                 case 7:
                     /**
@@ -340,7 +343,8 @@ public class MarchingSquares {
                         currentCell.setIntersectionNorth(isovalue);
                     else
                         currentCell.edgeNorth = cellToNorth.edgeSouth;
-                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionWest(), currentCell.getIntersectionNorth()));
+                    isolineSegments
+                            .add(new LatLonLine(currentCell.getIntersectionWest(), currentCell.getIntersectionNorth()));
                     break;
                 case 8:
                     /**
@@ -365,7 +369,8 @@ public class MarchingSquares {
                         currentCell.setIntersectionWest(isovalue);
                     else
                         currentCell.edgeWest = cellToWest.edgeEast;
-                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionNorth(), currentCell.getIntersectionWest()));
+                    isolineSegments
+                            .add(new LatLonLine(currentCell.getIntersectionNorth(), currentCell.getIntersectionWest()));
                     break;
                 case 9:
                     /**
@@ -387,7 +392,8 @@ public class MarchingSquares {
                     else
                         currentCell.edgeNorth = cellToNorth.edgeSouth;
                     currentCell.setIntersectionSouth(isovalue);
-                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionNorth(), currentCell.getIntersectionSouth()));
+                    isolineSegments.add(
+                            new LatLonLine(currentCell.getIntersectionNorth(), currentCell.getIntersectionSouth()));
                     break;
                 case 10:
                     /**
@@ -415,8 +421,10 @@ public class MarchingSquares {
                         currentCell.setIntersectionWest(isovalue);
                     else
                         currentCell.edgeWest = cellToWest.edgeEast;
-                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionNorth(), currentCell.getIntersectionEast()));
-                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionSouth(), currentCell.getIntersectionWest()));
+                    isolineSegments
+                            .add(new LatLonLine(currentCell.getIntersectionNorth(), currentCell.getIntersectionEast()));
+                    isolineSegments
+                            .add(new LatLonLine(currentCell.getIntersectionSouth(), currentCell.getIntersectionWest()));
                     break;
                 case 11:
                     /**
@@ -438,7 +446,8 @@ public class MarchingSquares {
                     else
                         currentCell.edgeNorth = cellToNorth.edgeSouth;
                     currentCell.setIntersectionEast(isovalue);
-                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionNorth(), currentCell.getIntersectionEast()));
+                    isolineSegments
+                            .add(new LatLonLine(currentCell.getIntersectionNorth(), currentCell.getIntersectionEast()));
                     break;
                 case 12:
                     /**
@@ -460,7 +469,8 @@ public class MarchingSquares {
                         currentCell.setIntersectionWest(isovalue);
                     else
                         currentCell.edgeWest = cellToWest.edgeEast;
-                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionEast(), currentCell.getIntersectionWest()));
+                    isolineSegments
+                            .add(new LatLonLine(currentCell.getIntersectionEast(), currentCell.getIntersectionWest()));
                     break;
                 case 13:
                     /**
@@ -479,7 +489,8 @@ public class MarchingSquares {
                      */
                     currentCell.setIntersectionEast(isovalue);
                     currentCell.setIntersectionSouth(isovalue);
-                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionEast(), currentCell.getIntersectionSouth()));
+                    isolineSegments
+                            .add(new LatLonLine(currentCell.getIntersectionEast(), currentCell.getIntersectionSouth()));
                     break;
                 case 14:
                     /**
@@ -501,7 +512,8 @@ public class MarchingSquares {
                         currentCell.setIntersectionWest(isovalue);
                     else
                         currentCell.edgeWest = cellToWest.edgeEast;
-                    isolineSegments.add(new LatLonLine(currentCell.getIntersectionSouth(), currentCell.getIntersectionWest()));
+                    isolineSegments
+                            .add(new LatLonLine(currentCell.getIntersectionSouth(), currentCell.getIntersectionWest()));
                     break;
                 case 15:
                     /**
@@ -580,7 +592,8 @@ public class MarchingSquares {
         /**
          * Determines the Marching Squares cell case,
          *
-         * @param isovalue The isovalue for which to determine the Marching Squares cell case.
+         * @param isovalue The isovalue for which to determine the Marching Squares cell
+         *                 case.
          * @return The integer code in the range {@code 0...15} which is associated with
          *         the appropriate Marching Squares Cell case.
          */

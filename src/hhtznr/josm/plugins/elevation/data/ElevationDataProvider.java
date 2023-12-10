@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -20,11 +19,13 @@ import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
+import hhtznr.josm.plugins.elevation.gui.ContourLines;
+import hhtznr.josm.plugins.elevation.gui.ElevationRaster;
+import hhtznr.josm.plugins.elevation.gui.HillshadeImageTile;
 import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
 import hhtznr.josm.plugins.elevation.io.SRTMFileDownloadListener;
 import hhtznr.josm.plugins.elevation.io.SRTMFileReader;
 import hhtznr.josm.plugins.elevation.io.SRTMFiles;
-import hhtznr.josm.plugins.elevation.math.Hillshade;
 
 /**
  * Class {@code ElevationDataProvider} provides SRTM tiles and elevation data
@@ -38,8 +39,8 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
     private File srtmDirectory = null;
 
     /**
-     * This elevation data provider's in-memory cache where SRTM tiles read from file are
-     * stored.
+     * This elevation data provider's in-memory cache where SRTM tiles read from
+     * file are stored.
      */
     private final SRTMTileCache tileCache;
 
@@ -179,22 +180,22 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
     }
 
     /**
-     * Returns a list of all raster coordinates and the associated elevation values
-     * within the bounds. If this method does not return {@code null}, the raster
-     * coordinates will always cover the bounds. However, the method may return a
-     * larger raster as is needed.
+     * Returns all raster coordinates and the associated elevation values within the
+     * bounds. If this method does not return {@code null}, the raster coordinates
+     * will always cover the bounds. However, the method may return a larger raster
+     * as is needed.
      *
      * @param bounds The bounds in latitude-longitude coordinate space.
      * @return A list with raster coordinates and associated elevation values or
      *         {@code null} if insufficient cached elevation data is available.
      */
-    public List<LatLonEle> getLatLonEleList(Bounds bounds) {
+    public ElevationRaster getElevationRaster(Bounds bounds) {
         synchronized (tileGridLock) {
             if (previousTileGrid == null || !previousTileGrid.covers(bounds)
                     || previousTileGrid.getNominalBounds().getWidth() > 1.5 * bounds.getWidth()
                     || previousTileGrid.getNominalBounds().getHeight() > 1.5 * bounds.getHeight())
                 previousTileGrid = new SRTMTileGrid(this, bounds);
-            return previousTileGrid.getLatLonEleList();
+            return previousTileGrid.getElevationRaster();
         }
     }
 
@@ -210,13 +211,13 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
      *         the bounds or {@code null} if no suitable elevation data is cached to
      *         compute the contour lines.
      */
-    public List<LatLonLine> getIsolineSegments(Bounds bounds, int isostep) {
+    public ContourLines getContourLines(Bounds bounds, int isostep) {
         synchronized (tileGridLock) {
             if (previousTileGrid == null || !previousTileGrid.covers(bounds)
                     || previousTileGrid.getNominalBounds().getWidth() > 1.5 * bounds.getWidth()
                     || previousTileGrid.getNominalBounds().getHeight() > 1.5 * bounds.getHeight())
                 previousTileGrid = new SRTMTileGrid(this, bounds);
-            return previousTileGrid.getIsolineSegments(isostep);
+            return previousTileGrid.getContourLines(isostep);
         }
     }
 
@@ -240,7 +241,7 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
      * @return An image with the computed hillshade values or {@code null} if no
      *         suitable elevation data is cached to compute the hillshades.
      */
-    public Hillshade.ImageTile getHillshadeImage(Bounds bounds, double altitudeDeg, double azimuthDeg,
+    public HillshadeImageTile getHillshadeImageTile(Bounds bounds, double altitudeDeg, double azimuthDeg,
             boolean withPerimeter) {
         synchronized (tileGridLock) {
             if (previousTileGrid == null || !previousTileGrid.covers(bounds)
@@ -258,7 +259,7 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
      * @param limit The maximum size of the cache in MiB.
      */
     public synchronized void setCacheSizeLimit(int limit) {
-       tileCache.setCacheSizeLimit(limit);
+        tileCache.setCacheSizeLimit(limit);
     }
 
     /**
@@ -398,8 +399,8 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
      * Determines the SRTM file for the given tile ID. If both, an SRTM1 and an
      * SRTM3 file are available for the given tile ID, the SRTM1 file is preferred.
      *
-     * @param srtmTileID The SRTM tile ID.
-     * @param preferredSRTMType   The preferred SRTM type (SRTM1 or SRTM3).
+     * @param srtmTileID        The SRTM tile ID.
+     * @param preferredSRTMType The preferred SRTM type (SRTM1 or SRTM3).
      * @return The SRTM file or {@code null} if no file is available for the given
      *         tile ID.
      */

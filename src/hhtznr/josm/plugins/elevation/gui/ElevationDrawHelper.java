@@ -152,6 +152,8 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
 
     private void drawElevationRaster(Graphics2D g, MapView mv, Bounds bounds) {
         ElevationRaster elevationRaster = layer.getElevationDataProvider().getElevationRaster(bounds);
+        if (elevationRaster == null)
+            return;
         g.setColor(Color.RED);
         for (LatLonEle latLonEle : elevationRaster.getLatLonEleList()) {
             Point p = mv.getPoint(latLonEle);

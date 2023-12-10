@@ -38,6 +38,13 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
      */
     private static final double BOUNDS_SCALE_FACTOR = 1.2;
 
+    /**
+     * Upon zooming, the previous contour line and hillshade tile are discarded, if
+     * at least one of its dimensions is by this factor larger than the currently
+     * needed size.
+     */
+    private static final double SCALE_DISCARD_FACTOR = 1.5;
+
     private final ElevationLayer layer;
 
     private int contourLineIsostep;
@@ -83,6 +90,14 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         if (zoomLevelDisabled) {
             drawZoomLevelDisabled(graphics.getDefaultGraphics(), graphics.getMapView());
         } else {
+            if (previousClipBounds != null
+                    && (previousClipBounds.getWidth() > SCALE_DISCARD_FACTOR * clipBounds.getWidth()
+                            || previousClipBounds.getHeight() > SCALE_DISCARD_FACTOR * clipBounds.getHeight())) {
+                contourLines = null;
+                hillshadeTile = null;
+                hillshadeImage = null;
+            }
+
             if (layer.isHillshadeEnabled())
                 drawHillshade(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
 

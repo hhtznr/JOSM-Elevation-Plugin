@@ -1,13 +1,16 @@
 package hhtznr.josm.plugins.elevation.gui;
 
+import java.awt.Component;
 import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.Icon;
+import javax.swing.JCheckBoxMenuItem;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.osm.visitor.BoundingXYVisitor;
@@ -262,15 +265,36 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
             map.mapView.repaint();
     }
 
-    private static class ShowContourLinesAction extends AbstractAction {
+    private static abstract class AbstractElevationLayerAction extends AbstractAction implements LayerAction {
 
         private static final long serialVersionUID = 1L;
 
-        private final ElevationLayer layer;
+        protected final ElevationLayer layer;
+
+        public AbstractElevationLayerAction(ElevationLayer layer, String actionName, String iconName) {
+            this.layer = layer;
+            putValue(NAME, actionName);
+            new ImageProvider("dialogs", iconName).getResource().attachImageIcon(this, true);
+        }
+
+        @Override
+        public boolean supportLayers(List<Layer> layers) {
+            if (layers.size() == 0)
+                return false;
+            for (Layer layer : layers) {
+                if (!(layer instanceof ElevationLayer))
+                    return false;
+            }
+            return true;
+        }
+    }
+
+    private static class ShowContourLinesAction extends AbstractElevationLayerAction {
+
+        private static final long serialVersionUID = 1L;
 
         public ShowContourLinesAction(ElevationLayer layer) {
-            this.layer = layer;
-            putValue(NAME, "Enable/disable contour lines");
+            super(layer, "Enable/disable contour lines", "contour_lines");
         }
 
         @Override
@@ -284,17 +308,21 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
                 Logging.info("Elevation: Contour lines disabled");
             layer.repaint();
         }
+
+        @Override
+        public Component createMenuComponent() {
+            JCheckBoxMenuItem item = new JCheckBoxMenuItem(this);
+            item.setSelected(layer.contourLinesEnabled);
+            return item;
+        }
     }
 
-    private static class ShowHillshadeAction extends AbstractAction {
+    private static class ShowHillshadeAction extends AbstractElevationLayerAction {
 
         private static final long serialVersionUID = 1L;
 
-        private final ElevationLayer layer;
-
         public ShowHillshadeAction(ElevationLayer layer) {
-            this.layer = layer;
-            putValue(NAME, "Enable/disable hillshade");
+            super(layer, "Enable/disable hillshade", "hillshade");
         }
 
         @Override
@@ -307,17 +335,21 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
                 Logging.info("Elevation: Hillshade disabled");
             layer.repaint();
         }
+
+        @Override
+        public Component createMenuComponent() {
+            JCheckBoxMenuItem item = new JCheckBoxMenuItem(this);
+            item.setSelected(layer.hillshadeEnabled);
+            return item;
+        }
     }
 
-    private static class ShowElevationRasterAction extends AbstractAction {
+    private static class ShowElevationRasterAction extends AbstractElevationLayerAction {
 
         private static final long serialVersionUID = 1L;
 
-        private final ElevationLayer layer;
-
         public ShowElevationRasterAction(ElevationLayer layer) {
-            this.layer = layer;
-            putValue(NAME, "Enable/disable elevation raster");
+            super(layer, "Enable/disable elevation raster", "elevation_raster");
         }
 
         @Override
@@ -329,6 +361,13 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
             else
                 Logging.info("Elevation: Elevation raster points disabled");
             layer.repaint();
+        }
+
+        @Override
+        public Component createMenuComponent() {
+            JCheckBoxMenuItem item = new JCheckBoxMenuItem(this);
+            item.setSelected(layer.elevationRasterEnabled);
+            return item;
         }
     }
 }

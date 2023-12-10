@@ -32,6 +32,12 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
      */
     public static final Color CONTOUR_LINE_COLOR = new Color(210, 180, 115);
 
+    /**
+     * Scale factor for bounds of new contour line and hillshade tiles so they do
+     * not immediately need to be regenerated when the map is moved.
+     */
+    private static final double BOUNDS_SCALE_FACTOR = 1.2;
+
     private final ElevationLayer layer;
 
     private int contourLineIsostep;
@@ -102,9 +108,11 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
                 || hillshadeAzimuth != layer.getHillshadeAzimuth() || !bounds.equals(previousClipBounds)) {
             hillshadeAltitude = layer.getHillshadeAltitude();
             hillshadeAzimuth = layer.getHillshadeAzimuth();
-            if (hillshadeTile == null || !hillshadeTile.covers(bounds))
-                hillshadeTile = layer.getElevationDataProvider().getHillshadeImageTile(bounds,
+            if (hillshadeTile == null || !hillshadeTile.covers(bounds)) {
+                Bounds scaledBounds = getScaledBounds(bounds, BOUNDS_SCALE_FACTOR);
+                hillshadeTile = layer.getElevationDataProvider().getHillshadeImageTile(scaledBounds,
                         hillshadeAltitude, hillshadeAzimuth, false);
+            }
             if (hillshadeTile == null)
                 return;
             Bounds actualHillshadeBounds = hillshadeTile.getActualBounds();
@@ -128,7 +136,8 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         if (contourLines == null || contourLineIsostep != layer.getContourLineIsostep()
                 || !contourLines.covers(bounds)) {
             contourLineIsostep = layer.getContourLineIsostep();
-            contourLines = layer.getElevationDataProvider().getContourLines(bounds, contourLineIsostep);
+            Bounds scaledBounds = getScaledBounds(bounds, BOUNDS_SCALE_FACTOR);
+            contourLines = layer.getElevationDataProvider().getContourLines(scaledBounds, contourLineIsostep);
         }
         if (contourLines == null)
             return;
@@ -151,6 +160,27 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
             g.setFont(g.getFont().deriveFont(Font.PLAIN, 10));
             g.drawString(ele, p.x + 2, p.y + 5);
         }
+    }
+
+    private static Bounds getScaledBounds(Bounds bounds, double factor) {
+        if (factor <= 0.0)
+            throw new IllegalArgumentException("Scale factor " + factor + " <= 0");
+
+        double latRange = bounds.getHeight();
+        double lonRange = bounds.getWidth();
+        double halfDeltaLat = 0.5 * (latRange * factor - latRange);
+        double halfDeltaLon = 0.5 * (lonRange * factor - lonRange);
+        double minLat = Math.max(bounds.getMinLat() - halfDeltaLat, -90.0);
+        double maxLat = Math.min(bounds.getMaxLat() + halfDeltaLat, 90.0);
+        double minLon = bounds.getMinLon() - halfDeltaLon;
+        // Across 180th meridian
+        if (minLon < -180.0)
+            minLon = minLon + 360.0;
+        double maxLon = bounds.getMaxLon() + halfDeltaLon;
+        // Across 180th meridian
+        if (maxLon > 180.0)
+            maxLon = maxLon - 360.0;
+        return new Bounds(minLat, minLon, maxLat, maxLon);
     }
 
     @Override

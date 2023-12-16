@@ -51,8 +51,7 @@ public class HillshadeImageTile extends AbstractSRTMTileGridPaintable {
         // https://stackoverflow.com/questions/4216123/how-to-scale-a-bufferedimage
         double sx = Double.valueOf(width) / Double.valueOf(image.getWidth());
         double sy = Double.valueOf(height) / Double.valueOf(image.getHeight());
-        AffineTransform at = new AffineTransform();
-        at.scale(sx, sy);
+        AffineTransform at = AffineTransform.getScaleInstance(sx, sy);
         AffineTransformOp scaleOp = new AffineTransformOp(at, AffineTransformOp.TYPE_BILINEAR);
         return scaleOp.filter(image, null);
     }

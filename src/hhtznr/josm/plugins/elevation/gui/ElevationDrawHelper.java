@@ -132,12 +132,20 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
                 return;
             Bounds actualHillshadeBounds = hillshadeTile.getActualBounds();
             hillshadeNorthWest = new LatLon(actualHillshadeBounds.getMaxLat(), actualHillshadeBounds.getMinLon());
+            LatLon hillshadeSouthEast = new LatLon(actualHillshadeBounds.getMinLat(), actualHillshadeBounds.getMaxLon());
             // Bounds of the hillshade tile in screen coordinates (x, y)
             upperLeft = mv.getPoint(hillshadeNorthWest);
-            Point lowerRight = mv.getPoint(new LatLon(actualHillshadeBounds.getMinLat(), actualHillshadeBounds.getMaxLon()));
+            Point lowerRight = mv.getPoint(hillshadeSouthEast);
             // The dimensions of the hillshade tile in screen coordinates
             int screenWidth = lowerRight.x - upperLeft.x;
             int screenHeight = lowerRight.y - upperLeft.y;
+            // Do not try to scale the image if the reported screen size is so large that
+            // scaling could result in OutOfMemoryError or IllegalArgumentException of
+            // java.awt.image.SampleModel.<init>
+            // (For an unknown reason such large screen sizes can be obtained from map view
+            // if trying to zoom in as strong as possible)
+            if (screenWidth > 13000 || screenHeight > 13000)
+                return;
             // Scale the hillshade image to screen dimensions
             hillshadeImage = hillshadeTile.getScaledImage(screenWidth, screenHeight);
         }

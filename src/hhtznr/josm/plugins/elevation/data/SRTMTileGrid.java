@@ -25,6 +25,7 @@ public class SRTMTileGrid {
     private Bounds actualBounds;
 
     private ClippedSRTMTile[][] clippedTiles;
+    private short[][] gridEleValues = null;
 
     /**
      * Creates a new 2D grid of SRTM tiles to cover the given latitude-longitude
@@ -318,7 +319,10 @@ public class SRTMTileGrid {
      *         different raster dimensions) or if at least one of the tiles is not
      *         valid (i.e. the data was not loaded yet or is not available at all).
      */
-    private short[][] getGridEleValues() {
+    private synchronized short[][] getGridEleValues() {
+        if (gridEleValues != null)
+            return gridEleValues;
+
         // Pre-check if all tiles have the preferred SRTM type and are valid
         SRTMTile.Type srtmTileType = null;
         for (int gridLatIndex = 0; gridLatIndex < clippedTiles.length; gridLatIndex++) {
@@ -351,7 +355,6 @@ public class SRTMTileGrid {
                 // Skip the grid row, if the clipped and cropped tile area does not contain data
                 // points
                 if (tileEleValues == null) {
-                    // with lat index = " + gridLatIndex + " (lon index = " + gridLonIndex + ")");
                     skipGridRow = true;
                     break;
                 }
@@ -374,7 +377,7 @@ public class SRTMTileGrid {
             return null;
 
         // 2D array for elevation raster data of all tiles in the grid
-        short[][] allEleValues = new short[totalTileLatLength][totalTileLonLength];
+        gridEleValues = new short[totalTileLatLength][totalTileLonLength];
 
         // The index offset in latitude direction (row) at which to start copying
         // elevation data from the current tile into the "all tiles" array
@@ -402,7 +405,7 @@ public class SRTMTileGrid {
                     short[] src = tileData[tileLatIndex];
                     int srcPos = 0;
                     // The corresponding row in the array to be filled
-                    short[] dest = allEleValues[allLatPos + tileLatIndex];
+                    short[] dest = gridEleValues[allLatPos + tileLatIndex];
                     int destPos = allLonPos;
                     System.arraycopy(src, srcPos, dest, destPos, src.length);
                     tileLonLength = src.length;
@@ -421,7 +424,7 @@ public class SRTMTileGrid {
         LatLon northEast = clippedTiles[0][clippedTiles[0].length - 1].northEast;
         actualBounds = new Bounds(southWest.lat(), southWest.lon(), northEast.lat(), northEast.lon());
 
-        return allEleValues;
+        return gridEleValues;
     }
 
     /**

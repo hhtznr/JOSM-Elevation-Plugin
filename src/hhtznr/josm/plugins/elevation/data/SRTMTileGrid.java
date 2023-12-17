@@ -221,17 +221,17 @@ public class SRTMTileGrid {
         double actualSouth = actualBounds.getMinLat();
         double actualWest = actualBounds.getMinLon();
 
-        ArrayList<LatLonEle> list = new ArrayList<>();
+        LatLonEle[][] latLonEleValues = new LatLonEle[eleValues.length][eleValues[0].length];
         for (int latIndex = 0; latIndex < eleValues.length; latIndex++) {
             double lat = actualSouth + latRange * (1.0 - Double.valueOf(latIndex) / (eleValues.length - 1));
 
             for (int lonIndex = 0; lonIndex < eleValues[latIndex].length; lonIndex++) {
                 double lon = actualWest + lonRange * Double.valueOf(lonIndex) / (eleValues[latIndex].length - 1);
                 short ele = eleValues[latIndex][lonIndex];
-                list.add(new LatLonEle(lat, lon, ele));
+                latLonEleValues[latIndex][lonIndex] = new LatLonEle(lat, lon, ele);
             }
         }
-        return new ElevationRaster(nominalBounds, actualBounds, list);
+        return new ElevationRaster(nominalBounds, actualBounds, latLonEleValues);
     }
 
     /**

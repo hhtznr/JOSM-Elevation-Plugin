@@ -178,12 +178,15 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         if (elevationRaster == null)
             return;
         g.setColor(Color.RED);
-        for (LatLonEle latLonEle : elevationRaster.getLatLonEleList()) {
-            Point p = mv.getPoint(latLonEle);
-            String ele = Integer.toString((int) latLonEle.ele());
-            g.fillOval(p.x - 1, p.y - 1, 3, 3);
-            g.setFont(g.getFont().deriveFont(Font.PLAIN, 10));
-            g.drawString(ele, p.x + 2, p.y + 5);
+        for (int latIndex = 0; latIndex < elevationRaster.getHeight(); latIndex++) {
+            for (int lonIndex = 0; lonIndex < elevationRaster.getWidth(); lonIndex++) {
+                LatLonEle latLonEle = elevationRaster.getLatLonEle(latIndex, lonIndex);
+                Point p = mv.getPoint(latLonEle);
+                String ele = Integer.toString((int) latLonEle.ele());
+                g.fillOval(p.x - 1, p.y - 1, 3, 3);
+                g.setFont(g.getFont().deriveFont(Font.PLAIN, 10));
+                g.drawString(ele, p.x + 2, p.y + 5);
+            }
         }
     }
 

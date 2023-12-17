@@ -1,7 +1,5 @@
 package hhtznr.josm.plugins.elevation.gui;
 
-import java.util.List;
-
 import org.openstreetmap.josm.data.Bounds;
 
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
@@ -16,31 +14,58 @@ import hhtznr.josm.plugins.elevation.data.LatLonEle;
  */
 public class ElevationRaster extends AbstractSRTMTileGridPaintable {
 
-    private final List<LatLonEle> latLonEleList;
+    private final LatLonEle[][] latLonEleRaster;
 
     /**
      * Creates a new elevation raster which covers the specified bounds with
      * elevation data points.
      *
-     * @param nominalBounds The nominal bounds in latitude-longitude coordinate
-     *                      space.
-     * @param actualBounds  The actual bounds in latitude-longitude coordinate
-     *                      space.
-     * @param latLonEleList The list of latitude-longitude-elevation points forming
-     *                      the elevation raster.
+     * @param nominalBounds   The nominal bounds in latitude-longitude coordinate
+     *                        space.
+     * @param actualBounds    The actual bounds in latitude-longitude coordinate
+     *                        space.
+     * @param latLonEleRaster The two-dimensional array of
+     *                        latitude-longitude-elevation points forming the
+     *                        elevation raster. The array of arrays has to be in row
+     *                        major order.
      */
-    public ElevationRaster(Bounds nominalBounds, Bounds actualBounds, List<LatLonEle> latLonEleList) {
+    public ElevationRaster(Bounds nominalBounds, Bounds actualBounds, LatLonEle[][] latLonEleRaster) {
         super(nominalBounds, actualBounds);
-        this.latLonEleList = latLonEleList;
+        this.latLonEleRaster = latLonEleRaster;
     }
 
     /**
-     * Returns the latitude-longitude-elevation points of this raster.
+     * Returns the height of this raster.
      *
-     * @return The list of latitude-longitude-elevation points forming the elevation
-     *         raster.
+     * @return The height of this raster, i.e. the number of data points in latitude
+     *         dimension.
      */
-    public List<LatLonEle> getLatLonEleList() {
-        return latLonEleList;
+    public int getHeight() {
+        if (latLonEleRaster == null)
+            return 0;
+        return latLonEleRaster.length;
+    }
+
+    /**
+     * Returns the width of this raster.
+     *
+     * @return The width of this raster, i.e. the number of data points in longitude
+     *         dimension.
+     */
+    public int getWidth() {
+        if (latLonEleRaster == null || latLonEleRaster.length == 0)
+            return 0;
+        return latLonEleRaster[0].length;
+    }
+
+    /**
+     * Returns a latitude-longitude-elevation point of this raster.
+     *
+     * @param latIndex The index of the data point in latitude dimension.
+     * @param lonIndex The index of the data point in longitude dimension.
+     * @return The latitude-longitude-elevation point of interest.
+     */
+    public LatLonEle getLatLonEle(int latIndex, int lonIndex) {
+        return latLonEleRaster[latIndex][lonIndex];
     }
 }

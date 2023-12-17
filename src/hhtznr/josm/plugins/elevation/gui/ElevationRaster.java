@@ -59,6 +59,38 @@ public class ElevationRaster extends AbstractSRTMTileGridPaintable {
     }
 
     /**
+     * Returns the step between two adjacent raster data points in latitude
+     * dimension.
+     *
+     * @return The distance in latitude in between two adjacent raster data points
+     *         in arc degrees.
+     */
+    public double getLatStep() {
+        int height = getHeight();
+        if (height < 2 || getWidth() < 1)
+            return Double.POSITIVE_INFINITY;
+        LatLonEle north = latLonEleRaster[0][0];
+        LatLonEle south = latLonEleRaster[latLonEleRaster.length - 1][0];
+        return (north.lat() - south.lat()) / Double.valueOf(latLonEleRaster.length - 1);
+    }
+
+    /**
+     * Returns the step between two adjacent raster data points in longitude
+     * dimension.
+     *
+     * @return The distance in longitude in between two adjacent raster data points
+     *         in arc degrees.
+     */
+    public double getLonStep() {
+        int width = getWidth();
+        if (width < 2 || getHeight() < 1)
+            return Double.POSITIVE_INFINITY;
+        LatLonEle west = latLonEleRaster[0][0];
+        LatLonEle east = latLonEleRaster[0][latLonEleRaster[0].length - 1];
+        return (east.lon() - west.lon()) / Double.valueOf(latLonEleRaster[0].length - 1);
+    }
+
+    /**
      * Returns a latitude-longitude-elevation point of this raster.
      *
      * @param latIndex The index of the data point in latitude dimension.

@@ -3,6 +3,7 @@ package hhtznr.josm.plugins.elevation.gui;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.image.BufferedImage;
@@ -125,14 +126,15 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
             hillshadeAzimuth = layer.getHillshadeAzimuth();
             if (hillshadeTile == null || !hillshadeTile.covers(bounds)) {
                 Bounds scaledBounds = getScaledBounds(bounds, BOUNDS_SCALE_FACTOR);
-                hillshadeTile = layer.getElevationDataProvider().getHillshadeImageTile(scaledBounds,
-                        hillshadeAltitude, hillshadeAzimuth, false);
+                hillshadeTile = layer.getElevationDataProvider().getHillshadeImageTile(scaledBounds, hillshadeAltitude,
+                        hillshadeAzimuth, false);
             }
             if (hillshadeTile == null)
                 return;
             Bounds actualHillshadeBounds = hillshadeTile.getActualBounds();
             hillshadeNorthWest = new LatLon(actualHillshadeBounds.getMaxLat(), actualHillshadeBounds.getMinLon());
-            LatLon hillshadeSouthEast = new LatLon(actualHillshadeBounds.getMinLat(), actualHillshadeBounds.getMaxLon());
+            LatLon hillshadeSouthEast = new LatLon(actualHillshadeBounds.getMinLat(),
+                    actualHillshadeBounds.getMaxLon());
             // Bounds of the hillshade tile in screen coordinates (x, y)
             upperLeft = mv.getPoint(hillshadeNorthWest);
             Point lowerRight = mv.getPoint(hillshadeSouthEast);
@@ -177,16 +179,58 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         ElevationRaster elevationRaster = layer.getElevationDataProvider().getElevationRaster(bounds);
         if (elevationRaster == null)
             return;
-        g.setColor(Color.RED);
+
+        // Set the font for elevation value strings
+        Font font = g.getFont().deriveFont(Font.PLAIN, 10);
+        g.setFont(font);
+
+        // Dimensions of an up to 4 digit (+ 2 digits/points space) elevation value string in
+        // screen coordinates
+        FontMetrics metrics = g.getFontMetrics(font);
+        int eleStringDisplayWidth = metrics.stringWidth("000000");
+        int eleStringDisplayHeight = metrics.getHeight() + 2;
+        // Dimensions of the map view in screen coordinates
+        int mapViewDisplayWidth = mv.getWidth();
+        int mapViewDisplayHeight = mv.getHeight();
+
+        // Dimensions of the map view in world coordinates
+        Bounds mapViewBounds = mv.getLatLonBounds(mv.getBounds());
+        double mapViewWidth = mapViewBounds.getWidth();
+        double mapViewHeight = mapViewBounds.getHeight();
+
+        // Dimensions of the elevation value string in world coordinates
+        double eleStringWidth = Double.valueOf(eleStringDisplayWidth) / Double.valueOf(mapViewDisplayWidth)
+                * mapViewWidth;
+        double eleStringHeight = Double.valueOf(eleStringDisplayHeight) / Double.valueOf(mapViewDisplayHeight)
+                * mapViewHeight;
+
+        // Distance between two adjacent raster points in world coordinates
+        double latStep = elevationRaster.getLatStep();
+        double lonStep = elevationRaster.getLonStep();
+
+        // The size of the marker of an elevation data point in display coordinates
+        final int markerSize = 3;
+
+        double latDist = 0.0;
         for (int latIndex = 0; latIndex < elevationRaster.getHeight(); latIndex++) {
+            double lonDist = 0.0;
             for (int lonIndex = 0; lonIndex < elevationRaster.getWidth(); lonIndex++) {
                 LatLonEle latLonEle = elevationRaster.getLatLonEle(latIndex, lonIndex);
                 Point p = mv.getPoint(latLonEle);
                 String ele = Integer.toString((int) latLonEle.ele());
-                g.fillOval(p.x - 1, p.y - 1, 3, 3);
-                g.setFont(g.getFont().deriveFont(Font.PLAIN, 10));
-                g.drawString(ele, p.x + 2, p.y + 5);
+                g.setColor(Color.RED);
+                g.fillOval(p.x - markerSize / 2, p.y - markerSize / 2, markerSize, markerSize);
+                if (latDist == 0.0 && lonDist == 0.0) {
+                    g.setColor(Color.BLUE);
+                    g.drawString(ele, p.x + markerSize, p.y + eleStringDisplayHeight / 2);
+                }
+                lonDist += lonStep;
+                if (lonDist > eleStringWidth)
+                    lonDist = 0.0;
             }
+            latDist += latStep;
+            if (latDist > eleStringHeight)
+                latDist = 0.0;
         }
     }
 

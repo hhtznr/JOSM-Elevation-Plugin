@@ -16,6 +16,7 @@ import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.event.HyperlinkEvent;
 
+import org.openstreetmap.josm.data.oauth.OAuth20Token;
 import org.openstreetmap.josm.gui.widgets.JMultilineLabel;
 import org.openstreetmap.josm.gui.widgets.JosmComboBox;
 import org.openstreetmap.josm.gui.widgets.JosmTextField;
@@ -65,7 +66,8 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
     private final JosmComboBox<SRTMTile.Type> cbSRTMType = new JosmComboBox<>(SRTMTile.Type.values());
 
     private final JLabel lblInterpolation = new JLabel("Elevation Value Interpolation:");
-    private final JosmComboBox<SRTMTile.Interpolation> cbInterpolation = new JosmComboBox<>(SRTMTile.Interpolation.values());
+    private final JosmComboBox<SRTMTile.Interpolation> cbInterpolation = new JosmComboBox<>(
+            SRTMTile.Interpolation.values());
 
     private final JLabel lblCacheSize = new JLabel("Max. Size of In-Memory Tile Cache:");
     private final JSpinner spCacheSize = new JSpinner(new SpinnerNumberModel(
@@ -76,9 +78,11 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
     private final JCheckBox cbEnableElevationLayer = new JCheckBox("Enable Elevation Visualization Layer");
 
     private final JLabel lblRenderingLimit = new JLabel("Layer Rendering Map Size Limit:");
-    private final JSpinner spRenderingLimit = new JSpinner(new SpinnerNumberModel(
-            ElevationPreferences.DEFAULT_ELEVATION_LAYER_RENDERING_LIMIT, ElevationPreferences.MIN_ELEVATION_LAYER_RENDERING_LIMIT,
-            ElevationPreferences.MAX_ELEVATION_LAYER_RENDERING_LIMIT, ElevationPreferences.INCR_ELEVATION_LAYER_RENDERING_LIMIT));
+    private final JSpinner spRenderingLimit = new JSpinner(
+            new SpinnerNumberModel(ElevationPreferences.DEFAULT_ELEVATION_LAYER_RENDERING_LIMIT,
+                    ElevationPreferences.MIN_ELEVATION_LAYER_RENDERING_LIMIT,
+                    ElevationPreferences.MAX_ELEVATION_LAYER_RENDERING_LIMIT,
+                    ElevationPreferences.INCR_ELEVATION_LAYER_RENDERING_LIMIT));
     private final JLabel lblRenderingLimitUnit = new JLabel("°");
     private final JLabel lblIsostep = new JLabel("Contour Line Isostep:");
     private final JSpinner spIsostep = new JSpinner(new SpinnerNumberModel(
@@ -136,11 +140,14 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
         cbEnableElevationLayer.addItemListener(event -> updateEnabledState());
 
-        spRenderingLimit.setToolTipText("Layer rendering will be switched off if the map size (latitude, longitude) exceeds this value");
+        spRenderingLimit.setToolTipText(
+                "Layer rendering will be switched off if the map size (latitude, longitude) exceeds this value");
 
-        spHillshadeAltitude.setToolTipText("The altitude is the angle of the illumination source above the horizon in the range from 0 (horizon) to 90° (overhead)");
+        spHillshadeAltitude.setToolTipText(
+                "The altitude is the angle of the illumination source above the horizon in the range from 0 (horizon) to 90° (overhead)");
 
-        spHillshadeAzimuth.setToolTipText("The azimuth is the anglular direction of the illumination source (N: 0, E: 90°, S: 180°, W: 270°)");
+        spHillshadeAzimuth.setToolTipText(
+                "The azimuth is the anglular direction of the illumination source (N: 0, E: 90°, S: 180°, W: 270°)");
 
         cbEnableAutoDownload.setToolTipText(I18n.tr("SRTM files will be downloaded from {0} or {0}",
                 ElevationPreferences.SRTM1_SERVER_BASE_URL, ElevationPreferences.SRTM3_SERVER_BASE_URL));
@@ -326,8 +333,9 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
                 ElevationPreferences.DEFAULT_ELEVATION_ENABLED));
         cbSRTMType.setSelectedItem(SRTMTile.Type.fromString(pref.get(ElevationPreferences.PREFERRED_SRTM_TYPE,
                 ElevationPreferences.DEFAULT_PREFERRED_SRTM_TYPE.toString())));
-        cbInterpolation.setSelectedItem(SRTMTile.Interpolation.fromString(pref.get(ElevationPreferences.ELEVATION_INTERPOLATION,
-                ElevationPreferences.DEFAULT_ELEVATION_INTERPOLATION.toString())));
+        cbInterpolation.setSelectedItem(
+                SRTMTile.Interpolation.fromString(pref.get(ElevationPreferences.ELEVATION_INTERPOLATION,
+                        ElevationPreferences.DEFAULT_ELEVATION_INTERPOLATION.toString())));
         spCacheSize.setValue(pref.getInt(ElevationPreferences.RAM_CACHE_SIZE_LIMIT,
                 ElevationPreferences.DEFAULT_RAM_CACHE_SIZE_LIMIT));
         cbEnableElevationLayer.setSelected(pref.getBoolean(ElevationPreferences.ELEVATION_LAYER_ENABLED,
@@ -336,14 +344,16 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
                 ElevationPreferences.DEFAULT_ELEVATION_LAYER_RENDERING_LIMIT));
         spIsostep.setValue(pref.getInt(ElevationPreferences.CONTOUR_LINE_ISOSTEP,
                 ElevationPreferences.DEFAULT_CONTOUR_LINE_ISOSTEP));
-        spHillshadeAltitude.setValue(pref.getInt(ElevationPreferences.HILLSHADE_ALTITUDE,
-                ElevationPreferences.DEFAULT_HILLSHADE_ALTITUDE));
-        spHillshadeAzimuth.setValue(pref.getInt(ElevationPreferences.HILLSHADE_AZIMUTH,
-                ElevationPreferences.DEFAULT_HILLSHADE_AZIMUTH));
+        spHillshadeAltitude.setValue(
+                pref.getInt(ElevationPreferences.HILLSHADE_ALTITUDE, ElevationPreferences.DEFAULT_HILLSHADE_ALTITUDE));
+        spHillshadeAzimuth.setValue(
+                pref.getInt(ElevationPreferences.HILLSHADE_AZIMUTH, ElevationPreferences.DEFAULT_HILLSHADE_AZIMUTH));
         cbEnableAutoDownload.setSelected(pref.getBoolean(ElevationPreferences.ELEVATION_AUTO_DOWNLOAD_ENABLED,
                 ElevationPreferences.DEFAULT_ELEVATION_AUTO_DOWNLOAD_ENABLED));
-        tfAuthBearer.setText(pref.get(ElevationPreferences.ELEVATION_SERVER_AUTH_BEARER,
-                ElevationPreferences.DEFAULT_ELEVATION_SERVER_AUTH_BEARER));
+
+        OAuth20Token oAuthToken = ElevationPreferences.lookupEarthdataOAuthToken();
+        if (oAuthToken != null && oAuthToken.getBearerToken() != null)
+            tfAuthBearer.setText(oAuthToken.getBearerToken());
     }
 
     private final void updateEnabledState() {
@@ -422,7 +432,8 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         IPreferences pref = Config.getPref();
         pref.putBoolean(ElevationPreferences.ELEVATION_ENABLED, cbEnableElevation.isSelected());
         pref.put(ElevationPreferences.PREFERRED_SRTM_TYPE, ((SRTMTile.Type) cbSRTMType.getSelectedItem()).toString());
-        pref.put(ElevationPreferences.ELEVATION_INTERPOLATION, ((SRTMTile.Interpolation) cbInterpolation.getSelectedItem()).toString());
+        pref.put(ElevationPreferences.ELEVATION_INTERPOLATION,
+                ((SRTMTile.Interpolation) cbInterpolation.getSelectedItem()).toString());
         pref.putInt(ElevationPreferences.RAM_CACHE_SIZE_LIMIT, (Integer) spCacheSize.getValue());
         pref.putBoolean(ElevationPreferences.ELEVATION_LAYER_ENABLED, cbEnableElevationLayer.isSelected());
         pref.putDouble(ElevationPreferences.ELEVATION_LAYER_RENDERING_LIMIT, (Double) spRenderingLimit.getValue());
@@ -430,6 +441,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         pref.putInt(ElevationPreferences.HILLSHADE_ALTITUDE, (Integer) spHillshadeAltitude.getValue());
         pref.putInt(ElevationPreferences.HILLSHADE_AZIMUTH, (Integer) spHillshadeAzimuth.getValue());
         pref.putBoolean(ElevationPreferences.ELEVATION_AUTO_DOWNLOAD_ENABLED, cbEnableAutoDownload.isSelected());
-        pref.put(ElevationPreferences.ELEVATION_SERVER_AUTH_BEARER, tfAuthBearer.getText());
+
+        ElevationPreferences.storeEarthdataOAuthToken(tfAuthBearer.getText());
     }
 }

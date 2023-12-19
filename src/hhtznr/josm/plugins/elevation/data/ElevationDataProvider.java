@@ -527,6 +527,15 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
     }
 
     /**
+     * Returns the SRTM file downloader used for auto-download of missing SRTM tiles.
+     *
+     * @return The SRTM file downloader or {@code null} if auto-download is not enabled.
+     */
+    public SRTMFileDownloader getSRTMFileDownloader() {
+        return srtmFileDownloader;
+    }
+
+    /**
      * Adds an elevation data provider listener to this elevation data provider. All
      * listeners are informed if elevation data for a particular SRTM tile is
      * available.

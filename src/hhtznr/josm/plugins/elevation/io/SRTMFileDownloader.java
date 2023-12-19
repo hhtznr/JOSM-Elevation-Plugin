@@ -17,7 +17,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 
-import org.openstreetmap.josm.spi.preferences.Config;
+import org.openstreetmap.josm.data.oauth.OAuth20Token;
+import org.openstreetmap.josm.data.oauth.OAuthException;
 import org.openstreetmap.josm.tools.HttpClient;
 import org.openstreetmap.josm.tools.Logging;
 
@@ -37,7 +38,7 @@ public class SRTMFileDownloader {
     private final URL srtm3BaseURL;
     private File srtmDirectory;
 
-    private String authHeader;
+    private OAuth20Token oAuthToken;
 
     private static final ExecutorService downloadExecutor = Executors.newFixedThreadPool(2);
 
@@ -53,23 +54,20 @@ public class SRTMFileDownloader {
      * @param srtm3BaseURL  The URL from which to download SRTM3 files. See also
      *                      {@link ElevationPreferences#SRTM3_SERVER_BASE_URL
      *                      ElevationPreferences.SRTM3_SERVER_BASE_URL}.
-     * @param bearer        The authorization bearer token to use. See also
-     *                      {@link ElevationPreferences#ELEVATION_SERVER_AUTH_BEARER
-     *                      ElevationPreferences.ELEVATION_SERVER_AUTH_BEARER} and
-     *                      {@link ElevationPreferences#SRTM_SERVER_REGISTRATION_URL
-     *                      ElevationPreferences.SRTM_SERVER_REGISTRATION_URL}.
+     * @param oAuthToken    JOSM {@code OAuth20Token} holding the Earthdata
+     *                      authorization bearer token to use for authentication.
+     *                      The bearer token can be obtained in the
+     *                      {@code Generate Token} tab at
+     *                      <a href="https://urs.earthdata.nasa.gov/home">Earthdata
+     *                      Login</a>.
      * @throws MalformedURLException Thrown if the URL is not properly formatted.
      */
-    public SRTMFileDownloader(File srtmDirectory, String srtm1BaseURL, String srtm3BaseURL, String bearer)
+    public SRTMFileDownloader(File srtmDirectory, String srtm1BaseURL, String srtm3BaseURL, OAuth20Token oAuthToken)
             throws MalformedURLException {
         // May throw MalformedURLException
         this.srtm1BaseURL = new URL(srtm1BaseURL);
         this.srtm3BaseURL = new URL(srtm3BaseURL);
-        // https://stackoverflow.com/questions/38085964/authorization-bearer-token-in-httpclient
-        if (!bearer.equals(""))
-            authHeader = "Bearer " + bearer;
-        else
-            authHeader = null;
+        this.oAuthToken = oAuthToken;
         setSRTMDirectory(srtmDirectory);
     }
 
@@ -82,8 +80,7 @@ public class SRTMFileDownloader {
      */
     public SRTMFileDownloader(File srtmDirectory) throws MalformedURLException {
         this(srtmDirectory, ElevationPreferences.SRTM1_SERVER_BASE_URL, ElevationPreferences.SRTM3_SERVER_BASE_URL,
-                Config.getPref().get(ElevationPreferences.ELEVATION_SERVER_AUTH_BEARER,
-                        ElevationPreferences.DEFAULT_ELEVATION_SERVER_AUTH_BEARER));
+                ElevationPreferences.lookupEarthdataOAuthToken());
     }
 
     /**
@@ -93,6 +90,16 @@ public class SRTMFileDownloader {
      */
     public void setSRTMDirectory(File srtmDirectory) {
         this.srtmDirectory = srtmDirectory;
+    }
+
+    /**
+     * Sets the JOSM {@code OAuth20Token} holding the Earthdata authorization bearer
+     * token to a new token.
+     *
+     * @param oAuthToken The new OAuth token to use for authentication.
+     */
+    public void setOAuthToken(OAuth20Token oAuthToken) {
+        this.oAuthToken = oAuthToken;
     }
 
     /**
@@ -143,13 +150,19 @@ public class SRTMFileDownloader {
             return null;
         }
         HttpClient httpClient = HttpClient.create(url);
-        if (authHeader != null)
-            httpClient.setHeader("Authorization", authHeader);
+        // Add the authorization bearer token to the HTTP header
+        if (oAuthToken != null) {
+            try {
+                oAuthToken.sign(httpClient);
+            } catch (OAuthException e) {
+                Logging.error("Elevation: " + e.toString());
+            }
+        }
         HttpClient.Response response = null;
         try {
             response = httpClient.connect();
             // https://urs.earthdata.nasa.gov/documentation/for_users/data_access/java
-            if (response.getResponseCode() != 200) {
+            if (response.getResponseCode() != HttpURLConnection.HTTP_OK) {
                 downloadFailed(srtmTileID);
                 return null;
             }

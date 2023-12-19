@@ -4,8 +4,19 @@ import java.io.File;
 import java.nio.file.Paths;
 
 import org.openstreetmap.josm.data.Preferences;
+import org.openstreetmap.josm.data.oauth.IOAuthToken;
+import org.openstreetmap.josm.data.oauth.OAuth20Exception;
+import org.openstreetmap.josm.data.oauth.OAuth20Parameters;
+import org.openstreetmap.josm.data.oauth.OAuth20Token;
+import org.openstreetmap.josm.io.auth.CredentialsAgentException;
+import org.openstreetmap.josm.io.auth.CredentialsManager;
+import org.openstreetmap.josm.spi.preferences.Config;
+import org.openstreetmap.josm.tools.Logging;
+import org.openstreetmap.josm.tools.Utils;
 
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
+import jakarta.json.Json;
+import jakarta.json.JsonObjectBuilder;
 
 /**
  * Property keys and default values for elevation data preferences.
@@ -50,7 +61,8 @@ public class ElevationPreferences {
     public static final String ELEVATION_HILLSHADE_ENABLED = "elevation.layer.hillshade.enabled";
 
     /**
-     * Property key for enabling or disabling rendering of the elevation data point raster.
+     * Property key for enabling or disabling rendering of the elevation data point
+     * raster.
      */
     public static final String ELEVATION_RASTER_ENABLED = "elevation.layer.raster.enabled";
 
@@ -84,7 +96,8 @@ public class ElevationPreferences {
     public static final String ELEVATION_AUTO_DOWNLOAD_ENABLED = "elevation.autodownload";
 
     /**
-     * Property key for authentication bearer token for SRTM server.
+     * Legacy property key for authentication bearer token for Earthdata SRTM
+     * server.
      */
     public static final String ELEVATION_SERVER_AUTH_BEARER = "elevation.srtm.server.auth.bearer";
 
@@ -142,7 +155,8 @@ public class ElevationPreferences {
     public static final boolean DEFAULT_ELEVATION_HILLSHADE_ENABLED = true;
 
     /**
-     * Default property value for enabling rendering of the elevation data point raster: {@code false}.
+     * Default property value for enabling rendering of the elevation data point
+     * raster: {@code false}.
      */
     public static final boolean DEFAULT_ELEVATION_RASTER_ENABLED = false;
 
@@ -233,23 +247,31 @@ public class ElevationPreferences {
     public static final int INCR_HILLSHADE_AZIMUTH = 1;
 
     /**
-     * Default property value for authentication bearer token for SRTM HGT server:
-     * Empty {@code String}.
-     */
-    public static final String DEFAULT_ELEVATION_SERVER_AUTH_BEARER = "";
-
-    /**
      * Default property value for enabling automatic download of elevation data:
      * {@code false}.
      */
     public static final boolean DEFAULT_ELEVATION_AUTO_DOWNLOAD_ENABLED = false;
 
     /**
+     * Host name of the NASA Earthdata single sign-on server.
+     *
+     * See <a href=
+     * "https://urs.earthdata.nasa.gov/documentation/for_users/sso_process_overview">Earthdata
+     * Login Documentation</a>.
+     */
+    public static final String EARTHDATA_SSO_HOST = "urs.earthdata.nasa.gov";
+
+    /**
+     * Host name of the NASA Earthdata download server.
+     */
+    public static final String EARTHDATA_DOWNLOAD_HOST = "e4ftl01.cr.usgs.gov";
+
+    /**
      * URL of <a href="https://urs.earthdata.nasa.gov/users/new/">NASA Earthdata
      * Login User Registration</a> where users need to register and create an
      * authorization bearer token in order to download elevation data.
      */
-    public static final String SRTM_SERVER_REGISTRATION_URL = "https://urs.earthdata.nasa.gov/users/new/";
+    public static final String SRTM_SERVER_REGISTRATION_URL = "https://" + EARTHDATA_SSO_HOST + "/users/new/";
 
     /**
      * Default path, where elevation data is stored.
@@ -272,7 +294,8 @@ public class ElevationPreferences {
      * Requires registration at
      * {@link ElevationPreferences#SRTM_SERVER_REGISTRATION_URL}.
      */
-    public static final String SRTM1_SERVER_BASE_URL = "https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL1.003/2000.02.11/";
+    public static final String SRTM1_SERVER_BASE_URL = "https://" + EARTHDATA_DOWNLOAD_HOST
+            + "/MEASURES/SRTMGL1.003/2000.02.11/";
 
     /**
      * URL of
@@ -283,7 +306,106 @@ public class ElevationPreferences {
      * Requires registration at
      * {@link ElevationPreferences#SRTM_SERVER_REGISTRATION_URL}.
      */
-    public static final String SRTM3_SERVER_BASE_URL = "https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3.003/2000.02.11/";
+    public static final String SRTM3_SERVER_BASE_URL = "https://" + EARTHDATA_DOWNLOAD_HOST
+            + "/MEASURES/SRTMGL3.003/2000.02.11/";
+
+    /**
+     * Lookup the Earthdata OAuth token in the preferences.
+     *
+     * @return The OAuth 2.0 token holding the Earthdata authorization bearer token
+     *         or {@code null} if it could not be retrieved from the preferences.
+     */
+    public static OAuth20Token lookupEarthdataOAuthToken() {
+        try {
+            IOAuthToken authToken = CredentialsManager.getInstance().lookupOAuthAccessToken(EARTHDATA_DOWNLOAD_HOST);
+
+            // Legacy support (bearer stored as normal preferences parameter)
+            if (authToken == null) {
+                String bearer = Config.getPref().get(ELEVATION_SERVER_AUTH_BEARER, null);
+                if (bearer == null || Utils.isBlank(bearer))
+                    return null;
+                Logging.info("Elevation: Migrating authorization bearer token to JOSM OAuth 2.0 format");
+                bearer = bearer.trim();
+                OAuth20Token oAuthToken = storeEarthdataOAuthToken(bearer);
+                Config.getPref().put(ELEVATION_SERVER_AUTH_BEARER, null);
+                return oAuthToken;
+            }
+
+            if (authToken instanceof OAuth20Token)
+                return (OAuth20Token) authToken;
+
+            return null;
+        } catch (CredentialsAgentException e) {
+            Logging.error("Elevation: " + e);
+            return null;
+        }
+    }
+
+    /**
+     * Stores the provided Earthdata authorization bearer token in the JOSM
+     * preferences if it is not {@code null} or blank.
+     *
+     * @param bearerToken The Earthdata authorization bearer token.
+     * @return The {@code OAuth20Token} object which was stored or {@code null} if
+     *         the provided bearer token is {@code null} or blank or an
+     *         {@code OAuth20Exception} should have occurred when trying to create
+     *         the object.
+     */
+    public static OAuth20Token storeEarthdataOAuthToken(String bearerToken) {
+        OAuth20Token oAuthToken = createEarthdataOAuthToken(bearerToken);
+        if (oAuthToken != null) {
+            try {
+                CredentialsManager.getInstance().storeOAuthAccessToken(EARTHDATA_DOWNLOAD_HOST, oAuthToken);
+            } catch (CredentialsAgentException e) {
+                Logging.error("Elevation: " + e);
+            }
+        }
+        return oAuthToken;
+    }
+
+    /**
+     * Creates a JOSM {@code OAuth20Token} containing the authorization bearer token
+     * obtained in the {@code Generate Token} tab at
+     * <a href="https://urs.earthdata.nasa.gov/home">Earthdata Login</a>.
+     *
+     * @param bearerToken The Earthdata authorization bearer token.
+     * @return The {@code OAuth20Token} object or {@code null} if the provided
+     *         bearer token is {@code null} or blank or an {@code OAuth20Exception}
+     *         should have occurred when trying to create the object.
+     */
+    private static OAuth20Token createEarthdataOAuthToken(String bearerToken) {
+        // Either client ID or bearer token must be non-null/non-blank
+        if (bearerToken == null || Utils.isBlank(bearerToken))
+            return null;
+        JsonObjectBuilder jsonObjectBuilder = Json.createObjectBuilder();
+        jsonObjectBuilder.add("token_type", "bearer");
+        jsonObjectBuilder.add("access_token", bearerToken);
+        String json = jsonObjectBuilder.build().toString();
+
+        String earthDataURS = "https://" + EARTHDATA_SSO_HOST + "/";
+        String earthDataDL = "https://" + EARTHDATA_DOWNLOAD_HOST + "/";
+        // Earthdata neither provides us a client ID nor a client secret
+        String clientId = "";
+        String clientSecret = null;
+        // Following two URLs are set because the parameters may not be null, but are
+        // never used
+        String authorizeUrl = earthDataURS;
+        String redirectUri = earthDataURS;
+        // These two parameters need to be set to the URL of the SRTM download server
+        // Otherwise, OAuth20Parameters will refuse to be initialized and
+        // OAuthToken.sign(HttpClient) will refuse to do its job
+        String tokenUrl = earthDataDL;
+        String apiUrl = earthDataDL;
+
+        OAuth20Parameters parameters = new OAuth20Parameters(clientId, clientSecret, tokenUrl, authorizeUrl, apiUrl,
+                redirectUri);
+        try {
+            return new OAuth20Token(parameters, json);
+        } catch (OAuth20Exception e) {
+            Logging.error("Elevation: " + e);
+            return null;
+        }
+    }
 
     private ElevationPreferences() {
     }

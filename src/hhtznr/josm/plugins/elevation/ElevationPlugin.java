@@ -147,6 +147,8 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
             elevationDataProvider.setElevationInterpolation(elevationInterpolation);
             elevationDataProvider.setCacheSizeLimit(cacheSizeLimit);
             elevationDataProvider.setAutoDownloadEnabled(elevationAutoDownloadEnabled);
+            if (elevationAutoDownloadEnabled)
+                elevationDataProvider.getSRTMFileDownloader().setOAuthToken(ElevationPreferences.lookupEarthdataOAuthToken());
             if (mapFrame != null) {
                 if (localElevationLabel == null)
                     localElevationLabel = new LocalElevationLabel(mapFrame, elevationDataProvider);

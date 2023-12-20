@@ -31,80 +31,26 @@ public class ElevationPreferences {
     public static final String ELEVATION_ENABLED = "elevation.enabled";
 
     /**
-     * Property key for preferred SRTM type.
-     */
-    public static final String PREFERRED_SRTM_TYPE = "elevation.srtm.type.preferred";
-
-    /**
-     * Property key for defining the elevation interpolation method.
-     */
-    public static final String ELEVATION_INTERPOLATION = "elevation.interpolation";
-
-    /**
-     * Property key for size limit of the in-memory SRTM tile cache.
-     */
-    public static final String RAM_CACHE_SIZE_LIMIT = "elevation.cache.ram.size.limit";
-
-    /**
-     * Property key for enabling or disabling elevation visualization layer.
-     */
-    public static final String ELEVATION_LAYER_ENABLED = "elevation.layer.enabled";
-
-    /**
-     * Property key for enabling or disabling contour line rendering.
-     */
-    public static final String ELEVATION_CONTOUR_LINES_ENABLED = "elevation.layer.contour-lines.enabled";
-
-    /**
-     * Property key for enabling or disabling hillshade rendering.
-     */
-    public static final String ELEVATION_HILLSHADE_ENABLED = "elevation.layer.hillshade.enabled";
-
-    /**
-     * Property key for enabling or disabling rendering of the elevation data point
-     * raster.
-     */
-    public static final String ELEVATION_RASTER_ENABLED = "elevation.layer.raster.enabled";
-
-    /**
-     * Property key for the limit value of arc degrees in latitude or longitude
-     * covered by the map view, where, if exceeded, elevation data caching as well
-     * as contour line and hillshade rendering will be temporarily switched off.
-     */
-    public static final String ELEVATION_LAYER_RENDERING_LIMIT = "elevation.layer.rendering.limit";
-
-    /**
-     * Property key for step between neighboring elevation contour lines.
-     */
-    public static final String CONTOUR_LINE_ISOSTEP = "elevation.contour-line.isostep";
-
-    /**
-     * Property key for the altitude of the illumination source in hillshade
-     * computation.
-     */
-    public static final String HILLSHADE_ALTITUDE = "elevation.hillshade.altitude";
-
-    /**
-     * Property key for the azimuth of the illumination source in hillshade
-     * computation.
-     */
-    public static final String HILLSHADE_AZIMUTH = "elevation.hillshade.azimuth";
-
-    /**
-     * Property key for enabling or disabling automatic download of elevation data.
-     */
-    public static final String ELEVATION_AUTO_DOWNLOAD_ENABLED = "elevation.autodownload";
-
-    /**
-     * Legacy property key for authentication bearer token for Earthdata SRTM
-     * server.
-     */
-    public static final String ELEVATION_SERVER_AUTH_BEARER = "elevation.srtm.server.auth.bearer";
-
-    /**
      * Default property value for enabling use of elevation data: {@code true}.
      */
     public static final boolean DEFAULT_ELEVATION_ENABLED = true;
+
+    /**
+     * Default path, where elevation data is stored.
+     */
+    public static final File DEFAULT_ELEVATION_DIRECTORY = Paths
+            .get(Preferences.main().getDirs().getCacheDirectory(true).toString(), "elevation").toFile();
+
+    /**
+     * Default path, where SRTM1 and SRTM3 files need to be located.
+     */
+    public static final File DEFAULT_SRTM_DIRECTORY = Paths.get(DEFAULT_ELEVATION_DIRECTORY.toString(), "SRTM")
+            .toFile();
+
+    /**
+     * Property key for preferred SRTM type.
+     */
+    public static final String PREFERRED_SRTM_TYPE = "elevation.srtm.type.preferred";
 
     /**
      * Default property value for the preferred SRTM type.
@@ -112,9 +58,19 @@ public class ElevationPreferences {
     public static final SRTMTile.Type DEFAULT_PREFERRED_SRTM_TYPE = SRTMTile.Type.SRTM1;
 
     /**
+     * Property key for defining the elevation interpolation method.
+     */
+    public static final String ELEVATION_INTERPOLATION = "elevation.interpolation";
+
+    /**
      * Default property value of the elevation interpolation method.
      */
     public static final SRTMTile.Interpolation DEFAULT_ELEVATION_INTERPOLATION = SRTMTile.Interpolation.BILINEAR;
+
+    /**
+     * Property key for size limit of the in-memory SRTM tile cache.
+     */
+    public static final String RAM_CACHE_SIZE_LIMIT = "elevation.cache.ram.size.limit";
 
     /**
      * Default property value for the size limit of the in-memory SRTM tile cache in
@@ -139,26 +95,22 @@ public class ElevationPreferences {
     public static final int INCR_RAM_CACHE_SIZE_LIMIT = 1;
 
     /**
+     * Property key for enabling or disabling elevation visualization layer.
+     */
+    public static final String ELEVATION_LAYER_ENABLED = "elevation.layer.enabled";
+
+    /**
      * Default property value for enabling the elevation visualization layer:
      * {@code true}.
      */
     public static final boolean DEFAULT_ELEVATION_LAYER_ENABLED = true;
 
     /**
-     * Default property value for enabling contour line rendering: {@code true}.
+     * Property key for the limit value of arc degrees in latitude or longitude
+     * covered by the map view, where, if exceeded, elevation data caching as well
+     * as contour line and hillshade rendering will be temporarily switched off.
      */
-    public static final boolean DEFAULT_ELEVATION_CONTOUR_LINES_ENABLED = true;
-
-    /**
-     * Default property value for enabling hillshade rendering: {@code true}.
-     */
-    public static final boolean DEFAULT_ELEVATION_HILLSHADE_ENABLED = true;
-
-    /**
-     * Default property value for enabling rendering of the elevation data point
-     * raster: {@code false}.
-     */
-    public static final boolean DEFAULT_ELEVATION_RASTER_ENABLED = false;
+    public static final String ELEVATION_LAYER_RENDERING_LIMIT = "elevation.layer.rendering.limit";
 
     /**
      * Default property value for the limit value of arc degrees in latitude or
@@ -184,6 +136,21 @@ public class ElevationPreferences {
     public static final double INCR_ELEVATION_LAYER_RENDERING_LIMIT = 0.01;
 
     /**
+     * Property key for enabling or disabling contour line rendering.
+     */
+    public static final String ELEVATION_CONTOUR_LINES_ENABLED = "elevation.layer.contour-lines.enabled";
+
+    /**
+     * Default property value for enabling contour line rendering: {@code true}.
+     */
+    public static final boolean DEFAULT_ELEVATION_CONTOUR_LINES_ENABLED = true;
+
+    /**
+     * Property key for step between neighboring elevation contour lines.
+     */
+    public static final String CONTOUR_LINE_ISOSTEP = "elevation.contour-line.isostep";
+
+    /**
      * Default property value of the isostep between two neighboring elevation
      * contour lines: {@code 10}.
      */
@@ -203,6 +170,22 @@ public class ElevationPreferences {
      * Increment of the contour line isostep: {@code 5}.
      */
     public static final int INCR_CONTOUR_LINE_ISOSTEP = 5;
+
+    /**
+     * Property key for enabling or disabling hillshade rendering.
+     */
+    public static final String ELEVATION_HILLSHADE_ENABLED = "elevation.layer.hillshade.enabled";
+
+    /**
+     * Default property value for enabling hillshade rendering: {@code true}.
+     */
+    public static final boolean DEFAULT_ELEVATION_HILLSHADE_ENABLED = true;
+
+    /**
+     * Property key for the altitude of the illumination source in hillshade
+     * computation.
+     */
+    public static final String HILLSHADE_ALTITUDE = "elevation.hillshade.altitude";
 
     /**
      * Default property value of the altitude (degrees) of the illumination source
@@ -226,6 +209,12 @@ public class ElevationPreferences {
     public static final int INCR_HILLSHADE_ALTITUDE = 1;
 
     /**
+     * Property key for the azimuth of the illumination source in hillshade
+     * computation.
+     */
+    public static final String HILLSHADE_AZIMUTH = "elevation.hillshade.azimuth";
+
+    /**
      * Default property value of the azimuth (degrees) of the illumination source in
      * hillshade computation: {@code 315} (NW).
      */
@@ -247,10 +236,33 @@ public class ElevationPreferences {
     public static final int INCR_HILLSHADE_AZIMUTH = 1;
 
     /**
+     * Property key for enabling or disabling rendering of the elevation data point
+     * raster.
+     */
+    public static final String ELEVATION_RASTER_ENABLED = "elevation.layer.raster.enabled";
+
+    /**
+     * Default property value for enabling rendering of the elevation data point
+     * raster: {@code false}.
+     */
+    public static final boolean DEFAULT_ELEVATION_RASTER_ENABLED = false;
+
+    /**
+     * Property key for enabling or disabling automatic download of elevation data.
+     */
+    public static final String ELEVATION_AUTO_DOWNLOAD_ENABLED = "elevation.autodownload";
+
+    /**
      * Default property value for enabling automatic download of elevation data:
      * {@code false}.
      */
     public static final boolean DEFAULT_ELEVATION_AUTO_DOWNLOAD_ENABLED = false;
+
+    /**
+     * Legacy property key for authentication bearer token for Earthdata SRTM
+     * server.
+     */
+    public static final String ELEVATION_SERVER_AUTH_BEARER = "elevation.srtm.server.auth.bearer";
 
     /**
      * Host name of the NASA Earthdata single sign-on server.
@@ -272,18 +284,6 @@ public class ElevationPreferences {
      * authorization bearer token in order to download elevation data.
      */
     public static final String SRTM_SERVER_REGISTRATION_URL = "https://" + EARTHDATA_SSO_HOST + "/users/new/";
-
-    /**
-     * Default path, where elevation data is stored.
-     */
-    public static final File DEFAULT_ELEVATION_DIRECTORY = Paths
-            .get(Preferences.main().getDirs().getCacheDirectory(true).toString(), "elevation").toFile();
-
-    /**
-     * Default path, where SRTM1 and SRTM3 files need to be located.
-     */
-    public static final File DEFAULT_SRTM_DIRECTORY = Paths.get(DEFAULT_ELEVATION_DIRECTORY.toString(), "SRTM")
-            .toFile();
 
     /**
      * URL of

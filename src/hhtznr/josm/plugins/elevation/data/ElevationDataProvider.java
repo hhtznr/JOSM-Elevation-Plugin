@@ -458,9 +458,14 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
             SRTMTile srtmTile = null;
             try {
                 srtmTile = tileCache.putOrUpdateSRTMTile(srtmFileReader.readSRTMFile(srtmFile));
-                synchronized (listeners) {
-                    for (ElevationDataProviderListener listener : listeners)
-                        listener.elevationDataAvailable(srtmTile);
+                // Check if all SRTM tiles of most recently requested tile grid are cached now
+                // If so, inform listeners
+                SRTMTileGrid tileGrid = previousTileGrid;
+                if (tileGrid != null && tileGrid.checkAllRequiredSRTMTilesCached()) {
+                    synchronized (listeners) {
+                        for (ElevationDataProviderListener listener : listeners)
+                            listener.elevationDataAvailable(tileGrid);
+                    }
                 }
                 return srtmTile;
             } catch (IOException e) {
@@ -470,19 +475,6 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
         };
 
         return fileReadExecutor.submit(fileReadTask);
-    }
-
-    /**
-     * Returns a new SRTM tile grid that is able to provide elevation raster data
-     * for the specified bounds. The elevation data is provided regardless of the
-     * bounds intersecting one ore multiple SRTM tiles. The only precondition is
-     * that the needed SRTM tiles are available or can be loaded.
-     *
-     * @param bounds The bounds to be covered by the SRTM tile grid.
-     * @return The SRTM tile grid.
-     */
-    public SRTMTileGrid getSRTMTileGrid(Bounds bounds) {
-        return new SRTMTileGrid(this, bounds);
     }
 
     public void setAutoDownloadEnabled(boolean enabled) {

@@ -310,6 +310,30 @@ public class SRTMTileGrid {
     }
 
     /**
+     * Returns whether all SRTM tiles required to form this grid are available and
+     * in memory.
+     *
+     * @return {@code true} if all SRTM tiles required to form this grid are
+     *         available and in memory.
+     */
+    public boolean checkAllRequiredSRTMTilesCached() {
+        SRTMTile.Type srtmTileType = null;
+        for (int gridLatIndex = 0; gridLatIndex < clippedTiles.length; gridLatIndex++) {
+            for (int gridLonIndex = 0; gridLonIndex < clippedTiles[gridLatIndex].length; gridLonIndex++) {
+                ClippedSRTMTile clippedTile = clippedTiles[gridLatIndex][gridLonIndex];
+                SRTMTile tile = clippedTile.tile;
+                if (tile.getStatus() != SRTMTile.Status.VALID)
+                    return false;
+                if (srtmTileType == null)
+                    srtmTileType = tile.getType();
+                else if (srtmTileType != tile.getType())
+                    return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * Returns the elevation values of all SRTM tiles of this grid which are located
      * within the given bounds. This method will slightly adjust the bounds to the
      * closest coordinates of the elevation raster.
@@ -324,19 +348,8 @@ public class SRTMTileGrid {
             return gridEleValues;
 
         // Pre-check if all tiles have the preferred SRTM type and are valid
-        SRTMTile.Type srtmTileType = null;
-        for (int gridLatIndex = 0; gridLatIndex < clippedTiles.length; gridLatIndex++) {
-            for (int gridLonIndex = 0; gridLonIndex < clippedTiles[gridLatIndex].length; gridLonIndex++) {
-                ClippedSRTMTile clippedTile = clippedTiles[gridLatIndex][gridLonIndex];
-                SRTMTile tile = clippedTile.tile;
-                if (tile.getStatus() != SRTMTile.Status.VALID)
-                    return null;
-                if (srtmTileType == null)
-                    srtmTileType = tile.getType();
-                else if (srtmTileType != tile.getType())
-                    return null;
-            }
-        }
+        if (!checkAllRequiredSRTMTilesCached())
+            return null;
 
         int totalTileLatLength = 0;
         int totalTileLonLength = 0;

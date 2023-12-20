@@ -9,10 +9,10 @@ package hhtznr.josm.plugins.elevation.data;
 public interface ElevationDataProviderListener {
 
     /**
-     * Informs the implementing class that elevation data from a requested SRTM tile
-     * is available.
+     * Informs the implementing class that elevation data from a SRTM tile grid is
+     * available.
      *
-     * @param tile The SRTM tile which contains the requested elevation data.
+     * @param tileGrid The SRTM tile grid with available elevation data.
      */
-    public void elevationDataAvailable(SRTMTile tile);
+    public void elevationDataAvailable(SRTMTileGrid tileGrid);
 }

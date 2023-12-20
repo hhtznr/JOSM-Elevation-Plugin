@@ -26,7 +26,7 @@ import org.openstreetmap.josm.tools.Logging;
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProviderListener;
-import hhtznr.josm.plugins.elevation.data.SRTMTile;
+import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
 
 /**
  * Class implementing a map layer for displaying elevation contour lines and
@@ -251,7 +251,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
     }
 
     @Override
-    public void elevationDataAvailable(SRTMTile tile) {
+    public void elevationDataAvailable(SRTMTileGrid tileGrid) {
         if (isVisible())
             repaint();
     }

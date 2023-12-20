@@ -158,31 +158,38 @@ public class SRTMFileDownloader {
                 Logging.error("Elevation: " + e.toString());
             }
         }
-        HttpClient.Response response = null;
         try {
-            response = httpClient.connect();
+            httpClient.connect();
+            int responseCode = httpClient.getResponse().getResponseCode();
             // https://urs.earthdata.nasa.gov/documentation/for_users/data_access/java
-            if (response.getResponseCode() != HttpURLConnection.HTTP_OK) {
+            if (responseCode != HttpURLConnection.HTTP_OK) {
                 downloadFailed(srtmTileID);
+                switch (responseCode) {
+                case HttpURLConnection.HTTP_UNAUTHORIZED:
+                    Logging.warn(
+                            "Elevation: SRTM download server did not grant authorization. You may need to renew your Earthdata authorization bearer token!");
+                    break;
+                case HttpURLConnection.HTTP_FORBIDDEN:
+                    Logging.warn(
+                            "Elevation: You need to authorize the application 'LP DAAC Data Pool' at Earthdata Login -> Applications!");
+                    break;
+                case HttpURLConnection.HTTP_NOT_FOUND:
+                    Logging.warn("Elevation: Requested SRTM file " + srtmFileName
+                            + " was not found on the download server.");
+                    break;
+                default:
+                    Logging.warn("Elevation: SRTM server responded: " + responseCode + " "
+                            + httpClient.getResponse().getResponseMessage());
+                    break;
+                }
                 return null;
             }
-            InputStream in = response.getContent();
+            InputStream in = httpClient.getResponse().getContent();
             Path downloadedZipFile = Paths.get(SRTMFileDownloader.this.srtmDirectory.toString(), srtmFileName);
             Files.copy(in, downloadedZipFile, StandardCopyOption.REPLACE_EXISTING);
             srtmFile = downloadedZipFile.toFile();
         } catch (IOException e) {
-            if (response != null) {
-                int responseCode = response.getResponseCode();
-                String responseMessage = response.getResponseMessage();
-                Logging.error("Elevation: SRTM server responded: " + responseCode + " " + responseMessage);
-                if (responseCode == HttpURLConnection.HTTP_UNAUTHORIZED)
-                    Logging.info(
-                            "Elevation: SRTM download server did not grant authorization. You may need to renew your authorization bearer token!");
-                else if (responseCode == HttpURLConnection.HTTP_NOT_FOUND)
-                    Logging.info("Elevation: Requested SRTM file " + srtmFileName
-                            + " was not found on the download server.");
-            }
-            Logging.error("Elevation: Downloading SRTM file " + srtmFileName + " failed: " + e.toString());
+            Logging.error("Elevation: Downloading SRTM file " + srtmFileName + " failed due to I/O Exception: " + e.toString());
             downloadFailed(srtmTileID);
             return null;
         }

@@ -73,12 +73,9 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         this.hillshadeAzimuth = hillshadeAzimuth;
         this.elevationDataProvider = elevationDataProvider;
         elevationDataProvider.addElevationDataProviderListener(this);
-        contourLinesEnabled = Config.getPref().getBoolean(ElevationPreferences.ELEVATION_CONTOUR_LINES_ENABLED,
-                ElevationPreferences.DEFAULT_ELEVATION_CONTOUR_LINES_ENABLED);
-        hillshadeEnabled = Config.getPref().getBoolean(ElevationPreferences.ELEVATION_HILLSHADE_ENABLED,
-                ElevationPreferences.DEFAULT_ELEVATION_HILLSHADE_ENABLED);
-        elevationRasterEnabled = Config.getPref().getBoolean(ElevationPreferences.ELEVATION_RASTER_ENABLED,
-                ElevationPreferences.DEFAULT_ELEVATION_RASTER_ENABLED);
+        contourLinesEnabled = ElevationPreferences.getContourLinesEnabled();
+        hillshadeEnabled = ElevationPreferences.getHillshadeEnabled();
+        elevationRasterEnabled = ElevationPreferences.getElevationRasterEnabled();
     }
 
     /**

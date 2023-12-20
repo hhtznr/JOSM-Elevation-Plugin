@@ -15,7 +15,6 @@ import java.util.stream.Stream;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.ILatLon;
-import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
@@ -63,15 +62,9 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
      * Creates a new elevation data provider based on preferences or defaults.
      */
     public ElevationDataProvider() {
-        this(ElevationPreferences.DEFAULT_SRTM_DIRECTORY,
-                Config.getPref().getInt(ElevationPreferences.RAM_CACHE_SIZE_LIMIT,
-                        ElevationPreferences.DEFAULT_RAM_CACHE_SIZE_LIMIT),
-                SRTMTile.Type.fromString(Config.getPref().get(ElevationPreferences.PREFERRED_SRTM_TYPE,
-                        ElevationPreferences.DEFAULT_PREFERRED_SRTM_TYPE.toString())),
-                SRTMTile.Interpolation.fromString(Config.getPref().get(ElevationPreferences.ELEVATION_INTERPOLATION,
-                        ElevationPreferences.DEFAULT_ELEVATION_INTERPOLATION.toString())),
-                Config.getPref().getBoolean(ElevationPreferences.ELEVATION_AUTO_DOWNLOAD_ENABLED,
-                        ElevationPreferences.DEFAULT_ELEVATION_AUTO_DOWNLOAD_ENABLED));
+        this(ElevationPreferences.DEFAULT_SRTM_DIRECTORY, ElevationPreferences.getRAMCacheSizeLimit(),
+                ElevationPreferences.getPreferredSRTMType(), ElevationPreferences.getElevationInterpolation(),
+                ElevationPreferences.getAutoDownloadEnabled());
     }
 
     /**
@@ -527,9 +520,11 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
     }
 
     /**
-     * Returns the SRTM file downloader used for auto-download of missing SRTM tiles.
+     * Returns the SRTM file downloader used for auto-download of missing SRTM
+     * tiles.
      *
-     * @return The SRTM file downloader or {@code null} if auto-download is not enabled.
+     * @return The SRTM file downloader or {@code null} if auto-download is not
+     *         enabled.
      */
     public SRTMFileDownloader getSRTMFileDownloader() {
         return srtmFileDownloader;

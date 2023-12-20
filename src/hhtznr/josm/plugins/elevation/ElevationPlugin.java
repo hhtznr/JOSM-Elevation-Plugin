@@ -17,8 +17,6 @@ import org.openstreetmap.josm.gui.layer.LayerManager.LayerRemoveEvent;
 import org.openstreetmap.josm.gui.preferences.PreferenceSetting;
 import org.openstreetmap.josm.plugins.Plugin;
 import org.openstreetmap.josm.plugins.PluginInformation;
-import org.openstreetmap.josm.spi.preferences.Config;
-import org.openstreetmap.josm.spi.preferences.IPreferences;
 import org.openstreetmap.josm.tools.Logging;
 
 /**
@@ -30,8 +28,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
 
     private ElevationTabPreferenceSetting tabPreferenceSetting = null;
 
-    private boolean elevationEnabled = Config.getPref().getBoolean(ElevationPreferences.ELEVATION_ENABLED,
-            ElevationPreferences.DEFAULT_ELEVATION_ENABLED);
+    private boolean elevationEnabled = ElevationPreferences.getElevationEnabled();
 
     private ElevationDataProvider elevationDataProvider = null;
 
@@ -62,15 +59,10 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
      */
     public ElevationLayer getElevationLayer() {
         if (elevationLayerEnabled && elevationLayer == null) {
-            IPreferences pref = Config.getPref();
-            double renderingLimit = pref.getDouble(ElevationPreferences.ELEVATION_LAYER_RENDERING_LIMIT,
-                    ElevationPreferences.DEFAULT_ELEVATION_LAYER_RENDERING_LIMIT);
-            int isostep = pref.getInt(ElevationPreferences.CONTOUR_LINE_ISOSTEP,
-                    ElevationPreferences.DEFAULT_CONTOUR_LINE_ISOSTEP);
-            int altitude = pref.getInt(ElevationPreferences.HILLSHADE_ALTITUDE,
-                    ElevationPreferences.DEFAULT_HILLSHADE_ALTITUDE);
-            int azimuth = pref.getInt(ElevationPreferences.HILLSHADE_AZIMUTH,
-                    ElevationPreferences.DEFAULT_HILLSHADE_AZIMUTH);
+            double renderingLimit = ElevationPreferences.getElevationLayerRenderingLimit();
+            int isostep = ElevationPreferences.getContourLineIsostep();
+            int altitude = ElevationPreferences.getHillshadeAltitude();
+            int azimuth = ElevationPreferences.getHillshadeAzimuth();
             elevationLayer = new ElevationLayer(elevationDataProvider, renderingLimit, isostep, altitude, azimuth);
         }
         return elevationLayer;
@@ -121,25 +113,17 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     private void setElevationEnabled(boolean enabled, MapFrame mapFrame) {
         // Elevation enabled
         if (enabled) {
-            IPreferences pref = Config.getPref();
             // SRTM file type that is preferred for reading and downloading
-            SRTMTile.Type preferredSRTMType = SRTMTile.Type
-                    .fromString(pref.get(ElevationPreferences.PREFERRED_SRTM_TYPE,
-                            ElevationPreferences.DEFAULT_PREFERRED_SRTM_TYPE.toString()));
+            SRTMTile.Type preferredSRTMType = ElevationPreferences.getPreferredSRTMType();
             // Elevation interpolation method
-            SRTMTile.Interpolation elevationInterpolation = SRTMTile.Interpolation
-                    .fromString(pref.get(ElevationPreferences.ELEVATION_INTERPOLATION,
-                            ElevationPreferences.DEFAULT_ELEVATION_INTERPOLATION.toString()));
+            SRTMTile.Interpolation elevationInterpolation = ElevationPreferences.getElevationInterpolation();
 
             // Maximum size of the SRTM tile cache
-            int cacheSizeLimit = pref.getInt(ElevationPreferences.RAM_CACHE_SIZE_LIMIT,
-                    ElevationPreferences.DEFAULT_RAM_CACHE_SIZE_LIMIT);
+            int cacheSizeLimit = ElevationPreferences.getRAMCacheSizeLimit();
             // Elevation layer
-            elevationLayerEnabled = pref.getBoolean(ElevationPreferences.ELEVATION_LAYER_ENABLED,
-                    ElevationPreferences.DEFAULT_ELEVATION_LAYER_ENABLED);
+            elevationLayerEnabled = ElevationPreferences.getElevationLayerEnabled();
             // Auto-download of SRTM files
-            boolean elevationAutoDownloadEnabled = pref.getBoolean(ElevationPreferences.ELEVATION_AUTO_DOWNLOAD_ENABLED,
-                    ElevationPreferences.DEFAULT_ELEVATION_AUTO_DOWNLOAD_ENABLED);
+            boolean elevationAutoDownloadEnabled = ElevationPreferences.getAutoDownloadEnabled();
             // Initialize and configure the elevation data provider
             if (elevationDataProvider == null)
                 elevationDataProvider = new ElevationDataProvider();
@@ -156,22 +140,13 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                     localElevationLabel.addToMapFrame(mapFrame);
 
                 if (elevationLayerEnabled) {
-                    double renderingLimit = pref.getDouble(ElevationPreferences.ELEVATION_LAYER_RENDERING_LIMIT,
-                            ElevationPreferences.DEFAULT_ELEVATION_LAYER_RENDERING_LIMIT);
-                    int isostep = pref.getInt(ElevationPreferences.CONTOUR_LINE_ISOSTEP,
-                            ElevationPreferences.DEFAULT_CONTOUR_LINE_ISOSTEP);
-                    int altitude = pref.getInt(ElevationPreferences.HILLSHADE_ALTITUDE,
-                            ElevationPreferences.DEFAULT_HILLSHADE_ALTITUDE);
-                    int azimuth = pref.getInt(ElevationPreferences.HILLSHADE_AZIMUTH,
-                            ElevationPreferences.DEFAULT_HILLSHADE_AZIMUTH);
                     if (elevationLayer == null) {
-                        elevationLayer = new ElevationLayer(elevationDataProvider, renderingLimit, isostep, altitude, azimuth);
-                        MainApplication.getLayerManager().addLayer(elevationLayer);
-                    }
-                    else {
-                        elevationLayer.setRenderingLimit(renderingLimit);
-                        elevationLayer.setContourLineIsostep(isostep);
-                        elevationLayer.setHillshadeIllumination(altitude, azimuth);
+                        MainApplication.getLayerManager().addLayer(getElevationLayer());
+                    } else {
+                        elevationLayer.setRenderingLimit(ElevationPreferences.getElevationLayerRenderingLimit());
+                        elevationLayer.setContourLineIsostep(ElevationPreferences.getContourLineIsostep());
+                        elevationLayer.setHillshadeIllumination(ElevationPreferences.getHillshadeAltitude(),
+                                ElevationPreferences.getHillshadeAzimuth());
                     }
                 }
             }

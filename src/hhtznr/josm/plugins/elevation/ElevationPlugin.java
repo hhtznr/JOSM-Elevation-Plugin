@@ -6,6 +6,7 @@ import hhtznr.josm.plugins.elevation.gui.AddElevationLayerAction;
 import hhtznr.josm.plugins.elevation.gui.ElevationLayer;
 import hhtznr.josm.plugins.elevation.gui.ElevationTabPreferenceSetting;
 import hhtznr.josm.plugins.elevation.gui.LocalElevationLabel;
+import hhtznr.josm.plugins.elevation.gui.SRTMFileDownloadErrorDialog;
 
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.MainMenu;
@@ -31,6 +32,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     private boolean elevationEnabled = ElevationPreferences.getElevationEnabled();
 
     private ElevationDataProvider elevationDataProvider = null;
+    private SRTMFileDownloadErrorDialog srtmFileDownloadErrorDialog = null;
 
     private LocalElevationLabel localElevationLabel = null;
 
@@ -131,8 +133,14 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
             elevationDataProvider.setElevationInterpolation(elevationInterpolation);
             elevationDataProvider.setCacheSizeLimit(cacheSizeLimit);
             elevationDataProvider.setAutoDownloadEnabled(elevationAutoDownloadEnabled);
-            if (elevationAutoDownloadEnabled)
+            if (elevationAutoDownloadEnabled) {
                 elevationDataProvider.getSRTMFileDownloader().setOAuthToken(ElevationPreferences.lookupEarthdataOAuthToken());
+                if (srtmFileDownloadErrorDialog == null)
+                    srtmFileDownloadErrorDialog = new SRTMFileDownloadErrorDialog(elevationDataProvider.getSRTMFileDownloader());
+            }
+            else {
+                srtmFileDownloadErrorDialog = null;
+            }
             if (mapFrame != null) {
                 if (localElevationLabel == null)
                     localElevationLabel = new LocalElevationLabel(mapFrame, elevationDataProvider);
@@ -169,6 +177,11 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                 elevationLayerEnabled = false;
                 MainApplication.getLayerManager().removeLayer(elevationLayer);
                 elevationLayer = null;
+            }
+            if (srtmFileDownloadErrorDialog != null) {
+                // Removes the download listener
+                srtmFileDownloadErrorDialog.disable();
+                srtmFileDownloadErrorDialog = null;
             }
             elevationDataProvider = null;
         }

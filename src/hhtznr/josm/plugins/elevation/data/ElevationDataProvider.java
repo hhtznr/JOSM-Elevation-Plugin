@@ -477,6 +477,21 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
         return fileReadExecutor.submit(fileReadTask);
     }
 
+    /**
+     * Returns whether automatic downloading of missing SRTM files is enabled.
+     *
+     * @return {@code true} if enabled, {@code false} otherwise.
+     */
+    public boolean isAutoDownloadEnabled() {
+        return autoDownloadEnabled;
+    }
+
+    /**
+     * Enables or disables automatic downloading of missing SRTM tiles.
+     *
+     * @param enabled {@code true} enables auto-download, {@code false} to disables
+     *                it.
+     */
     public void setAutoDownloadEnabled(boolean enabled) {
         if (autoDownloadEnabled == enabled)
             return;

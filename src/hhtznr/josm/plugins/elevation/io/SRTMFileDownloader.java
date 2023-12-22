@@ -109,8 +109,21 @@ public class SRTMFileDownloader {
      * @param listener The download listener to add.
      */
     public void addDownloadListener(SRTMFileDownloadListener listener) {
-        if (!downloadListeners.contains(listener))
-            downloadListeners.add(listener);
+        synchronized (downloadListeners) {
+            if (!downloadListeners.contains(listener))
+                downloadListeners.add(listener);
+        }
+    }
+
+    /**
+     * Removes a download listener.
+     *
+     * @param listener The download listener to be removed;
+     */
+    public void removeDownloadListener(SRTMFileDownloadListener listener) {
+        synchronized (downloadListeners) {
+            downloadListeners.remove(listener);
+        }
     }
 
     /**
@@ -165,25 +178,25 @@ public class SRTMFileDownloader {
             int responseCode = httpClient.getResponse().getResponseCode();
             // https://urs.earthdata.nasa.gov/documentation/for_users/data_access/java
             if (responseCode != HttpURLConnection.HTTP_OK) {
-                downloadFailed(srtmTileID, new HTTPException(url, httpClient.getResponse()));
+                String advice = null;
                 switch (responseCode) {
                 case HttpURLConnection.HTTP_UNAUTHORIZED:
-                    Logging.warn(
-                            "Elevation: SRTM download server did not grant authorization. You may need to renew your Earthdata authorization bearer token!");
+                    advice = "You may need to renew your Earthdata authorization bearer token";
                     break;
                 case HttpURLConnection.HTTP_FORBIDDEN:
-                    Logging.warn(
-                            "Elevation: You need to authorize the application 'LP DAAC Data Pool' at Earthdata Login -> Applications!");
+                    advice = "You need to authorize the application 'LP DAAC Data Pool' at Earthdata Login -> Applications";
                     break;
                 case HttpURLConnection.HTTP_NOT_FOUND:
-                    Logging.warn("Elevation: Requested SRTM file " + srtmFileName
-                            + " was not found on the download server.");
+                    advice = "It is possible that no elevation data is available for " + srtmTileID;
                     break;
                 default:
-                    Logging.warn("Elevation: SRTM server responded: " + responseCode + " "
-                            + httpClient.getResponse().getResponseMessage());
                     break;
                 }
+                Logging.warn("Elevation: SRTM server responded: " + responseCode + " "
+                        + httpClient.getResponse().getResponseMessage());
+                if (advice != null)
+                    Logging.info("Elevation: " + advice);
+                downloadFailed(srtmTileID, new HTTPException(url, httpClient.getResponse(), advice));
                 return null;
             }
             InputStream in = httpClient.getResponse().getContent();
@@ -214,18 +227,24 @@ public class SRTMFileDownloader {
     }
 
     private void downloadStarted(String srtmTileID) {
-        for (SRTMFileDownloadListener listener : SRTMFileDownloader.this.downloadListeners)
-            listener.srtmFileDownloadStarted(srtmTileID);
+        synchronized (downloadListeners) {
+            for (SRTMFileDownloadListener listener : downloadListeners)
+                listener.srtmFileDownloadStarted(srtmTileID);
+        }
     }
 
     private void downloadFailed(String srtmTileID, Exception exception) {
-        for (SRTMFileDownloadListener listener : SRTMFileDownloader.this.downloadListeners)
-            listener.srtmFileDownloadFailed(srtmTileID, exception);
+        synchronized (downloadListeners) {
+            for (SRTMFileDownloadListener listener : downloadListeners)
+                listener.srtmFileDownloadFailed(srtmTileID, exception);
+        }
     }
 
     private void downloadSucceeded(File srtmFile) {
-        for (SRTMFileDownloadListener listener : SRTMFileDownloader.this.downloadListeners)
-            listener.srtmFileDownloadSucceeded(srtmFile);
+        synchronized (downloadListeners) {
+            for (SRTMFileDownloadListener listener : downloadListeners)
+                listener.srtmFileDownloadSucceeded(srtmFile);
+        }
     }
 
     /**
@@ -236,18 +255,21 @@ public class SRTMFileDownloader {
         private static final long serialVersionUID = 1L;
         private final URL url;
         private final HttpClient.Response response;
+        private final String advice;
 
         /**
          * Creates a new HTTP exception.
          *
          * @param url      The URL for which the exception occurred.
          * @param response The HTTP error response of the host.
+         * @param advice   Advice how to resolve the error.
          */
-        public HTTPException(URL url, HttpClient.Response response) {
+        public HTTPException(URL url, HttpClient.Response response, String advice) {
             super("Host " + url.getHost() + " responded: " + response.getResponseCode() + " - "
                     + response.getResponseMessage());
             this.url = url;
             this.response = response;
+            this.advice = advice;
         }
 
         /**
@@ -266,6 +288,15 @@ public class SRTMFileDownloader {
          */
         public HttpClient.Response getResponse() {
             return response;
+        }
+
+        /**
+         * Returns advice how to resolve the HTTP error.
+         *
+         * @return The advice or {@code null} if no advice is available.
+         */
+        public String getAdvice() {
+            return advice;
         }
     }
 }

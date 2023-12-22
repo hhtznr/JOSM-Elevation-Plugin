@@ -146,7 +146,7 @@ public class SRTMFileDownloader {
         try {
             url = new URL(srtmBaseURL + srtmFileName);
         } catch (MalformedURLException e) {
-            downloadFailed(srtmTileID);
+            downloadFailed(srtmTileID, e);
             return null;
         }
         HttpClient httpClient = HttpClient.create(url);
@@ -156,6 +156,8 @@ public class SRTMFileDownloader {
                 oAuthToken.sign(httpClient);
             } catch (OAuthException e) {
                 Logging.error("Elevation: " + e.toString());
+                downloadFailed(srtmTileID, e);
+                return null;
             }
         }
         try {
@@ -163,7 +165,7 @@ public class SRTMFileDownloader {
             int responseCode = httpClient.getResponse().getResponseCode();
             // https://urs.earthdata.nasa.gov/documentation/for_users/data_access/java
             if (responseCode != HttpURLConnection.HTTP_OK) {
-                downloadFailed(srtmTileID);
+                downloadFailed(srtmTileID, new HTTPException(url, httpClient.getResponse()));
                 switch (responseCode) {
                 case HttpURLConnection.HTTP_UNAUTHORIZED:
                     Logging.warn(
@@ -189,17 +191,19 @@ public class SRTMFileDownloader {
             Files.copy(in, downloadedZipFile, StandardCopyOption.REPLACE_EXISTING);
             srtmFile = downloadedZipFile.toFile();
         } catch (IOException e) {
-            Logging.error("Elevation: Downloading SRTM file " + srtmFileName + " failed due to I/O Exception: " + e.toString());
-            downloadFailed(srtmTileID);
+            Logging.error("Elevation: Downloading SRTM file " + srtmFileName + " failed due to I/O Exception: "
+                    + e.toString());
+            downloadFailed(srtmTileID, e);
             return null;
         }
 
         // This would happen, if the downloaded file was uncompressed, but it does not
         // contain an appropriately named file (prefixed with SRTM tile ID)
         if (srtmFile == null) {
-            Logging.error("Elevation: Downloaded compressed SRTM file " + srtmFileName
-                    + " did not contain a file with the expected SRTM tile ID!");
-            downloadFailed(srtmTileID);
+            String errorMessage = "Elevation: Downloaded compressed SRTM file " + srtmFileName
+                    + " did not contain a file with the expected SRTM tile ID!";
+            Logging.error(errorMessage);
+            downloadFailed(srtmTileID, new IOException(errorMessage));
             return null;
         }
 
@@ -214,13 +218,54 @@ public class SRTMFileDownloader {
             listener.srtmFileDownloadStarted(srtmTileID);
     }
 
-    private void downloadFailed(String srtmTileID) {
+    private void downloadFailed(String srtmTileID, Exception exception) {
         for (SRTMFileDownloadListener listener : SRTMFileDownloader.this.downloadListeners)
-            listener.srtmFileDownloadFailed(srtmTileID);
+            listener.srtmFileDownloadFailed(srtmTileID, exception);
     }
 
     private void downloadSucceeded(File srtmFile) {
         for (SRTMFileDownloadListener listener : SRTMFileDownloader.this.downloadListeners)
             listener.srtmFileDownloadSucceeded(srtmFile);
+    }
+
+    /**
+     * Exception class for treating HTTP errors as exceptions.
+     */
+    public static class HTTPException extends Exception {
+
+        private static final long serialVersionUID = 1L;
+        private final URL url;
+        private final HttpClient.Response response;
+
+        /**
+         * Creates a new HTTP exception.
+         *
+         * @param url      The URL for which the exception occurred.
+         * @param response The HTTP error response of the host.
+         */
+        public HTTPException(URL url, HttpClient.Response response) {
+            super("Host " + url.getHost() + " responded: " + response.getResponseCode() + " - "
+                    + response.getResponseMessage());
+            this.url = url;
+            this.response = response;
+        }
+
+        /**
+         * Returns the URL for which the exception occurred.
+         *
+         * @return The URL.
+         */
+        public URL getURL() {
+            return url;
+        }
+
+        /**
+         * Returns the HTTP error response of the host.
+         *
+         * @return The HTTP error response.
+         */
+        public HttpClient.Response getResponse() {
+            return response;
+        }
     }
 }

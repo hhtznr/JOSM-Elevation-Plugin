@@ -32,13 +32,14 @@ public interface SRTMFileDownloadListener {
     public void srtmFileDownloadSucceeded(File srtmFile);
 
     /**
-     * Informs the implementing class that downloading HGT data for the given
+     * Informs the implementing class that downloading SRTM data for the given
      * coordinates failed.
      *
      * To be called by the thread downloading as soon as downloading fails.
      *
      * @param srtmTileID The ID of the SRTM tile for which the SRTM file was
      *                   supposed to be downloaded.
+     * @param exception  The exception associated with the failed download.
      */
-    public void srtmFileDownloadFailed(String srtmTileID);
+    public void srtmFileDownloadFailed(String srtmTileID, Exception exception);
 }

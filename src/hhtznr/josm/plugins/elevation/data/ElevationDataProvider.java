@@ -373,7 +373,7 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
                     } catch (RejectedExecutionException e) {
                         Logging.info("Elevation: Execution of download task for SRTM tile " + srtmTileID + " rejected: "
                                 + e.toString());
-                        srtmFileDownloadFailed(srtmTileID);
+                        srtmFileDownloadFailed(srtmTileID, e);
                     }
                 }
                 // Otherwise, put an empty data set with status "file missing" into the cache
@@ -566,7 +566,7 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
     }
 
     @Override
-    public void srtmFileDownloadFailed(String srtmTileID) {
+    public void srtmFileDownloadFailed(String srtmTileID, Exception exception) {
         tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.DOWNLOAD_FAILED);
     }
 }

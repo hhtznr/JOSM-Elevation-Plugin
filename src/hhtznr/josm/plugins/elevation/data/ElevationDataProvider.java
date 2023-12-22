@@ -493,6 +493,11 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
      *                it.
      */
     public void setAutoDownloadEnabled(boolean enabled) {
+        if (enabled)
+            // If auto-downloading was (re-)enabled, clean all SRTM tiles which previously
+            // failed downloading
+            tileCache.cleanAllTilesWithStatus(SRTMTile.Status.DOWNLOAD_FAILED);
+        // Nothing else to do if the enabled status is unchanged
         if (autoDownloadEnabled == enabled)
             return;
         if (enabled) {
@@ -503,8 +508,8 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
                         srtmFileDownloader = new SRTMFileDownloader(srtmDirectory);
                         srtmFileDownloader.addDownloadListener(this);
                         // Clear any SRTM tiles marked as missing from the cache so they will be
-                        // downloaded, if needed
-                        tileCache.cleanAllMissingTiles();
+                        // downloaded now, if needed
+                        tileCache.cleanAllTilesWithStatus(SRTMTile.Status.FILE_MISSING);
                     } catch (MalformedURLException e) {
                         autoDownloadEnabled = false;
                         Logging.error("Elevation: Cannot enable auto-downloading: " + e.toString());

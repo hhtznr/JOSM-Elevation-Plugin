@@ -156,13 +156,14 @@ public class SRTMTileCache {
     }
 
     /**
-     * Cleans all SRTM tiles with the status {@link SRTMTile.Status#FILE_MISSING
-     * SRTMTile.Status.FILE_MISSING} from the cache.
+     * Cleans all SRTM tiles with the given {@link SRTMTile.Status} from the cache.
+     *
+     * @param status The status of the SRTM tiles to clean from the cache.
      */
-    public synchronized void cleanAllMissingTiles() {
+    public synchronized void cleanAllTilesWithStatus(SRTMTile.Status status) {
         for (String srtmTileID : cache.keySet()) {
             SRTMTile srtmTile = cache.get(srtmTileID);
-            if (srtmTile.getStatus() == SRTMTile.Status.FILE_MISSING)
+            if (srtmTile.getStatus() == status)
                 cache.remove(srtmTileID);
         }
     }

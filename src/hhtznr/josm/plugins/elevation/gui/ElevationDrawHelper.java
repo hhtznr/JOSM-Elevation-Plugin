@@ -29,11 +29,6 @@ import hhtznr.josm.plugins.elevation.data.LatLonLine;
 public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, PaintableInvalidationListener {
 
     /**
-     * The color in which the contour lines are painted on the map.
-     */
-    public static final Color CONTOUR_LINE_COLOR = new Color(210, 180, 115);
-
-    /**
      * Scale factor for bounds of new contour line and hillshade tiles so they do
      * not immediately need to be regenerated when the map is moved.
      */
@@ -49,6 +44,8 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
     private final ElevationLayer layer;
 
     private int contourLineIsostep;
+    private BasicStroke contourLineStroke;
+    private Color contourLineColor;
     ContourLines contourLines = null;
 
     private int hillshadeAltitude;
@@ -68,6 +65,9 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
     public ElevationDrawHelper(ElevationLayer layer) {
         this.layer = layer;
         this.layer.addInvalidationListener(this);
+        contourLineIsostep = layer.getContourLineIsostep();
+        setContourLineStroke(layer.getContourLineStrokeWidth());
+        contourLineColor = layer.getContourLineColor();
     }
 
     @Override
@@ -159,20 +159,27 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
 
     private void drawContourLines(Graphics2D g, MapView mv, Bounds bounds) {
         if (contourLines == null || contourLineIsostep != layer.getContourLineIsostep()
-                || !contourLines.covers(bounds)) {
+                || contourLineStroke.getLineWidth() != layer.getContourLineStrokeWidth()
+                || contourLineColor != layer.getContourLineColor() || !contourLines.covers(bounds)) {
             contourLineIsostep = layer.getContourLineIsostep();
+            setContourLineStroke(layer.getContourLineStrokeWidth());
+            contourLineColor = layer.getContourLineColor();
             Bounds scaledBounds = getScaledBounds(bounds, BOUNDS_SCALE_FACTOR);
             contourLines = layer.getElevationDataProvider().getContourLines(scaledBounds, contourLineIsostep);
         }
         if (contourLines == null)
             return;
-        g.setColor(CONTOUR_LINE_COLOR);
-        g.setStroke(new BasicStroke(1, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.setColor(contourLineColor);
+        g.setStroke(contourLineStroke);
         for (LatLonLine segment : contourLines.getIsolineSegments()) {
             Point p1 = mv.getPoint(segment.getLatLon1());
             Point p2 = mv.getPoint(segment.getLatLon2());
             g.drawLine(p1.x, p1.y, p2.x, p2.y);
         }
+    }
+
+    private void setContourLineStroke(float width) {
+        contourLineStroke = new BasicStroke(width, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
     }
 
     private void drawElevationRaster(Graphics2D g, MapView mv, Bounds bounds) {
@@ -184,8 +191,8 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         Font font = g.getFont().deriveFont(Font.PLAIN, 10);
         g.setFont(font);
 
-        // Dimensions of an up to 4 digit (+ 2 digits/points space) elevation value string in
-        // screen coordinates
+        // Dimensions of an up to 4 digit (+ 2 digits/points space) elevation value
+        // string in screen coordinates
         FontMetrics metrics = g.getFontMetrics(font);
         int eleStringDisplayWidth = metrics.stringWidth("000000");
         int eleStringDisplayHeight = metrics.getHeight() + 2;

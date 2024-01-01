@@ -8,6 +8,8 @@ import hhtznr.josm.plugins.elevation.gui.ElevationTabPreferenceSetting;
 import hhtznr.josm.plugins.elevation.gui.LocalElevationLabel;
 import hhtznr.josm.plugins.elevation.gui.SRTMFileDownloadErrorDialog;
 
+import java.awt.Color;
+
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.MainMenu;
 import org.openstreetmap.josm.gui.MapFrame;
@@ -63,9 +65,12 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
         if (elevationLayerEnabled && elevationLayer == null) {
             double renderingLimit = ElevationPreferences.getElevationLayerRenderingLimit();
             int isostep = ElevationPreferences.getContourLineIsostep();
+            float strokeWidth = ElevationPreferences.getContourLineStrokeWidth();
+            Color color = ElevationPreferences.getContourLineColor();
             int altitude = ElevationPreferences.getHillshadeAltitude();
             int azimuth = ElevationPreferences.getHillshadeAzimuth();
-            elevationLayer = new ElevationLayer(elevationDataProvider, renderingLimit, isostep, altitude, azimuth);
+            elevationLayer = new ElevationLayer(elevationDataProvider, renderingLimit, isostep, strokeWidth, color,
+                    altitude, azimuth);
         }
         return elevationLayer;
     }
@@ -153,8 +158,11 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                     } else {
                         elevationLayer.setRenderingLimit(ElevationPreferences.getElevationLayerRenderingLimit());
                         elevationLayer.setContourLineIsostep(ElevationPreferences.getContourLineIsostep());
+                        elevationLayer.setContourLineStrokeWidth(ElevationPreferences.getContourLineStrokeWidth());
+                        elevationLayer.setContourLineColor(ElevationPreferences.getContourLineColor());
                         elevationLayer.setHillshadeIllumination(ElevationPreferences.getHillshadeAltitude(),
                                 ElevationPreferences.getHillshadeAzimuth());
+                        elevationLayer.repaint();
                     }
                 }
             }

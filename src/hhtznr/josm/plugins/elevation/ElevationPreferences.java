@@ -1,5 +1,6 @@
 package hhtznr.josm.plugins.elevation;
 
+import java.awt.Color;
 import java.io.File;
 import java.nio.file.Paths;
 
@@ -11,6 +12,7 @@ import org.openstreetmap.josm.data.oauth.OAuth20Token;
 import org.openstreetmap.josm.io.auth.CredentialsAgentException;
 import org.openstreetmap.josm.io.auth.CredentialsManager;
 import org.openstreetmap.josm.spi.preferences.Config;
+import org.openstreetmap.josm.tools.ColorHelper;
 import org.openstreetmap.josm.tools.Logging;
 import org.openstreetmap.josm.tools.Utils;
 
@@ -170,6 +172,41 @@ public class ElevationPreferences {
      * Increment of the contour line isostep: {@code 5}.
      */
     public static final int INCR_CONTOUR_LINE_ISOSTEP = 5;
+
+    /**
+     * Property key for width of the stroke for drawing of contour lines.
+     */
+    public static final String CONTOUR_LINE_STROKE_WIDTH = "elevation.contour-line.stroke.width";
+
+    /*
+     * Default property value of the contour line stroke width.
+     */
+    private static final float DEFAULT_CONTOUR_LINE_STROKE_WIDTH = 1.0f;
+
+    /**
+     * Minimum value of the contour line stroke width: {@code 0.1}.
+     */
+    public static final float MIN_CONTOUR_LINE_STROKE_WIDTH = 0.1f;
+
+    /**
+     * Maximum value of the contour line stroke width: {@code 10.0}.
+     */
+    public static final float MAX_CONTOUR_LINE_STROKE_WIDTH = 10.0f;
+
+    /**
+     * Increment of the contour line stroke width: {@code 0.05}.
+     */
+    public static final float INCR_CONTOUR_LINE_STROKE_WIDTH = 0.05f;
+
+    /**
+     * Property key for color of contour lines.
+     */
+    public static final String CONTOUR_LINE_COLOR = "elevation.contour-line.color";
+
+    /*
+     * Default property value of the contour line color as HTML color.
+     */
+    private static final String DEFAULT_CONTOUR_LINE_COLOR = "#D2B473";
 
     /**
      * Property key for enabling or disabling hillshade rendering.
@@ -384,6 +421,36 @@ public class ElevationPreferences {
      */
     public static int getContourLineIsostep() {
         return Config.getPref().getInt(CONTOUR_LINE_ISOSTEP, DEFAULT_CONTOUR_LINE_ISOSTEP);
+    }
+
+    /**
+     * Returns the contour line stroke width.
+     *
+     * @return The width of the stroke for drawing of contour lines in px.
+     */
+    public static float getContourLineStrokeWidth() {
+        return (float) Config.getPref().getDouble(CONTOUR_LINE_STROKE_WIDTH, DEFAULT_CONTOUR_LINE_STROKE_WIDTH);
+    }
+
+    /**
+     * Returns the contour line color.
+     *
+     * @return The color of contour lines.
+     */
+    public static Color getContourLineColor() {
+        String htmlColor = Config.getPref().get(CONTOUR_LINE_COLOR, DEFAULT_CONTOUR_LINE_COLOR);
+        return ColorHelper.html2color(htmlColor);
+    }
+
+    /**
+     * Sets the value of the contour line color in the settings.
+     *
+     * @param color The color to set as contour line color in the settings.
+     * @return {@code true} if the color value has changed.
+     */
+    public static boolean putContourLineColor(Color color) {
+        String htmlColor = ColorHelper.color2html(color, false);
+        return Config.getPref().put(CONTOUR_LINE_COLOR, htmlColor);
     }
 
     /**

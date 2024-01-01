@@ -1,5 +1,6 @@
 package hhtznr.josm.plugins.elevation.gui;
 
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
@@ -37,12 +38,11 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
     private final ElevationDataProvider elevationDataProvider;
     private double renderingLimitArcDegrees;
     private int contourLineIsostep;
-
-    // SRTMTileGrid contourLineTileGrid = null;
+    private float contourLineStrokeWidth;
+    private Color contourLineColor;
 
     private int hillshadeAltitude;
     private int hillshadeAzimuth;
-    // SRTMTileGrid hillshadeTileGrid = null;
 
     private boolean contourLinesEnabled;
     private boolean hillshadeEnabled;
@@ -59,16 +59,21 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
      *                                 avoid excessive CPU and memory usage.
      * @param contourLineIsostep       Step between neighboring elevation contour
      *                                 lines.
+     * @param contourLineStrokeWidth   Width of the contour line stroke in px.
+     * @param contourLineColor         Color of the contour lines.
      * @param hillshadeAltitude        The altitude (degrees) of the illumination
      *                                 source in hillshade computation.
      * @param hillshadeAzimuth         The azimuth (degrees) of the illumination
      *                                 source in hillshade computation.
      */
     public ElevationLayer(ElevationDataProvider elevationDataProvider, double renderingLimitArcDegrees,
-            int contourLineIsostep, int hillshadeAltitude, int hillshadeAzimuth) {
+            int contourLineIsostep, float contourLineStrokeWidth, Color contourLineColor, int hillshadeAltitude,
+            int hillshadeAzimuth) {
         super("Elevation Layer");
         this.renderingLimitArcDegrees = renderingLimitArcDegrees;
         this.contourLineIsostep = contourLineIsostep;
+        this.contourLineStrokeWidth = contourLineStrokeWidth;
+        this.contourLineColor = contourLineColor;
         this.hillshadeAltitude = hillshadeAltitude;
         this.hillshadeAzimuth = hillshadeAzimuth;
         this.elevationDataProvider = elevationDataProvider;
@@ -162,7 +167,43 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
     }
 
     /**
-     * Returns the hillshade alitude.
+     * Returns the contour line stroke width.
+     *
+     * @return The width of the contour line stroke in px.
+     */
+    public float getContourLineStrokeWidth() {
+        return contourLineStrokeWidth;
+    }
+
+    /**
+     * Sets the width of the contour line stroke to a new value.
+     *
+     * @param width The new width of the contour line stroke in px.
+     */
+    public void setContourLineStrokeWidth(float width) {
+        contourLineStrokeWidth = width;
+    }
+
+    /**
+     * Returns the contour line color.
+     *
+     * @return The color of the contour lines.
+     */
+    public Color getContourLineColor() {
+        return contourLineColor;
+    }
+
+    /**
+     * Sets the color of the contour lines to a new value.
+     *
+     * @param color The new color of the contour lines.
+     */
+    public void setContourLineColor(Color color) {
+        contourLineColor = color;
+    }
+
+    /**
+     * Returns the hillshade altitude.
      *
      * @return The altitude of the hillshade illumination source.
      */
@@ -256,7 +297,10 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
             repaint();
     }
 
-    private void repaint() {
+    /**
+     * Repaints the elevation layer by repainting the map view it is attached to.
+     */
+    public void repaint() {
         MapFrame map = MainApplication.getMap();
         if (map != null)
             map.mapView.repaint();

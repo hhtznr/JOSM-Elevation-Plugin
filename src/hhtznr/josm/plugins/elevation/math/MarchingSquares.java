@@ -279,8 +279,15 @@ public class MarchingSquares {
                      *    1    2
                      * </pre>
                      *
-                     * Two isolines intersect (saddle point case): Isoline intersects from western
-                     * to southern edge Isoline intersects from eastern to northern edge
+                     * Saddle point case, two isolines intersect
+                     *
+                     * Solution 1: 1st isoline intersects from western to northern edge, 2nd isoline
+                     * intersects from eastern to southern edge if average cell elevation is above
+                     * or equal isovalue
+                     *
+                     * Solution 2: 1st isoline intersects from southern to western edge, 2nd isoline
+                     * intersects from northern to eastern edge if average cell elevation is below
+                     * isovalue
                      */
                     if (cellToWest == null)
                         currentCell.setIntersectionWest(isovalue);
@@ -292,10 +299,17 @@ public class MarchingSquares {
                         currentCell.setIntersectionNorth(isovalue);
                     else
                         currentCell.edgeNorth = cellToNorth.edgeSouth;
-                    isolineSegments
-                            .add(new LatLonLine(currentCell.getIntersectionWest(), currentCell.getIntersectionSouth()));
-                    isolineSegments
-                            .add(new LatLonLine(currentCell.getIntersectionEast(), currentCell.getIntersectionNorth()));
+                    if (currentCell.isAverageElevationEqualOrAbove(isovalue)) {
+                        isolineSegments.add(
+                                new LatLonLine(currentCell.getIntersectionWest(), currentCell.getIntersectionNorth()));
+                        isolineSegments.add(
+                                new LatLonLine(currentCell.getIntersectionEast(), currentCell.getIntersectionSouth()));
+                    } else {
+                        isolineSegments.add(
+                                new LatLonLine(currentCell.getIntersectionSouth(), currentCell.getIntersectionWest()));
+                        isolineSegments.add(
+                                new LatLonLine(currentCell.getIntersectionNorth(), currentCell.getIntersectionEast()));
+                    }
                     break;
                 case 6:
                     /**
@@ -408,8 +422,15 @@ public class MarchingSquares {
                      *    1    2
                      * </pre>
                      *
-                     * Two isolines intersect (saddle point case): Isoline intersects from northern
-                     * to eastern edge Isoline intersects from southern to western edge
+                     * Saddle point case, two isolines intersect
+                     *
+                     * Solution 1: 1st isoline intersects from southern to western edge, 2nd isoline
+                     * intersects from northern to eastern edge if average cell elevation is above
+                     * or equal isovalue
+                     *
+                     * Solution 2: 1st isoline intersects from western to northern edge, 2nd isoline
+                     * intersects from eastern to southern edge if average cell elevation is below
+                     * isovalue
                      */
                     if (cellToNorth == null)
                         currentCell.setIntersectionNorth(isovalue);
@@ -421,10 +442,17 @@ public class MarchingSquares {
                         currentCell.setIntersectionWest(isovalue);
                     else
                         currentCell.edgeWest = cellToWest.edgeEast;
-                    isolineSegments
-                            .add(new LatLonLine(currentCell.getIntersectionNorth(), currentCell.getIntersectionEast()));
-                    isolineSegments
-                            .add(new LatLonLine(currentCell.getIntersectionSouth(), currentCell.getIntersectionWest()));
+                    if (currentCell.isAverageElevationEqualOrAbove(isovalue)) {
+                        isolineSegments.add(
+                                new LatLonLine(currentCell.getIntersectionSouth(), currentCell.getIntersectionWest()));
+                        isolineSegments.add(
+                                new LatLonLine(currentCell.getIntersectionNorth(), currentCell.getIntersectionEast()));
+                    } else {
+                        isolineSegments.add(
+                                new LatLonLine(currentCell.getIntersectionWest(), currentCell.getIntersectionNorth()));
+                        isolineSegments.add(
+                                new LatLonLine(currentCell.getIntersectionEast(), currentCell.getIntersectionSouth()));
+                    }
                     break;
                 case 11:
                     /**
@@ -590,7 +618,7 @@ public class MarchingSquares {
         }
 
         /**
-         * Determines the Marching Squares cell case,
+         * Determines the Marching Squares cell case.
          *
          * @param isovalue The isovalue for which to determine the Marching Squares cell
          *                 case.
@@ -603,6 +631,29 @@ public class MarchingSquares {
             for (int i = 0; i < binaryVertexStates.length; i++)
                 caseCode = (caseCode << 1) | binaryVertexStates[i];
             return caseCode;
+        }
+
+        /**
+         * Determines whether the average elevation of the cell is above (or equal) or
+         * below a given isovalue.
+         *
+         * @param isovalue The isovalue for which to decide whether the average
+         *                 elevation of the cell is above (or equal) or below.
+         * @return {@code true} if the arithmetic average elevation of the cell is
+         *         greater or equal to the given isovalue, {@code false} otherwise.
+         */
+        public boolean isAverageElevationEqualOrAbove(short isovalue) {
+            double averageElevation = getAverageElevation();
+            return averageElevation >= isovalue;
+        }
+
+        /**
+         * Computes the average elevation of the cell.
+         *
+         * @return The arithmetic average elevation of the cell.
+         */
+        private double getAverageElevation() {
+            return 0.25 * (eleNorthWest + eleNorthEast + eleSouthEast + eleSouthWest);
         }
 
         /**

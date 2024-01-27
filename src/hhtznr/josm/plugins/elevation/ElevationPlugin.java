@@ -7,6 +7,7 @@ import hhtznr.josm.plugins.elevation.gui.ElevationLayer;
 import hhtznr.josm.plugins.elevation.gui.ElevationTabPreferenceSetting;
 import hhtznr.josm.plugins.elevation.gui.LocalElevationLabel;
 import hhtznr.josm.plugins.elevation.gui.SRTMFileDownloadErrorDialog;
+import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
 
 import java.awt.Color;
 
@@ -139,11 +140,17 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
             elevationDataProvider.setCacheSizeLimit(cacheSizeLimit);
             elevationDataProvider.setAutoDownloadEnabled(elevationAutoDownloadEnabled);
             if (elevationAutoDownloadEnabled) {
-                elevationDataProvider.getSRTMFileDownloader().setOAuthToken(ElevationPreferences.lookupEarthdataOAuthToken());
+                SRTMFileDownloader.AuthType authType = ElevationPreferences.getElevationServerAuthType();
+                if (authType == SRTMFileDownloader.AuthType.BASIC)
+                    elevationDataProvider.getSRTMFileDownloader().setPasswordAuthentication(
+                            ElevationPreferences.lookupEarthdataCredentials(), ElevationPreferences.EARTHDATA_SSO_HOST);
+                else if (authType == SRTMFileDownloader.AuthType.BEARER_TOKEN)
+                    elevationDataProvider.getSRTMFileDownloader()
+                            .setOAuthToken(ElevationPreferences.lookupEarthdataOAuthToken());
                 if (srtmFileDownloadErrorDialog == null)
-                    srtmFileDownloadErrorDialog = new SRTMFileDownloadErrorDialog(elevationDataProvider.getSRTMFileDownloader());
-            }
-            else {
+                    srtmFileDownloadErrorDialog = new SRTMFileDownloadErrorDialog(
+                            elevationDataProvider.getSRTMFileDownloader());
+            } else {
                 srtmFileDownloadErrorDialog = null;
             }
             if (mapFrame != null) {

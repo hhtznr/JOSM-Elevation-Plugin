@@ -2,6 +2,8 @@ package hhtznr.josm.plugins.elevation;
 
 import java.awt.Color;
 import java.io.File;
+import java.net.PasswordAuthentication;
+import java.net.Authenticator.RequestorType;
 import java.nio.file.Paths;
 
 import org.openstreetmap.josm.data.Preferences;
@@ -9,6 +11,7 @@ import org.openstreetmap.josm.data.oauth.IOAuthToken;
 import org.openstreetmap.josm.data.oauth.OAuth20Exception;
 import org.openstreetmap.josm.data.oauth.OAuth20Parameters;
 import org.openstreetmap.josm.data.oauth.OAuth20Token;
+import org.openstreetmap.josm.io.auth.CredentialsAgent;
 import org.openstreetmap.josm.io.auth.CredentialsAgentException;
 import org.openstreetmap.josm.io.auth.CredentialsManager;
 import org.openstreetmap.josm.spi.preferences.Config;
@@ -17,6 +20,7 @@ import org.openstreetmap.josm.tools.Logging;
 import org.openstreetmap.josm.tools.Utils;
 
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
+import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
 import jakarta.json.Json;
 import jakarta.json.JsonObjectBuilder;
 
@@ -302,6 +306,18 @@ public class ElevationPreferences {
     public static final String ELEVATION_SERVER_AUTH_BEARER = "elevation.srtm.server.auth.bearer";
 
     /**
+     * Property key for the type of authentication at the elevation data download
+     * server.
+     */
+    public static final String ELEVATION_SERVER_AUTH_TYPE = "elevation.srtm.server.auth.type";
+
+    /**
+     * Default property value of the type of authentication at the elevation data
+     * download server.
+     */
+    public static final SRTMFileDownloader.AuthType DEFAULT_ELEVATION_SERVER_AUTH_TYPE = SRTMFileDownloader.AuthType.BEARER_TOKEN;
+
+    /**
      * Host name of the NASA Earthdata single sign-on server.
      *
      * See <a href=
@@ -499,6 +515,87 @@ public class ElevationPreferences {
     }
 
     /**
+     * Returns the type of authentication at the elevation data download server.
+     *
+     * @return The type of authentication at the elevation data download server.
+     */
+    public static SRTMFileDownloader.AuthType getElevationServerAuthType() {
+        return SRTMFileDownloader.AuthType.fromString(
+                Config.getPref().get(ELEVATION_SERVER_AUTH_TYPE, DEFAULT_ELEVATION_SERVER_AUTH_TYPE.toString()));
+    }
+
+    /**
+     * Lookup the Earthdata user name and password in the preferences.
+     *
+     * @return The Eearthdata user name and password or {@code null} if these could
+     *         not be retrieved from the preferences.
+     */
+    public static PasswordAuthentication lookupEarthdataCredentials() {
+        CredentialsAgent cm = CredentialsManager.getInstance();
+        try {
+            PasswordAuthentication pa = cm.lookup(RequestorType.SERVER, EARTHDATA_SSO_HOST);
+            return pa;
+        } catch (CredentialsAgentException e) {
+            Logging.error(e);
+            Logging.warn("Failed to retrieve Earthdata credentials from credential manager.");
+            Logging.warn("Current credential manager is of type ''{0}''", cm.getClass().getName());
+            return null;
+        }
+    }
+
+    /**
+     * Stores the provided Earthdata credentials in the JOSM preferences if the user
+     * name is not blank and the password is not empty.
+     *
+     * @param userName The Earthdata user name.
+     * @param password The Earthdata password.
+     * @return {@code PasswordAuthentication} which was stored or {@code null} if
+     *         the provided user name is blank, the password is empty or an
+     *         exception occurred when trying to store the credentials.
+     */
+    public static PasswordAuthentication storeEarthdataCredentials(String userName, char[] password) {
+        if (Utils.isBlank(userName.trim()))
+            return null;
+        if (password.length < 1)
+            return null;
+        CredentialsAgent cm = CredentialsManager.getInstance();
+        try {
+            PasswordAuthentication pa = new PasswordAuthentication(userName.trim(), password);
+            cm.store(RequestorType.SERVER, EARTHDATA_SSO_HOST, pa);
+            return pa;
+        } catch (CredentialsAgentException e) {
+            Logging.error(e);
+            Logging.warn("Elevation: Failed to save Earthdata credentials to credential manager.");
+            Logging.warn("Elevation: Current credential manager is of type ''{0}''", cm.getClass().getName());
+            return null;
+        }
+    }
+
+    /**
+     * Removes stored Earthdata credentials from JOSM by setting them to empty
+     * strings.
+     *
+     * @return {@code true} if removing the credentials succeeded or no credentials
+     *         were stored.
+     */
+    public static boolean removeEarthdataCredentials() {
+        PasswordAuthentication existingCredentials = lookupEarthdataCredentials();
+        if (existingCredentials == null)
+            return true;
+        CredentialsAgent cm = CredentialsManager.getInstance();
+        try {
+            PasswordAuthentication pa = new PasswordAuthentication("", new char[0]);
+            cm.store(RequestorType.SERVER, EARTHDATA_SSO_HOST, pa);
+            return true;
+        } catch (CredentialsAgentException e) {
+            Logging.error(e);
+            Logging.warn("Elevation: Failed to save Earthdata credentials to credential manager.");
+            Logging.warn("Elevation: Current credential manager is of type ''{0}''", cm.getClass().getName());
+            return false;
+        }
+    }
+
+    /**
      * Lookup the Earthdata OAuth token in the preferences.
      *
      * @return The OAuth 2.0 token holding the Earthdata authorization bearer token
@@ -550,6 +647,24 @@ public class ElevationPreferences {
             }
         }
         return oAuthToken;
+    }
+
+    /**
+     * Removes the Earthdata authorization bearer token from JOSM.
+     *
+     * @return {@code true} if removing the token succeeded or no token was stored.
+     */
+    public static boolean removeEarthdataOAuthToken() {
+        OAuth20Token existingToken = lookupEarthdataOAuthToken();
+        if (existingToken != null) {
+            try {
+                CredentialsManager.getInstance().storeOAuthAccessToken(EARTHDATA_DOWNLOAD_HOST, null);
+            } catch (CredentialsAgentException e) {
+                Logging.error("Elevation: " + e);
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

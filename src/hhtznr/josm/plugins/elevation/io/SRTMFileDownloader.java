@@ -5,11 +5,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.net.PasswordAuthentication;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Base64;
 import java.util.LinkedList;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -22,7 +25,6 @@ import org.openstreetmap.josm.data.oauth.OAuthException;
 import org.openstreetmap.josm.tools.HttpClient;
 import org.openstreetmap.josm.tools.Logging;
 
-import hhtznr.josm.plugins.elevation.ElevationPreferences;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
 
 /**
@@ -36,13 +38,61 @@ public class SRTMFileDownloader {
 
     private final URL srtm1BaseURL;
     private final URL srtm3BaseURL;
+    private String authRedirectLocation = null;
     private File srtmDirectory;
 
-    private OAuth20Token oAuthToken;
+    private String basicAuthHeader = null;
+    private OAuth20Token oAuthToken = null;
 
     private static final ExecutorService downloadExecutor = Executors.newFixedThreadPool(2);
 
     private final LinkedList<SRTMFileDownloadListener> downloadListeners = new LinkedList<>();
+
+    /**
+     * Type of authentication at the elevation data download server.
+     */
+    public static enum AuthType {
+        /**
+         * Basic authentication.
+         */
+        BASIC("Basic authentication"),
+
+        /**
+         * Authorization bearer token.
+         */
+        BEARER_TOKEN("Authorization bearer token");
+
+        private final String typeName;
+
+        AuthType(String typeName) {
+            this.typeName = typeName;
+        }
+
+        /**
+         * Returns the name associated with this interpolation type.
+         *
+         * @return The name of the type.
+         */
+        @Override
+        public String toString() {
+            return typeName;
+        }
+
+        /**
+         * Returns the authentication type associated with a given name.
+         *
+         * @param name The name associated with the authentication type.
+         * @return The authentication type associated with the name or {@code BASIC} if
+         *         the name does not match a defined type.
+         */
+        public static AuthType fromString(String name) {
+            for (AuthType type : AuthType.values()) {
+                if (type.toString().equals(name))
+                    return type;
+            }
+            return BASIC;
+        }
+    }
 
     /**
      * Creates a new SRTM file downloader.
@@ -54,33 +104,14 @@ public class SRTMFileDownloader {
      * @param srtm3BaseURL  The URL from which to download SRTM3 files. See also
      *                      {@link ElevationPreferences#SRTM3_SERVER_BASE_URL
      *                      ElevationPreferences.SRTM3_SERVER_BASE_URL}.
-     * @param oAuthToken    JOSM {@code OAuth20Token} holding the Earthdata
-     *                      authorization bearer token to use for authentication.
-     *                      The bearer token can be obtained in the
-     *                      {@code Generate Token} tab at
-     *                      <a href="https://urs.earthdata.nasa.gov/home">Earthdata
-     *                      Login</a>.
      * @throws MalformedURLException Thrown if the URL is not properly formatted.
      */
-    public SRTMFileDownloader(File srtmDirectory, String srtm1BaseURL, String srtm3BaseURL, OAuth20Token oAuthToken)
+    public SRTMFileDownloader(File srtmDirectory, String srtm1BaseURL, String srtm3BaseURL)
             throws MalformedURLException {
         // May throw MalformedURLException
         this.srtm1BaseURL = new URL(srtm1BaseURL);
         this.srtm3BaseURL = new URL(srtm3BaseURL);
-        this.oAuthToken = oAuthToken;
         setSRTMDirectory(srtmDirectory);
-    }
-
-    /**
-     * Creates a new SRTM file downloader using defaults from the JOSM preferences
-     * file.
-     *
-     * @param srtmDirectory The local directory into which to download SRTM files.
-     * @throws MalformedURLException Thrown if the URL is not properly formatted.
-     */
-    public SRTMFileDownloader(File srtmDirectory) throws MalformedURLException {
-        this(srtmDirectory, ElevationPreferences.SRTM1_SERVER_BASE_URL, ElevationPreferences.SRTM3_SERVER_BASE_URL,
-                ElevationPreferences.lookupEarthdataOAuthToken());
     }
 
     /**
@@ -93,13 +124,44 @@ public class SRTMFileDownloader {
     }
 
     /**
-     * Sets the JOSM {@code OAuth20Token} holding the Earthdata authorization bearer
-     * token to a new token.
+     * Sets new Earthdata credentials for authorization at the download server. At
+     * the same time disables authentication based on an authorization bearer token
+     * if it was enabled.
      *
-     * @param oAuthToken The new OAuth token to use for authentication.
+     * @param passwordAuth         The new Earthdata credentials.
+     * @param authRedirectLocation The location where we will be redirected for
+     *                             authentication.
+     */
+    public void setPasswordAuthentication(PasswordAuthentication passwordAuth, String authRedirectLocation) {
+        String userName = passwordAuth.getUserName();
+        String password = "";
+        if (passwordAuth.getPassword() != null)
+            password = String.valueOf(passwordAuth.getPassword());
+        if (userName != null)
+            basicAuthHeader = "Basic "
+                    + Base64.getEncoder().encodeToString((userName + ":" + password).getBytes(StandardCharsets.UTF_8));
+        else
+            basicAuthHeader = null;
+        this.authRedirectLocation = authRedirectLocation;
+        oAuthToken = null;
+    }
+
+    /**
+     * Sets the JOSM {@code OAuth20Token} holding the Earthdata authorization bearer
+     * token to a new token. At the same time disables password authentication if it
+     * was enabled.
+     *
+     * @param oAuthToken JOSM {@code OAuth20Token} holding the Earthdata
+     *                   authorization bearer token to use for authentication. The
+     *                   bearer token can be obtained in the {@code Generate Token}
+     *                   tab at
+     *                   <a href="https://urs.earthdata.nasa.gov/home">Earthdata
+     *                   Login</a>.
      */
     public void setOAuthToken(OAuth20Token oAuthToken) {
         this.oAuthToken = oAuthToken;
+        basicAuthHeader = null;
+        authRedirectLocation = null;
     }
 
     /**
@@ -151,7 +213,13 @@ public class SRTMFileDownloader {
             srtmBaseURL = srtm3BaseURL;
         String srtmFileName = SRTMFiles.getSRTMFileName(srtmTileID, srtmType);
 
-        Logging.info("Elevation: Downloading SRTM file " + srtmFileName);
+        if (basicAuthHeader != null)
+            Logging.info("Elevation: Trying to download SRTM file " + srtmFileName + " using password authentication.");
+        else if (oAuthToken != null)
+            Logging.info(
+                    "Elevation: Tyring to download SRTM file " + srtmFileName + " using authorization bearer token.");
+        else
+            Logging.info("Elevation: Tyring to download SRTM file " + srtmFileName + " without authentication.");
         downloadStarted(srtmTileID);
         File srtmFile = null;
 
@@ -174,14 +242,22 @@ public class SRTMFileDownloader {
             }
         }
         try {
-            httpClient.connect();
+            if (basicAuthHeader != null)
+                httpClient.connect(null, authRedirectLocation, basicAuthHeader);
+            else
+                httpClient.connect();
             int responseCode = httpClient.getResponse().getResponseCode();
             // https://urs.earthdata.nasa.gov/documentation/for_users/data_access/java
             if (responseCode != HttpURLConnection.HTTP_OK) {
                 String advice = null;
                 switch (responseCode) {
                 case HttpURLConnection.HTTP_UNAUTHORIZED:
-                    advice = "You may need to renew your Earthdata authorization bearer token";
+                    if (oAuthToken != null)
+                        advice = "You may need to renew your Earthdata authorization bearer token";
+                    else if (basicAuthHeader != null)
+                        advice = "You may need to set up or correct your Earthdata credentials";
+                    else
+                        advice = "You may need to enter valid Earhtdata credentials or an authorization bearer token in the Elevation Data preferences";
                     break;
                 case HttpURLConnection.HTTP_FORBIDDEN:
                     advice = "You need to authorize the application 'LP DAAC Data Pool' at Earthdata Login -> Applications";

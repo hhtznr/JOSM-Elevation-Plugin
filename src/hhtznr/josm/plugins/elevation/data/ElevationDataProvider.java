@@ -489,8 +489,7 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
     /**
      * Enables or disables automatic downloading of missing SRTM tiles.
      *
-     * @param enabled {@code true} enables auto-download, {@code false} to disables
-     *                it.
+     * @param enabled {@code true} enables auto-download, {@code false} disables it.
      */
     public void setAutoDownloadEnabled(boolean enabled) {
         if (enabled)
@@ -505,7 +504,8 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
                 if (srtmFileDownloader == null)
                     try {
                         // Create an SRTM file downloader instance
-                        srtmFileDownloader = new SRTMFileDownloader(srtmDirectory);
+                        srtmFileDownloader = new SRTMFileDownloader(srtmDirectory,
+                                ElevationPreferences.SRTM1_SERVER_BASE_URL, ElevationPreferences.SRTM3_SERVER_BASE_URL);
                         srtmFileDownloader.addDownloadListener(this);
                         // Clear any SRTM tiles marked as missing from the cache so they will be
                         // downloaded now, if needed

@@ -98,12 +98,8 @@ public class SRTMFileDownloader {
      * Creates a new SRTM file downloader.
      *
      * @param srtmDirectory The local directory into which to download SRTM files.
-     * @param srtm1BaseURL  The URL from which to download SRTM1 files. See also
-     *                      {@link ElevationPreferences#SRTM1_SERVER_BASE_URL
-     *                      ElevationPreferences.SRTM1_SERVER_BASE_URL}.
-     * @param srtm3BaseURL  The URL from which to download SRTM3 files. See also
-     *                      {@link ElevationPreferences#SRTM3_SERVER_BASE_URL
-     *                      ElevationPreferences.SRTM3_SERVER_BASE_URL}.
+     * @param srtm1BaseURL  The URL from which to download SRTM1 files.
+     * @param srtm3BaseURL  The URL from which to download SRTM3 files.
      * @throws MalformedURLException Thrown if the URL is not properly formatted.
      */
     public SRTMFileDownloader(File srtmDirectory, String srtm1BaseURL, String srtm3BaseURL)

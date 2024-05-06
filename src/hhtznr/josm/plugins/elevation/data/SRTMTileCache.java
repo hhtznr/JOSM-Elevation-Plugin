@@ -161,11 +161,7 @@ public class SRTMTileCache {
      * @param status The status of the SRTM tiles to clean from the cache.
      */
     public synchronized void cleanAllTilesWithStatus(SRTMTile.Status status) {
-        for (String srtmTileID : cache.keySet()) {
-            SRTMTile srtmTile = cache.get(srtmTileID);
-            if (srtmTile.getStatus() == status)
-                cache.remove(srtmTileID);
-        }
+        cache.entrySet().removeIf(srtmTile -> srtmTile.getStatus() == status);
     }
 
     private static String getSizeString(int size) {

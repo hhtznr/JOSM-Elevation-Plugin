@@ -17,7 +17,6 @@ import org.openstreetmap.josm.io.auth.CredentialsManager;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.ColorHelper;
 import org.openstreetmap.josm.tools.Logging;
-import org.openstreetmap.josm.tools.Utils;
 
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
 import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
@@ -554,7 +553,7 @@ public class ElevationPreferences {
      *         exception occurred when trying to store the credentials.
      */
     public static PasswordAuthentication storeEarthdataCredentials(String userName, char[] password) {
-        if (Utils.isBlank(userName.trim()))
+        if (userName.trim().isBlank())
             return null;
         if (password.length < 1)
             return null;
@@ -608,7 +607,7 @@ public class ElevationPreferences {
             // Legacy support (bearer stored as normal preferences parameter)
             if (authToken == null) {
                 String bearer = Config.getPref().get(ELEVATION_SERVER_AUTH_BEARER, null);
-                if (bearer == null || Utils.isBlank(bearer))
+                if (bearer == null || bearer.isBlank())
                     return null;
                 Logging.info("Elevation: Migrating authorization bearer token to JOSM OAuth 2.0 format");
                 bearer = bearer.trim();
@@ -679,7 +678,7 @@ public class ElevationPreferences {
      */
     private static OAuth20Token createEarthdataOAuthToken(String bearerToken) {
         // Either client ID or bearer token must be non-null/non-blank
-        if (bearerToken == null || Utils.isBlank(bearerToken))
+        if (bearerToken == null || bearerToken.isBlank())
             return null;
         JsonObjectBuilder jsonObjectBuilder = Json.createObjectBuilder();
         jsonObjectBuilder.add("token_type", "bearer");

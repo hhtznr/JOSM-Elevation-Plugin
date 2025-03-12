@@ -624,7 +624,13 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         if (event.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
             String url = event.getURL().toString();
             try {
-                Desktop.getDesktop().browse(URI.create(url));
+                if (Desktop.isDesktopSupported()) {
+                    Desktop desktop = Desktop.getDesktop();
+                    if (desktop.isSupported(Desktop.Action.BROWSE))
+                        Desktop.getDesktop().browse(URI.create(url));
+                    else
+                        Logging.info("BROWSE action is not supported");
+                }
             } catch (IOException e) {
                 Logging.error(e.toString());
             }

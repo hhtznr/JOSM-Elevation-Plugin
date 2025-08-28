@@ -25,7 +25,7 @@ import org.openstreetmap.josm.data.oauth.OAuthException;
 import org.openstreetmap.josm.tools.HttpClient;
 import org.openstreetmap.josm.tools.Logging;
 
-import hhtznr.josm.plugins.elevation.data.SRTMTile;
+import hhtznr.josm.plugins.elevation.data.ElevationDataSource;
 
 /**
  * Class {@code SRTMFileDownloader} downloads files with elevation data from
@@ -36,10 +36,7 @@ import hhtznr.josm.plugins.elevation.data.SRTMTile;
  */
 public class SRTMFileDownloader {
 
-    private final URL srtm1BaseURL;
-    private final URL srtm3BaseURL;
     private String authRedirectLocation = null;
-    private File srtmDirectory;
 
     private String basicAuthHeader = null;
     private OAuth20Token oAuthToken = null;
@@ -97,26 +94,8 @@ public class SRTMFileDownloader {
     /**
      * Creates a new SRTM file downloader.
      *
-     * @param srtmDirectory The local directory into which to download SRTM files.
-     * @param srtm1BaseURL  The URL from which to download SRTM1 files.
-     * @param srtm3BaseURL  The URL from which to download SRTM3 files.
-     * @throws MalformedURLException Thrown if the URL is not properly formatted.
      */
-    public SRTMFileDownloader(File srtmDirectory, String srtm1BaseURL, String srtm3BaseURL)
-            throws MalformedURLException {
-        // May throw MalformedURLException
-        this.srtm1BaseURL = new URL(srtm1BaseURL);
-        this.srtm3BaseURL = new URL(srtm3BaseURL);
-        setSRTMDirectory(srtmDirectory);
-    }
-
-    /**
-     * Sets the local download directory as specified.
-     *
-     * @param srtmDirectory The local directory to set as download directory.
-     */
-    public void setSRTMDirectory(File srtmDirectory) {
-        this.srtmDirectory = srtmDirectory;
+    public SRTMFileDownloader() {
     }
 
     /**
@@ -188,26 +167,24 @@ public class SRTMFileDownloader {
      * Instructs this SRTM file downloader to download an SRTM file for the
      * specified tile ID and type. Downloading is performed in a separate thread.
      *
-     * @param srtmTileID The SRTM tile ID for which to download the SRTM file.
-     * @param srtmType   The SRTM type, SRTM1 or SRTM3.
+     * @param srtmTileID          The SRTM tile ID for which to download the SRTM
+     *                            file.
+     * @param elevationDataSource The elevation data source from which to download
+     *                            the file with the provided tile ID.
      * @return A future to synchronize on availability of the downloaded file.
      * @throws RejectedExecutionException Thrown if the download task cannot be
      *                                    accepted for execution.
      */
-    public Future<File> downloadSRTMFile(String srtmTileID, SRTMTile.Type srtmType) throws RejectedExecutionException {
+    public Future<File> downloadSRTMFile(String srtmTileID, ElevationDataSource elevationDataSource)
+            throws RejectedExecutionException {
         Callable<File> downloadTask = () -> {
-            return download(srtmTileID, srtmType);
+            return download(srtmTileID, elevationDataSource);
         };
         return downloadExecutor.submit(downloadTask);
     }
 
-    private File download(String srtmTileID, SRTMTile.Type srtmType) {
-        URL srtmBaseURL;
-        if (srtmType == SRTMTile.Type.SRTM1)
-            srtmBaseURL = srtm1BaseURL;
-        else
-            srtmBaseURL = srtm3BaseURL;
-        String srtmFileName = SRTMFiles.getSRTMFileName(srtmTileID, srtmType);
+    private File download(String srtmTileID, ElevationDataSource elevationDataSource) {
+        String srtmFileName = SRTMFiles.getSRTMFileName(srtmTileID, elevationDataSource.getSRTMTileType());
 
         if (basicAuthHeader != null)
             Logging.info("Elevation: Trying to download SRTM file " + srtmFileName + " using password authentication.");
@@ -221,7 +198,7 @@ public class SRTMFileDownloader {
 
         URL url = null;
         try {
-            url = new URL(srtmBaseURL + srtmFileName);
+            url = new URL(elevationDataSource.getDownloadBaseURL(), srtmFileName);
         } catch (MalformedURLException e) {
             downloadFailed(srtmTileID, e);
             return null;
@@ -272,7 +249,7 @@ public class SRTMFileDownloader {
                 return null;
             }
             InputStream in = httpClient.getResponse().getContent();
-            Path downloadedZipFile = Paths.get(SRTMFileDownloader.this.srtmDirectory.toString(), srtmFileName);
+            Path downloadedZipFile = Paths.get(elevationDataSource.getDataDirectory().toString(), srtmFileName);
             Files.copy(in, downloadedZipFile, StandardCopyOption.REPLACE_EXISTING);
             srtmFile = downloadedZipFile.toFile();
         } catch (IOException e) {
@@ -293,7 +270,7 @@ public class SRTMFileDownloader {
         }
 
         Logging.info("Elevation: Successfully downloaded SRTM file " + srtmFile.getName() + " to SRTM directory: "
-                + SRTMFileDownloader.this.srtmDirectory.toString());
+                + elevationDataSource.getDataDirectory().toString());
         downloadSucceeded(srtmFile);
         return srtmFile;
     }

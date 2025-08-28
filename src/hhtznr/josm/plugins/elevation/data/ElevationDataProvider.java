@@ -2,8 +2,9 @@ package hhtznr.josm.plugins.elevation.data;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.MalformedURLException;
+import java.util.Comparator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -35,8 +36,6 @@ import hhtznr.josm.plugins.elevation.io.SRTMFiles;
  */
 public class ElevationDataProvider implements SRTMFileDownloadListener {
 
-    private File srtmDirectory = null;
-
     /**
      * This elevation data provider's in-memory cache where SRTM tiles read from
      * file are stored.
@@ -50,9 +49,10 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
 
     private SRTMFileReader srtmFileReader;
     private SRTMFileDownloader srtmFileDownloader;
-    private SRTMTile.Type preferredSRTMType;
     private SRTMTile.Interpolation eleInterpolation;
     private boolean autoDownloadEnabled = false;
+
+    private final List<ElevationDataSource> elevationDataSources;
 
     private final LinkedList<ElevationDataProviderListener> listeners = new LinkedList<>();
 
@@ -62,7 +62,7 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
      * Creates a new elevation data provider based on preferences or defaults.
      */
     public ElevationDataProvider() {
-        this(ElevationPreferences.DEFAULT_SRTM_DIRECTORY, ElevationPreferences.getRAMCacheSizeLimit(),
+        this(ElevationPreferences.ELEVATION_DATA_SOURCES, ElevationPreferences.getRAMCacheSizeLimit(),
                 ElevationPreferences.getPreferredSRTMType(), ElevationPreferences.getElevationInterpolation(),
                 ElevationPreferences.getAutoDownloadEnabled());
     }
@@ -70,54 +70,34 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
     /**
      * Creates a new elevation data provider.
      *
-     * @param srtmDirectory       The directory from which to read and to which to
-     *                            download SRTM files.
-     * @param ramCacheMaxSize     The maximum size of the in-memory SRTM tile cache
-     *                            in MiB.
-     * @param preferredSRTMType   The preferred SRTM type (SRTM1 or SRTM3).
-     * @param eleInterpolation    The type of elevation interpolation.
-     * @param autoDownloadEnabled If {@code true} automatic downloading of missing
-     *                            SRTM tiles will be attempted.
+     * @param elevationDataSources A list of data sources from which to obtain
+     *                             elevation data.
+     * @param ramCacheMaxSize      The maximum size of the in-memory SRTM tile cache
+     *                             in MiB.
+     * @param preferredSRTMType    The preferred SRTM type (SRTM1 or SRTM3).
+     * @param eleInterpolation     The type of elevation interpolation.
+     * @param autoDownloadEnabled  If {@code true} automatic downloading of missing
+     *                             SRTM tiles will be attempted.
      */
-    private ElevationDataProvider(File srtmDirectory, int ramCacheMaxSize, SRTMTile.Type preferredSRTMType,
-            SRTMTile.Interpolation eleInterpolation, boolean autoDownloadEnabled) {
-        srtmFileReader = new SRTMFileReader(srtmDirectory);
+    private ElevationDataProvider(List<ElevationDataSource> elevationDataSources, int ramCacheMaxSize,
+            SRTMTile.Type preferredSRTMType, SRTMTile.Interpolation eleInterpolation, boolean autoDownloadEnabled) {
+        this.elevationDataSources = elevationDataSources;
+        srtmFileReader = new SRTMFileReader();
         tileCache = new SRTMTileCache(ramCacheMaxSize);
-        setSRTMDirectory(srtmDirectory);
-        this.preferredSRTMType = preferredSRTMType;
+        setPreferredSRTMType(preferredSRTMType);
         this.eleInterpolation = eleInterpolation;
         setAutoDownloadEnabled(autoDownloadEnabled);
     }
 
     /**
-     * Returns the directory where SRTM files are located.
+     * Returns the list of elevation data sources.
      *
-     * @return The SRTM directory.
+     * @return The list of elevation data sources.
      */
-    public File getSRTMDirectory() {
-        return srtmDirectory;
+    public List<ElevationDataSource> getElevationDataSources() {
+        return elevationDataSources;
     }
 
-    /**
-     * Sets the directory where SRTM files are located. If the directory does not
-     * exist, it is created recursively.
-     *
-     * @param srtmDirectory The directory to set as SRTM directory.
-     */
-    public void setSRTMDirectory(File srtmDirectory) {
-        if (!srtmDirectory.exists() && srtmDirectory.mkdirs())
-            Logging.info("Elevation: Created directory for SRTM files: " + srtmDirectory.toString());
-        if (srtmDirectory.isDirectory()) {
-            this.srtmDirectory = srtmDirectory;
-            srtmFileReader.setSRTMDirectory(srtmDirectory);
-            if (srtmFileDownloader != null)
-                srtmFileDownloader.setSRTMDirectory(srtmDirectory);
-            Logging.info("Elevation: Set directory for SRTM files to: " + srtmDirectory.toString());
-        } else {
-            Logging.error("Elevation: Could not set directory for SRTM files: " + srtmDirectory.toString());
-            this.srtmDirectory = null;
-        }
-    }
 
     /**
      * Returns the SRTM type that is preferred by this SRTM file provider.
@@ -125,16 +105,20 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
      * @return The preferred SRTM type.
      */
     public SRTMTile.Type getPreferredSRTMType() {
-        return preferredSRTMType;
+        return elevationDataSources.get(0).getSRTMTileType();
     }
 
     /**
-     * Sets the SRTM type which is preferred by this elevation data provider.
+     * Sets the SRTM type which is preferred by this elevation data provider by
+     * sorting the list of elevation data sources accordingly.
      *
      * @param type The SRTM type to be preferred.
      */
     public void setPreferredSRTMType(SRTMTile.Type type) {
-        preferredSRTMType = type;
+        if (type == SRTMTile.Type.SRTM1)
+            elevationDataSources.sort(Comparator.comparing((ElevationDataSource s) -> s.getSRTMTileType()));
+        else
+            elevationDataSources.sort(Comparator.comparing((ElevationDataSource s) -> s.getSRTMTileType()).reversed());
     }
 
     /**
@@ -348,96 +332,82 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
 
             // Data previously not in cache
             if (srtmTile == null) {
-                File srtmFile = getSRTMFile(srtmTileID, preferredSRTMType);
-                // If an SRTM file with the data exists on disk, read it in
-                if (srtmFile != null) {
-                    Logging.info("Elevation: Caching data of SRTM tile " + srtmTileID + " from file "
-                            + srtmFile.getAbsolutePath());
-                    // Read the SRTM file as task in a separate thread
-                    srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.READING_SCHEDULED);
-                    try {
-                        getSRTMTile(srtmFile);
-                    } catch (RejectedExecutionException e) {
-                        Logging.info("Elevation: Execution of file read task for SRTM tile " + srtmTileID
-                                + " from file " + srtmFile.getAbsolutePath() + " rejected: " + e.toString());
-                        srtmTile = tileCache.remove(srtmTileID);
+                for (ElevationDataSource elevationDataSource : elevationDataSources) {
+                    File srtmFile = getLocalSRTMFile(srtmTileID, elevationDataSource);
+                    // If an SRTM file with the data exists on disk, read it in
+                    if (srtmFile != null) {
+                        Logging.info("Elevation: Caching data of SRTM tile " + srtmTileID + " from file "
+                                + srtmFile.getAbsolutePath());
+                        // Read the SRTM file as task in a separate thread
+                        srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, null, null,
+                                SRTMTile.Status.READING_SCHEDULED);
+                        try {
+                            getSRTMTile(srtmFile);
+                        } catch (RejectedExecutionException e) {
+                            Logging.info("Elevation: Execution of file read task for SRTM tile " + srtmTileID
+                                    + " from file " + srtmFile.getAbsolutePath() + " rejected: " + e.toString());
+                            srtmTile = tileCache.remove(srtmTileID);
+                        }
+                    }
+                    // If auto-downloading of SRTM files is enabled, try to download the missing
+                    // file
+                    else if (autoDownloadEnabled && elevationDataSource.canAutoDownload()) {
+                        if (elevationDataSource.canAutoDownload()) {
+                            srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, null, null,
+                                    SRTMTile.Status.DOWNLOAD_SCHEDULED);
+                            try {
+                                srtmFileDownloader.downloadSRTMFile(srtmTileID, elevationDataSource);
+                                break;
+                            } catch (RejectedExecutionException e) {
+                                Logging.info("Elevation: Execution of download task for SRTM tile " + srtmTileID
+                                        + " rejected: " + e.toString());
+                                srtmFileDownloadFailed(srtmTileID, e);
+                            }
+                        }
+
                     }
                 }
-                // If auto-downloading of SRTM files is enabled, try to download the missing
-                // file
-                else if (autoDownloadEnabled) {
-                    srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, null, null,
-                            SRTMTile.Status.DOWNLOAD_SCHEDULED);
-                    try {
-                        srtmFileDownloader.downloadSRTMFile(srtmTileID, preferredSRTMType);
-                    } catch (RejectedExecutionException e) {
-                        Logging.info("Elevation: Execution of download task for SRTM tile " + srtmTileID + " rejected: "
-                                + e.toString());
-                        srtmFileDownloadFailed(srtmTileID, e);
-                    }
-                }
-                // Otherwise, put an empty data set with status "file missing" into the cache
-                else {
-                    srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.FILE_MISSING);
-                }
+
             }
+            // If we could not establish an SRTM tile to be, put an empty data set with
+            // status "file missing" into the cache
+            if (srtmTile == null)
+                srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.FILE_MISSING);
             // If we have a valid tile now, remember it as the previous tile
-            if (srtmTile != null && srtmTile.getStatus() == SRTMTile.Status.VALID)
+            else if (srtmTile.getStatus() == SRTMTile.Status.VALID)
                 previousTile = srtmTile;
         }
         return srtmTile;
     }
 
     /**
-     * Determines the SRTM file for the given tile ID. If both, an SRTM1 and an
-     * SRTM3 file are available for the given tile ID, the SRTM1 file is preferred.
+     * Determines the SRTM file for the given tile ID from the data directory of the
+     * data source.
      *
-     * @param srtmTileID        The SRTM tile ID.
-     * @param preferredSRTMType The preferred SRTM type (SRTM1 or SRTM3).
+     * @param srtmTileID          The SRTM tile ID.
+     * @param elevationDataSource The elevation data source where to try to read a
+     *                            matching SRTM file from the local data directory.
      * @return The SRTM file or {@code null} if no file is available for the given
      *         tile ID.
      */
-    private File getSRTMFile(String srtmTileID, SRTMTile.Type preferredSRTMType) {
-        if (srtmDirectory == null) {
-            Logging.error("Elevation: Cannot read SRTM file for tile " + srtmTileID + " as SRTM directory is not set");
-            return null;
-        }
+    private File getLocalSRTMFile(String srtmTileID, ElevationDataSource elevationDataSource) {
         Logging.info("Elevation: Looking for on-disk SRTM file for tile ID " + srtmTileID);
+        File srtmFile = null;
         // List the SRTM directory and filter out files that start with the SRTM tile ID
         // https://www.baeldung.com/java-list-directory-files
-        Set<File> files = Stream.of(srtmDirectory.listFiles())
+        Set<File> files = Stream.of(elevationDataSource.getDataDirectory().listFiles())
                 .filter(file -> !file.isDirectory() && file.getName().startsWith(srtmTileID))
                 .collect(Collectors.toSet());
 
-        String preferredSRTMFileID = SRTMFiles.SRTM1_ZIP_FILE_ID;
-        String nonPreferredSRTMFileID = SRTMFiles.SRTM3_ZIP_FILE_ID;
-        if (preferredSRTMType == SRTMTile.Type.SRTM3) {
-            preferredSRTMFileID = SRTMFiles.SRTM3_ZIP_FILE_ID;
-            nonPreferredSRTMFileID = SRTMFiles.SRTM1_ZIP_FILE_ID;
+        if (files.size() > 0) {
+            srtmFile = files.iterator().next();
         }
-        File nonPreferredSRTMFile = null;
-        for (File file : files) {
-            if (file.getName().contains(preferredSRTMFileID)) {
-                Logging.info("Elevation: Found preferred on-disk SRTM file " + file.getName());
-                return file;
-            }
-            if (file.getName().contains(nonPreferredSRTMFileID))
-                nonPreferredSRTMFile = file;
-        }
-        if (nonPreferredSRTMFile != null) {
-            Logging.info("Elevation: Found non-preferred on-disk SRTM file " + nonPreferredSRTMFile.getName());
-            // Download the SRTM file as the preferred type if auto-download enabled
-            if (autoDownloadEnabled)
-                srtmFileDownloader.downloadSRTMFile(srtmTileID, preferredSRTMType);
-        } else
-            Logging.info("Elevation: Did not find an on-disk SRTM file for tile ID " + srtmTileID);
-
-        return nonPreferredSRTMFile;
+        return srtmFile;
     }
 
     /**
-     * Reads an SRTM tile from a ZIP-compressed SRTM file as obtained from NASA in a
-     * separate thread.
+     * Reads an SRTM tile from an optionally ZIP-compressed SRTM file as obtained
+     * from NASA in a separate thread.
      *
      * @param srtmFile The SRTM file to read.
      * @return A {@code Future} from which the read SRTM tile can be obtained.
@@ -500,34 +470,16 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
         if (autoDownloadEnabled == enabled)
             return;
         if (enabled) {
-            if (srtmDirectory != null) {
-                if (srtmFileDownloader == null)
-                    try {
-                        // Create an SRTM file downloader instance
-                        srtmFileDownloader = new SRTMFileDownloader(srtmDirectory,
-                                ElevationPreferences.SRTM1_SERVER_BASE_URL, ElevationPreferences.SRTM3_SERVER_BASE_URL);
-                        srtmFileDownloader.addDownloadListener(this);
-                        // Clear any SRTM tiles marked as missing from the cache so they will be
-                        // downloaded now, if needed
-                        tileCache.cleanAllTilesWithStatus(SRTMTile.Status.FILE_MISSING);
-                    } catch (MalformedURLException e) {
-                        autoDownloadEnabled = false;
-                        Logging.error("Elevation: Cannot enable auto-downloading: " + e.toString());
-                        return;
-                    }
-                else
-                    srtmFileDownloader.setSRTMDirectory(srtmDirectory);
-                autoDownloadEnabled = true;
-                Logging.info("Elevation: Enabled auto-downloading of SRTM files to " + srtmDirectory.toString());
-            } else {
-                srtmFileDownloader = null;
-                autoDownloadEnabled = false;
-                Logging.error("Elevation: Cannot enable auto-downloading because directory SRTM directory was not set");
+            if (srtmFileDownloader == null) {
+                // Create an SRTM file downloader instance
+                srtmFileDownloader = new SRTMFileDownloader();
+                srtmFileDownloader.addDownloadListener(this);
+                // Clear any SRTM tiles marked as missing from the cache so they will be
+                // downloaded now, if needed
+                tileCache.cleanAllTilesWithStatus(SRTMTile.Status.FILE_MISSING);
             }
-        } else {
-            srtmFileDownloader = null;
-            autoDownloadEnabled = false;
-            Logging.info("Elevation: Disabled auto-downloading of SRTM files due to missing SRTM directory");
+            autoDownloadEnabled = true;
+            Logging.info("Elevation: Enabled auto-downloading of SRTM files");
         }
     }
 

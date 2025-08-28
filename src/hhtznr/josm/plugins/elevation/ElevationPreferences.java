@@ -3,8 +3,11 @@ package hhtznr.josm.plugins.elevation;
 import java.awt.Color;
 import java.io.File;
 import java.net.PasswordAuthentication;
+import java.net.URL;
 import java.net.Authenticator.RequestorType;
+import java.net.MalformedURLException;
 import java.nio.file.Paths;
+import java.util.LinkedList;
 
 import org.openstreetmap.josm.data.Preferences;
 import org.openstreetmap.josm.data.oauth.IOAuthToken;
@@ -18,6 +21,7 @@ import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.ColorHelper;
 import org.openstreetmap.josm.tools.Logging;
 
+import hhtznr.josm.plugins.elevation.data.ElevationDataSource;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
 import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
 import jakarta.json.Json;
@@ -47,9 +51,21 @@ public class ElevationPreferences {
             .get(Preferences.main().getDirs().getCacheDirectory(true).toString(), "elevation").toFile();
 
     /**
-     * Default path, where SRTM1 and SRTM3 files need to be located.
+     * Default path, where SRTM1 and SRTM3 files were located until version 0.10.2.
      */
-    public static final File DEFAULT_SRTM_DIRECTORY = Paths.get(DEFAULT_ELEVATION_DIRECTORY.toString(), "SRTM")
+    public static final File LEGACY_SRTM_DIRECTORY = Paths.get(DEFAULT_ELEVATION_DIRECTORY.toString(), "SRTM")
+            .toFile();
+
+    /**
+     * Default path, where SRTM files from NASA Earthdata are stored in separate directories for SRTM1 and SRTM3.
+     */
+    public static final File DEFAULT_EARTHDATA_DIRECTORY = Paths.get(DEFAULT_ELEVATION_DIRECTORY.toString(), "Earthdata")
+            .toFile();
+
+    public static final File DEFAULT_EARTHDATA_SRTM1_DIRECTORY = Paths.get(DEFAULT_EARTHDATA_DIRECTORY.toString(), "SRTM1")
+            .toFile();
+
+    public static final File DEFAULT_EARTHDATA_SRTM3_DIRECTORY = Paths.get(DEFAULT_EARTHDATA_DIRECTORY.toString(), "SRTM3")
             .toFile();
 
     /**
@@ -346,8 +362,15 @@ public class ElevationPreferences {
      * Requires registration at
      * {@link ElevationPreferences#SRTM_SERVER_REGISTRATION_URL}.
      */
-    public static final String SRTM1_SERVER_BASE_URL = "https://" + EARTHDATA_DOWNLOAD_HOST
-            + "/MEASURES/SRTMGL1.003/2000.02.11/";
+    public static final URL SRTM1_SERVER_BASE_URL;
+    static {
+        URL url = null;
+        try {
+            url = new URL("https://" + EARTHDATA_DOWNLOAD_HOST + "/MEASURES/SRTMGL1.003/2000.02.11/");
+        } catch (MalformedURLException e) {
+        }
+        SRTM1_SERVER_BASE_URL = url;
+    }
 
     /**
      * URL of
@@ -358,8 +381,39 @@ public class ElevationPreferences {
      * Requires registration at
      * {@link ElevationPreferences#SRTM_SERVER_REGISTRATION_URL}.
      */
-    public static final String SRTM3_SERVER_BASE_URL = "https://" + EARTHDATA_DOWNLOAD_HOST
-            + "/MEASURES/SRTMGL3.003/2000.02.11/";
+    public static final URL SRTM3_SERVER_BASE_URL;
+    static {
+        URL url = null;
+        try {
+            url = new URL("https://" + EARTHDATA_DOWNLOAD_HOST + "/MEASURES/SRTMGL3.003/2000.02.11/");
+        } catch (MalformedURLException e) {
+        }
+        SRTM3_SERVER_BASE_URL = url;
+    }
+
+    /**
+     * Data source object for NASA Earthdata SRTM1.
+     */
+    public static final ElevationDataSource ELEVATION_DATA_SOURCE_EARTHDATA_SRTM1 = new ElevationDataSource(
+            "NASA Earthdata SRTM1", DEFAULT_EARTHDATA_SRTM1_DIRECTORY, SRTMTile.Type.SRTM1, SRTM1_SERVER_BASE_URL,
+            EARTHDATA_SSO_HOST, true);
+
+    /**
+     * Data source object for NASA Earthdata SRTM3.
+     */
+    public static final ElevationDataSource ELEVATION_DATA_SOURCE_EARTHDATA_SRTM3 = new ElevationDataSource(
+            "NASA Earthdata SRTM3", DEFAULT_EARTHDATA_SRTM3_DIRECTORY, SRTMTile.Type.SRTM3, SRTM3_SERVER_BASE_URL,
+            EARTHDATA_SSO_HOST, true);
+
+    /**
+     * List of elevation data sources.
+     */
+    public static final LinkedList<ElevationDataSource> ELEVATION_DATA_SOURCES = new LinkedList<>();
+    static {
+
+        ELEVATION_DATA_SOURCES.add(ELEVATION_DATA_SOURCE_EARTHDATA_SRTM1);
+        ELEVATION_DATA_SOURCES.add(ELEVATION_DATA_SOURCE_EARTHDATA_SRTM3);
+    }
 
     /**
      * Returns whether the elevation plugin functionality is enabled.

@@ -35,40 +35,14 @@ import hhtznr.josm.plugins.elevation.data.SRTMTile;
  */
 public class SRTMFileReader {
 
-    private File srtmDirectory = null;
-
     /**
      * Creates a new SRTM file reader.
-     *
-     * @param srtmDirectory       The directory from which to read and to which to
-     *                            download SRTM files.
      */
-    public SRTMFileReader(File srtmDirectory) {
-        this.srtmDirectory = srtmDirectory;
+    public SRTMFileReader() {
     }
 
     /**
-     * Returns the directory where SRTM files are located.
-     *
-     * @return The SRTM directory.
-     */
-    public File getSRTMDirectory() {
-        return srtmDirectory;
-    }
-
-    /**
-     * Sets the directory where SRTM files are located. If the directory does not
-     * exist, it is created recursively.
-     *
-     * @param srtmDirectory The directory to set as SRTM directory.
-     */
-    public void setSRTMDirectory(File srtmDirectory) {
-        this.srtmDirectory = srtmDirectory;
-    }
-
-    /**
-     * Reads an SRTM tile from a ZIP-compressed SRTM file as obtained from NASA in a
-     * separate thread.
+     * Reads an SRTM tile from a ZIP-compressed SRTM file as obtained from NASA.
      *
      * The types SRTM1 and SRTM3 are automatically distinguished based on the file
      * name. If both, an SRTM1 and SRTM3 file, are available for the same tile,

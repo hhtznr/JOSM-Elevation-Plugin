@@ -172,8 +172,9 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
      * @return Panel with elevation preferences.
      */
     private final JPanel buildPreferencePanel() {
-        cbEnableElevation.setToolTipText(I18n.tr("SRTM files need to be placed in {0}",
-                ElevationPreferences.DEFAULT_SRTM_DIRECTORY.getAbsolutePath()));
+        cbEnableElevation
+                .setToolTipText(I18n.tr("SRTM files need to be placed in subdirectories SRTM1 and SRTM3 in {0}",
+                        ElevationPreferences.DEFAULT_EARTHDATA_DIRECTORY.getAbsolutePath()));
         cbEnableElevation.addItemListener(event -> updateEnabledState());
 
         lblSRTM1Server.setEditable(false);

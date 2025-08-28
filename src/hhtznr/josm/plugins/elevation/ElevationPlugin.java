@@ -50,10 +50,11 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
      */
     public ElevationPlugin(PluginInformation info) {
         super(info);
+        Migration.migrateSRTMDirectory();
         addElevationLayerAction = new AddElevationLayerAction(this);
         addElevationLayerAction.setEnabled(false);
         MainMenu.add(MainApplication.getMenu().imagerySubMenu, addElevationLayerAction,
-                MainMenu.WINDOW_MENU_GROUP.ALWAYS);
+                MainMenu.WINDOW_MENU_GROUP.ALWAYS); 
         Logging.info("Elevation: Plugin initialized");
     }
 

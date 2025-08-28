@@ -348,6 +348,7 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
                                     + " from file " + srtmFile.getAbsolutePath() + " rejected: " + e.toString());
                             srtmTile = tileCache.remove(srtmTileID);
                         }
+                        break;
                     }
                     // If auto-downloading of SRTM files is enabled, try to download the missing
                     // file

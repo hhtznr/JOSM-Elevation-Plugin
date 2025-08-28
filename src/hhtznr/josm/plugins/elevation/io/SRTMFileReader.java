@@ -68,15 +68,15 @@ public class SRTMFileReader {
      * no voids in Version 3.0.</i>
      *
      * @param srtmFile The SRTM file to read.
+     * @param type     The type of SRTM file, SRTM1 or SRTM3.
      * @return The SRTM tile read from the file.
      * @throws IOException Thrown if the data in the file has a wrong length or the
      *                     file cannot be read at all.
      */
-    public SRTMTile readSRTMFile(File srtmFile) throws IOException {
+    public SRTMTile readSRTMFile(File srtmFile, SRTMTile.Type type) throws IOException {
         String srtmTileID = SRTMFiles.getSRTMTileIDFromFileName(srtmFile.getName());
-        SRTMTile.Type type = SRTMFiles.getSRTMTileTypeFromFileName(srtmFile.getName());
 
-        Logging.info("Elevation: Reading SRTM file '" + srtmFile.getName() + "' for tile ID " + srtmTileID);
+        Logging.info("Elevation: Reading SRTM file '" + srtmFile.getAbsolutePath() + "' for tile ID " + srtmTileID);
 
         // Expected number of elevation data points in one dimension
         int srtmTileLength;

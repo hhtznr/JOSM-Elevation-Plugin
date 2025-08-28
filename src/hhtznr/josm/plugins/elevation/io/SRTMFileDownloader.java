@@ -26,6 +26,7 @@ import org.openstreetmap.josm.tools.HttpClient;
 import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.data.ElevationDataSource;
+import hhtznr.josm.plugins.elevation.data.SRTMTile;
 
 /**
  * Class {@code SRTMFileDownloader} downloads files with elevation data from
@@ -184,7 +185,7 @@ public class SRTMFileDownloader {
     }
 
     private File download(String srtmTileID, ElevationDataSource elevationDataSource) {
-        String srtmFileName = SRTMFiles.getSRTMFileName(srtmTileID, elevationDataSource.getSRTMTileType());
+        String srtmFileName = SRTMFiles.getEarthdataSRTMFileName(srtmTileID, elevationDataSource.getSRTMTileType());
 
         if (basicAuthHeader != null)
             Logging.info("Elevation: Trying to download SRTM file " + srtmFileName + " using password authentication.");
@@ -271,7 +272,7 @@ public class SRTMFileDownloader {
 
         Logging.info("Elevation: Successfully downloaded SRTM file " + srtmFile.getName() + " to SRTM directory: "
                 + elevationDataSource.getDataDirectory().toString());
-        downloadSucceeded(srtmFile);
+        downloadSucceeded(srtmFile, elevationDataSource.getSRTMTileType());
         return srtmFile;
     }
 
@@ -289,10 +290,10 @@ public class SRTMFileDownloader {
         }
     }
 
-    private void downloadSucceeded(File srtmFile) {
+    private void downloadSucceeded(File srtmFile, SRTMTile.Type type) {
         synchronized (downloadListeners) {
             for (SRTMFileDownloadListener listener : downloadListeners)
-                listener.srtmFileDownloadSucceeded(srtmFile);
+                listener.srtmFileDownloadSucceeded(srtmFile, type);
         }
     }
 

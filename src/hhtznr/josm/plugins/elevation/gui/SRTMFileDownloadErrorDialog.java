@@ -6,6 +6,7 @@ import javax.swing.JOptionPane;
 
 import org.openstreetmap.josm.gui.MainApplication;
 
+import hhtznr.josm.plugins.elevation.data.SRTMTile;
 import hhtznr.josm.plugins.elevation.io.SRTMFileDownloadListener;
 import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
 
@@ -37,7 +38,7 @@ public class SRTMFileDownloadErrorDialog implements SRTMFileDownloadListener {
     }
 
     @Override
-    public void srtmFileDownloadSucceeded(File srtmFile) {
+    public void srtmFileDownloadSucceeded(File srtmFile, SRTMTile.Type type) {
     }
 
     @Override

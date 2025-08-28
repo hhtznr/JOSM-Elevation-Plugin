@@ -2,6 +2,8 @@ package hhtznr.josm.plugins.elevation.io;
 
 import java.io.File;
 
+import hhtznr.josm.plugins.elevation.data.SRTMTile;
+
 /**
  * Listener interface to be implemented by classes with instances that should be
  * informed about SRTM download events being performed in separate threads.
@@ -28,8 +30,9 @@ public interface SRTMFileDownloadListener {
      * To be called by the thread downloading as soon as the download finished.
      *
      * @param srtmFile The downloaded SRTM file.
+     * @param type The type of SRTM data, SRTM1 or SRTM3.
      */
-    public void srtmFileDownloadSucceeded(File srtmFile);
+    public void srtmFileDownloadSucceeded(File srtmFile, SRTMTile.Type type);
 
     /**
      * Informs the implementing class that downloading SRTM data for the given

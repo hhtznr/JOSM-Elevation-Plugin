@@ -34,8 +34,8 @@ public class Migration {
                     DirectoryStream<Path> stream = Files
                             .newDirectoryStream(ElevationPreferences.LEGACY_SRTM_DIRECTORY.toPath());
                     for (Path file : stream) {
-                        if (Files.isRegularFile(file) && SRTMFiles
-                                .getSRTMTileTypeFromFileName(file.getFileName().toString()) == SRTMTile.Type.SRTM1) {
+                        if (Files.isRegularFile(file) && SRTMFiles.getSRTMTileTypeFromEarthdataFileName(
+                                file.getFileName().toString()) == SRTMTile.Type.SRTM1) {
                             Path targetPath = ElevationPreferences.DEFAULT_EARTHDATA_SRTM1_DIRECTORY.toPath()
                                     .resolve(file.getFileName());
                             Files.move(file, targetPath, StandardCopyOption.REPLACE_EXISTING);
@@ -54,8 +54,8 @@ public class Migration {
                     DirectoryStream<Path> stream = Files
                             .newDirectoryStream(ElevationPreferences.LEGACY_SRTM_DIRECTORY.toPath());
                     for (Path file : stream) {
-                        if (Files.isRegularFile(file) && SRTMFiles
-                                .getSRTMTileTypeFromFileName(file.getFileName().toString()) == SRTMTile.Type.SRTM3) {
+                        if (Files.isRegularFile(file) && SRTMFiles.getSRTMTileTypeFromEarthdataFileName(
+                                file.getFileName().toString()) == SRTMTile.Type.SRTM3) {
                             Path targetPath = ElevationPreferences.DEFAULT_EARTHDATA_SRTM3_DIRECTORY.toPath()
                                     .resolve(file.getFileName());
                             Files.move(file, targetPath, StandardCopyOption.REPLACE_EXISTING);
@@ -69,16 +69,18 @@ public class Migration {
                 }
             }
             try {
-            DirectoryStream<Path> stream = Files
-                    .newDirectoryStream(ElevationPreferences.LEGACY_SRTM_DIRECTORY.toPath());
-            if (!stream.iterator().hasNext()) {
-                Files.delete(ElevationPreferences.LEGACY_SRTM_DIRECTORY.toPath());
-                Logging.info("Elevation: Deleted empty legacy SRTM directory '" + ElevationPreferences.LEGACY_SRTM_DIRECTORY.toPath().toAbsolutePath() + "'");
-            }
-            else {
-                Logging.info("Elevation: Will not delete legacy SRTM directory '" + ElevationPreferences.LEGACY_SRTM_DIRECTORY.toPath().toAbsolutePath() + "' which is not empty");
-            }
-            stream.close();
+                DirectoryStream<Path> stream = Files
+                        .newDirectoryStream(ElevationPreferences.LEGACY_SRTM_DIRECTORY.toPath());
+                if (!stream.iterator().hasNext()) {
+                    Files.delete(ElevationPreferences.LEGACY_SRTM_DIRECTORY.toPath());
+                    Logging.info("Elevation: Deleted empty legacy SRTM directory '"
+                            + ElevationPreferences.LEGACY_SRTM_DIRECTORY.toPath().toAbsolutePath() + "'");
+                } else {
+                    Logging.info("Elevation: Will not delete legacy SRTM directory '"
+                            + ElevationPreferences.LEGACY_SRTM_DIRECTORY.toPath().toAbsolutePath()
+                            + "' which is not empty");
+                }
+                stream.close();
             } catch (IOException e) {
                 Logging.error("Elevation: IOException trying to delete legacy SRTM directory: " + e.toString());
             }

@@ -342,7 +342,7 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
                         srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, null, null,
                                 SRTMTile.Status.READING_SCHEDULED);
                         try {
-                            getSRTMTile(srtmFile);
+                            getSRTMTile(srtmFile, elevationDataSource.getSRTMTileType());
                         } catch (RejectedExecutionException e) {
                             Logging.info("Elevation: Execution of file read task for SRTM tile " + srtmTileID
                                     + " from file " + srtmFile.getAbsolutePath() + " rejected: " + e.toString());
@@ -414,20 +414,14 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
      * @throws RejectedExecutionException Thrown if the file read task cannot be
      *                                    accepted by the thread executor.
      */
-    private Future<SRTMTile> getSRTMTile(File srtmFile) throws RejectedExecutionException {
+    private Future<SRTMTile> getSRTMTile(File srtmFile, SRTMTile.Type type) throws RejectedExecutionException {
         Callable<SRTMTile> fileReadTask = () -> {
             String srtmTileID = SRTMFiles.getSRTMTileIDFromFileName(srtmFile.getName());
             tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.READING);
-            SRTMTile.Type type = SRTMFiles.getSRTMTileTypeFromFileName(srtmFile.getName());
-            if (type == null) {
-                Logging.error("Elevation: Cannot identify whether file '" + srtmFile.getName()
-                        + "' is an SRTM1 or SRTM3 file.");
-                return tileCache.putOrUpdateSRTMTile(srtmTileID, type, null, SRTMTile.Status.FILE_INVALID);
-            }
 
             SRTMTile srtmTile = null;
             try {
-                srtmTile = tileCache.putOrUpdateSRTMTile(srtmFileReader.readSRTMFile(srtmFile));
+                srtmTile = tileCache.putOrUpdateSRTMTile(srtmFileReader.readSRTMFile(srtmFile, type));
                 // Check if all SRTM tiles of most recently requested tile grid are cached now
                 // If so, inform listeners
                 SRTMTileGrid tileGrid = previousTileGrid;
@@ -525,10 +519,10 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
     }
 
     @Override
-    public void srtmFileDownloadSucceeded(File srtmFile) {
+    public void srtmFileDownloadSucceeded(File srtmFile, SRTMTile.Type type) {
         // Read the SRTM file as task in a separate thread
         try {
-            getSRTMTile(srtmFile);
+            getSRTMTile(srtmFile, type);
         } catch (RejectedExecutionException e) {
             String srtmTileID = SRTMFiles.getSRTMTileIDFromFileName(srtmFile.getName());
             Logging.info("Elevation: Execution of file read task for SRTM tile " + srtmTileID + " from file "

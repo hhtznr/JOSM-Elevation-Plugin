@@ -73,11 +73,21 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
     private final JCheckBox cbEnableElevation = new JCheckBox(I18n.tr("Enable Use of Elevation Data"));
     private final JMultilineLabel lblSRTM1Server = new JMultilineLabel(I18n.tr(
-            "<html>SRTM1 files (elevation sampled at 1 arc-seconds) can be downloaded from <a href=\"{0}\">{0}</a>.</html>",
-            ElevationPreferences.SRTM1_SERVER_BASE_URL));
+            "<html>SRTM1 files (elevation sampled at 1 arc seconds) of the whole Earth can be downloaded from <a href=\"{0}\">{0}</a> to {1}",
+            ElevationPreferences.SRTM1_SERVER_BASE_URL,
+            ElevationPreferences.DEFAULT_EARTHDATA_SRTM1_DIRECTORY.getAbsolutePath()));
     private final JMultilineLabel lblSRTM3Server = new JMultilineLabel(I18n.tr(
-            "<html>SRTM3 files (elevation sampled at 3 arc-seconds) can be downloaded from <a href=\"{0}\">{0}</a>.</html>",
-            ElevationPreferences.SRTM3_SERVER_BASE_URL));
+            "<html>SRTM3 files (elevation sampled at 3 arc seconds) of the whole Earth can be downloaded from <a href=\"{0}\">{0}</a> to {1}",
+            ElevationPreferences.SRTM3_SERVER_BASE_URL,
+            ElevationPreferences.DEFAULT_EARTHDATA_SRTM3_DIRECTORY.getAbsolutePath()));
+    private final JMultilineLabel lblDTM1Server = new JMultilineLabel(I18n.tr(
+            "<html>High quality SRTM1 files (elevation sampled at 1 arc seconds) of Europe can be downloaded from <a href=\"{0}\">{0}</a> to {1}",
+            ElevationPreferences.SONNY_LIDAR_DTM1_BASE_URL,
+            ElevationPreferences.DEFAULT_SONNY_LIDAR_DTM1_DIRECTORY.getAbsolutePath()));
+    private final JMultilineLabel lblDTM3Server = new JMultilineLabel(I18n.tr(
+            "<html>High quality SRTM3 files (elevation sampled at 3 arc seconds) of Europe can be downloaded from <a href=\"{0}\">{0}</a> to {1}",
+            ElevationPreferences.SONNY_LIDAR_DTM3_BASE_URL,
+            ElevationPreferences.DEFAULT_SONNY_LIDAR_DTM3_DIRECTORY.getAbsolutePath()));
 
     private final JLabel lblSRTMType = new JLabel("Preferred SRTM Type:");
     private final JosmComboBox<SRTMTile.Type> cbSRTMType = new JosmComboBox<>(
@@ -132,13 +142,13 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
             ElevationPreferences.MAX_HILLSHADE_AZIMUTH, ElevationPreferences.INCR_HILLSHADE_AZIMUTH));
     private final JLabel lblHillshadeAzimuthUnit = new JLabel("°");
 
-    private final JCheckBox cbEnableAutoDownload = new JCheckBox("Enable Automatic Downloading of Elevation Data");
+    private final JCheckBox cbEnableAutoDownload = new JCheckBox("Enable Automatic Downloading of Elevation Data from NASA Earthdata");
 
     private final JRadioButton rbPasswordAuth = new JRadioButton("Use Password Authentication");
     private final JRadioButton rbAuthBearer = new JRadioButton("Use Authorization Bearer Token");
 
     private final JMultilineLabel lblEarthdataNotes = new JMultilineLabel(I18n.tr(
-            "<html>You need to register as Earthdata user at <a href=\"{0}\">{0}</a> and optionally create an authorization bearer token.</html>",
+            "You need to register as Earthdata user at <a href=\"{0}\">{0}</a> and optionally create an authorization bearer token",
             ElevationPreferences.SRTM_SERVER_REGISTRATION_URL));
 
     private final JPanel pnlAuthData = new JPanel(new BorderLayout());
@@ -173,9 +183,10 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
      * @return Panel with elevation preferences.
      */
     private final JPanel buildPreferencePanel() {
-        cbEnableElevation
-                .setToolTipText(I18n.tr("SRTM files need to be placed in subdirectories SRTM1 and SRTM3 in {0}",
-                        ElevationPreferences.DEFAULT_EARTHDATA_DIRECTORY.getAbsolutePath()));
+        cbEnableElevation.setToolTipText(I18n.tr(
+                "SRTM files from NASA Earthdata need to be placed in subdirectories SRTM1 and SRTM3 in {0}\nSRTM files from Sonny's LiDAR DTM need to be placed in subdirectories DTM1 and DTM3 in {11}",
+                ElevationPreferences.DEFAULT_EARTHDATA_DIRECTORY.getAbsolutePath(),
+                ElevationPreferences.DEFAULT_SONNY_LIDAR_DIRECTORY.getAbsolutePath()));
         cbEnableElevation.addItemListener(event -> updateEnabledState());
 
         lblSRTM1Server.setEditable(false);
@@ -183,6 +194,12 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
         lblSRTM3Server.setEditable(false);
         lblSRTM3Server.addHyperlinkListener(event -> browseHyperlink(event));
+
+        lblDTM1Server.setEditable(false);
+        lblDTM1Server.addHyperlinkListener(event -> browseHyperlink(event));
+
+        lblDTM3Server.setEditable(false);
+        lblDTM3Server.addHyperlinkListener(event -> browseHyperlink(event));
 
         cbEnableElevationLayer.addItemListener(event -> updateEnabledState());
 
@@ -340,6 +357,14 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         // Row "SRTM3 server"
         gc.gridy++;
         pnl.add(lblSRTM3Server, gc);
+
+        // Row "DTM1 server"
+        gc.gridy++;
+        pnl.add(lblDTM1Server, gc);
+
+        // Row "DTM3 server"
+        gc.gridy++;
+        pnl.add(lblDTM3Server, gc);
 
         // Row "SRTM type"
         gc.gridy++;

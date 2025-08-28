@@ -1,6 +1,7 @@
 package hhtznr.josm.plugins.elevation;
 
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
+import hhtznr.josm.plugins.elevation.data.ElevationDataSource;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
 import hhtznr.josm.plugins.elevation.gui.AddElevationLayerAction;
 import hhtznr.josm.plugins.elevation.gui.ElevationLayer;
@@ -51,11 +52,20 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     public ElevationPlugin(PluginInformation info) {
         super(info);
         Migration.migrateSRTMDirectory();
+        createElevationDataDirectories();
         addElevationLayerAction = new AddElevationLayerAction(this);
         addElevationLayerAction.setEnabled(false);
         MainMenu.add(MainApplication.getMenu().imagerySubMenu, addElevationLayerAction,
                 MainMenu.WINDOW_MENU_GROUP.ALWAYS); 
         Logging.info("Elevation: Plugin initialized");
+    }
+
+    private static void createElevationDataDirectories() {
+        for (ElevationDataSource elevationDataSource : ElevationPreferences.ELEVATION_DATA_SOURCES) {
+            if (!elevationDataSource.getDataDirectory().exists() && elevationDataSource.getDataDirectory().mkdirs())
+                Logging.info("Elevation: Created elevation data directory '"
+                        + elevationDataSource.getDataDirectory().getAbsolutePath() + "'");
+        }
     }
 
     /**

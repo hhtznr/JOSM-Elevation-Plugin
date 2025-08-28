@@ -62,10 +62,34 @@ public class ElevationPreferences {
     public static final File DEFAULT_EARTHDATA_DIRECTORY = Paths.get(DEFAULT_ELEVATION_DIRECTORY.toString(), "Earthdata")
             .toFile();
 
+    /**
+     * Default path, where SRTM1 files from NASA Earthdata are stored locally.
+     */
     public static final File DEFAULT_EARTHDATA_SRTM1_DIRECTORY = Paths.get(DEFAULT_EARTHDATA_DIRECTORY.toString(), "SRTM1")
             .toFile();
 
+    /**
+     * Default path, where SRTM3 files from NASA Earthdata are stored locally.
+     */
     public static final File DEFAULT_EARTHDATA_SRTM3_DIRECTORY = Paths.get(DEFAULT_EARTHDATA_DIRECTORY.toString(), "SRTM3")
+            .toFile();
+
+    /**
+     * Default path, where SRTM-compatible HGT files from Sonny's LiDAR Digital Terrain Models of Europe are stored in separate directories for DTM1 and DTM3.
+     */
+    public static final File DEFAULT_SONNY_LIDAR_DIRECTORY = Paths.get(DEFAULT_ELEVATION_DIRECTORY.toString(), "Sonny LiDAR")
+            .toFile();
+
+    /**
+     * Default path, where DTM1 files from Sonny's LiDAR Digital Terrain Models of Europe are stored locally.
+     */
+    public static final File DEFAULT_SONNY_LIDAR_DTM1_DIRECTORY = Paths.get(DEFAULT_SONNY_LIDAR_DIRECTORY.toString(), "DTM1")
+            .toFile();
+
+    /**
+     * Default path, where DTM3 files from Sonny's LiDAR Digital Terrain Models of Europe are stored locally.
+     */
+    public static final File DEFAULT_SONNY_LIDAR_DTM3_DIRECTORY = Paths.get(DEFAULT_SONNY_LIDAR_DIRECTORY.toString(), "DTM3")
             .toFile();
 
     /**
@@ -391,6 +415,26 @@ public class ElevationPreferences {
         SRTM3_SERVER_BASE_URL = url;
     }
 
+    public static final  URL SONNY_LIDAR_DTM1_BASE_URL;
+    static {
+        URL url = null;
+        try {
+            url = new URL("https://bit.ly/dtm-europe-1s-v2");
+        } catch (MalformedURLException e) {
+        }
+        SONNY_LIDAR_DTM1_BASE_URL = url;
+    }
+
+    public static final  URL SONNY_LIDAR_DTM3_BASE_URL;
+    static {
+        URL url = null;
+        try {
+            url = new URL("https://bit.ly/dtm-europe-3s-v2");
+        } catch (MalformedURLException e) {
+        }
+        SONNY_LIDAR_DTM3_BASE_URL = url;
+    }
+
     /**
      * Data source object for NASA Earthdata SRTM1.
      */
@@ -405,13 +449,28 @@ public class ElevationPreferences {
             "NASA Earthdata SRTM3", DEFAULT_EARTHDATA_SRTM3_DIRECTORY, SRTMTile.Type.SRTM3, SRTM3_SERVER_BASE_URL,
             EARTHDATA_SSO_HOST, true);
 
+    /*
+     * Data source object for Sonny's LiDAR DTM1.
+     */
+    public static final ElevationDataSource ELEVATION_DATA_SOURCE_SONNY_LIDAR_DTM1 = new ElevationDataSource(
+            "Sonny's LiDAR DTM1", DEFAULT_SONNY_LIDAR_DTM1_DIRECTORY, SRTMTile.Type.SRTM1, SONNY_LIDAR_DTM1_BASE_URL,
+            null, false);
+
+    /*
+     * Data source object for Sonny's LiDAR DTM3.
+     */
+    public static final ElevationDataSource ELEVATION_DATA_SOURCE_SONNY_LIDAR_DTM3 = new ElevationDataSource(
+            "Sonny's LiDAR DTM3", DEFAULT_SONNY_LIDAR_DTM3_DIRECTORY, SRTMTile.Type.SRTM3, SONNY_LIDAR_DTM3_BASE_URL,
+            null, false);
+
     /**
      * List of elevation data sources.
      */
     public static final LinkedList<ElevationDataSource> ELEVATION_DATA_SOURCES = new LinkedList<>();
     static {
-
+        ELEVATION_DATA_SOURCES.add(ELEVATION_DATA_SOURCE_SONNY_LIDAR_DTM1);
         ELEVATION_DATA_SOURCES.add(ELEVATION_DATA_SOURCE_EARTHDATA_SRTM1);
+        ELEVATION_DATA_SOURCES.add(ELEVATION_DATA_SOURCE_SONNY_LIDAR_DTM3);
         ELEVATION_DATA_SOURCES.add(ELEVATION_DATA_SOURCE_EARTHDATA_SRTM3);
     }
 

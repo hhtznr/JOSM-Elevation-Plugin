@@ -80,7 +80,8 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
             ElevationPreferences.SRTM3_SERVER_BASE_URL));
 
     private final JLabel lblSRTMType = new JLabel("Preferred SRTM Type:");
-    private final JosmComboBox<SRTMTile.Type> cbSRTMType = new JosmComboBox<>(SRTMTile.Type.values());
+    private final JosmComboBox<SRTMTile.Type> cbSRTMType = new JosmComboBox<>(
+            new SRTMTile.Type[] { SRTMTile.Type.SRTM1, SRTMTile.Type.SRTM3 });
 
     private final JLabel lblInterpolation = new JLabel("Elevation Value Interpolation:");
     private final JosmComboBox<SRTMTile.Interpolation> cbInterpolation = new JosmComboBox<>(

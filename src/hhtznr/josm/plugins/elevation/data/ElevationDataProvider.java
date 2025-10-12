@@ -157,6 +157,38 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
     }
 
     /**
+     * Returns a list of the coordinate points from the elevation raster, which have
+     * the lowest elevation within the given map bounds.
+     *
+     * @param bounds The bounds in latitude-longitude coordinate space.
+     * @return A list of coordinate points with the lowest elevation within the
+     *         given bounds.
+     */
+    public List<LatLonEle> getLowestPoints(Bounds bounds) {
+        synchronized (tileGridLock) {
+            if (previousTileGrid == null || !previousTileGrid.covers(bounds))
+                previousTileGrid = new SRTMTileGrid(this, bounds);
+            return previousTileGrid.getLowestPoints(bounds);
+        }
+    }
+
+    /**
+     * Returns a list of the coordinate points from the elevation raster, which have
+     * the highest elevation within the given map bounds.
+     *
+     * @param bounds The bounds in latitude-longitude coordinate space.
+     * @return A list of coordinate points with the highest elevation within the
+     *         given bounds.
+     */
+    public List<LatLonEle> getHighestPoints(Bounds bounds) {
+        synchronized (tileGridLock) {
+            if (previousTileGrid == null || !previousTileGrid.covers(bounds))
+                previousTileGrid = new SRTMTileGrid(this, bounds);
+            return previousTileGrid.getHighestPoints(bounds);
+        }
+    }
+
+    /**
      * Returns all raster coordinates and the associated elevation values within the
      * bounds. If this method does not return {@code null}, the raster coordinates
      * will always cover the bounds. However, the method may return a larger raster

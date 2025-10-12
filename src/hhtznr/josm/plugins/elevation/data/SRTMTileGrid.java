@@ -1,8 +1,11 @@
 package hhtznr.josm.plugins.elevation.data;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
 
 import org.openstreetmap.josm.data.Bounds;
+import org.openstreetmap.josm.data.coor.ILatLon;
 import org.openstreetmap.josm.data.coor.LatLon;
 
 import hhtznr.josm.plugins.elevation.gui.ContourLines;
@@ -26,6 +29,11 @@ public class SRTMTileGrid {
 
     private ClippedSRTMTile[][] clippedTiles;
     private short[][] gridEleValues = null;
+
+    // Lowest and highest points within the nominal bounds
+    private LinkedList<LatLonEle> lowestPoints = null;
+    private LinkedList<LatLonEle> highestPoints = null;
+    private Bounds lowestAndHighestPointsBounds = null;
 
     /**
      * Creates a new 2D grid of SRTM tiles to cover the given latitude-longitude
@@ -201,6 +209,149 @@ public class SRTMTileGrid {
     }
 
     /**
+     * Returns a list of the coordinate points from the elevation raster, which have
+     * the lowest elevation within the given map bounds.
+     *
+     * @param bounds The bounds in latitude-longitude coordinate space.
+     * @return A list of coordinate points with the lowest elevation within the
+     *         given bounds.
+     */
+    public List<LatLonEle> getLowestPoints(Bounds bounds) {
+        determineLowestAndHighestPoints(bounds);
+        return lowestPoints;
+    }
+
+    /**
+     * Returns a list of the coordinate points from the elevation raster, which have
+     * the highest elevation within the given map bounds.
+     *
+     * @param bounds The bounds in latitude-longitude coordinate space.
+     * @return A list of coordinate points with the highest elevation within the
+     *         given bounds.
+     */
+    public List<LatLonEle> getHighestPoints(Bounds bounds) {
+        determineLowestAndHighestPoints(bounds);
+        return highestPoints;
+    }
+
+    protected int[] getIndices(ILatLon latLon) {
+        double lat = latLon.lat();
+        double lon = latLon.lon();
+
+        if (lat < actualBounds.getMinLat() || lat > actualBounds.getMaxLat())
+            throw new IllegalArgumentException(
+                    "Given latitude " + lat + " is not within latitude range of SRTM tile grid from "
+                            + actualBounds.getMinLat() + " to " + actualBounds.getMaxLat());
+
+        if (lon < actualBounds.getMinLon() || lon > actualBounds.getMaxLon())
+            throw new IllegalArgumentException(
+                    "Given longitude " + lon + " is not within longitude range of SRTM tile gird from "
+                            + actualBounds.getMinLon() + " to " + actualBounds.getMaxLon());
+
+        short[][] eleValues = getGridEleValues();
+        // Avoid working on null or zero length data
+        if (eleValues == null)
+            return null;
+
+        int latEleIndex = (int) Math
+                .round((lat - actualBounds.getMinLat()) / actualBounds.getHeight() * (eleValues.length - 1));
+        int lonEleIndex = (int) Math
+                .round((lon - actualBounds.getMinLon()) / actualBounds.getWidth() * (eleValues[0].length - 1));
+        return new int[] { latEleIndex, lonEleIndex };
+    }
+
+    private void determineLowestAndHighestPoints(Bounds bounds) {
+        if (bounds.equals(lowestAndHighestPointsBounds))
+            return;
+
+        if (!actualBounds.contains(bounds))
+            return;
+
+        if (lowestPoints == null)
+            lowestPoints = new LinkedList<>();
+        if (highestPoints == null)
+            highestPoints = new LinkedList<>();
+
+        short[][] eleValues = getGridEleValues();
+        // Avoid working on null or zero length data
+        if (eleValues == null)
+            return;
+
+        double latRange = actualBounds.getHeight();
+        double lonRange = actualBounds.getWidth();
+        double actualSouth = actualBounds.getMinLat();
+        double actualWest = actualBounds.getMinLon();
+
+        // System.out.println("DEBUG ELEVATION: Min. actual bounds: lat = " +
+        // actualSouth + ", lon = ..." + actualWest);
+        // System.out.println("DEBUG ELEVATION: Min. given bounds: lat = " +
+        // bounds.getMin().lat() + ", lon = ..." + bounds.getMin().lon());
+        // System.out.println("DEBUG ELEVATION: Max. actual bounds: lat = " +
+        // actualBounds.getMaxLat() + ", lon = ..." + actualBounds.getMaxLon());
+        // System.out.println("DEBUG ELEVATION: Max. given bounds: lat = " +
+        // bounds.getMax().lat() + ", lon = ..." + bounds.getMax().lon());
+
+        int[] minLatLonIndices = getIndices(bounds.getMin());
+        int minLatIndex = minLatLonIndices[0];
+        int minLonIndex = minLatLonIndices[1];
+        int[] maxLatLonIndices = getIndices(bounds.getMax());
+        int maxLatIndex = maxLatLonIndices[0];
+        int maxLonIndex = maxLatLonIndices[1];
+        // System.out.println("DEBUG ELEVATION: lat indices = " + minLatIndex + "..." +
+        // maxLatIndex + "-> max. index = " + (eleValues.length - 1));
+        // System.out.println("DEBUG ELEVATION: lon indices = " + minLonIndex + "..." +
+        // maxLonIndex + " max. index = " + (eleValues[0].length - 1));
+
+        short previousMinEle = Short.MAX_VALUE;
+        short previousMaxEle = Short.MIN_VALUE;
+        for (int latIndex = minLatIndex; latIndex <= maxLatIndex; latIndex++) {
+            double lat = actualSouth + latRange * (1.0 - Double.valueOf(latIndex) / (eleValues.length - 1));
+
+            for (int lonIndex = minLonIndex; lonIndex <= maxLonIndex; lonIndex++) {
+                double lon = actualWest + lonRange * Double.valueOf(lonIndex) / (eleValues[latIndex].length - 1);
+                short ele = eleValues[latIndex][lonIndex];
+                LatLonEle latLonEle = new LatLonEle(lat, lon, ele);
+
+                if (lowestPoints.size() == 0) {
+                    lowestPoints.add(latLonEle);
+                } else {
+                    if (ele == previousMinEle) {
+                        lowestPoints.add(latLonEle);
+                    } else if (ele < previousMinEle) {
+                        lowestPoints.clear();
+                        lowestPoints.add(latLonEle);
+                        previousMinEle = ele;
+                    }
+                }
+
+                if (highestPoints.size() == 0) {
+                    highestPoints.add(latLonEle);
+                } else {
+                    if (ele == previousMaxEle) {
+                        highestPoints.add(latLonEle);
+                    } else if (ele > previousMaxEle) {
+                        highestPoints.clear();
+                        highestPoints.add(latLonEle);
+                        previousMaxEle = ele;
+                    }
+                }
+            }
+        }
+        lowestAndHighestPointsBounds = bounds;
+
+        /*
+         * System.out.println("DEBUG ELEVATION: highest points: " +
+         * highestPoints.size()); if (highestPoints.size() > 0)
+         * System.out.println("DEBUG ELEVATION: highest elevation: " +
+         * highestPoints.get(0).ele());
+         * System.out.println("DEBUG ELEVATION: lowest points: " + lowestPoints.size());
+         * if (highestPoints.size() > 0)
+         * System.out.println("DEBUG ELEVATION: lowest elevation: " +
+         * lowestPoints.get(0).ele());
+         */
+    }
+
+    /**
      * Returns all raster coordinates and the associated elevation values within the
      * bounds.
      *
@@ -211,6 +362,7 @@ public class SRTMTileGrid {
      *         available at all).
      */
     public ElevationRaster getElevationRaster() {
+
         short[][] eleValues = getGridEleValues();
         // Avoid working on null or zero length data
         if (eleValues == null)

@@ -7,6 +7,7 @@ import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.image.BufferedImage;
+import java.util.List;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
@@ -105,8 +106,10 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
             if (layer.isHillshadeEnabled())
                 drawHillshade(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
 
-            if (layer.isContourLinesEnabled())
+            if (layer.isContourLinesEnabled()) {
                 drawContourLines(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
+                drawLowestAndHighestPoints(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
+            }
 
             if (layer.isElevationRasterEnabled())
                 drawElevationRaster(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
@@ -254,6 +257,40 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
             latDist += latStep;
             if (latDist > eleStringHeight)
                 latDist = 0.0;
+        }
+    }
+
+    private void drawLowestAndHighestPoints(Graphics2D g, MapView mv, Bounds bounds) {
+        List<LatLonEle> lowestPoints = layer.getElevationDataProvider().getLowestPoints(bounds);
+        List<LatLonEle> highestPoints = layer.getElevationDataProvider().getHighestPoints(bounds);
+
+        // Set the font for elevation value strings
+        Font font = g.getFont().deriveFont(Font.PLAIN, 10);
+        g.setFont(font);
+
+        // Dimensions of an up to 4 digit (+ 2 digits/points space) elevation value
+        // string in screen coordinates
+        FontMetrics metrics = g.getFontMetrics(font);
+        int eleStringDisplayHeight = metrics.getHeight() + 2;
+
+        // The size of the marker of an elevation data point in display coordinates
+        final int markerSize = 5;
+
+        for (LatLonEle latLonEle : lowestPoints) {
+            Point p = mv.getPoint(latLonEle);
+            String ele = Integer.toString((int) latLonEle.ele());
+            g.setColor(Color.RED);
+            g.fillRect(p.x - markerSize / 2, p.y - markerSize / 2, markerSize, markerSize);
+            g.setColor(Color.BLUE);
+            g.drawString(ele, p.x + markerSize, p.y + eleStringDisplayHeight / 2);
+        }
+        for (LatLonEle latLonEle : highestPoints) {
+            Point p = mv.getPoint(latLonEle);
+            String ele = Integer.toString((int) latLonEle.ele());
+            g.setColor(Color.RED);
+            g.fillRect(p.x - markerSize / 2, p.y - markerSize / 2, markerSize, markerSize);
+            g.setColor(Color.BLUE);
+            g.drawString(ele, p.x + markerSize, p.y + eleStringDisplayHeight / 2);
         }
     }
 

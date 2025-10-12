@@ -44,6 +44,9 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
     private int hillshadeAltitude;
     private int hillshadeAzimuth;
 
+    private int lowerCutoffElevation;
+    private int upperCutoffElevation;
+
     private boolean contourLinesEnabled;
     private boolean hillshadeEnabled;
     private boolean elevationRasterEnabled;
@@ -65,10 +68,14 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
      *                                 source in hillshade computation.
      * @param hillshadeAzimuth         The azimuth (degrees) of the illumination
      *                                 source in hillshade computation.
+     * @param lowerCutoffElevation     The elevation value below which elevation
+     *                                 shall not be visualized.
+     * @param upperrCutoffElevation    The elevation value above which elevation
+     *                                 shall not be visualized.
      */
     public ElevationLayer(ElevationDataProvider elevationDataProvider, double renderingLimitArcDegrees,
             int contourLineIsostep, float contourLineStrokeWidth, Color contourLineColor, int hillshadeAltitude,
-            int hillshadeAzimuth) {
+            int hillshadeAzimuth, int lowerCutoffElevation, int upperCutoffElevation) {
         super("Elevation Layer");
         this.renderingLimitArcDegrees = renderingLimitArcDegrees;
         this.contourLineIsostep = contourLineIsostep;
@@ -76,6 +83,8 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         this.contourLineColor = contourLineColor;
         this.hillshadeAltitude = hillshadeAltitude;
         this.hillshadeAzimuth = hillshadeAzimuth;
+        this.lowerCutoffElevation = lowerCutoffElevation;
+        this.upperCutoffElevation = upperCutoffElevation;
         this.elevationDataProvider = elevationDataProvider;
         elevationDataProvider.addElevationDataProviderListener(this);
         contourLinesEnabled = ElevationPreferences.getContourLinesEnabled();
@@ -235,6 +244,22 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
             hillshadeAzimuth = azimuth;
             repaint();
         }
+    }
+
+    public int getLowerCutoffElevation() {
+        return lowerCutoffElevation;
+    }
+
+    public void setLowerCutoffElevation(int value) {
+        lowerCutoffElevation = value;
+    }
+
+    public int getUpperCutoffElevation() {
+        return upperCutoffElevation;
+    }
+
+    public void setUpperCutoffElevation(int value) {
+        upperCutoffElevation = value;
     }
 
     @Override

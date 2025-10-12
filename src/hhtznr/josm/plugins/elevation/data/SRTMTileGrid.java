@@ -267,14 +267,19 @@ public class SRTMTileGrid {
      * slightly adjust the bounds to the closest coordinates of the elevation
      * raster.
      *
-     * @param isostep Step between neighboring elevation contour lines.
+     * @param isostep               Step between neighboring elevation contour
+     *                              lines.
+     * @param lowerCutoffElevation  The elevation value below which contour lines
+     *                              will not be returned.
+     * @param upperrCutoffElevation The elevation value above which contour lines
+     *                              will not be returned.
      * @return A list of isoline segments defining elevation contour lines within
      *         the bounds or {@code null} if not all of the SRTM tiles have the same
      *         type (i.e. different raster dimensions) or if at least one of the
      *         tiles is not valid (i.e. the data was not loaded yet or is not
      *         available at all).
      */
-    public ContourLines getContourLines(int isostep) {
+    public ContourLines getContourLines(int isostep, int lowerCutoffElevation, int upperCutoffElevation) {
         short[][] eleValues = getGridEleValues();
         // Avoid working on null or zero length data
         if (eleValues == null)
@@ -288,6 +293,14 @@ public class SRTMTileGrid {
                 maxEle = (short) Math.max(maxEle, eleValues[latIndex][lonIndex]);
             }
         }
+
+        // Apply the lower cutoff elevation value, if it is greater than the minimum
+        // elevation within the grid
+        minEle = (short) Math.max(minEle, lowerCutoffElevation);
+        // Apply the upper cutoff elevation value, if it is smaller than the maximum
+        // elevation within the grid
+        maxEle = (short) Math.min(maxEle, upperCutoffElevation);
+
         // Determine the list of isovalues, i.e. the elevation levels for which contour
         // lines should be computed
         short minIsovalue;
@@ -300,6 +313,8 @@ public class SRTMTileGrid {
             maxIsovalue = maxEle;
         else
             maxIsovalue = (short) ((maxEle / isostep) * isostep);
+        if (maxIsovalue < minIsovalue)
+            return new ContourLines(nominalBounds, actualBounds, new ArrayList<LatLonLine>(), isostep);
         int nSteps = (maxIsovalue - minIsovalue) / isostep + 1;
         short[] isovalues = new short[nSteps];
         for (int i = 0; i < nSteps; i++)

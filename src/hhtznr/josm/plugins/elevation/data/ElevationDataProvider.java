@@ -182,19 +182,25 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
      * return {@code null}, the contour lines will always cover the bounds. However,
      * the method may return contour lines for a larger area as needed.
      *
-     * @param bounds  The bounds in latitude-longitude coordinate space.
-     * @param isostep Step between adjacent elevation contour lines.
+     * @param bounds                The bounds in latitude-longitude coordinate
+     *                              space.
+     * @param isostep               Step between adjacent elevation contour lines.
+     * @param lowerCutoffElevation  The elevation value below which contour lines
+     *                              will not be drawn.
+     * @param upperrCutoffElevation The elevation value above which contour lines
+     *                              will not be drawn.
      * @return A list of isoline segments defining elevation contour lines within
      *         the bounds or {@code null} if no suitable elevation data is cached to
      *         compute the contour lines.
      */
-    public ContourLines getContourLines(Bounds bounds, int isostep) {
+    public ContourLines getContourLines(Bounds bounds, int isostep, int lowerCutoffElevation,
+            int upperCutoffElevation) {
         synchronized (tileGridLock) {
             if (previousTileGrid == null || !previousTileGrid.covers(bounds)
                     || previousTileGrid.getNominalBounds().getWidth() > 1.5 * bounds.getWidth()
                     || previousTileGrid.getNominalBounds().getHeight() > 1.5 * bounds.getHeight())
                 previousTileGrid = new SRTMTileGrid(this, bounds);
-            return previousTileGrid.getContourLines(isostep);
+            return previousTileGrid.getContourLines(isostep, lowerCutoffElevation, upperCutoffElevation);
         }
     }
 

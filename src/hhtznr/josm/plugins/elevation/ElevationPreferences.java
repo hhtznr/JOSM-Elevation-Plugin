@@ -315,6 +315,10 @@ public class ElevationPreferences {
      */
     public static final int INCR_HILLSHADE_AZIMUTH = 1;
 
+    public static final int DEFAULT_LOWER_CUTOFF_ELEVATION = -999;
+
+    public static final int DEFAULT_UPPER_CUTOFF_ELEVATION = 9999;
+
     /**
      * Property key for enabling or disabling rendering of the elevation data point
      * raster.

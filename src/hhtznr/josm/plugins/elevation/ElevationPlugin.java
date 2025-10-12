@@ -6,6 +6,7 @@ import hhtznr.josm.plugins.elevation.data.SRTMTile;
 import hhtznr.josm.plugins.elevation.gui.AddElevationLayerAction;
 import hhtznr.josm.plugins.elevation.gui.ElevationLayer;
 import hhtznr.josm.plugins.elevation.gui.ElevationTabPreferenceSetting;
+import hhtznr.josm.plugins.elevation.gui.ElevationToggleDialog;
 import hhtznr.josm.plugins.elevation.gui.LocalElevationLabel;
 import hhtznr.josm.plugins.elevation.gui.SRTMFileDownloadErrorDialog;
 import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
@@ -43,6 +44,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     private final AddElevationLayerAction addElevationLayerAction;
     private boolean elevationLayerEnabled = true;
     private ElevationLayer elevationLayer = null;
+    private ElevationToggleDialog elevationToggleDialog = null;
 
     /**
      * Initializes the plugin.
@@ -81,8 +83,10 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
             Color color = ElevationPreferences.getContourLineColor();
             int altitude = ElevationPreferences.getHillshadeAltitude();
             int azimuth = ElevationPreferences.getHillshadeAzimuth();
+            int lowerCutoff = ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION;
+            int upperCutoff = ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION;
             elevationLayer = new ElevationLayer(elevationDataProvider, renderingLimit, isostep, strokeWidth, color,
-                    altitude, azimuth);
+                    altitude, azimuth, lowerCutoff, upperCutoff);
         }
         return elevationLayer;
     }
@@ -182,6 +186,8 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                                 ElevationPreferences.getHillshadeAzimuth());
                         elevationLayer.repaint();
                     }
+                    elevationToggleDialog = new ElevationToggleDialog(this);
+                    mapFrame.addToggleDialog(elevationToggleDialog);
                 }
             }
             if (!elevationLayerEnabled) {
@@ -203,6 +209,11 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                 elevationLayerEnabled = false;
                 MainApplication.getLayerManager().removeLayer(elevationLayer);
                 elevationLayer = null;
+            }
+            if (elevationToggleDialog != null) {
+                if (mapFrame != null)
+                    mapFrame.removeToggleDialog(elevationToggleDialog);
+                elevationToggleDialog = null;
             }
             if (srtmFileDownloadErrorDialog != null) {
                 // Removes the download listener

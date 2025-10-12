@@ -54,6 +54,9 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
     BufferedImage hillshadeImage = null;
     private LatLon hillshadeNorthWest = null;
 
+    private int lowerCutoffElevation;
+    private int upperCutoffElevation;
+
     private Bounds previousClipBounds = null;
 
     /**
@@ -159,16 +162,22 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
 
     private void drawContourLines(Graphics2D g, MapView mv, Bounds bounds) {
         if (contourLines == null || contourLineIsostep != layer.getContourLineIsostep()
+                || lowerCutoffElevation != layer.getLowerCutoffElevation()
+                || upperCutoffElevation != layer.getUpperCutoffElevation()
                 || contourLineStroke.getLineWidth() != layer.getContourLineStrokeWidth()
                 || contourLineColor != layer.getContourLineColor() || !contourLines.covers(bounds)) {
             contourLineIsostep = layer.getContourLineIsostep();
+            lowerCutoffElevation = layer.getLowerCutoffElevation();
+            upperCutoffElevation = layer.getUpperCutoffElevation();
             setContourLineStroke(layer.getContourLineStrokeWidth());
             contourLineColor = layer.getContourLineColor();
             Bounds scaledBounds = getScaledBounds(bounds, BOUNDS_SCALE_FACTOR);
-            contourLines = layer.getElevationDataProvider().getContourLines(scaledBounds, contourLineIsostep);
+            contourLines = layer.getElevationDataProvider().getContourLines(scaledBounds, contourLineIsostep,
+                    lowerCutoffElevation, upperCutoffElevation);
         }
         if (contourLines == null)
             return;
+
         g.setColor(contourLineColor);
         g.setStroke(contourLineStroke);
         for (LatLonLine segment : contourLines.getIsolineSegments()) {
@@ -186,6 +195,9 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         ElevationRaster elevationRaster = layer.getElevationDataProvider().getElevationRaster(bounds);
         if (elevationRaster == null)
             return;
+
+        int lowerCutoffElevation = layer.getLowerCutoffElevation();
+        int upperCutoffElevation = layer.getUpperCutoffElevation();
 
         // Set the font for elevation value strings
         Font font = g.getFont().deriveFont(Font.PLAIN, 10);
@@ -224,6 +236,10 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
             for (int lonIndex = 0; lonIndex < elevationRaster.getWidth(); lonIndex++) {
                 LatLonEle latLonEle = elevationRaster.getLatLonEle(latIndex, lonIndex);
                 Point p = mv.getPoint(latLonEle);
+                if (latLonEle.ele() <= lowerCutoffElevation)
+                    continue;
+                if (latLonEle.ele() >= upperCutoffElevation)
+                    continue;
                 String ele = Integer.toString((int) latLonEle.ele());
                 g.setColor(Color.RED);
                 g.fillOval(p.x - markerSize / 2, p.y - markerSize / 2, markerSize, markerSize);

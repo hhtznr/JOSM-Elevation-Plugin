@@ -14,6 +14,7 @@ import org.openstreetmap.josm.data.coor.LatLon;
 
 import hhtznr.josm.plugins.elevation.data.LatLonLine;
 import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
+import hhtznr.josm.plugins.elevation.gui.ContourLines;
 
 /**
  * Implementation of the Marching Squares algorithm to compute contour lines
@@ -71,27 +72,27 @@ public class MarchingSquares {
      *         that would enable to determine the particular isovalue for which they
      *         were computed or that they could easily be joined.
      */
-    public List<LatLonLine> getIsolineSegments() {
-        ArrayList<Callable<List<LatLonLine>>> isolineTasks = new ArrayList<>(isovalues.length);
+    public List<ContourLines.IsolineSegments> getIsolineSegments() {
+        ArrayList<Callable<ContourLines.IsolineSegments>> isolineTasks = new ArrayList<>(isovalues.length);
         for (int i = 0; i < isovalues.length; i++) {
             short isovalue = isovalues[i];
-            Callable<List<LatLonLine>> task = () -> {
+            Callable<ContourLines.IsolineSegments> task = () -> {
                 return getIsolineSegments(isovalue);
             };
             isolineTasks.add(task);
         }
 
-        List<Future<List<LatLonLine>>> isolineResultList;
+        List<Future<ContourLines.IsolineSegments>> isolineResultList;
         try {
             isolineResultList = executor.invokeAll(isolineTasks);
         } catch (InterruptedException | RejectedExecutionException e) {
             return new ArrayList<>(0);
         }
 
-        ArrayList<LatLonLine> isolineSegments = new ArrayList<>();
-        for (Future<List<LatLonLine>> isolineResult : isolineResultList) {
+        ArrayList<ContourLines.IsolineSegments> isolineSegments = new ArrayList<>();
+        for (Future<ContourLines.IsolineSegments> isolineResult : isolineResultList) {
             try {
-                isolineSegments.addAll(isolineResult.get());
+                isolineSegments.add(isolineResult.get());
             } catch (InterruptedException | ExecutionException e) {
                 return new ArrayList<>(0);
             }
@@ -110,7 +111,7 @@ public class MarchingSquares {
      *         ordered as computed. They are not sorted in a way that they could
      *         easily be joined.
      */
-    private List<LatLonLine> getIsolineSegments(short isovalue) {
+    private ContourLines.IsolineSegments getIsolineSegments(short isovalue) {
         ArrayList<LatLonLine> isolineSegments = new ArrayList<>();
 
         double latRange = bounds.getHeight();
@@ -599,7 +600,7 @@ public class MarchingSquares {
             }
             cellToWest = null;
         }
-        return isolineSegments;
+        return new ContourLines.IsolineSegments(isovalue, isolineSegments);
     }
 
     /**

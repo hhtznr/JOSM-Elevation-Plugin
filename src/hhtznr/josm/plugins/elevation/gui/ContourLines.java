@@ -19,7 +19,7 @@ public class ContourLines extends AbstractSRTMTileGridPaintable {
     public static final int BOUNDS_SCALE_RASTER_STEP = 2;
 
     private final int isostep;
-    private final List<LatLonLine> isolineSegments;
+    private final List<IsolineSegments> isolineSegments;
 
     /**
      * Creates a new set of contour lines covering the specified bounds.
@@ -63,7 +63,48 @@ public class ContourLines extends AbstractSRTMTileGridPaintable {
      * @return The list of isoline segments forming the contour lines covering the
      *         bounds.
      */
-    public List<LatLonLine> getIsolineSegments() {
+    public List<IsolineSegments> getIsolineSegments() {
         return isolineSegments;
+    }
+
+    /**
+     * Helper class for managing isolinesegments along with their isovalue.
+     */
+    public static class IsolineSegments {
+
+        private final short isovalue;
+        private final List<LatLonLine> lineSegments;
+
+        /**
+         * Creates a new isoline segments object holding isoline segments along with
+         * their isovalue (elevation value).
+         *
+         * @param isovalue     The isovalue of the isoline segments.
+         * @param lineSegments The straight line segments in latitude-longitude
+         *                     coordinate space forming the isolines for the given
+         *                     isovalue.
+         */
+        public IsolineSegments(short isovalue, List<LatLonLine> lineSegments) {
+            this.isovalue = isovalue;
+            this.lineSegments = lineSegments;
+        }
+
+        /**
+         * Returns the isovalue.
+         *
+         * @return The isovalue of the isoline segments.
+         */
+        public short getIsoValue() {
+            return isovalue;
+        }
+
+        /**
+         * Returns the isoline segments.
+         *
+         * @return The isoline segments.
+         */
+        public List<LatLonLine> getLineSegments() {
+            return lineSegments;
+        }
     }
 }

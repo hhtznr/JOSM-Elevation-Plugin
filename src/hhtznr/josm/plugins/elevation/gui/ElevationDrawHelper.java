@@ -189,10 +189,12 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
 
         g.setColor(contourLineColor);
         g.setStroke(contourLineStroke);
-        for (LatLonLine segment : contourLines.getIsolineSegments()) {
-            Point p1 = mv.getPoint(segment.getLatLon1());
-            Point p2 = mv.getPoint(segment.getLatLon2());
-            g.drawLine(p1.x, p1.y, p2.x, p2.y);
+        for (ContourLines.IsolineSegments isolineSegment : contourLines.getIsolineSegments()) {
+            for (LatLonLine segment : isolineSegment.getLineSegments()) {
+                Point p1 = mv.getPoint(segment.getLatLon1());
+                Point p2 = mv.getPoint(segment.getLatLon2());
+                g.drawLine(p1.x, p1.y, p2.x, p2.y);
+            }
         }
     }
 

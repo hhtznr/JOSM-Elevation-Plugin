@@ -2,7 +2,7 @@ package hhtznr.josm.plugins.elevation.data;
 
 /**
  * Listener interface to be implemented by classes with instances that should be
- * informed if elevation data from a requested SRTM tile is available.
+ * informed if elevation data from an SRTM tile grid is available.
  *
  * @author Harald Hetzner
  */

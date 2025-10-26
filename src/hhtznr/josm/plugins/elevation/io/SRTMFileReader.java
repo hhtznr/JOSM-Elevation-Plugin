@@ -1,5 +1,6 @@
 package hhtznr.josm.plugins.elevation.io;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -21,7 +22,7 @@ import hhtznr.josm.plugins.elevation.data.SRTMTile;
  * download page of NASA's Land Processes Distributed Active Archive Center (LP
  * DAAC)</a>.
  *
- * SRTM3 files are available ats
+ * SRTM3 files are available at
  * <a href="https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3.003/2000.02.11/">SRTM3
  * download page of NASA's Land Processes Distributed Active Archive Center (LP
  * DAAC)</a>.
@@ -43,10 +44,6 @@ public class SRTMFileReader {
 
     /**
      * Reads an SRTM tile from a ZIP-compressed SRTM file as obtained from NASA.
-     *
-     * The types SRTM1 and SRTM3 are automatically distinguished based on the file
-     * name. If both, an SRTM1 and SRTM3 file, are available for the same tile,
-     * SRTM1 takes precedence.
      *
      * <b>Format of an uncompressed SRTM file</b>
      *
@@ -89,39 +86,47 @@ public class SRTMFileReader {
         // per short).
         int bytesExpected = srtmTileLength * srtmTileLength * 2;
 
-        short[][] elevationData = null;
-
         InputStream inputStream = null;
         try {
-            inputStream = Compression.getUncompressedFileInputStream(srtmFile.toPath());
+            inputStream = new BufferedInputStream(Compression.getUncompressedFileInputStream(srtmFile.toPath()));
+
+            byte[] readBuffer = new byte[8192]; // 8 KB buffer (typical size)
+            int bytesRead;
+
             // https://www.baeldung.com/convert-input-stream-to-array-of-bytes
             ByteBuffer byteBuffer = ByteBuffer.allocate(bytesExpected);
-            while (inputStream.available() > 0) {
-                int b = inputStream.read();
-                // EOF
-                if (b == -1)
-                    break;
-                if (byteBuffer.position() >= bytesExpected)
-                    throw new IOException("SRTM file '" + srtmFile.getName()
-                            + "' contains more bytes than expected. Expected: " + bytesExpected + " bytes");
-                byteBuffer.put((byte) b);
+            while ((bytesRead = inputStream.read(readBuffer)) != -1) {
+                if (byteBuffer.remaining() < bytesRead)
+                    throw new IOException("SRTM file '" + srtmFile.getName() + "' contains more bytes than expected.");
+                byteBuffer.put(readBuffer, 0, bytesRead);
             }
-            int bytesRead = byteBuffer.position();
 
-            if (bytesRead != bytesExpected)
+            if (byteBuffer.position() != bytesExpected)
                 throw new IOException("Wrong number of bytes in SRTM file '" + srtmFile.getName() + "'. Expected: "
                         + bytesExpected + " bytes; read: " + bytesRead + " bytes");
 
             // Convert byte order
             byteBuffer.order(ByteOrder.BIG_ENDIAN);
 
-            // Array of arrays for storing the elevation values at the raster locations
-            // 1st dimension = column = latitude = y
-            // 2nd dimension = row = longitude = x
-            elevationData = new short[srtmTileLength][srtmTileLength];
+            // SRTM file:
+            // - Northernmost row = row 1
+            // - Elevation values in a row from west to east
+            // - Start of file: North-west corner
+            // - End of file: South-east corner
+            // Array storing the elevation values at the raster locations
+            // - Southernmost row = row 1
+            // - Elevation values in a row from west to east
+            // - Start of array: South-west corner
+            // - End of array: North-east corner
+            short[] elevationData = new short[srtmTileLength * srtmTileLength];
             for (int latIndex = 0; latIndex < srtmTileLength; latIndex++) {
+                int flippedLatIndex = srtmTileLength - 1 - latIndex;
                 for (int lonIndex = 0; lonIndex < srtmTileLength; lonIndex++)
-                    elevationData[latIndex][lonIndex] = byteBuffer.getShort((latIndex * srtmTileLength + lonIndex) * 2);
+                    // Flip the order of the rows to rearrange the data with southernmost row first
+                    // This will make read access more intuitive because latitude increases from
+                    // south to north
+                    elevationData[flippedLatIndex * srtmTileLength + lonIndex] = byteBuffer
+                            .getShort((latIndex * srtmTileLength + lonIndex) * Short.BYTES);
             }
             return new SRTMTile(srtmTileID, type, elevationData, SRTMTile.Status.VALID);
         } finally {

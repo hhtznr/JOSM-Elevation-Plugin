@@ -32,6 +32,20 @@ public class LatLonEle extends LatLon {
     }
 
     /**
+     * Creates a new LatLon coordinate with assigned elevation value. Takes the
+     * elevation value as a short and sets the internal elevation value to
+     * {@code NO_VALID_ELEVATION} if the provided elevation has the special value
+     * {@link SRTMTile#SRTM_DATA_VOID}.
+     *
+     * @param lat The latitude in degrees.
+     * @param lon The longitude in degrees.
+     * @param ele The elevation in meters.
+     */
+    public LatLonEle(double lat, double lon, short ele) {
+        this(lat, lon, ele == SRTMTile.SRTM_DATA_VOID ? NO_VALID_ELEVATION : ele);
+    }
+
+    /**
      * Creates a new LatLon coordinate with assigned elevation value.
      *
      * @param latLon The LatLon coordinate.
@@ -39,6 +53,19 @@ public class LatLonEle extends LatLon {
      */
     public LatLonEle(ILatLon latLon, double ele) {
         this(latLon.lat(), latLon.lon(), ele);
+    }
+
+    /**
+     * Creates a new LatLon coordinate with assigned elevation value. Takes the
+     * elevation value as a short and sets the internal elevation value to
+     * {@code NO_VALID_ELEVATION} if the provided elevation has the special value
+     * {@link SRTMTile#SRTM_DATA_VOID}.
+     *
+     * @param latLon The LatLon coordinate.
+     * @param ele    The elevation in meters.
+     */
+    public LatLonEle(ILatLon latLon, short ele) {
+        this(latLon, ele == SRTMTile.SRTM_DATA_VOID ? NO_VALID_ELEVATION : ele);
     }
 
     /**
@@ -58,5 +85,10 @@ public class LatLonEle extends LatLon {
      */
     public boolean hasValidEle() {
         return !Double.isNaN(ele);
+    }
+
+    @Override
+    public String toString() {
+        return "LatLonEle[lat=" + lat() + ",lon=" +lon() + ",ele=" +ele() + ']';
     }
 }

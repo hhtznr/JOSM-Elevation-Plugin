@@ -86,12 +86,24 @@ public class SRTMTile {
      * Value indicating that the data point length of the tile is not known due to
      * inappropriate information on the SRTM type.
      */
-    public static final int INVALID_TILE_LENGTH = -1;
+    public static final int INVALID_TILE_LENGTH = 0;
 
     /**
      * The geographic vertical and horizontal dimensions of an SRTM tile: 1°.
      */
     public static final double SRTM_TILE_ARC_DEGREES = 1.0;
+
+    /**
+     * The angular step in latitude and longitude in between two adjacent SRTM1 data
+     * points.
+     */
+    public static final double SRTM1_ANGULAR_STEP = SRTM_TILE_ARC_DEGREES / (SRTM1_TILE_LENGTH - 1);
+
+    /**
+     * The angular step in latitude and longitude in between two adjacent SRTM3 data
+     * points.
+     */
+    public static final double SRTM3_ANGULAR_STEP = SRTM_TILE_ARC_DEGREES / (SRTM3_TILE_LENGTH - 1);
 
     /**
      * Regular expression pattern for matching the components of an SRTM tile ID
@@ -103,7 +115,8 @@ public class SRTMTile {
     private final int idLat;
     private final int idLon;
     private Type type;
-    private short[][] elevationData;
+    private int tileLength;
+    private short[] elevationData;
     private Status status;
     private long accessTime;
 
@@ -275,16 +288,15 @@ public class SRTMTile {
      * @param id            The ID of the SRTM tile.
      * @param type          The type of the SRTM tile.
      * @param elevationData The elevation data points or {@code null} if no data is
-     *                      available. The 1st dimension of the array of arrays is
-     *                      the longitude ("x"), the 2nd dimension is the latitude
-     *                      ("y").
+     *                      available.
      * @param status        The current status of the SRTM tile.
      */
-    public SRTMTile(String id, Type type, short[][] elevationData, Status status) {
+    public SRTMTile(String id, Type type, short[] elevationData, Status status) {
         this.id = id;
         int[] latLon = parseLatLonFromTileID(id);
         idLat = latLon[0];
         idLon = latLon[1];
+        // Sets type, data and status as well as tileLength
         update(type, elevationData, status);
     }
 
@@ -311,7 +323,7 @@ public class SRTMTile {
      *
      * @return The longitude of the tile ID.
      */
-    public int getLonId() {
+    public int getLonID() {
         return idLon;
     }
 
@@ -339,8 +351,28 @@ public class SRTMTile {
      * @return The elevation data of this tile or {@code null} if the tile does not
      *         contain data.
      */
-    protected synchronized short[][] getElevationData() {
+    protected synchronized short[] getElevationData() {
         return elevationData;
+    }
+
+    /**
+     * Returns the elevation at the provided raster indices in latitude and
+     * longitude coordinate direction. The indices are translated into the
+     * corresponding index of the elevation value array provided by
+     * {@link hhtznr.josm.plugins.elevation.io.SRTMFileReader#readSRTMFile(File, Type)}
+     *
+     * @param latIndex The index in latitude direction. Range <code>0</code> to
+     *                 <code>tileLength - 1</code>.
+     * @param lonIndex The index in longitude direction. Range <code>0</code> to
+     *                 <code>tileLength - 1</code>.
+     * @return The elevation value stored at the indices or
+     *         <code>SRTM_DATA_VOID</code> if this SRTM tile does not hold data
+     *         (yet).
+     */
+    public short getElevation(int latIndex, int lonIndex) {
+        if (elevationData == null)
+            return SRTM_DATA_VOID;
+        return elevationData[latIndex * tileLength + lonIndex];
     }
 
     /**
@@ -348,16 +380,24 @@ public class SRTMTile {
      *
      * @param type          The type of the SRTM tile.
      * @param elevationData The elevation data points or {@code null} if no data is
-     *                      available. The 1st dimension of the array of arrays is
-     *                      the longitude ("x"), the 2nd dimension is the latitude
-     *                      ("y").
+     *                      available.
      * @param status        The current status of the SRTM tile.
      */
-    public synchronized void update(Type type, short[][] elevationData, Status status) {
+    public synchronized void update(Type type, short[] elevationData, Status status) {
         this.type = type;
         this.elevationData = elevationData;
         this.status = status;
         this.accessTime = System.currentTimeMillis();
+        switch (type) {
+        case SRTM1:
+            tileLength = SRTM1_TILE_LENGTH;
+            break;
+        case SRTM3:
+            tileLength = SRTM3_TILE_LENGTH;
+            break;
+        default:
+            tileLength = INVALID_TILE_LENGTH;
+        }
     }
 
     /**
@@ -378,7 +418,7 @@ public class SRTMTile {
         if (elevationData == null)
             return 0;
         // Data size in bytes
-        return elevationData.length * elevationData[0].length * 2;
+        return elevationData.length * Short.BYTES;
     }
 
     /**
@@ -389,20 +429,18 @@ public class SRTMTile {
      *         {@code INVALID_TILE_LENGTH} if the SRTM type is inappropriate.
      */
     public synchronized int getTileLength() {
-        if (type == Type.SRTM1)
-            return SRTM1_TILE_LENGTH;
-        if (type == Type.SRTM3)
-            return SRTM3_TILE_LENGTH;
-        return INVALID_TILE_LENGTH;
+        return tileLength;
     }
 
     /**
-     * Returns an interpolated elevation value ({@link Interpolation#BILINEAR
-     * Interplation.BILINEAR}}) or the elevation value of the tile raster location
-     * that is closest to the given location ({@link Interpolation#NONE
-     * Interplation.BILINEAR}}) along with the coordinate the corresponds to the
-     * interpolation coordinate or the raster coordinate where the elevation value
-     * was obtained.
+     * Returns an interpolated elevation value ({@link Interpolation#BILINEAR}) or
+     * the elevation value of the tile raster location that is closest to the given
+     * location ({@link Interpolation#NONE}) along with the coordinate the
+     * corresponds to the interpolation coordinate or the raster coordinate where
+     * the elevation value was obtained.
+     *
+     * see
+     * {@link hhtznr.josm.plugins.elevation.io.SRTMFileReader#readSRTMFile(File, Type)}
      *
      * <b>Data order of an uncompressed SRTM file</b>
      *
@@ -459,52 +497,61 @@ public class SRTMTile {
         if (status != Status.VALID || elevationData == null || tileLength == INVALID_TILE_LENGTH)
             return new LatLonEle(latLon, LatLonEle.NO_VALID_ELEVATION);
 
+        double idLat = (double) this.idLat;
+        double idLon = (double) this.idLon;
+
         // Determine the array index at which to retrieve the elevation at the given
         // location
         double lat = latLon.lat();
         double lon = latLon.lon();
         // Accept idLat <= lat < idLat + 1
         // For idLat + 1 next tile to the north is used
-        if (lat < idLat || lat > idLat + 1)
+        if (lat < idLat || lat > idLat + SRTM_TILE_ARC_DEGREES)
             throw new IllegalArgumentException("Given latitude " + lat
                     + " is not within latitude range of SRTM tile from " + idLat + " to " + (idLat + 1));
         // Accept idLon <= lon < idLon + 1
         // For idLon + 1 next tile to the east is used
-        if (lon < idLon || lon > idLon + 1)
+        if (lon < idLon || lon > idLon + SRTM_TILE_ARC_DEGREES)
             throw new IllegalArgumentException("Given longitude " + lon
                     + " is not within longitude range of SRTM tile from " + idLon + " to " + (idLon + 1));
 
-        double latEleIndexD = (1.0 - (lat - idLat)) * (tileLength - 1);
-        double lonEleIndexD = (lon - idLon) * (tileLength - 1);
+        int maxLatLonIndex = tileLength - 1;
+        double latEleIndexD = (lat - idLat) * maxLatLonIndex;
+        double lonEleIndexD = (lon - idLon) * maxLatLonIndex;
         int latEleIndex = (int) Math.round(latEleIndexD);
         int lonEleIndex = (int) Math.round(lonEleIndexD);
 
         // Compute the tile raster coordinates of the elevation value
         if (interpolation == Interpolation.NONE) {
-            short srtmEle = elevationData[latEleIndex][lonEleIndex];
-            double ele;
-            if (srtmEle == SRTM_DATA_VOID)
-                ele = LatLonEle.NO_VALID_ELEVATION;
-            else
-                ele = srtmEle;
-            return new LatLonEle(getRasterLatLon(latEleIndex, lonEleIndex), ele);
+            lat = getRasterLat(latEleIndex);
+            lon = getRasterLon(lonEleIndex);
+            short ele = getElevation(latEleIndex, lonEleIndex);
+            return new LatLonEle(lat, lon, ele);
         }
 
-        // Compute 4 indices of the raster cell the given coordinate is located in
+        // Compute 4 indices of the raster cell, the given coordinate is located in
         int indexSouth;
         int indexNorth;
         int indexWest;
         int indexEast;
 
-        if (latEleIndex < latEleIndexD) {
-            indexNorth = latEleIndex;
-            indexSouth = latEleIndex + 1;
-        } else {
-            indexNorth = latEleIndex - 1;
+        // The case where the coordinate point latitude corresponds to the smallest
+        // latitude covered by the tile requires special consideration, because
+        // otherwise we would decide for the case, where interpolation would take place
+        // out of bounds of the tile
+        if (lat == idLat || latEleIndex < latEleIndexD) {
             indexSouth = latEleIndex;
+            indexNorth = latEleIndex + 1;
+        } else {
+            indexSouth = latEleIndex - 1;
+            indexNorth = latEleIndex;
         }
 
-        if (lonEleIndex <= lonEleIndexD) {
+        // The case where the coordinate point longitude corresponds to the smallest
+        // longitude covered by the tile requires special consideration, because
+        // otherwise we would decide for the case, where interpolation would take place
+        // out of bounds of the tile
+        if (lon == idLon || lonEleIndex < lonEleIndexD) {
             indexWest = lonEleIndex;
             indexEast = lonEleIndex + 1;
         } else {
@@ -512,57 +559,37 @@ public class SRTMTile {
             indexEast = lonEleIndex;
         }
 
-        LatLonEle northWest = new LatLonEle(getRasterLatLon(indexNorth, indexWest),
-                elevationData[indexNorth][indexWest]);
-        LatLonEle northEast = new LatLonEle(getRasterLatLon(indexNorth, indexEast),
-                elevationData[indexNorth][indexEast]);
-        LatLonEle southWest = new LatLonEle(getRasterLatLon(indexSouth, indexWest),
-                elevationData[indexSouth][indexWest]);
-        LatLonEle southEast = new LatLonEle(getRasterLatLon(indexSouth, indexEast),
-                elevationData[indexSouth][indexEast]);
+        LatLonEle southWest = new LatLonEle(getRasterLat(indexSouth), getRasterLon(indexWest),
+                getElevation(indexSouth, indexWest));
+        LatLonEle northWest = new LatLonEle(getRasterLat(indexNorth), getRasterLon(indexWest),
+                getElevation(indexNorth, indexWest));
+        LatLonEle southEast = new LatLonEle(getRasterLat(indexSouth), getRasterLon(indexEast),
+                getElevation(indexSouth, indexEast));
+        LatLonEle northEast = new LatLonEle(getRasterLat(indexNorth), getRasterLon(indexEast),
+                getElevation(indexNorth, indexEast));
 
         double ele = BiLinearInterpolation.interpolate(southWest, northWest, southEast, northEast, latLon);
         return new LatLonEle(lat, lon, ele);
     }
 
     /**
-     * Returns all elevation values from the tile raster which are within the given
-     * indices. The values at the raster location of the indices are included.
+     * Computes the latitude of a tile raster location specified by its index.
      *
-     * @param indexLatSouth The index of the southern most elevation value.
-     *                      Constraint: {@code indexLatSouth >= indexLatNorth}.
-     * @param indexLonWest  The index of the western most elevation value.
-     * @param indexLatNorth The index of the northern most elevation value.
-     * @param indexLonEast  The index of the eastern most elevation value.
-     *                      Constraint: {@code indexLonEast >= indexLonWest}.
-     * @return A 2D array "{@code short[latitude][longitude}}" containing the
-     *         elevation values within the specified index bounds.
+     * @param latIndex The index in latitude dimension.
+     * @return The latitude that corresponds with the given raster index.
      */
-    protected synchronized short[][] getEleValues(int indexLatSouth, int indexLonWest, int indexLatNorth,
-            int indexLonEast) {
-        if (indexLonWest > indexLonEast)
-            throw new IllegalArgumentException("Index of western longitude (" + indexLonWest
-                    + ") may not be greater than index of eastern longitude (" + indexLonEast + ")");
-        if (indexLatNorth > indexLatSouth)
-            throw new IllegalArgumentException("Index of northern latitude (" + indexLatNorth
-                    + ") may not be greater than index of southern latitude value (" + indexLatSouth + ")");
-        // Update the access time
-        accessTime = System.currentTimeMillis();
-        int tileLength = getTileLength();
-        if (status != Status.VALID || elevationData == null || tileLength == INVALID_TILE_LENGTH)
-            return null;
+    public double getRasterLat(int latIndex) {
+        return idLat + ((double) latIndex / (double) (tileLength - 1)); // * SRTM_TILE_ARC_DEGREES
+    }
 
-        short[][] elevationData = new short[indexLatSouth - indexLatNorth + 1][indexLonEast - indexLonWest + 1];
-        for (int indexLat = indexLatNorth; indexLat <= indexLatSouth; indexLat++) {
-            short[] src = this.elevationData[indexLat];
-            int srcPos = indexLonWest;
-            // The corresponding row in the array to be filled
-            short[] dest = elevationData[indexLat - indexLatNorth];
-            int destPos = 0;
-            int length = indexLonEast - indexLonWest + 1;
-            System.arraycopy(src, srcPos, dest, destPos, length);
-        }
-        return elevationData;
+    /**
+     * Computes the longitude of a tile raster location specified by its index.
+     *
+     * @param lonIndex The index in longitude dimension.
+     * @return The longitude that corresponds with the given raster index.
+     */
+    public double getRasterLon(int lonIndex) {
+        return idLon + ((double) lonIndex / (double) (tileLength - 1)); // * SRTM_TILE_ARC_DEGREES
     }
 
     /**
@@ -574,14 +601,7 @@ public class SRTMTile {
      *         raster indices.
      */
     public LatLon getRasterLatLon(int latIndex, int lonIndex) {
-        int tileLength = getTileLength();
-        // Compute the tile raster coordinates of the elevation value
-        // Signed latitude increases in opposite direction of data order
-        double latEleRaster = idLat + (1.0 - Double.valueOf(latIndex) / (tileLength - 1));
-        // Signed longitude increases in same direction as data order
-        double lonEleRaster = idLon + Double.valueOf(lonIndex) / (tileLength - 1);
-
-        return new LatLon(latEleRaster, lonEleRaster);
+        return new LatLon(getRasterLat(latIndex), getRasterLon(lonIndex));
     }
 
     /**
@@ -595,7 +615,7 @@ public class SRTMTile {
      *         is stored at array index {@code 0}. The value's index in longitude
      *         dimension is stored at array index {@code 1}.
      */
-    protected int[] getIndices(ILatLon latLon) {
+    protected int[] getClosestIndices(ILatLon latLon) {
         // Determine the array index at which to retrieve the elevation at the given
         // location
         double lat = latLon.lat();
@@ -611,12 +631,12 @@ public class SRTMTile {
             throw new IllegalArgumentException("Given longitude " + lon
                     + " is not within longitude range of SRTM tile from " + idLon + " to " + (idLon + 1));
 
-        int tileLength = getTileLength();
         // Map lat and lon decimal parts = [0, 1] to lat and lon indices = [0,
         // tileLength - 1]
-        int latEleIndex = (int) Math.round((1.0 - (lat - idLat)) * (tileLength - 1));
-        int lonEleIndex = (int) Math.round((lon - idLon) * (tileLength - 1));
-        return new int[] { latEleIndex, lonEleIndex };
+        int maxLatLonIndex = tileLength - 1;
+        int latIndex = (int) Math.round((lat - idLat) * maxLatLonIndex);
+        int lonIndex = (int) Math.round((lon - idLon) * maxLatLonIndex);
+        return new int[] { latIndex, lonIndex };
     }
 
     /**

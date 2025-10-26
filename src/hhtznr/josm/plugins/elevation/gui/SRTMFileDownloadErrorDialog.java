@@ -34,7 +34,7 @@ public class SRTMFileDownloadErrorDialog implements SRTMFileDownloadListener {
     }
 
     @Override
-    public void srtmFileDownloadStarted(String srtmTileID) {
+    public void srtmFileDownloadStarted(String srtmTileID, SRTMTile.Type type) {
     }
 
     @Override
@@ -42,12 +42,12 @@ public class SRTMFileDownloadErrorDialog implements SRTMFileDownloadListener {
     }
 
     @Override
-    public void srtmFileDownloadFailed(String srtmTileID, Exception exception) {
+    public void srtmFileDownloadFailed(String srtmTileID, SRTMTile.Type type, Exception exception) {
         if (ignoreErrors)
             return;
 
         String title = "Error downloading SRTM tile " + srtmTileID;
-        String message = exception.getMessage();;
+        String message = exception.getMessage();
         if (exception instanceof SRTMFileDownloader.HTTPException) {
             String advice = ((SRTMFileDownloader.HTTPException) exception).getAdvice();
             if (advice != null)

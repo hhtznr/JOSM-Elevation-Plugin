@@ -69,9 +69,9 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
      * @param hillshadeAzimuth         The azimuth (degrees) of the illumination
      *                                 source in hillshade computation.
      * @param lowerCutoffElevation     The elevation value below which elevation
-     *                                 shall not be visualized.
-     * @param upperrCutoffElevation    The elevation value above which elevation
-     *                                 shall not be visualized.
+     *                                 should not be visualized.
+     * @param upperCutoffElevation     The elevation value above which elevation
+     *                                 should not be visualized.
      */
     public ElevationLayer(ElevationDataProvider elevationDataProvider, double renderingLimitArcDegrees,
             int contourLineIsostep, float contourLineStrokeWidth, Color contourLineColor, int hillshadeAltitude,
@@ -246,18 +246,42 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         }
     }
 
+    /**
+     * Returns the elevation below which elevation data should not be visualized.
+     *
+     * @return The elevation value below which elevation data should not be
+     *         visualized.
+     */
     public int getLowerCutoffElevation() {
         return lowerCutoffElevation;
     }
 
+    /**
+     * Sets the elevation below which elevation data should not be visualized.
+     *
+     * @param value The elevation value below which elevation data should not be
+     *              visualized.
+     */
     public void setLowerCutoffElevation(int value) {
         lowerCutoffElevation = value;
     }
 
+    /**
+     * Returns the elevation above which elevation data should not be visualized.
+     *
+     * @return The elevation value above which elevation data should not be
+     *         visualized.
+     */
     public int getUpperCutoffElevation() {
         return upperCutoffElevation;
     }
 
+    /**
+     * Sets the elevation above which elevation data should not be visualized.
+     *
+     * @param value The elevation value above which elevation data should not be
+     *              visualized.
+     */
     public void setUpperCutoffElevation(int value) {
         upperCutoffElevation = value;
     }

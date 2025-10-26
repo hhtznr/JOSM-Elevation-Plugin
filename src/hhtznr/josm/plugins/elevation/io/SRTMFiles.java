@@ -1,5 +1,6 @@
 package hhtznr.josm.plugins.elevation.io;
 
+import java.io.File;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -25,11 +26,31 @@ public class SRTMFiles {
     public static final String SRTM3_ZIP_FILE_ID = "SRTMGL3";
 
     /**
+     * Extension of an uncompressed SRTM file.
+     */
+    public static final String SRTM_FILE_EXTENSION = "hgt";
+
+    /**
      * Regular expression pattern for matching the tile ID of in an SRTM file name.
      * The ID, e.g. N37W105, refers to the coordinate of its south west (lower left)
      * corner.
      */
     public static final Pattern SRTM_FILE_TILE_ID_PATTERN = Pattern.compile("^(([NS])(\\d{2})([EW])(\\d{3})).+");
+
+    /**
+     * Returns the extension of a file.
+     *
+     * @param file The file from which to obtain the extension.
+     * @return The extension of the file without leading dot.
+     */
+    public static String getFileExtension(File file) {
+        String name = file.getName();
+        int lastIndexOf = name.lastIndexOf(".");
+        if (lastIndexOf == -1) {
+            return ""; // empty extension
+        }
+        return name.substring(lastIndexOf + 1);
+    }
 
     /**
      * Extracts the SRTM tile ID from the given SRTM file name.

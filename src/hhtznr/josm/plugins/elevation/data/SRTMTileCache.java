@@ -3,6 +3,7 @@ package hhtznr.josm.plugins.elevation.data;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 
 import org.openstreetmap.josm.tools.Logging;
 
@@ -28,6 +29,8 @@ public class SRTMTileCache {
      * Maximum size of the cache in bytes.
      */
     private int cacheSizeLimit;
+
+    private final LinkedList<SRTMTileCacheListener> listeners = new LinkedList<>();
 
     /**
      * Creates a new cache for SRTM tiles.
@@ -82,7 +85,7 @@ public class SRTMTileCache {
      * @return The new SRTM tile that was put into the cache or the existing SRTM
      *         tile that was updated, never {@code null}.
      */
-    public synchronized SRTMTile putOrUpdateSRTMTile(String id, SRTMTile.Type type, short[][] elevationData,
+    public synchronized SRTMTile putOrUpdateSRTMTile(String id, SRTMTile.Type type, short[] elevationData,
             SRTMTile.Status status) {
         if (type == null)
             type = SRTMTile.Type.UNKNOWN;
@@ -101,6 +104,12 @@ public class SRTMTileCache {
             Logging.info("Elevation: Updated cached SRTM tile " + id + " with type '" + type.toString() + "', status '"
                     + srtmTile.getStatus().toString() + "' and size " + getSizeString(srtmTile.getDataSize())
                     + "; cache size: " + getSizeString(cacheSize));
+        }
+        if (status == SRTMTile.Status.VALID) {
+            synchronized (listeners) {
+                for (SRTMTileCacheListener listener : listeners)
+                    listener.validSRTMTileCached(srtmTile);
+            }
         }
         if (cacheSize > cacheSizeLimit)
             cleanCache();
@@ -166,5 +175,30 @@ public class SRTMTileCache {
 
     private static String getSizeString(int size) {
         return "" + size + " bytes (" + size / 1024 / 1024 + " MiB)";
+    }
+
+    /**
+     * Adds an SRTM tile cache listener to this SRTM tile cache. All
+     * listeners are informed if elevation data for a particular SRTM tile is
+     * available.
+     *
+     * @param listener The listener to add.
+     */
+    public void addSRTMTileCacheListener(SRTMTileCacheListener listener) {
+        synchronized (listeners) {
+            if (!listeners.contains(listener))
+                listeners.add(listener);
+        }
+    }
+
+    /**
+     * Removes a listener from this SRTM tile cache.
+     *
+     * @param listener The listener to be removed.
+     */
+    public void removeSRTMTileCacheListener(SRTMTileCacheListener listener) {
+        synchronized (listeners) {
+            listeners.remove(listener);
+        }
     }
 }

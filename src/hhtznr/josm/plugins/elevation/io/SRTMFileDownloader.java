@@ -185,7 +185,8 @@ public class SRTMFileDownloader {
     }
 
     private File download(String srtmTileID, ElevationDataSource elevationDataSource) {
-        String srtmFileName = SRTMFiles.getEarthdataSRTMFileName(srtmTileID, elevationDataSource.getSRTMTileType());
+        SRTMTile.Type srtmType = elevationDataSource.getSRTMTileType();
+        String srtmFileName = SRTMFiles.getEarthdataSRTMFileName(srtmTileID, srtmType);
 
         if (basicAuthHeader != null)
             Logging.info("Elevation: Trying to download SRTM file " + srtmFileName + " using password authentication.");
@@ -194,14 +195,14 @@ public class SRTMFileDownloader {
                     "Elevation: Tyring to download SRTM file " + srtmFileName + " using authorization bearer token.");
         else
             Logging.info("Elevation: Tyring to download SRTM file " + srtmFileName + " without authentication.");
-        downloadStarted(srtmTileID);
+        downloadStarted(srtmTileID, srtmType);
         File srtmFile = null;
 
         URL url = null;
         try {
             url = new URL(elevationDataSource.getDownloadBaseURL(), srtmFileName);
         } catch (MalformedURLException e) {
-            downloadFailed(srtmTileID, e);
+            downloadFailed(srtmTileID, srtmType, e);
             return null;
         }
         HttpClient httpClient = HttpClient.create(url);
@@ -211,7 +212,7 @@ public class SRTMFileDownloader {
                 oAuthToken.sign(httpClient);
             } catch (OAuthException e) {
                 Logging.error("Elevation: " + e.toString());
-                downloadFailed(srtmTileID, e);
+                downloadFailed(srtmTileID, srtmType, e);
                 return null;
             }
         }
@@ -246,7 +247,7 @@ public class SRTMFileDownloader {
                         + httpClient.getResponse().getResponseMessage());
                 if (advice != null)
                     Logging.info("Elevation: " + advice);
-                downloadFailed(srtmTileID, new HTTPException(url, httpClient.getResponse(), advice));
+                downloadFailed(srtmTileID, srtmType, new HTTPException(url, httpClient.getResponse(), advice));
                 return null;
             }
             InputStream in = httpClient.getResponse().getContent();
@@ -256,7 +257,7 @@ public class SRTMFileDownloader {
         } catch (IOException e) {
             Logging.error("Elevation: Downloading SRTM file " + srtmFileName + " failed due to I/O Exception: "
                     + e.toString());
-            downloadFailed(srtmTileID, e);
+            downloadFailed(srtmTileID, srtmType, e);
             return null;
         }
 
@@ -266,7 +267,7 @@ public class SRTMFileDownloader {
             String errorMessage = "Elevation: Downloaded compressed SRTM file " + srtmFileName
                     + " did not contain a file with the expected SRTM tile ID!";
             Logging.error(errorMessage);
-            downloadFailed(srtmTileID, new IOException(errorMessage));
+            downloadFailed(srtmTileID, srtmType, new IOException(errorMessage));
             return null;
         }
 
@@ -276,17 +277,17 @@ public class SRTMFileDownloader {
         return srtmFile;
     }
 
-    private void downloadStarted(String srtmTileID) {
+    private void downloadStarted(String srtmTileID, SRTMTile.Type type) {
         synchronized (downloadListeners) {
             for (SRTMFileDownloadListener listener : downloadListeners)
-                listener.srtmFileDownloadStarted(srtmTileID);
+                listener.srtmFileDownloadStarted(srtmTileID, type);
         }
     }
 
-    private void downloadFailed(String srtmTileID, Exception exception) {
+    private void downloadFailed(String srtmTileID, SRTMTile.Type type, Exception exception) {
         synchronized (downloadListeners) {
             for (SRTMFileDownloadListener listener : downloadListeners)
-                listener.srtmFileDownloadFailed(srtmTileID, exception);
+                listener.srtmFileDownloadFailed(srtmTileID, type, exception);
         }
     }
 

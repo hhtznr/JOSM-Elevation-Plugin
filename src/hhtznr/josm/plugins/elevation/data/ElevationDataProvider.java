@@ -34,7 +34,7 @@ import hhtznr.josm.plugins.elevation.io.SRTMFiles;
  *
  * @author Harald Hetzner
  */
-public class ElevationDataProvider implements SRTMFileDownloadListener {
+public class ElevationDataProvider implements SRTMFileDownloadListener, SRTMTileCacheListener {
 
     /**
      * This elevation data provider's in-memory cache where SRTM tiles read from
@@ -45,7 +45,7 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
     private SRTMTile previousTile = null;
 
     private final Object tileGridLock = new Object();
-    private SRTMTileGrid previousTileGrid = null;
+    private SRTMTileGrid srtmTileGrid = null;
 
     private SRTMFileReader srtmFileReader;
     private SRTMFileDownloader srtmFileDownloader;
@@ -79,11 +79,12 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
      * @param autoDownloadEnabled  If {@code true} automatic downloading of missing
      *                             SRTM tiles will be attempted.
      */
-    private ElevationDataProvider(List<ElevationDataSource> elevationDataSources, int ramCacheMaxSize,
+    public ElevationDataProvider(List<ElevationDataSource> elevationDataSources, int ramCacheMaxSize,
             SRTMTile.Type preferredSRTMType, SRTMTile.Interpolation eleInterpolation, boolean autoDownloadEnabled) {
         this.elevationDataSources = elevationDataSources;
         srtmFileReader = new SRTMFileReader();
         tileCache = new SRTMTileCache(ramCacheMaxSize);
+        tileCache.addSRTMTileCacheListener(this);
         setPreferredSRTMType(preferredSRTMType);
         this.eleInterpolation = eleInterpolation;
         setAutoDownloadEnabled(autoDownloadEnabled);
@@ -97,7 +98,6 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
     public List<ElevationDataSource> getElevationDataSources() {
         return elevationDataSources;
     }
-
 
     /**
      * Returns the SRTM type that is preferred by this SRTM file provider.
@@ -157,34 +157,20 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
     }
 
     /**
-     * Returns a list of the coordinate points from the elevation raster, which have
-     * the lowest elevation within the given map bounds.
+     * Returns a list with two lists of the coordinate points from the elevation
+     * raster, which have the lowest and highest elevation within the given map
+     * bounds, respectively.
      *
      * @param bounds The bounds in latitude-longitude coordinate space.
-     * @return A list of coordinate points with the lowest elevation within the
-     *         given bounds.
+     * @return A list of two lists providing the coordinate points with the lowest
+     *         and highest elevation within the given bounds. The first list holds
+     *         the lowest points. The second list holds the highest points.
      */
-    public List<LatLonEle> getLowestPoints(Bounds bounds) {
+    public List<List<LatLonEle>> getLowestAndHighestPoints(Bounds bounds) {
         synchronized (tileGridLock) {
-            if (previousTileGrid == null || !previousTileGrid.covers(bounds))
-                previousTileGrid = new SRTMTileGrid(this, bounds);
-            return previousTileGrid.getLowestPoints(bounds);
-        }
-    }
-
-    /**
-     * Returns a list of the coordinate points from the elevation raster, which have
-     * the highest elevation within the given map bounds.
-     *
-     * @param bounds The bounds in latitude-longitude coordinate space.
-     * @return A list of coordinate points with the highest elevation within the
-     *         given bounds.
-     */
-    public List<LatLonEle> getHighestPoints(Bounds bounds) {
-        synchronized (tileGridLock) {
-            if (previousTileGrid == null || !previousTileGrid.covers(bounds))
-                previousTileGrid = new SRTMTileGrid(this, bounds);
-            return previousTileGrid.getHighestPoints(bounds);
+            if (srtmTileGrid == null || !srtmTileGrid.covers(bounds))
+                srtmTileGrid = new SRTMTileGrid(this, bounds);
+            return srtmTileGrid.getLowestAndHighestPoints(bounds);
         }
     }
 
@@ -200,11 +186,9 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
      */
     public ElevationRaster getElevationRaster(Bounds bounds) {
         synchronized (tileGridLock) {
-            if (previousTileGrid == null || !previousTileGrid.covers(bounds)
-                    || previousTileGrid.getNominalBounds().getWidth() > 1.5 * bounds.getWidth()
-                    || previousTileGrid.getNominalBounds().getHeight() > 1.5 * bounds.getHeight())
-                previousTileGrid = new SRTMTileGrid(this, bounds);
-            return previousTileGrid.getElevationRaster();
+            if (srtmTileGrid == null || !srtmTileGrid.covers(bounds))
+                srtmTileGrid = new SRTMTileGrid(this, bounds);
+            return srtmTileGrid.getElevationRaster(bounds);
         }
     }
 
@@ -214,13 +198,13 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
      * return {@code null}, the contour lines will always cover the bounds. However,
      * the method may return contour lines for a larger area as needed.
      *
-     * @param bounds                The bounds in latitude-longitude coordinate
-     *                              space.
-     * @param isostep               Step between adjacent elevation contour lines.
-     * @param lowerCutoffElevation  The elevation value below which contour lines
-     *                              will not be drawn.
-     * @param upperrCutoffElevation The elevation value above which contour lines
-     *                              will not be drawn.
+     * @param bounds               The bounds in latitude-longitude coordinate
+     *                             space.
+     * @param isostep              Step between adjacent elevation contour lines.
+     * @param lowerCutoffElevation The elevation value below which contour lines
+     *                             will not be drawn.
+     * @param upperCutoffElevation The elevation value above which contour lines
+     *                             will not be drawn.
      * @return A list of isoline segments defining elevation contour lines within
      *         the bounds or {@code null} if no suitable elevation data is cached to
      *         compute the contour lines.
@@ -228,11 +212,13 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
     public ContourLines getContourLines(Bounds bounds, int isostep, int lowerCutoffElevation,
             int upperCutoffElevation) {
         synchronized (tileGridLock) {
-            if (previousTileGrid == null || !previousTileGrid.covers(bounds)
-                    || previousTileGrid.getNominalBounds().getWidth() > 1.5 * bounds.getWidth()
-                    || previousTileGrid.getNominalBounds().getHeight() > 1.5 * bounds.getHeight())
-                previousTileGrid = new SRTMTileGrid(this, bounds);
-            return previousTileGrid.getContourLines(isostep, lowerCutoffElevation, upperCutoffElevation);
+            if (srtmTileGrid == null)
+                srtmTileGrid = new SRTMTileGrid(this, bounds);
+            Bounds renderingBounds = srtmTileGrid.getRenderingBoundsScaledByRasterStep(bounds,
+                    ContourLines.BOUNDS_SCALE_RASTER_STEP);
+            if (!srtmTileGrid.covers(renderingBounds))
+                srtmTileGrid = new SRTMTileGrid(this, renderingBounds);
+            return srtmTileGrid.getContourLines(renderingBounds, isostep, lowerCutoffElevation, upperCutoffElevation);
         }
     }
 
@@ -259,11 +245,13 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
     public HillshadeImageTile getHillshadeImageTile(Bounds bounds, double altitudeDeg, double azimuthDeg,
             boolean withPerimeter) {
         synchronized (tileGridLock) {
-            if (previousTileGrid == null || !previousTileGrid.covers(bounds)
-                    || previousTileGrid.getNominalBounds().getWidth() > 1.5 * bounds.getWidth()
-                    || previousTileGrid.getNominalBounds().getHeight() > 1.5 * bounds.getHeight())
-                previousTileGrid = new SRTMTileGrid(this, bounds);
-            return previousTileGrid.getHillshadeImage(altitudeDeg, azimuthDeg, withPerimeter);
+            if (srtmTileGrid == null)
+                srtmTileGrid = new SRTMTileGrid(this, bounds);
+            Bounds renderingBounds = srtmTileGrid.getRenderingBoundsScaledByRasterStep(bounds,
+                    HillshadeImageTile.BOUNDS_SCALE_RASTER_STEP);
+            if (!srtmTileGrid.covers(renderingBounds))
+                srtmTileGrid = new SRTMTileGrid(this, renderingBounds);
+            return srtmTileGrid.getHillshadeImage(renderingBounds, altitudeDeg, azimuthDeg, withPerimeter);
         }
     }
 
@@ -288,10 +276,6 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
         int intLatNorth = (int) Math.floor(northEast.lat());
         int intLonWest = (int) Math.floor(southWest.lon());
         int intLonEast = (int) Math.floor(northEast.lon());
-        // Logging.info("Elevation: Trigger caching of SRTM tiles covering current map
-        // bounds from S = " + intLatSouth
-        // + "°, E = " + intLonEast + "° to N = " + intLatNorth + "°, W = " + intLonWest
-        // + "°");
 
         // Not across 180th meridian
         if (intLonWest <= intLonEast) {
@@ -351,6 +335,14 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
         }
     }
 
+    public void cacheSRTMTiles(Bounds bounds) {
+        int intLatSouth = (int) bounds.getMinLat();
+        int intLatNorth = (int) bounds.getMaxLat();
+        int intLonWest = (int) bounds.getMinLon();
+        int intLonEast = (int) bounds.getMaxLon();
+        cacheSRTMTiles(intLatSouth, intLonWest, intLatNorth, intLonEast);
+    }
+
     /**
      * Returns an SRTM tile for the given SRTM tile ID.
      *
@@ -371,13 +363,14 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
             // Data previously not in cache
             if (srtmTile == null) {
                 for (ElevationDataSource elevationDataSource : elevationDataSources) {
+                    SRTMTile.Type srtmTileType = elevationDataSource.getSRTMTileType();
                     File srtmFile = getLocalSRTMFile(srtmTileID, elevationDataSource);
                     // If an SRTM file with the data exists on disk, read it in
                     if (srtmFile != null) {
                         Logging.info("Elevation: Caching data of SRTM tile " + srtmTileID + " from file "
                                 + srtmFile.getAbsolutePath());
                         // Read the SRTM file as task in a separate thread
-                        srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, null, null,
+                        srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, srtmTileType, null,
                                 SRTMTile.Status.READING_SCHEDULED);
                         try {
                             getSRTMTile(srtmFile, elevationDataSource.getSRTMTileType());
@@ -392,7 +385,7 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
                     // file
                     else if (autoDownloadEnabled && elevationDataSource.canAutoDownload()) {
                         if (elevationDataSource.canAutoDownload()) {
-                            srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, null, null,
+                            srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, srtmTileType, null,
                                     SRTMTile.Status.DOWNLOAD_SCHEDULED);
                             try {
                                 srtmFileDownloader.downloadSRTMFile(srtmTileID, elevationDataSource);
@@ -400,7 +393,7 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
                             } catch (RejectedExecutionException e) {
                                 Logging.info("Elevation: Execution of download task for SRTM tile " + srtmTileID
                                         + " rejected: " + e.toString());
-                                srtmFileDownloadFailed(srtmTileID, e);
+                                srtmFileDownloadFailed(srtmTileID, srtmTileType, e);
                             }
                         }
 
@@ -456,20 +449,11 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
     private Future<SRTMTile> getSRTMTile(File srtmFile, SRTMTile.Type type) throws RejectedExecutionException {
         Callable<SRTMTile> fileReadTask = () -> {
             String srtmTileID = SRTMFiles.getSRTMTileIDFromFileName(srtmFile.getName());
-            tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.READING);
+            tileCache.putOrUpdateSRTMTile(srtmTileID, type, null, SRTMTile.Status.READING);
 
             SRTMTile srtmTile = null;
             try {
                 srtmTile = tileCache.putOrUpdateSRTMTile(srtmFileReader.readSRTMFile(srtmFile, type));
-                // Check if all SRTM tiles of most recently requested tile grid are cached now
-                // If so, inform listeners
-                SRTMTileGrid tileGrid = previousTileGrid;
-                if (tileGrid != null && tileGrid.checkAllRequiredSRTMTilesCached()) {
-                    synchronized (listeners) {
-                        for (ElevationDataProviderListener listener : listeners)
-                            listener.elevationDataAvailable(tileGrid);
-                    }
-                }
                 return srtmTile;
             } catch (IOException e) {
                 Logging.error("Elevation: " + e.toString());
@@ -553,8 +537,8 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
     }
 
     @Override
-    public void srtmFileDownloadStarted(String srtmTileID) {
-        tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.DOWNLOADING);
+    public void srtmFileDownloadStarted(String srtmTileID, SRTMTile.Type type) {
+        tileCache.putOrUpdateSRTMTile(srtmTileID, type, null, SRTMTile.Status.DOWNLOADING);
     }
 
     @Override
@@ -571,7 +555,20 @@ public class ElevationDataProvider implements SRTMFileDownloadListener {
     }
 
     @Override
-    public void srtmFileDownloadFailed(String srtmTileID, Exception exception) {
-        tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.DOWNLOAD_FAILED);
+    public void srtmFileDownloadFailed(String srtmTileID, SRTMTile.Type type, Exception exception) {
+        tileCache.putOrUpdateSRTMTile(srtmTileID, type, null, SRTMTile.Status.DOWNLOAD_FAILED);
+    }
+
+    @Override
+    public void validSRTMTileCached(SRTMTile tile) {
+        // Check if all SRTM tiles of most recently requested tile grid are cached now
+        // If so, inform listeners
+        SRTMTileGrid tileGrid = srtmTileGrid;
+        if (tileGrid != null && tileGrid.areAllSRTMTilesCached()) {
+            synchronized (listeners) {
+                for (ElevationDataProviderListener listener : listeners)
+                    listener.elevationDataAvailable(tileGrid);
+            }
+        }
     }
 }

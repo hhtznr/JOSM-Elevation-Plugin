@@ -47,6 +47,8 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
     private int contourLineIsostep;
     private BasicStroke contourLineStroke;
     private Color contourLineColor;
+    private int lowerCutoffElevation;
+    private int upperCutoffElevation;
     ContourLines contourLines = null;
 
     private int hillshadeAltitude;
@@ -55,10 +57,11 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
     BufferedImage hillshadeImage = null;
     private LatLon hillshadeNorthWest = null;
 
-    private int lowerCutoffElevation;
-    private int upperCutoffElevation;
+    private ElevationRaster elevationRaster = null;
 
     private Bounds previousClipBounds = null;
+
+    private List<List<LatLonEle>> lowestAndHighestPoints = null;
 
     /**
      * Creates a new elevation draw helper.
@@ -101,6 +104,7 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
                 contourLines = null;
                 hillshadeTile = null;
                 hillshadeImage = null;
+                elevationRaster = null;
             }
 
             if (layer.isHillshadeEnabled())
@@ -135,9 +139,9 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
                 hillshadeTile = layer.getElevationDataProvider().getHillshadeImageTile(scaledBounds, hillshadeAltitude,
                         hillshadeAzimuth, false);
             }
-            if (hillshadeTile == null)
+            if (hillshadeTile == null || hillshadeTile.getUnscaledImage() == null)
                 return;
-            Bounds actualHillshadeBounds = hillshadeTile.getActualBounds();
+            Bounds actualHillshadeBounds = hillshadeTile.renderingBounds;
             hillshadeNorthWest = new LatLon(actualHillshadeBounds.getMaxLat(), actualHillshadeBounds.getMinLon());
             LatLon hillshadeSouthEast = new LatLon(actualHillshadeBounds.getMinLat(),
                     actualHillshadeBounds.getMaxLon());
@@ -156,9 +160,11 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
                 return;
             // Scale the hillshade image to screen dimensions
             hillshadeImage = hillshadeTile.getScaledImage(screenWidth, screenHeight);
-        }
-        if (upperLeft == null)
+            if (hillshadeImage == null)
+                return;
+        } else {
             upperLeft = mv.getPoint(hillshadeNorthWest);
+        }
         g.drawImage(hillshadeImage, upperLeft.x, upperLeft.y, hillshadeImage.getWidth(), hillshadeImage.getHeight(),
                 null);
     }
@@ -177,9 +183,9 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
             Bounds scaledBounds = getScaledBounds(bounds, BOUNDS_SCALE_FACTOR);
             contourLines = layer.getElevationDataProvider().getContourLines(scaledBounds, contourLineIsostep,
                     lowerCutoffElevation, upperCutoffElevation);
+            if (contourLines == null)
+                return;
         }
-        if (contourLines == null)
-            return;
 
         g.setColor(contourLineColor);
         g.setStroke(contourLineStroke);
@@ -195,9 +201,12 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
     }
 
     private void drawElevationRaster(Graphics2D g, MapView mv, Bounds bounds) {
-        ElevationRaster elevationRaster = layer.getElevationDataProvider().getElevationRaster(bounds);
-        if (elevationRaster == null)
-            return;
+        if (elevationRaster == null || !elevationRaster.covers(bounds)) {
+            Bounds scaledBounds = getScaledBounds(bounds, BOUNDS_SCALE_FACTOR);
+            elevationRaster = layer.getElevationDataProvider().getElevationRaster(scaledBounds);
+            if (elevationRaster == null)
+                return;
+        }
 
         int lowerCutoffElevation = layer.getLowerCutoffElevation();
         int upperCutoffElevation = layer.getUpperCutoffElevation();
@@ -221,10 +230,8 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         double mapViewHeight = mapViewBounds.getHeight();
 
         // Dimensions of the elevation value string in world coordinates
-        double eleStringWidth = Double.valueOf(eleStringDisplayWidth) / Double.valueOf(mapViewDisplayWidth)
-                * mapViewWidth;
-        double eleStringHeight = Double.valueOf(eleStringDisplayHeight) / Double.valueOf(mapViewDisplayHeight)
-                * mapViewHeight;
+        double eleStringWidth = (double) eleStringDisplayWidth / (double) mapViewDisplayWidth * mapViewWidth;
+        double eleStringHeight = (double) eleStringDisplayHeight / (double) mapViewDisplayHeight * mapViewHeight;
 
         // Distance between two adjacent raster points in world coordinates
         double latStep = elevationRaster.getLatStep();
@@ -238,17 +245,20 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
             double lonDist = 0.0;
             for (int lonIndex = 0; lonIndex < elevationRaster.getWidth(); lonIndex++) {
                 LatLonEle latLonEle = elevationRaster.getLatLonEle(latIndex, lonIndex);
-                Point p = mv.getPoint(latLonEle);
+
                 if (latLonEle.ele() <= lowerCutoffElevation)
                     continue;
                 if (latLonEle.ele() >= upperCutoffElevation)
                     continue;
-                String ele = Integer.toString((int) latLonEle.ele());
+
+                Point p = mv.getPoint(latLonEle);
+                String eleText = Integer.toString((int) latLonEle.ele());
+
                 g.setColor(Color.RED);
                 g.fillOval(p.x - markerSize / 2, p.y - markerSize / 2, markerSize, markerSize);
                 if (latDist == 0.0 && lonDist == 0.0) {
                     g.setColor(Color.BLUE);
-                    g.drawString(ele, p.x + markerSize, p.y + eleStringDisplayHeight / 2);
+                    g.drawString(eleText, p.x + markerSize, p.y + eleStringDisplayHeight / 2);
                 }
                 lonDist += lonStep;
                 if (lonDist > eleStringWidth)
@@ -261,8 +271,13 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
     }
 
     private void drawLowestAndHighestPoints(Graphics2D g, MapView mv, Bounds bounds) {
-        List<LatLonEle> lowestPoints = layer.getElevationDataProvider().getLowestPoints(bounds);
-        List<LatLonEle> highestPoints = layer.getElevationDataProvider().getHighestPoints(bounds);
+        if (lowestAndHighestPoints == null || !bounds.equals(previousClipBounds))
+            lowestAndHighestPoints = layer.getElevationDataProvider().getLowestAndHighestPoints(bounds);
+        if (lowestAndHighestPoints.size() < 2)
+            return;
+
+        List<LatLonEle> lowestPoints = lowestAndHighestPoints.get(0);
+        List<LatLonEle> highestPoints = lowestAndHighestPoints.get(1);
 
         // Set the font for elevation value strings
         Font font = g.getFont().deriveFont(Font.PLAIN, 10);
@@ -274,23 +289,27 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         int eleStringDisplayHeight = metrics.getHeight() + 2;
 
         // The size of the marker of an elevation data point in display coordinates
-        final int markerSize = 5;
+        final int markerSize = 6;
 
         for (LatLonEle latLonEle : lowestPoints) {
             Point p = mv.getPoint(latLonEle);
-            String ele = Integer.toString((int) latLonEle.ele());
+            String eleText = Integer.toString((int) latLonEle.ele());
             g.setColor(Color.RED);
             g.fillRect(p.x - markerSize / 2, p.y - markerSize / 2, markerSize, markerSize);
+            g.setColor(Color.BLACK);
+            g.drawRect(p.x - markerSize / 2, p.y - markerSize / 2, markerSize, markerSize);
             g.setColor(Color.BLUE);
-            g.drawString(ele, p.x + markerSize, p.y + eleStringDisplayHeight / 2);
+            g.drawString(eleText, p.x + markerSize, p.y + eleStringDisplayHeight / 2);
         }
         for (LatLonEle latLonEle : highestPoints) {
             Point p = mv.getPoint(latLonEle);
-            String ele = Integer.toString((int) latLonEle.ele());
+            String eleText = Integer.toString((int) latLonEle.ele());
             g.setColor(Color.RED);
             g.fillRect(p.x - markerSize / 2, p.y - markerSize / 2, markerSize, markerSize);
+            g.setColor(Color.BLACK);
+            g.drawRect(p.x - markerSize / 2, p.y - markerSize / 2, markerSize, markerSize);
             g.setColor(Color.BLUE);
-            g.drawString(ele, p.x + markerSize, p.y + eleStringDisplayHeight / 2);
+            g.drawString(eleText, p.x + markerSize, p.y + eleStringDisplayHeight / 2);
         }
     }
 

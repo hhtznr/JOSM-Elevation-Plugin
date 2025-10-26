@@ -13,8 +13,9 @@ import java.util.concurrent.RejectedExecutionException;
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.ILatLon;
 import org.openstreetmap.josm.data.coor.LatLon;
+import org.openstreetmap.josm.tools.Logging;
 
-import hhtznr.josm.plugins.elevation.gui.HillshadeImageTile;
+import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
 
 /**
  * This class implements hill shading.
@@ -37,9 +38,10 @@ public class Hillshade {
      */
     public static final int MAX_HILLSHADE = 0;
 
-    private final short[][] eleValues;
-    private final Bounds nominalBounds;
-    private final Bounds actualBounds;
+    private final SRTMTileGrid tileGrid;
+    private final SRTMTileGrid.RasterIndexBounds renderingRasterIndexBounds;
+    private Bounds renderingBounds;
+
     private double zenithRad;
     private double sinZenithRad;
     private double cosZenithRad;
@@ -55,25 +57,42 @@ public class Hillshade {
     /**
      * Creates a new hillshade instance.
      *
-     * @param eleValues     The elevation values for which to compute the hillshade.
-     * @param nominalBounds The nominal bounds of the elevation raster.
-     * @param actualBounds  The actual bounds of the elevation raster.
-     * @param altitudeDeg   The altitude is the angle of the illumination source
-     *                      above the horizon. The units are in degrees, from 0 (on
-     *                      the horizon) to 90 (overhead).
-     * @param azimuthDeg    The azimuth is the angular direction of the sun,
-     *                      measured from north in clockwise degrees from 0 to 360.
+     * @param tileGrid                   The SRTM tile grid providing the elevation
+     *                                   raster.
+     * @param renderingBounds            The bounds in latitude-longitude coordinate
+     *                                   space, within which this hillshade shall be
+     *                                   computed.
+     * @param renderingRasterIndexBounds The index bounds of the SRTM tile grid's
+     *                                   elevation raster corresponding to the
+     *                                   rendering bounds.
+     * @param altitudeDeg                The altitude is the angle of the
+     *                                   illumination source above the horizon. The
+     *                                   units are in degrees, from 0 (on the
+     *                                   horizon) to 90 (overhead).
+     * @param azimuthDeg                 The azimuth is the angular direction of the
+     *                                   sun, measured from north in clockwise
+     *                                   degrees from 0 to 360.
      */
-    public Hillshade(short[][] eleValues, Bounds nominalBounds, Bounds actualBounds, double altitudeDeg,
-            double azimuthDeg) {
-        this.eleValues = eleValues;
-        this.nominalBounds = nominalBounds;
-        this.actualBounds = actualBounds;
+    public Hillshade(SRTMTileGrid tileGrid, Bounds renderingBounds,
+            SRTMTileGrid.RasterIndexBounds renderingRasterIndexBounds, double altitudeDeg, double azimuthDeg) {
+        this.tileGrid = tileGrid;
+        this.renderingBounds = renderingBounds;
+        this.renderingRasterIndexBounds = renderingRasterIndexBounds;
         zenithRad = getZenithRad(altitudeDeg);
         // Compute sinus and cosinus of zenith in order not to recompute it
         sinZenithRad = Math.sin(zenithRad);
         cosZenithRad = Math.cos(zenithRad);
         azimuthRad = getAzimuthRad(azimuthDeg);
+    }
+
+    /**
+     * Returns the bounds within which hillshade was computed. To be called after
+     * {@link #getHillshadeImage(boolean)}.
+     *
+     * @return The bounds within which hillshade was computed.
+     */
+    public Bounds getRenderingBounds() {
+        return renderingBounds;
     }
 
     /**
@@ -113,9 +132,10 @@ public class Hillshade {
      *         {@code 0} is the slope and the value at index {@code 1} is the
      *         aspect.
      */
-    private double[] getSlopeAspectRad(short[][] ele3x3, double cellSize, double zFactor) {
-        double changeRateInX = getChangeRateInX(ele3x3, cellSize);
-        double changeRateInY = getChangeRateInY(ele3x3, cellSize);
+    private double[] getSlopeAspectRad(short[] ele3x3, double cellSize, double zFactor) {
+        double[] changeRatesinXY = getChangeRatesInXY(ele3x3, cellSize);
+        double changeRateInX = changeRatesinXY[0];
+        double changeRateInY = changeRatesinXY[1];
 
         double slope = getSlopeRad(changeRateInX, changeRateInY, zFactor);
         double aspect = getAspectRad(changeRateInX, changeRateInY);
@@ -165,15 +185,17 @@ public class Hillshade {
     }
 
     /**
-     * Computes the change rate in x direction.
+     * Computes the change rates in x and y direction.
      *
      * @param ele3x3   3 x 3 grid of elevation values, where slope and aspect will
      *                 be computed for the value in the middle.
      * @param cellSize The size of a raster cell, i.e. the distance between two
      *                 neighboring elevation values in arc degrees.
-     * @return The change rate in x direction ({@code dz/dx}).
+     * @return Array of length = {@code 2} with the change rates in x direction
+     *         ({@code dz/dx}, index = {@code 0}) and y direction ({@code dz/dy},
+     *         index = {@code 1}).
      */
-    private static double getChangeRateInX(short[][] ele3x3, double cellSize) {
+    public static double[] getChangeRatesInXY(short[] ele3x3, double cellSize) {
         // https://pro.arcgis.com/en/pro-app/latest/tool-reference/3d-analyst/how-hillshade-works.htm
         /**
          * <pre>
@@ -182,46 +204,30 @@ public class Hillshade {
          * g h i
          * </pre>
          */
+        // c @ ix = 0, iy = 2 -> i = ix * 3 + iy = 2
+        short c = ele3x3[0 * 3 + 2]; // ~ ele3x3[0][2];
+        // f @ ix = 1, iy = 2 -> i = ix * 3 + iy = 5
+        short f = ele3x3[1 * 3 + 2]; // ~ ele3x3[1][2];
+        // i @ ix = 2, iy = 2 -> i = ix * 3 + iy = 8
+        short i = ele3x3[2 * 3 + 2]; // ~ ele3x3[2][2];
+
+        // a @ ix = 0, iy = 0 -> i = ix * 3 + iy = 0
+        short a = ele3x3[0 * 3 + 0]; // ~ ele3x3[0][0];
+        // d @ ix = 1, iy = 0 -> i = ix * 3 + iy = 3
+        short d = ele3x3[1 * 3 + 0]; // ~ ele3x3[1][0];
+        // g @ ix = 2, iy = 0 -> i = ix * 3 + iy = 6
+        short g = ele3x3[2 * 3 + 0]; // ~ ele3x3[2][0];
+
+        // b @ ix = 0, iy = 1 -> i = ix * 3 + iy = 1
+        short b = ele3x3[0 * 3 + 1]; // ~ ele3x3[0][1];
+        // h @ ix = 2, iy = 1 -> i = ix * 3 + iy = 1
+        short h = ele3x3[2 * 3 + 1]; // ~ ele3x3[2][1];
+
         // [dz/dx] = ((c + 2f + i) - (a + 2d + g)) / (8 * cellsize)
-        short c = ele3x3[0][2];
-        short f = ele3x3[1][2];
-        short i = ele3x3[2][2];
-
-        short a = ele3x3[0][0];
-        short d = ele3x3[1][0];
-        short g = ele3x3[2][0];
-
-        return Double.valueOf((c + 2 * f + i) - (a + 2 * d + g)) / (8 * cellSize);
-    }
-
-    /**
-     * Computes the change rate in y direction.
-     *
-     * @param ele3x3   3 x 3 grid of elevation values, where slope and aspect will
-     *                 be computed for the value in the middle.
-     * @param cellSize The size of a raster cell, i.e. the distance between two
-     *                 neighboring elevation values in arc degrees.
-     * @return he change rate in y direction ({@code dz/dy}).
-     */
-    private static double getChangeRateInY(short[][] ele3x3, double cellSize) {
-        // https://pro.arcgis.com/en/pro-app/latest/tool-reference/3d-analyst/how-hillshade-works.htm
-        /**
-         * <pre>
-         * a b c
-         * d e f
-         * g h i
-         * </pre>
-         */
+        double dz_dx = (double) ((c + 2 * f + i) - (a + 2 * d + g)) / (double) (8 * cellSize);
         // [dz/dy] = ((g + 2h + i) - (a + 2b + c)) / (8 * cellsize)
-        short g = ele3x3[2][0];
-        short h = ele3x3[2][1];
-        short i = ele3x3[2][2];
-
-        short a = ele3x3[0][0];
-        short b = ele3x3[0][1];
-        short c = ele3x3[0][2];
-
-        return Double.valueOf((g + 2 * h + i) - (a + 2 * b + c)) / (8 * cellSize);
+        double dz_dy = (double) ((g + 2 * h + i) - (a + 2 * b + c)) / (double) (8 * cellSize);
+        return new double[] { dz_dx, dz_dy };
     }
 
     /**
@@ -283,50 +289,49 @@ public class Hillshade {
      *         SRTM tile grid cannot deliver elevation values or there are less than
      *         3 elevation values in one of the two dimensions.
      */
-    public HillshadeImageTile getHillshadeImage(boolean withPerimeter) {
-        if (eleValues == null)
-            return null;
+    public BufferedImage getHillshadeImage(boolean withPerimeter) {
 
-        int latLength = eleValues.length;
-        int lonLength = eleValues[0].length;
-        if (latLength < 3 || lonLength < 3)
+        int latHeight = renderingRasterIndexBounds.getHeight();
+        int lonWidth = renderingRasterIndexBounds.getWidth();
+        if (latHeight < 3 || lonWidth < 3)
             return null;
 
         // Determine the z-factor and the cell size
-        final double zFactor = getZFactor(actualBounds);
-        final double cellSize = actualBounds.getHeight() / (latLength - 1);
+        final double zFactor = getZFactor(renderingBounds);
+        final double cellSize = renderingBounds.getHeight() / (double) (latHeight - 1);
 
         final int perimeterOffset = withPerimeter ? 1 : 0;
 
-        final int width = lonLength + 2 * perimeterOffset;
-        int height = latLength + 2 * perimeterOffset;
+        final int width = lonWidth + 2 * perimeterOffset;
+        int height = latHeight + 2 * perimeterOffset;
         // Create image with alpha channel which is black by default (RGB = [0, 0, 0])
         final BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
 
         // List of tasks to be executed by the thread executor service
         // Each task will compute one row of the hillshade image
-        ArrayList<Callable<BufferedImage>> hillshadeRowTasks = new ArrayList<>(latLength - 2);
+        ArrayList<Callable<BufferedImage>> hillshadeRowTasks = new ArrayList<>(latHeight - 2);
 
         // Iterate over the grid of elevation data processing 3 x 3 subgrids
         // As we copy 3 values in each direction in each iteration, we have to stop 2
         // values before the ends
-        for (int latIndex = 0; latIndex < latLength - 2; latIndex++) {
+        for (int latIndex = 0; latIndex < latHeight - 2; latIndex++) {
             // Final copy of the current latIndex for internal reference in the task
-            int taskLatIndex = latIndex;
+            int gridRasterLatIndex = latIndex + renderingRasterIndexBounds.latIndexSouth;
+            final int taskLatIndex = latIndex;
             // Create a task for computing each of the rows of the image
             Callable<BufferedImage> task = () -> {
                 // Array to collect the alpha values of the pixel row
                 int[] pixels = new int[width];
-                for (int lonIndex = 0; lonIndex < lonLength - 2; lonIndex++) {
+                short[] ele3x3 = new short[3 * 3];
+                for (int lonIndex = 0; lonIndex < lonWidth - 2; lonIndex++) {
+                    int gridRasterLonIndex = lonIndex + renderingRasterIndexBounds.lonIndexWest;
                     // Get 3 x 3 elevation values
-                    short[][] ele3x3 = new short[3][3];
+
                     for (int lat = 0; lat < 3; lat++) {
-                        short[] src = eleValues[taskLatIndex];
-                        int srcPos = lonIndex;
-                        short[] dest = ele3x3[lat];
-                        int destPos = 0;
-                        int length = 3;
-                        System.arraycopy(src, srcPos, dest, destPos, length);
+                        for (int lon = 0; lon < 3; lon++) {
+                            ele3x3[lat * 3 + lon] = tileGrid.getElevation(gridRasterLatIndex + lat,
+                                    gridRasterLonIndex + lon);
+                        }
                     }
                     // Compute the hillshade value
                     int hillshade = getHillshadeValue(ele3x3, cellSize, zFactor);
@@ -336,7 +341,7 @@ public class Hillshade {
                     pixels[lonIndex] = alpha;
                 }
                 int x = perimeterOffset;
-                int y = taskLatIndex + perimeterOffset;
+                int y = latHeight - 3 - (taskLatIndex + perimeterOffset);
                 /*
                  * Write the row of alpha values directly to the image: The alpha values will
                  * leave the image black/opaque (alpha = 255), make it more or less
@@ -356,6 +361,7 @@ public class Hillshade {
         try {
             futures = executor.invokeAll(hillshadeRowTasks);
         } catch (InterruptedException | RejectedExecutionException e) {
+            Logging.error("ELEVATION: Error while computing hillshade: " + e.toString());
             return null;
         }
 
@@ -365,6 +371,7 @@ public class Hillshade {
             try {
                 future.get();
             } catch (InterruptedException | ExecutionException e) {
+                Logging.error("ELEVATION: Error while computing hillshade: " + e.toString());
                 return null;
             }
         }
@@ -378,10 +385,10 @@ public class Hillshade {
         if (withPerimeter) {
             // The hillshade bounds are 1/2 of the cell size wider in each direction than
             // the elevation raster bounds
-            north = actualBounds.getMaxLat() + cellSize / 2;
-            south = actualBounds.getMinLat() - cellSize / 2;
-            west = actualBounds.getMinLon() - cellSize / 2;
-            east = actualBounds.getMaxLon() + cellSize / 2;
+            north = renderingBounds.getMaxLat() + cellSize / 2;
+            south = renderingBounds.getMinLat() - cellSize / 2;
+            west = renderingBounds.getMinLon() - cellSize / 2;
+            east = renderingBounds.getMaxLon() + cellSize / 2;
             // Correct coordinates if outside of world map
             if (north > 90.0)
                 north = 90.0;
@@ -393,13 +400,15 @@ public class Hillshade {
                 east = east - 360.0;
         } else {
             // As above, but accommodate for the perimeter having been skipped
-            north = actualBounds.getMaxLat() - cellSize / 2;
-            south = actualBounds.getMinLat() + cellSize / 2;
-            west = actualBounds.getMinLon() + cellSize / 2;
-            east = actualBounds.getMaxLon() - cellSize / 2;
+            north = renderingBounds.getMaxLat() - cellSize / 2;
+            south = renderingBounds.getMinLat() + cellSize / 2;
+            west = renderingBounds.getMinLon() + cellSize / 2;
+            east = renderingBounds.getMaxLon() - cellSize / 2;
         }
 
-        return new HillshadeImageTile(image, nominalBounds, new Bounds(south, west, north, east));
+        renderingBounds = new Bounds(south, west, north, east);
+
+        return image;
     }
 
     /**
@@ -413,7 +422,7 @@ public class Hillshade {
      * @param zFactor  The z-factor, see {@link #getZFactor}.
      * @return The hillshade value in the range {@code [0, 255]}.
      */
-    private int getHillshadeValue(short[][] ele3x3, double cellSize, double zFactor) {
+    private int getHillshadeValue(short[] ele3x3, double cellSize, double zFactor) {
         double[] slopeAspect = getSlopeAspectRad(ele3x3, cellSize, zFactor);
         double slope = slopeAspect[0];
         double aspect = slopeAspect[1];

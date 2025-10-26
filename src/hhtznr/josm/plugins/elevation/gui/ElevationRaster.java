@@ -3,6 +3,7 @@ package hhtznr.josm.plugins.elevation.gui;
 import org.openstreetmap.josm.data.Bounds;
 
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
+import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
 
 /**
  * Class implementing an elevation raster composed of individual
@@ -14,24 +15,17 @@ import hhtznr.josm.plugins.elevation.data.LatLonEle;
  */
 public class ElevationRaster extends AbstractSRTMTileGridPaintable {
 
-    private final LatLonEle[][] latLonEleRaster;
-
     /**
      * Creates a new elevation raster which covers the specified bounds with
      * elevation data points.
      *
-     * @param nominalBounds   The nominal bounds in latitude-longitude coordinate
-     *                        space.
-     * @param actualBounds    The actual bounds in latitude-longitude coordinate
-     *                        space.
-     * @param latLonEleRaster The two-dimensional array of
-     *                        latitude-longitude-elevation points forming the
-     *                        elevation raster. The array of arrays has to be in row
-     *                        major order.
+     * @param tileGrid        The SRTM tile grid from which elevation data should be
+     *                        obtained.
+     * @param renderingBounds The bounds in latitude-longitude coordinate space
+     *                        where this grid should be rendered.
      */
-    public ElevationRaster(Bounds nominalBounds, Bounds actualBounds, LatLonEle[][] latLonEleRaster) {
-        super(nominalBounds, actualBounds);
-        this.latLonEleRaster = latLonEleRaster;
+    public ElevationRaster(SRTMTileGrid tileGrid, Bounds renderingBounds) {
+        super(tileGrid, renderingBounds, renderingBounds);
     }
 
     /**
@@ -41,9 +35,9 @@ public class ElevationRaster extends AbstractSRTMTileGridPaintable {
      *         dimension.
      */
     public int getHeight() {
-        if (latLonEleRaster == null)
+        if (!tileGrid.areAllSRTMTilesCached())
             return 0;
-        return latLonEleRaster.length;
+        return renderingRasterIndexBounds.latIndexNorth - renderingRasterIndexBounds.latIndexSouth;
     }
 
     /**
@@ -53,9 +47,9 @@ public class ElevationRaster extends AbstractSRTMTileGridPaintable {
      *         dimension.
      */
     public int getWidth() {
-        if (latLonEleRaster == null || latLonEleRaster.length == 0)
+        if (!tileGrid.areAllSRTMTilesCached())
             return 0;
-        return latLonEleRaster[0].length;
+        return renderingRasterIndexBounds.lonIndexEast - renderingRasterIndexBounds.lonIndexWest;
     }
 
     /**
@@ -66,12 +60,9 @@ public class ElevationRaster extends AbstractSRTMTileGridPaintable {
      *         in arc degrees.
      */
     public double getLatStep() {
-        int height = getHeight();
-        if (height < 2 || getWidth() < 1)
+        if (getHeight() < 2 || getWidth() < 1)
             return Double.POSITIVE_INFINITY;
-        LatLonEle north = latLonEleRaster[0][0];
-        LatLonEle south = latLonEleRaster[latLonEleRaster.length - 1][0];
-        return (north.lat() - south.lat()) / Double.valueOf(latLonEleRaster.length - 1);
+        return tileGrid.getLatLonStep();
     }
 
     /**
@@ -82,12 +73,9 @@ public class ElevationRaster extends AbstractSRTMTileGridPaintable {
      *         in arc degrees.
      */
     public double getLonStep() {
-        int width = getWidth();
-        if (width < 2 || getHeight() < 1)
+        if (getWidth() < 2 || getHeight() < 1)
             return Double.POSITIVE_INFINITY;
-        LatLonEle west = latLonEleRaster[0][0];
-        LatLonEle east = latLonEleRaster[0][latLonEleRaster[0].length - 1];
-        return (east.lon() - west.lon()) / Double.valueOf(latLonEleRaster[0].length - 1);
+        return tileGrid.getLatLonStep();
     }
 
     /**
@@ -98,6 +86,8 @@ public class ElevationRaster extends AbstractSRTMTileGridPaintable {
      * @return The latitude-longitude-elevation point of interest.
      */
     public LatLonEle getLatLonEle(int latIndex, int lonIndex) {
-        return latLonEleRaster[latIndex][lonIndex];
+        int gridRasterLatIndex = renderingRasterIndexBounds.latIndexSouth + latIndex;
+        int gridRasterLonIndex = renderingRasterIndexBounds.lonIndexWest + lonIndex;
+        return tileGrid.getLatLonEle(gridRasterLatIndex, gridRasterLonIndex);
     }
 }

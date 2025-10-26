@@ -43,6 +43,7 @@ import org.openstreetmap.josm.tools.I18n;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Logging;
 
+import hhtznr.josm.plugins.elevation.ElevationPluginTexts;
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
 import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
@@ -73,19 +74,19 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
     private final JCheckBox cbEnableElevation = new JCheckBox(I18n.tr("Enable Use of Elevation Data"));
     private final JMultilineLabel lblSRTM1Server = new JMultilineLabel(I18n.tr(
-            "<html>SRTM1 files (elevation sampled at 1 arc seconds) of the whole Earth can be downloaded from <a href=\"{0}\">{0}</a> to {1}",
+            "<html>SRTM1 files (elevation sampled at 1 arc seconds) of the whole Earth can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}",
             ElevationPreferences.SRTM1_SERVER_BASE_URL,
             ElevationPreferences.DEFAULT_EARTHDATA_SRTM1_DIRECTORY.getAbsolutePath()));
     private final JMultilineLabel lblSRTM3Server = new JMultilineLabel(I18n.tr(
-            "<html>SRTM3 files (elevation sampled at 3 arc seconds) of the whole Earth can be downloaded from <a href=\"{0}\">{0}</a> to {1}",
+            "<html>SRTM3 files (elevation sampled at 3 arc seconds) of the whole Earth can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}",
             ElevationPreferences.SRTM3_SERVER_BASE_URL,
             ElevationPreferences.DEFAULT_EARTHDATA_SRTM3_DIRECTORY.getAbsolutePath()));
     private final JMultilineLabel lblDTM1Server = new JMultilineLabel(I18n.tr(
-            "<html>High quality SRTM1 files (elevation sampled at 1 arc seconds) of Europe can be downloaded from <a href=\"{0}\">{0}</a> to {1}",
+            "<html>High quality SRTM1 files (elevation sampled at 1 arc seconds) of Europe can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}",
             ElevationPreferences.SONNY_LIDAR_DTM1_BASE_URL,
             ElevationPreferences.DEFAULT_SONNY_LIDAR_DTM1_DIRECTORY.getAbsolutePath()));
     private final JMultilineLabel lblDTM3Server = new JMultilineLabel(I18n.tr(
-            "<html>High quality SRTM3 files (elevation sampled at 3 arc seconds) of Europe can be downloaded from <a href=\"{0}\">{0}</a> to {1}",
+            "<html>High quality SRTM3 files (elevation sampled at 3 arc seconds) of Europe can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}",
             ElevationPreferences.SONNY_LIDAR_DTM3_BASE_URL,
             ElevationPreferences.DEFAULT_SONNY_LIDAR_DTM3_DIRECTORY.getAbsolutePath()));
 
@@ -183,10 +184,6 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
      * @return Panel with elevation preferences.
      */
     private final JPanel buildPreferencePanel() {
-        cbEnableElevation.setToolTipText(I18n.tr(
-                "SRTM files from NASA Earthdata need to be placed in subdirectories SRTM1 and SRTM3 in {0}\nSRTM files from Sonny's LiDAR DTM need to be placed in subdirectories DTM1 and DTM3 in {11}",
-                ElevationPreferences.DEFAULT_EARTHDATA_DIRECTORY.getAbsolutePath(),
-                ElevationPreferences.DEFAULT_SONNY_LIDAR_DIRECTORY.getAbsolutePath()));
         cbEnableElevation.addItemListener(event -> updateEnabledState());
 
         lblSRTM1Server.setEditable(false);
@@ -203,8 +200,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
         cbEnableElevationLayer.addItemListener(event -> updateEnabledState());
 
-        spRenderingLimit.setToolTipText(
-                "Layer rendering will be switched off if the map size (latitude, longitude) exceeds this value");
+        spRenderingLimit.setToolTipText(ElevationPluginTexts.TOOL_TIP_LAYER_RENDERING_LIMIT);
 
         Color contourLineColor = ElevationPreferences.getContourLineColor();
         btnStrokeColor.setBackground(contourLineColor);
@@ -223,13 +219,10 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
             }
         });
 
-        spHillshadeAltitude.setToolTipText(
-                "The altitude is the angle of the illumination source above the horizon in the range from 0 (horizon) to 90° (overhead)");
+        spHillshadeAltitude.setToolTipText(ElevationPluginTexts.TOOL_TIP_HILLSHADE_ALTITUDE);
+        spHillshadeAzimuth.setToolTipText(ElevationPluginTexts.TOOL_TIP_HILLSHADE_AZIMUTH);
 
-        spHillshadeAzimuth.setToolTipText(
-                "The azimuth is the anglular direction of the illumination source (N: 0, E: 90°, S: 180°, W: 270°)");
-
-        cbEnableAutoDownload.setToolTipText(I18n.tr("SRTM files will be downloaded from {0} or {0}",
+        cbEnableAutoDownload.setToolTipText(I18n.tr("SRTM files will be downloaded from {0} or {1}",
                 ElevationPreferences.SRTM1_SERVER_BASE_URL, ElevationPreferences.SRTM3_SERVER_BASE_URL));
         cbEnableAutoDownload.addItemListener(event -> updateEnabledState());
 
@@ -448,7 +441,6 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         // Row "Contour line stroke width"
         gc.gridy++;
         gc.gridx = 0;
-        gc.fill = GBC.NONE;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
         pnl.add(lblStrokeWidth, gc);
@@ -498,7 +490,6 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         // Row "Hillshade azimuth"
         gc.gridy++;
         gc.gridx = 0;
-        gc.fill = GBC.NONE;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
         pnl.add(lblHillshadeAzimuth, gc);

@@ -184,7 +184,9 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                         elevationLayer.setContourLineColor(ElevationPreferences.getContourLineColor());
                         elevationLayer.setHillshadeIllumination(ElevationPreferences.getHillshadeAltitude(),
                                 ElevationPreferences.getHillshadeAzimuth());
-                        elevationLayer.repaint();
+                        elevationLayer.invalidate();
+                        if (mapFrame != null)
+                            mapFrame.mapView.repaint();
                     }
                     elevationToggleDialog = new ElevationToggleDialog(this);
                     mapFrame.addToggleDialog(elevationToggleDialog);

@@ -12,6 +12,7 @@ import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 
+import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.SideButton;
 import org.openstreetmap.josm.gui.dialogs.ToggleDialog;
 import org.openstreetmap.josm.tools.GBC;
@@ -225,7 +226,8 @@ public class ElevationToggleDialog extends ToggleDialog {
                 elevationLayer.setLowerCutoffElevation(lowerCutoff);
                 elevationLayer.setUpperCutoffElevation(upperCutoff);
                 elevationLayer.setHillshadeIllumination(hillshadeAltitude, hillshadeAzimuth);
-                elevationLayer.repaint();
+                elevationLayer.invalidate();
+                MainApplication.getMap().mapView.repaint();
             }
         }
     }

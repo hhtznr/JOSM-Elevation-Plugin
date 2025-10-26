@@ -251,7 +251,7 @@ public class ElevationDataProvider implements SRTMFileDownloadListener, SRTMTile
                     HillshadeImageTile.BOUNDS_SCALE_RASTER_STEP);
             if (!srtmTileGrid.covers(renderingBounds))
                 srtmTileGrid = new SRTMTileGrid(this, renderingBounds);
-            return srtmTileGrid.getHillshadeImage(renderingBounds, altitudeDeg, azimuthDeg, withPerimeter);
+            return srtmTileGrid.getHillshadeImageTile(renderingBounds, altitudeDeg, azimuthDeg, withPerimeter);
         }
     }
 

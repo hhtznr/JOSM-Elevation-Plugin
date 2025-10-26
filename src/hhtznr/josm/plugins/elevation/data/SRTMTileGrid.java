@@ -375,7 +375,7 @@ public class SRTMTileGrid {
      *         SRTM tile grid cannot deliver elevation values or there are less than
      *         3 elevation values in one of the two dimensions.
      */
-    public HillshadeImageTile getHillshadeImage(Bounds renderingBounds, double altitudeDeg, double azimuthDeg,
+    public HillshadeImageTile getHillshadeImageTile(Bounds renderingBounds, double altitudeDeg, double azimuthDeg,
             boolean withPerimeter) {
         if (!allTilesCached)
             return null;

@@ -16,7 +16,6 @@ import javax.swing.JCheckBoxMenuItem;
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.osm.visitor.BoundingXYVisitor;
 import org.openstreetmap.josm.gui.MainApplication;
-import org.openstreetmap.josm.gui.MapFrame;
 import org.openstreetmap.josm.gui.MapView;
 import org.openstreetmap.josm.gui.dialogs.LayerListDialog;
 import org.openstreetmap.josm.gui.layer.Layer;
@@ -35,6 +34,7 @@ import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
  */
 public class ElevationLayer extends Layer implements ElevationDataProviderListener {
 
+    private final ElevationDrawHelper layerPainter;
     private final ElevationDataProvider elevationDataProvider;
     private double renderingLimitArcDegrees;
     private int contourLineIsostep;
@@ -77,6 +77,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
             int contourLineIsostep, float contourLineStrokeWidth, Color contourLineColor, int hillshadeAltitude,
             int hillshadeAzimuth, int lowerCutoffElevation, int upperCutoffElevation) {
         super("Elevation Layer");
+        this.layerPainter = new ElevationDrawHelper(this);
         this.renderingLimitArcDegrees = renderingLimitArcDegrees;
         this.contourLineIsostep = contourLineIsostep;
         this.contourLineStrokeWidth = contourLineStrokeWidth;
@@ -121,10 +122,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
      *                                 avoid excessive CPU and memory usage.
      */
     public void setRenderingLimit(double renderingLimitArcDegrees) {
-        if (this.renderingLimitArcDegrees != renderingLimitArcDegrees) {
-            this.renderingLimitArcDegrees = renderingLimitArcDegrees;
-            repaint();
-        }
+        this.renderingLimitArcDegrees = renderingLimitArcDegrees;
     }
 
     /**
@@ -169,10 +167,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
      * @param isostep Step between neighboring elevation contour lines.
      */
     public void setContourLineIsostep(int isostep) {
-        if (contourLineIsostep != isostep) {
-            contourLineIsostep = isostep;
-            repaint();
-        }
+        contourLineIsostep = isostep;
     }
 
     /**
@@ -239,11 +234,8 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
      *                 computation.
      */
     public void setHillshadeIllumination(int altitude, int azimuth) {
-        if (hillshadeAltitude != altitude || hillshadeAzimuth != azimuth) {
-            hillshadeAltitude = altitude;
-            hillshadeAzimuth = azimuth;
-            repaint();
-        }
+        hillshadeAltitude = altitude;
+        hillshadeAzimuth = azimuth;
     }
 
     /**
@@ -293,7 +285,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
 
     @Override
     protected LayerPainter createMapViewPainter(MapViewEvent event) {
-        return new ElevationDrawHelper(this);
+        return layerPainter;
     }
 
     @Override
@@ -342,17 +334,9 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
 
     @Override
     public void elevationDataAvailable(SRTMTileGrid tileGrid) {
+        invalidate();
         if (isVisible())
-            repaint();
-    }
-
-    /**
-     * Repaints the elevation layer by repainting the map view it is attached to.
-     */
-    public void repaint() {
-        MapFrame map = MainApplication.getMap();
-        if (map != null)
-            map.mapView.repaint();
+            MainApplication.getMap().mapView.repaint();
     }
 
     private static abstract class AbstractElevationLayerAction extends AbstractAction implements LayerAction {
@@ -396,7 +380,9 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
                 Logging.info("Elevation: Contour lines enabled");
             else
                 Logging.info("Elevation: Contour lines disabled");
-            layer.repaint();
+            layer.invalidate();
+            if (layer.isVisible())
+                MainApplication.getMap().mapView.repaint();
         }
 
         @Override
@@ -423,7 +409,9 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
                 Logging.info("Elevation: Hillshade enabled");
             else
                 Logging.info("Elevation: Hillshade disabled");
-            layer.repaint();
+            layer.invalidate();
+            if (layer.isVisible())
+                MainApplication.getMap().mapView.repaint();
         }
 
         @Override
@@ -450,7 +438,9 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
                 Logging.info("Elevation: Elevation raster points enabled");
             else
                 Logging.info("Elevation: Elevation raster points disabled");
-            layer.repaint();
+            layer.invalidate();
+            if (layer.isVisible())
+                MainApplication.getMap().mapView.repaint();
         }
 
         @Override

@@ -1,5 +1,6 @@
 package hhtznr.josm.plugins.elevation.gui;
 
+import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
@@ -17,6 +18,7 @@ import org.openstreetmap.josm.gui.layer.MapViewPaintable;
 import org.openstreetmap.josm.gui.layer.MapViewPaintable.MapViewEvent;
 import org.openstreetmap.josm.gui.layer.MapViewPaintable.PaintableInvalidationEvent;
 import org.openstreetmap.josm.gui.layer.MapViewPaintable.PaintableInvalidationListener;
+import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.LatLonLine;
@@ -49,12 +51,12 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
     private Color contourLineColor;
     private int lowerCutoffElevation;
     private int upperCutoffElevation;
-    ContourLines contourLines = null;
+    private ContourLines contourLines = null;
 
     private int hillshadeAltitude;
     private int hillshadeAzimuth;
-    HillshadeImageTile hillshadeTile = null;
-    BufferedImage hillshadeImage = null;
+    private HillshadeImageTile hillshadeImageTile = null;
+    private BufferedImage scaledHillshadeImage = null;
     private LatLon hillshadeNorthWest = null;
 
     private ElevationRaster elevationRaster = null;
@@ -82,8 +84,8 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         if (!layer.isContourLinesEnabled())
             contourLines = null;
         if (!layer.isHillshadeEnabled()) {
-            hillshadeTile = null;
-            hillshadeImage = null;
+            hillshadeImageTile = null;
+            scaledHillshadeImage = null;
         }
         if (!layer.isContourLinesEnabled() && !layer.isElevationRasterEnabled() && !layer.isHillshadeEnabled())
             return;
@@ -102,8 +104,8 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
                     && (previousClipBounds.getWidth() > SCALE_DISCARD_FACTOR * clipBounds.getWidth()
                             || previousClipBounds.getHeight() > SCALE_DISCARD_FACTOR * clipBounds.getHeight())) {
                 contourLines = null;
-                hillshadeTile = null;
-                hillshadeImage = null;
+                hillshadeImageTile = null;
+                scaledHillshadeImage = null;
                 elevationRaster = null;
             }
 
@@ -125,62 +127,87 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
     private void drawZoomLevelDisabled(Graphics2D g, MapView mv) {
         g.setColor(Color.RED);
         g.setFont(g.getFont().deriveFont(Font.BOLD, 16));
-        g.drawString("Contour lines disabled for this zoom level", 10, mv.getHeight() - 10);
+        g.drawString("Elevation layer disabled for this zoom level", 10, mv.getHeight() - 10);
     }
 
-    private void drawHillshade(Graphics2D g, MapView mv, Bounds bounds) {
-        Point upperLeft = null;
-        if (hillshadeImage == null || hillshadeAltitude != layer.getHillshadeAltitude()
-                || hillshadeAzimuth != layer.getHillshadeAzimuth() || !bounds.equals(previousClipBounds)) {
-            hillshadeAltitude = layer.getHillshadeAltitude();
-            hillshadeAzimuth = layer.getHillshadeAzimuth();
-            if (hillshadeTile == null || !hillshadeTile.covers(bounds)) {
-                Bounds scaledBounds = getScaledBounds(bounds, BOUNDS_SCALE_FACTOR);
-                hillshadeTile = layer.getElevationDataProvider().getHillshadeImageTile(scaledBounds, hillshadeAltitude,
-                        hillshadeAzimuth, false);
-            }
-            if (hillshadeTile == null || hillshadeTile.getUnscaledImage() == null)
+    private void drawHillshade(Graphics2D g, MapView mv, Bounds clipBounds) {
+        int layerHillshadeAltitude = layer.getHillshadeAltitude();
+        int layerHillshadeAzimuth = layer.getHillshadeAzimuth();
+
+        boolean hillshadeParametersChanged = hillshadeAltitude != layerHillshadeAltitude
+                || hillshadeAzimuth != layerHillshadeAzimuth;
+        boolean clipBoundsNotCoveredByHillshade = hillshadeImageTile == null || hillshadeParametersChanged
+                || !hillshadeImageTile.covers(clipBounds);
+
+        if (clipBoundsNotCoveredByHillshade || hillshadeParametersChanged) {
+            Bounds scaledBounds = getScaledBounds(clipBounds, BOUNDS_SCALE_FACTOR);
+            hillshadeImageTile = layer.getElevationDataProvider().getHillshadeImageTile(scaledBounds,
+                    layerHillshadeAltitude, layerHillshadeAzimuth, false);
+            if (hillshadeImageTile == null)
                 return;
-            Bounds actualHillshadeBounds = hillshadeTile.renderingBounds;
-            hillshadeNorthWest = new LatLon(actualHillshadeBounds.getMaxLat(), actualHillshadeBounds.getMinLon());
-            LatLon hillshadeSouthEast = new LatLon(actualHillshadeBounds.getMinLat(),
-                    actualHillshadeBounds.getMaxLon());
+        }
+
+        if (hillshadeImageTile.getUnscaledImage() == null)
+            return;
+
+        Point upperLeft = null;
+        if (scaledHillshadeImage == null || clipBoundsNotCoveredByHillshade || hillshadeParametersChanged) {
+
+            Bounds hillshadeRenderingBounds = hillshadeImageTile.renderingBounds;
+            hillshadeNorthWest = new LatLon(hillshadeRenderingBounds.getMaxLat(), hillshadeRenderingBounds.getMinLon());
+            LatLon hillshadeSouthEast = new LatLon(hillshadeRenderingBounds.getMinLat(),
+                    hillshadeRenderingBounds.getMaxLon());
             // Bounds of the hillshade tile in screen coordinates (x, y)
             upperLeft = mv.getPoint(hillshadeNorthWest);
             Point lowerRight = mv.getPoint(hillshadeSouthEast);
             // The dimensions of the hillshade tile in screen coordinates
-            int screenWidth = lowerRight.x - upperLeft.x;
-            int screenHeight = lowerRight.y - upperLeft.y;
+            int onScreenWidth = lowerRight.x - upperLeft.x;
+            int onScreenHeight = lowerRight.y - upperLeft.y;
             // Do not try to scale the image if the reported screen size is so large that
             // scaling could result in OutOfMemoryError or IllegalArgumentException of
             // java.awt.image.SampleModel.<init>
             // (For an unknown reason such large screen sizes can be obtained from map view
             // if trying to zoom in as strong as possible)
-            if (screenWidth > 13000 || screenHeight > 13000)
+            if (onScreenWidth > 13000 || onScreenHeight > 13000) {
+                Logging.info("ELEVATION: Omitting drawing of hillshade due to large on-screen dimensions "
+                        + onScreenWidth + " x " + onScreenHeight + ", which may result in OutOfMemoryError");
                 return;
+            }
             // Scale the hillshade image to screen dimensions
-            hillshadeImage = hillshadeTile.getScaledImage(screenWidth, screenHeight);
-            if (hillshadeImage == null)
+            scaledHillshadeImage = hillshadeImageTile.getScaledImage(onScreenWidth, onScreenHeight);
+            if (scaledHillshadeImage == null)
                 return;
         } else {
             upperLeft = mv.getPoint(hillshadeNorthWest);
         }
-        g.drawImage(hillshadeImage, upperLeft.x, upperLeft.y, hillshadeImage.getWidth(), hillshadeImage.getHeight(),
-                null);
+        g.setComposite(AlphaComposite.SrcOver); // default blending
+        g.drawImage(scaledHillshadeImage, upperLeft.x, upperLeft.y, scaledHillshadeImage.getWidth(),
+                scaledHillshadeImage.getHeight(), null);
+
+        hillshadeAltitude = layerHillshadeAltitude;
+        hillshadeAzimuth = layerHillshadeAzimuth;
     }
 
-    private void drawContourLines(Graphics2D g, MapView mv, Bounds bounds) {
-        if (contourLines == null || contourLineIsostep != layer.getContourLineIsostep()
-                || lowerCutoffElevation != layer.getLowerCutoffElevation()
-                || upperCutoffElevation != layer.getUpperCutoffElevation()
-                || contourLineStroke.getLineWidth() != layer.getContourLineStrokeWidth()
-                || contourLineColor != layer.getContourLineColor() || !contourLines.covers(bounds)) {
-            contourLineIsostep = layer.getContourLineIsostep();
-            lowerCutoffElevation = layer.getLowerCutoffElevation();
-            upperCutoffElevation = layer.getUpperCutoffElevation();
-            setContourLineStroke(layer.getContourLineStrokeWidth());
-            contourLineColor = layer.getContourLineColor();
-            Bounds scaledBounds = getScaledBounds(bounds, BOUNDS_SCALE_FACTOR);
+    private void drawContourLines(Graphics2D g, MapView mv, Bounds clipBounds) {
+        float layerContourLineStrokeWidth = layer.getContourLineStrokeWidth();
+        Color layerContourLineColor = layer.getContourLineColor();
+        if (contourLineStroke.getLineWidth() != layerContourLineStrokeWidth
+                || contourLineColor != layerContourLineColor) {
+            setContourLineStroke(layerContourLineStrokeWidth);
+            contourLineColor = layerContourLineColor;
+        }
+
+        int layerContourLineIsostep = layer.getContourLineIsostep();
+        int layerLowerCutoffElevation = layer.getLowerCutoffElevation();
+        int layerUpperCutoffElevation = layer.getUpperCutoffElevation();
+        if (contourLines == null || contourLineIsostep != layerContourLineIsostep
+                || lowerCutoffElevation != layerLowerCutoffElevation
+                || upperCutoffElevation != layerUpperCutoffElevation || !contourLines.covers(clipBounds)) {
+            contourLineIsostep = layerContourLineIsostep;
+            lowerCutoffElevation = layerLowerCutoffElevation;
+            upperCutoffElevation = layerUpperCutoffElevation;
+
+            Bounds scaledBounds = getScaledBounds(clipBounds, BOUNDS_SCALE_FACTOR);
             contourLines = layer.getElevationDataProvider().getContourLines(scaledBounds, contourLineIsostep,
                     lowerCutoffElevation, upperCutoffElevation);
             if (contourLines == null)
@@ -202,9 +229,9 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         contourLineStroke = new BasicStroke(width, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
     }
 
-    private void drawElevationRaster(Graphics2D g, MapView mv, Bounds bounds) {
-        if (elevationRaster == null || !elevationRaster.covers(bounds)) {
-            Bounds scaledBounds = getScaledBounds(bounds, BOUNDS_SCALE_FACTOR);
+    private void drawElevationRaster(Graphics2D g, MapView mv, Bounds clipBounds) {
+        if (elevationRaster == null || !elevationRaster.covers(clipBounds)) {
+            Bounds scaledBounds = getScaledBounds(clipBounds, BOUNDS_SCALE_FACTOR);
             elevationRaster = layer.getElevationDataProvider().getElevationRaster(scaledBounds);
             if (elevationRaster == null)
                 return;
@@ -272,9 +299,9 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         }
     }
 
-    private void drawLowestAndHighestPoints(Graphics2D g, MapView mv, Bounds bounds) {
-        if (lowestAndHighestPoints == null || !bounds.equals(previousClipBounds))
-            lowestAndHighestPoints = layer.getElevationDataProvider().getLowestAndHighestPoints(bounds);
+    private void drawLowestAndHighestPoints(Graphics2D g, MapView mv, Bounds clipBounds) {
+        if (lowestAndHighestPoints == null || !clipBounds.equals(previousClipBounds))
+            lowestAndHighestPoints = layer.getElevationDataProvider().getLowestAndHighestPoints(clipBounds);
         if (lowestAndHighestPoints.size() < 2)
             return;
 

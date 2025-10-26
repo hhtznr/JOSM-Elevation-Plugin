@@ -27,3 +27,10 @@ replay_pid*
 /build/
 /javadoc/
 /bin/
+/test-bin/
+
+# Auxiliary files and directories not supposed to be committed
+build.sh
+/backup/
+/dev/
+/test/

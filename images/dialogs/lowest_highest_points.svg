@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="24"
+   height="24"
+   viewBox="0 0 24 24"
+   version="1.1"
+   id="svg8"
+   sodipodi:docname="lowest_highest_points.svg"
+   inkscape:version="1.2.2 (b0a8486541, 2022-12-01)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs12" />
+  <sodipodi:namedview
+     id="namedview10"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"
+     showguides="true"
+     inkscape:zoom="43.875"
+     inkscape:cx="12.011396"
+     inkscape:cy="12.011396"
+     inkscape:window-width="3774"
+     inkscape:window-height="2036"
+     inkscape:window-x="66"
+     inkscape:window-y="40"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg8" />
+  <g
+     transform="translate(0,-1037.3622)"
+     id="g6">
+    <path
+       style="fill:#89a02c;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="M 23,1055.3622 H 1 l 5,-7 5,4 6,-10 6,10 z"
+       id="path2" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 1,1055.3622 5,-7 5,4 6,-10 6,10"
+       id="path4" />
+  </g>
+  <ellipse
+     style="fill:#ff0000;stroke:#000000;stroke-width:1.11838;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1"
+     id="path957"
+     cx="-15.304843"
+     cy="1.2991453"
+     rx="2.3589745"
+     ry="2.1196582"
+     transform="matrix(0.85670305,0,0,0.93323636,30.177233,3.7875903)" />
+  <ellipse
+     style="fill:#ff0000;stroke:#000000;stroke-width:1.11838;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1"
+     id="path957-3"
+     cx="-15.304843"
+     cy="1.2991453"
+     rx="2.3589745"
+     ry="2.1196582"
+     transform="matrix(0.85670305,0,0,0.93323636,24.006293,13.287589)" />
+</svg>

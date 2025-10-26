@@ -332,6 +332,18 @@ public class ElevationPreferences {
     private static final boolean DEFAULT_ELEVATION_RASTER_ENABLED = false;
 
     /**
+     * Property key for enabling or disabling rendering of the lowest and highest
+     * points within the map view
+     */
+    public static final String LOWEST_AND_HIGHEST_POINTS_ENABLED = "elevation.layer.lowest_highest_points.enabled";
+
+    /**
+     * Default property value for enabling rendering of the lowest and highest
+     * points within the map view: {@code false}.
+     */
+    private static final boolean DEFAULT_LOWEST_AND_HIGHEST_POINTS_ENABLED = false;
+
+    /**
      * Property key for enabling or disabling automatic download of elevation data.
      */
     public static final String ELEVATION_AUTO_DOWNLOAD_ENABLED = "elevation.autodownload";
@@ -619,6 +631,15 @@ public class ElevationPreferences {
      */
     public static boolean getElevationRasterEnabled() {
         return Config.getPref().getBoolean(ELEVATION_RASTER_ENABLED, DEFAULT_ELEVATION_RASTER_ENABLED);
+    }
+
+    /**
+     * Returns whether rendering of the lowest and highest points within the map view is enabled.
+     *
+     * @return {@code true} if enabled.
+     */
+    public static boolean getLowestAndHighestPointsEnabled() {
+        return Config.getPref().getBoolean(LOWEST_AND_HIGHEST_POINTS_ENABLED, DEFAULT_LOWEST_AND_HIGHEST_POINTS_ENABLED);
     }
 
     /**

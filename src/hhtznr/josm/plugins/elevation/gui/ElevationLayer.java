@@ -64,6 +64,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
     private boolean contourLinesEnabled;
     private boolean hillshadeEnabled;
     private boolean elevationRasterEnabled;
+    private boolean lowestAndHighestPointsEnabled;
 
     /**
      * Creates a new elevation layer.
@@ -105,6 +106,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         contourLinesEnabled = ElevationPreferences.getContourLinesEnabled();
         hillshadeEnabled = ElevationPreferences.getHillshadeEnabled();
         elevationRasterEnabled = ElevationPreferences.getElevationRasterEnabled();
+        lowestAndHighestPointsEnabled = ElevationPreferences.getLowestAndHighestPointsEnabled();
     }
 
     /**
@@ -164,6 +166,17 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
      */
     public boolean isElevationRasterEnabled() {
         return elevationRasterEnabled;
+    }
+
+    /**
+     * Returns whether displaying of the lowest and highest points within the map
+     * view is enabled.
+     *
+     * @return {@code true} if displaying of the lowest and highest points within
+     *         the map view is enabled.
+     */
+    public boolean isLowestAndHighestPointsEnabled() {
+        return lowestAndHighestPointsEnabled;
     }
 
     /**
@@ -304,7 +317,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
 
     @Override
     public Icon getIcon() {
-        return ImageProvider.get("mapmode", "elevation");
+        return ImageProvider.get("elevation");
     }
 
     @Override
@@ -370,6 +383,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         actions.add(SeparatorLayerAction.INSTANCE);
         actions.add(new ShowContourLinesAction(this));
         actions.add(new ShowHillshadeAction(this));
+        actions.add(new ShowLowestAndHighestPointsAction(this));
         actions.add(new ShowElevationRasterAction(this));
         actions.add(SeparatorLayerAction.INSTANCE);
         actions.add(new LayerListPopup.InfoAction(this));
@@ -496,6 +510,36 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         public Component createMenuComponent() {
             JCheckBoxMenuItem item = new JCheckBoxMenuItem(this);
             item.setSelected(layer.elevationRasterEnabled);
+            return item;
+        }
+    }
+
+    private static class ShowLowestAndHighestPointsAction extends AbstractElevationLayerAction {
+
+        private static final long serialVersionUID = 1L;
+
+        public ShowLowestAndHighestPointsAction(ElevationLayer layer) {
+            super(layer, "Enable/disable lowest and highest points", "lowest_highest_points");
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            layer.lowestAndHighestPointsEnabled = !layer.lowestAndHighestPointsEnabled;
+            Config.getPref().putBoolean(ElevationPreferences.LOWEST_AND_HIGHEST_POINTS_ENABLED,
+                    layer.lowestAndHighestPointsEnabled);
+            if (layer.lowestAndHighestPointsEnabled)
+                Logging.info("Elevation: Lowest and highest points enabled");
+            else
+                Logging.info("Elevation: Lowest and highest points disabled");
+            layer.invalidate();
+            if (layer.isVisible())
+                MainApplication.getMap().mapView.repaint();
+        }
+
+        @Override
+        public Component createMenuComponent() {
+            JCheckBoxMenuItem item = new JCheckBoxMenuItem(this);
+            item.setSelected(layer.lowestAndHighestPointsEnabled);
             return item;
         }
     }

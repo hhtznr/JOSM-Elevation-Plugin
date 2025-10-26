@@ -107,18 +107,20 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
                 hillshadeImageTile = null;
                 scaledHillshadeImage = null;
                 elevationRaster = null;
+                lowestAndHighestPoints = null;
             }
 
             if (layer.isHillshadeEnabled())
                 drawHillshade(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
 
-            if (layer.isContourLinesEnabled()) {
+            if (layer.isContourLinesEnabled())
                 drawContourLines(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
-                drawLowestAndHighestPoints(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
-            }
 
             if (layer.isElevationRasterEnabled())
                 drawElevationRaster(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
+
+            if (layer.isLowestAndHighestPointsEnabled())
+                drawLowestAndHighestPoints(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
 
             previousClipBounds = clipBounds;
         }

@@ -131,6 +131,26 @@ public class SRTMTileGrid {
     }
 
     /**
+     * Returns the width of this SRTM tile grid, i.e. its number of SRTM tiles in
+     * longitude direction.
+     *
+     * @return The width of this SRTM tile grid.
+     */
+    public int getGridWidth() {
+        return gridWidth;
+    }
+
+    /**
+     * Returns the height of this SRTM tile grid, i.e. its number of SRTM tiles in
+     * latitude direction.
+     *
+     * @return The height of this SRTM tile grid.
+     */
+    public int getGridHeight() {
+        return gridHeight;
+    }
+
+    /**
      * Returns the width of the elevation data raster of this SRTM tile grid.
      *
      * @return The width of the elevation data raster of this SRTM tile grid across

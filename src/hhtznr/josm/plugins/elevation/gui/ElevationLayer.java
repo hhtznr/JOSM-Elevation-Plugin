@@ -1,25 +1,39 @@
 package hhtznr.josm.plugins.elevation.gui;
 
+import static org.openstreetmap.josm.tools.I18n.tr;
+
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Graphics2D;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
+import javax.swing.BorderFactory;
 import javax.swing.Icon;
 import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.osm.visitor.BoundingXYVisitor;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.MapView;
 import org.openstreetmap.josm.gui.dialogs.LayerListDialog;
+import org.openstreetmap.josm.gui.dialogs.LayerListPopup;
 import org.openstreetmap.josm.gui.layer.Layer;
+import org.openstreetmap.josm.gui.widgets.UrlLabel;
 import org.openstreetmap.josm.spi.preferences.Config;
+import org.openstreetmap.josm.tools.GBC;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Logging;
 
@@ -313,7 +327,40 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
 
     @Override
     public Object getInfoComponent() {
-        return null;
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.add(new JLabel("Elevation Layer"), GBC.eol());
+        List<List<String>> content = new ArrayList<>();
+        // Tile grid
+        int[] tileGridDimensions = elevationDataProvider.getSRTMTileGridDimensions();
+        content.add(Arrays.asList(tr("SRTM tile grid"),
+                "" + tileGridDimensions[0] + " x " + tileGridDimensions[1] + " SRTM tiles"));
+        // Tile grid raster
+        int[] tileGridRasterDimensions = elevationDataProvider.getSRTMTileGridRasterDimensions();
+        content.add(Arrays.asList(tr("SRTM tile grid raster"),
+                "" + tileGridRasterDimensions[0] + " x " + tileGridRasterDimensions[1] + " elevation data points"));
+        // Cache size
+        content.add(Arrays.asList(tr("SRTM tile cache"), "" + elevationDataProvider.getTileCacheInfo()));
+        // Info on tiles -> type, status, size, source
+        Map<String, String> cachedTilesInfo = elevationDataProvider.getCachedTilesInfo();
+        for (Map.Entry<String, String> entry : cachedTilesInfo.entrySet()) {
+            content.add(Arrays.asList(entry.getKey(), entry.getValue()));
+        }
+        for (List<String> entry : content) {
+            panel.add(new JLabel(entry.get(0) + ':'), GBC.std());
+            panel.add(GBC.glue(5, 0), GBC.std());
+            panel.add(createTextField(entry.get(1)), GBC.eol().fill(GridBagConstraints.HORIZONTAL));
+        }
+        return panel;
+    }
+
+    private static JComponent createTextField(String text) {
+        if (text != null && text.matches("https?://.*")) {
+            return new UrlLabel(text);
+        }
+        JTextField ret = new JTextField(text);
+        ret.setEditable(false);
+        ret.setBorder(BorderFactory.createEmptyBorder());
+        return ret;
     }
 
     @Override
@@ -324,6 +371,8 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         actions.add(new ShowContourLinesAction(this));
         actions.add(new ShowHillshadeAction(this));
         actions.add(new ShowElevationRasterAction(this));
+        actions.add(SeparatorLayerAction.INSTANCE);
+        actions.add(new LayerListPopup.InfoAction(this));
         return actions.toArray(new Action[0]);
     }
 

@@ -4,6 +4,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeMap;
 
 import org.openstreetmap.josm.tools.Logging;
 
@@ -39,6 +43,42 @@ public class SRTMTileCache {
      */
     public SRTMTileCache(int cacheSizeLimit) {
         setCacheSizeLimit(cacheSizeLimit);
+    }
+
+    /**
+     * Returns an info string on current cache utilization.
+     *
+     * @return An info string on current cache utilization: Number of cached tiles,
+     *         cache size and maximum cache size.
+     */
+    public synchronized String getInfo() {
+        String info = "";
+        int numberOfTiles = cache.size();
+        info += numberOfTiles + (numberOfTiles == 1 ? "tile, " : " tiles, ");
+        info += getSizeString(cacheSize) + " of max. ";
+        info += getSizeString(cacheSizeLimit);
+        return info;
+    }
+
+    /**
+     * Returns a map that provides information on the currently cached SRTM tiles.
+     * The tiles are ordered by their name.
+     *
+     * @return A map providing information on the currently cached SRTM tiles: Tile
+     *         IDs, type, status, size and source.
+     */
+    public synchronized Map<String, String> getCachedTilesInfo() {
+        Map<String, String> tileInfo = new TreeMap<>();
+        Set<Entry<String, SRTMTile>> entries = cache.entrySet();
+        for (Entry<String, SRTMTile> entry : entries) {
+            SRTMTile tile = entry.getValue();
+            String info = "Type: " + tile.getType().toString();
+            info += ", status: " + tile.getStatus().toString();
+            info += ", size: " + getSizeString(tile.getDataSize());
+            info += ", source: " + (tile.getDataSource() == null ? "none" : tile.getDataSource().getName());
+            tileInfo.put("SRTM tile " + tile.getID(), info);
+        }
+        return tileInfo;
     }
 
     /**
@@ -82,16 +122,17 @@ public class SRTMTileCache {
      * @param elevationData The elevation data or {@code null} if the data is not
      *                      available (yet).
      * @param status        The status of the SRTM tile.
+     * @param dataSource    The original source of the SRTM tile.
      * @return The new SRTM tile that was put into the cache or the existing SRTM
      *         tile that was updated, never {@code null}.
      */
     public synchronized SRTMTile putOrUpdateSRTMTile(String id, SRTMTile.Type type, short[] elevationData,
-            SRTMTile.Status status) {
+            SRTMTile.Status status, ElevationDataSource dataSource) {
         if (type == null)
             type = SRTMTile.Type.UNKNOWN;
         SRTMTile srtmTile = cache.get(id);
         if (srtmTile == null) {
-            srtmTile = new SRTMTile(id, type, elevationData, status);
+            srtmTile = new SRTMTile(id, type, elevationData, status, dataSource);
             cache.put(id, srtmTile);
             cacheSize += srtmTile.getDataSize();
             Logging.info("Elevation: Cached new SRTM tile " + id + " with type '" + type.toString() + "', status '"
@@ -99,7 +140,7 @@ public class SRTMTileCache {
                     + "; cache size: " + getSizeString(cacheSize));
         } else {
             cacheSize -= srtmTile.getDataSize();
-            srtmTile.update(type, elevationData, status);
+            srtmTile.update(type, elevationData, status, dataSource);
             cacheSize += srtmTile.getDataSize();
             Logging.info("Elevation: Updated cached SRTM tile " + id + " with type '" + type.toString() + "', status '"
                     + srtmTile.getStatus().toString() + "' and size " + getSizeString(srtmTile.getDataSize())
@@ -126,7 +167,8 @@ public class SRTMTileCache {
      *         tile that was updated, never {@code null}.
      */
     public synchronized SRTMTile putOrUpdateSRTMTile(SRTMTile tile) {
-        return putOrUpdateSRTMTile(tile.getID(), tile.getType(), tile.getElevationData(), tile.getStatus());
+        return putOrUpdateSRTMTile(tile.getID(), tile.getType(), tile.getElevationData(), tile.getStatus(),
+                tile.getDataSource());
     }
 
     /**
@@ -178,9 +220,8 @@ public class SRTMTileCache {
     }
 
     /**
-     * Adds an SRTM tile cache listener to this SRTM tile cache. All
-     * listeners are informed if elevation data for a particular SRTM tile is
-     * available.
+     * Adds an SRTM tile cache listener to this SRTM tile cache. All listeners are
+     * informed if elevation data for a particular SRTM tile is available.
      *
      * @param listener The listener to add.
      */

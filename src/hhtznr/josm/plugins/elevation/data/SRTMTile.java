@@ -118,6 +118,7 @@ public class SRTMTile {
     private int tileLength;
     private short[] elevationData;
     private Status status;
+    private ElevationDataSource dataSource;
     private long accessTime;
 
     /**
@@ -290,14 +291,15 @@ public class SRTMTile {
      * @param elevationData The elevation data points or {@code null} if no data is
      *                      available.
      * @param status        The current status of the SRTM tile.
+     * @param dataSource    The original source of this SRTM tile.
      */
-    public SRTMTile(String id, Type type, short[] elevationData, Status status) {
+    public SRTMTile(String id, Type type, short[] elevationData, Status status, ElevationDataSource dataSource) {
         this.id = id;
         int[] latLon = parseLatLonFromTileID(id);
         idLat = latLon[0];
         idLon = latLon[1];
         // Sets type, data and status as well as tileLength
-        update(type, elevationData, status);
+        update(type, elevationData, status, dataSource);
     }
 
     /**
@@ -346,6 +348,15 @@ public class SRTMTile {
     }
 
     /**
+     * Returns the original source of this SRTM tile.
+     *
+     * @return The original source of this SRTM tile.
+     */
+    public synchronized ElevationDataSource getDataSource() {
+        return dataSource;
+    }
+
+    /**
      * Returns the elevation data of this tile.
      *
      * @return The elevation data of this tile or {@code null} if the tile does not
@@ -359,7 +370,7 @@ public class SRTMTile {
      * Returns the elevation at the provided raster indices in latitude and
      * longitude coordinate direction. The indices are translated into the
      * corresponding index of the elevation value array provided by
-     * {@link hhtznr.josm.plugins.elevation.io.SRTMFileReader#readSRTMFile(File, Type)}
+     * {@link hhtznr.josm.plugins.elevation.io.SRTMFileReader#readSRTMFile(File, Type, ElevationDataSource)}
      *
      * @param latIndex The index in latitude direction. Range <code>0</code> to
      *                 <code>tileLength - 1</code>.
@@ -382,11 +393,13 @@ public class SRTMTile {
      * @param elevationData The elevation data points or {@code null} if no data is
      *                      available.
      * @param status        The current status of the SRTM tile.
+     * @param dataSource    The original source of this SRTM tile.
      */
-    public synchronized void update(Type type, short[] elevationData, Status status) {
+    public synchronized void update(Type type, short[] elevationData, Status status, ElevationDataSource dataSource) {
         this.type = type;
         this.elevationData = elevationData;
         this.status = status;
+        this.dataSource = dataSource;
         this.accessTime = System.currentTimeMillis();
         switch (type) {
         case SRTM1:
@@ -440,7 +453,7 @@ public class SRTMTile {
      * the elevation value was obtained.
      *
      * see
-     * {@link hhtznr.josm.plugins.elevation.io.SRTMFileReader#readSRTMFile(File, Type)}
+     * {@link hhtznr.josm.plugins.elevation.io.SRTMFileReader#readSRTMFile(File, Type, ElevationDataSource)}
      *
      * <b>Data order of an uncompressed SRTM file</b>
      *

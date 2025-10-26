@@ -10,6 +10,7 @@ import java.nio.ByteOrder;
 import org.openstreetmap.josm.io.Compression;
 import org.openstreetmap.josm.tools.Logging;
 
+import hhtznr.josm.plugins.elevation.data.ElevationDataSource;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
 
 /**
@@ -64,13 +65,14 @@ public class SRTMFileReader {
      * Voids in Versions 1.0 and 2.1 are flagged with the value -32,768. There are
      * no voids in Version 3.0.</i>
      *
-     * @param srtmFile The SRTM file to read.
-     * @param type     The type of SRTM file, SRTM1 or SRTM3.
+     * @param srtmFile   The SRTM file to read.
+     * @param type       The type of SRTM file, SRTM1 or SRTM3.
+     * @param dataSource The original source of the SRTM tile.
      * @return The SRTM tile read from the file.
      * @throws IOException Thrown if the data in the file has a wrong length or the
      *                     file cannot be read at all.
      */
-    public SRTMTile readSRTMFile(File srtmFile, SRTMTile.Type type) throws IOException {
+    public SRTMTile readSRTMFile(File srtmFile, SRTMTile.Type type, ElevationDataSource dataSource) throws IOException {
         String srtmTileID = SRTMFiles.getSRTMTileIDFromFileName(srtmFile.getName());
 
         Logging.info("Elevation: Reading SRTM file '" + srtmFile.getAbsolutePath() + "' for tile ID " + srtmTileID);
@@ -128,7 +130,7 @@ public class SRTMFileReader {
                     elevationData[flippedLatIndex * srtmTileLength + lonIndex] = byteBuffer
                             .getShort((latIndex * srtmTileLength + lonIndex) * Short.BYTES);
             }
-            return new SRTMTile(srtmTileID, type, elevationData, SRTMTile.Status.VALID);
+            return new SRTMTile(srtmTileID, type, elevationData, SRTMTile.Status.VALID, dataSource);
         } finally {
             if (inputStream != null)
                 inputStream.close();

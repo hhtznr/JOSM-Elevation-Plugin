@@ -307,27 +307,26 @@ public class SRTMTileGrid {
             return highestAndLowestPoints;
         }
 
-        double latRange = bounds.getHeight();
-        double lonRange = bounds.getWidth();
-        double minLatSouth = bounds.getMinLat();
-        double minLonWest = bounds.getMinLon();
-
         RasterIndexBounds rasterIndexBounds = getRasterIndexBounds(bounds);
-        int rasterWidth = rasterIndexBounds.getWidth();
-        int rasterHeight = rasterIndexBounds.getHeight();
+        int rasterBoundsWidth = rasterIndexBounds.getWidth();
+        int rasterBoundsHeight = rasterIndexBounds.getHeight();
+        double gridBoundsWidth = gridBounds.getWidth();
+        double gridBoundsHeight = gridBounds.getHeight();
 
         short previousMinEle = Short.MAX_VALUE;
         short previousMaxEle = Short.MIN_VALUE;
         LinkedList<LatLonEle> lowestPoints = new LinkedList<>();
         LinkedList<LatLonEle> highestPoints = new LinkedList<>();
 
-        for (int latIndex = 0; latIndex < rasterHeight - 1; latIndex++) {
+        for (int latIndex = 0; latIndex < rasterBoundsHeight - 1; latIndex++) {
             int gridRasterLatIndex = latIndex + rasterIndexBounds.latIndexSouth;
-            double lat = minLatSouth + latRange * (double) latIndex / (double) (rasterHeight - 1);
+            double lat = gridIntLatSouth + gridBoundsHeight * (double) gridRasterLatIndex / (double) (rasterHeight - 1);
 
-            for (int lonIndex = 0; lonIndex < rasterWidth - 1; lonIndex++) {
+            for (int lonIndex = 0; lonIndex < rasterBoundsWidth - 1; lonIndex++) {
                 int gridRasterLonIndex = lonIndex + rasterIndexBounds.lonIndexWest;
-                double lon = minLonWest + lonRange * (double) lonIndex / (double) (rasterWidth - 1);
+                double lon = gridIntLonWest
+                        + gridBoundsWidth * (double) gridRasterLonIndex / (double) (rasterWidth - 1);
+
                 short ele = getElevation(gridRasterLatIndex, gridRasterLonIndex);
 
                 if (ele < previousMinEle) {

@@ -85,8 +85,11 @@ public class SRTMTileGrid {
         gridHeight = gridIntLatNorth - gridIntLatSouth;
         gridWidth = gridIntLonEast - gridIntLonWest;
         srtmTiles = new SRTMTile[gridHeight * gridWidth];
-        rasterHeight = gridHeight * tileLength;
-        rasterWidth = gridWidth * tileLength;
+        // With the exception of the northernmost and easternmost tiles,
+        // the SRTM tiles overlap by one row and column
+        int effectiveTileLength = tileLength - 1;
+        rasterHeight = gridHeight * effectiveTileLength + 1;
+        rasterWidth = gridWidth * effectiveTileLength + 1;
 
         // Fill the 2D array with clipped SRTM tiles
         // Not across 180th meridian
@@ -260,12 +263,32 @@ public class SRTMTileGrid {
 
         // Tiles overlap by one row or column
         int effectiveTileLength = tileLength - 1;
-        int gridTileIndexX = latIndex / effectiveTileLength;
-        int gridTileIndexY = lonIndex / effectiveTileLength;
-        int tileLatIndex = latIndex % effectiveTileLength;
-        int tileLonIndex = lonIndex % effectiveTileLength;
 
-        return srtmTiles[gridTileIndexX * gridWidth + gridTileIndexY].getElevation(tileLatIndex, tileLonIndex);
+        int gridLatIndex;
+        int tileLatIndex;
+        int gridLonIndex;
+        int tileLonIndex;
+
+        // Last tile to the north
+        if (latIndex >= rasterHeight - tileLength) {
+            gridLatIndex = gridHeight - 1;
+            tileLatIndex = latIndex - (gridHeight - 1) * effectiveTileLength;
+        } else {
+            gridLatIndex = latIndex / effectiveTileLength;
+            tileLatIndex = latIndex % effectiveTileLength;
+        }
+
+        // Last tile to the east
+        if (lonIndex >= rasterWidth - tileLength) {
+            gridLonIndex = gridWidth - 1;
+            tileLonIndex = lonIndex - (gridWidth - 1) * effectiveTileLength;
+        } else {
+            gridLonIndex = lonIndex / effectiveTileLength;
+            tileLonIndex = lonIndex % effectiveTileLength;
+        }
+
+        SRTMTile tile = srtmTiles[gridLatIndex * gridWidth + gridLonIndex];
+        return tile.getElevation(tileLatIndex, tileLonIndex);
     }
 
     /**

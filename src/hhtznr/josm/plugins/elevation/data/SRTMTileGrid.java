@@ -4,6 +4,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import org.openstreetmap.josm.data.Bounds;
+import org.openstreetmap.josm.data.coor.ILatLon;
 import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.gui.ContourLines;
@@ -211,6 +212,35 @@ public class SRTMTileGrid {
         int rasterIndexEast = gridIndexEast * effectiveTileLength + tileIndexEast;
 
         return new RasterIndexBounds(rasterIndexSouth, rasterIndexNorth, rasterIndexWest, rasterIndexEast);
+    }
+
+    /**
+     * Returns the indices of the grid raster point which is closest to the given
+     * coordinate.
+     *
+     * @param latLon The coordinate for which to determine the indices of the
+     *               closest point in the grid raster.
+     * @return The indices of the grid raster point which is closest to the given
+     *         point.
+     */
+    public int[] getClosestGridRasterIndices(ILatLon latLon) {
+        int intLat = (int) Math.floor(latLon.lat());
+        int intLon = (int) Math.floor(latLon.lon());
+
+        int gridIndexLat = intLat - gridIntLatSouth;
+        int gridIndexLon = intLon - gridIntLonWest;
+
+        SRTMTile tile = srtmTiles[gridIndexLat * gridWidth + gridIndexLon];
+        int[] tileIndices = tile.getClosestIndices(latLon);
+        int tileIndexLat = tileIndices[0];
+        int tileIndexLon = tileIndices[1];
+
+        // Tiles overlap by one row or column
+        int effectiveTileLength = tileLength - 1;
+        int rasterIndexLat = gridIndexLat * effectiveTileLength + tileIndexLat;
+        int rasterIndexLon = gridIndexLon * effectiveTileLength + tileIndexLon;
+
+        return new int[] { rasterIndexLat, rasterIndexLon };
     }
 
     /**

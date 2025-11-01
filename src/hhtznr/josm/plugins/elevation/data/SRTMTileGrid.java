@@ -549,15 +549,18 @@ public class SRTMTileGrid {
     public boolean areAllSRTMTilesCached() {
         if (allTilesCached)
             return true;
-        SRTMTile.Type srtmTileType = null;
         for (int gridLatIndex = 0; gridLatIndex < gridHeight; gridLatIndex++) {
             for (int gridLonIndex = 0; gridLonIndex < gridWidth; gridLonIndex++) {
                 SRTMTile tile = srtmTiles[gridLatIndex * gridWidth + gridLonIndex];
-                if (tile.getStatus() != SRTMTile.Status.VALID)
-                    return false;
-                if (srtmTileType == null)
-                    srtmTileType = tile.getType();
-                else if (srtmTileType != tile.getType())
+                SRTMTile.Status tileStatus = tile.getStatus();
+                // If at least one SRTM tile does not have a final status
+                /**
+                 * Note: E.g. tile N43E014 might always be missing because it is neither
+                 * available from NASA Earthdata nor from Sonny because it would only cover a
+                 * part of the Adriatic Sea and therefore is not really meaningful.
+                 */
+                if (!(tileStatus == SRTMTile.Status.VALID || tileStatus == SRTMTile.Status.DOWNLOAD_FAILED
+                        || tileStatus == SRTMTile.Status.FILE_MISSING))
                     return false;
             }
         }

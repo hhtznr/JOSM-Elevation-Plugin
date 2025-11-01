@@ -49,6 +49,29 @@ public class ContourLines extends AbstractSRTMTileGridPaintable {
     }
 
     /**
+     * Creates a new set of contour lines for the specified isovalues only covering
+     * the specified bounds.
+     *
+     * @param tileGrid        The SRTM tile grid from which elevation data should be
+     *                        obtained.
+     * @param renderingBounds The bounds in latitude-longitude coordinate space,
+     *                        within which these contour lines can be rendered. The
+     *                        very edges might show artifacts.
+     * @param isovalues       The isovalues for which to create contour lines.
+     */
+    public ContourLines(SRTMTileGrid tileGrid, Bounds renderingBounds, short[] isovalues) {
+        super(tileGrid, tileGrid.getViewBoundsScaledByRasterStep(renderingBounds, BOUNDS_SCALE_RASTER_STEP),
+                renderingBounds);
+        if (isovalues.length < 2)
+            this.isostep = 1;
+        else
+            this.isostep = isovalues[1] - isovalues[0];
+        MarchingSquares marchingSquares = new MarchingSquares(tileGrid, renderingBounds, renderingRasterIndexBounds,
+                isovalues);
+        this.isolineSegments = marchingSquares.getIsolineSegments();
+    }
+
+    /**
      * Returns the step between adjacent contour lines.
      *
      * @return The step in meters between adjacent contour lines.

@@ -9,6 +9,7 @@ import hhtznr.josm.plugins.elevation.gui.ElevationTabPreferenceSetting;
 import hhtznr.josm.plugins.elevation.gui.ElevationToggleDialog;
 import hhtznr.josm.plugins.elevation.gui.LocalElevationLabel;
 import hhtznr.josm.plugins.elevation.gui.SRTMFileDownloadErrorDialog;
+import hhtznr.josm.plugins.elevation.gui.TopographicIsolationFinderAction;
 import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
 
 import java.awt.Color;
@@ -42,6 +43,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     private LocalElevationLabel localElevationLabel = null;
 
     private final AddElevationLayerAction addElevationLayerAction;
+    private final TopographicIsolationFinderAction isolationFinderAction;
     private boolean elevationLayerEnabled = true;
     private ElevationLayer elevationLayer = null;
     private ElevationToggleDialog elevationToggleDialog = null;
@@ -56,9 +58,12 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
         Migration.migrateSRTMDirectory();
         createElevationDataDirectories();
         addElevationLayerAction = new AddElevationLayerAction(this);
+        isolationFinderAction = new TopographicIsolationFinderAction(this);
         addElevationLayerAction.setEnabled(false);
+        isolationFinderAction.setEnabled(false);
         MainMenu.add(MainApplication.getMenu().imagerySubMenu, addElevationLayerAction,
-                MainMenu.WINDOW_MENU_GROUP.ALWAYS); 
+                MainMenu.WINDOW_MENU_GROUP.ALWAYS);
+        MainMenu.add(MainApplication.getMenu().moreToolsMenu, isolationFinderAction, MainMenu.WINDOW_MENU_GROUP.ALWAYS);
         Logging.info("Elevation: Plugin initialized");
     }
 
@@ -89,6 +94,18 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                     altitude, azimuth, lowerCutoff, upperCutoff);
         }
         return elevationLayer;
+    }
+
+    /**
+     * Returns the elevation data provider used by this plugin to download, read,
+     * store and serve elevation data.
+     *
+     * @return The elevation data provider of this plugin.
+     */
+    public ElevationDataProvider getElevationDataProvider() {
+        if (elevationDataProvider == null)
+            elevationDataProvider = new ElevationDataProvider();
+        return elevationDataProvider;
     }
 
     /**
@@ -191,6 +208,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                     elevationToggleDialog = new ElevationToggleDialog(this);
                     mapFrame.addToggleDialog(elevationToggleDialog);
                 }
+                isolationFinderAction.setEnabled(true);
             }
             if (!elevationLayerEnabled) {
                 if (elevationLayer != null) {
@@ -207,6 +225,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                 localElevationLabel = null;
             }
             addElevationLayerAction.setEnabled(false);
+            isolationFinderAction.setEnabled(false);
             if (elevationLayer != null) {
                 elevationLayerEnabled = false;
                 MainApplication.getLayerManager().removeLayer(elevationLayer);

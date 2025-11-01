@@ -48,6 +48,7 @@ import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
  */
 public class ElevationLayer extends Layer implements ElevationDataProviderListener {
 
+    private final Icon icon;
     private final ElevationDrawHelper layerPainter;
     private final ElevationDataProvider elevationDataProvider;
     private double renderingLimitArcDegrees;
@@ -92,6 +93,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
             int contourLineIsostep, float contourLineStrokeWidth, Color contourLineColor, int hillshadeAltitude,
             int hillshadeAzimuth, int lowerCutoffElevation, int upperCutoffElevation) {
         super("Elevation Layer");
+        this.icon = ImageProvider.get("", "elevation.svg");
         this.layerPainter = new ElevationDrawHelper(this);
         this.renderingLimitArcDegrees = renderingLimitArcDegrees;
         this.contourLineIsostep = contourLineIsostep;
@@ -317,7 +319,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
 
     @Override
     public Icon getIcon() {
-        return ImageProvider.get("elevation");
+        return icon;
     }
 
     @Override

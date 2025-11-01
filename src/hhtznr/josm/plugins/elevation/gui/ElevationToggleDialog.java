@@ -46,17 +46,16 @@ public class ElevationToggleDialog extends ToggleDialog {
     // Contour lines
     private final JLabel lblIsostep = new JLabel("Contour Line Isostep:");
     private final JSpinner spIsostep = new JSpinner(new SpinnerNumberModel(ElevationPreferences.getContourLineIsostep(),
-            ElevationPreferences.MIN_CONTOUR_LINE_ISOSTEP, ElevationPreferences.MAX_CONTOUR_LINE_ISOSTEP,
-            ElevationPreferences.INCR_CONTOUR_LINE_ISOSTEP));
+            1, ElevationPreferences.MAX_CONTOUR_LINE_ISOSTEP, 1));
     private final JLabel lblIsostepUnit = new JLabel("m");
 
-    private final JLabel lblUpperCutoff = new JLabel("Upper cutoff elevation:");
+    private final JLabel lblUpperCutoff = new JLabel("Upper Cutoff Elevation:");
     private final JSpinner spUpperCutoffValue = new JSpinner(new SpinnerNumberModel(
             ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION, ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION,
             ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION, 1));
     private final JLabel lblUpperCutoffUnit = new JLabel("m");
 
-    private final JLabel lblLowerCutoff = new JLabel("Lower cutoff elevation:");
+    private final JLabel lblLowerCutoff = new JLabel("Lower Cutoff Elevation:");
     private final JSpinner spLowerCutoffValue = new JSpinner(new SpinnerNumberModel(
             ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION, ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION,
             ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION, 1));
@@ -219,6 +218,14 @@ public class ElevationToggleDialog extends ToggleDialog {
                 int isostep = (Integer) spIsostep.getValue();
                 int upperCutoff = (Integer) spUpperCutoffValue.getValue();
                 int lowerCutoff = (Integer) spLowerCutoffValue.getValue();
+                // Interchange values
+                if (upperCutoff < lowerCutoff) {
+                    int temp = upperCutoff;
+                    upperCutoff = lowerCutoff;
+                    lowerCutoff = temp;
+                    spUpperCutoffValue.setValue(Integer.valueOf(upperCutoff));
+                    spLowerCutoffValue.setValue(Integer.valueOf(lowerCutoff));
+                }
                 int hillshadeAltitude = (Integer) spHillshadeAltitude.getValue();
                 int hillshadeAzimuth = (Integer) spHillshadeAzimuth.getValue();
                 elevationLayer.setRenderingLimit(renderingLimit);

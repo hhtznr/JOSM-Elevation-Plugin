@@ -98,8 +98,6 @@ public class ElevationToggleDialog extends ToggleDialog {
         gc.insets = new Insets(5, 5, 0, 0);
 
         // Row "Layer rendering limit"
-        gc.gridy++;
-        gc.gridx = 0;
         gc.fill = GBC.NONE;
         gc.gridwidth = 1;
         gc.weightx = 0.0;

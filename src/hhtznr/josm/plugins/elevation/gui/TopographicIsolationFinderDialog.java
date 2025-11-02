@@ -118,7 +118,7 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
         textAreaFeedback.setEditable(false);
 
         spinnerDistanceTolerance = new JSpinner(new SpinnerNumberModel(0, 0, 999, 1));
-        spinnerSearchDistance = new JSpinner(new SpinnerNumberModel(0.1, 0.1, 2.5, 0.1));
+        spinnerSearchDistance = new JSpinner(new SpinnerNumberModel(0.5, 0.1, 2.5, 0.1));
 
         buttonFind = new JButton(new FindAction());
 
@@ -381,6 +381,7 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
             textFieldPeakEle.setEditable(true);
             buttonFind.setEnabled(false);
             buttonStop.setEnabled(false);
+            textAreaFeedback.setText(null);
             buttonAddToDataLayer.setEnabled(false);
             nodes = null;
             closestPointsFuture = null;
@@ -391,9 +392,6 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
             textFieldPeakEle.setEditable(true);
             buttonFind.setEnabled(true);
             buttonStop.setEnabled(false);
-            buttonAddToDataLayer.setEnabled(false);
-            nodes = null;
-            closestPointsFuture = null;
             break;
         case SEARCH_RUNNING:
             buttonSetPeak.setEnabled(false);
@@ -408,8 +406,8 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
             break;
         case REFERENCE_POINTS_DETERMINED:
             buttonSetPeak.setEnabled(true);
-            textFieldPeakName.setEditable(false);
-            textFieldPeakEle.setEditable(false);
+            textFieldPeakName.setEditable(true);
+            textFieldPeakEle.setEditable(true);
             buttonFind.setEnabled(true);
             buttonStop.setEnabled(false);
             buttonAddToDataLayer.setEnabled(true);
@@ -610,14 +608,27 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
         public void actionPerformed(ActionEvent event) {
             SwingUtilities.invokeLater(() -> {
                 setDialogState(DialogState.SEARCH_RUNNING);
-                double ele;
+                String eleText = textFieldPeakEle.getText();
+                short ele;
                 try {
-                    ele = Integer.parseInt(textFieldPeakEle.getText());
+                    ele = (short) Double.parseDouble(eleText);
                 } catch (NumberFormatException e) {
                     setDialogState(DialogState.PEAK_DEFINED);
-                    textAreaFeedback.append("Determination of closest points interrupted" + System.lineSeparator());
+                    textAreaFeedback.append(
+                            "Cannot convert elevation to number, provided value: " + eleText + System.lineSeparator());
                     return;
                 }
+                textAreaFeedback
+                        .append("Determination of elevation reference points for peak:" + System.lineSeparator());
+                String peakNodeID = textFieldPeakNodeID.getText();
+                textAreaFeedback.append("Node ID: " + peakNodeID + System.lineSeparator());
+                String peakName = textFieldPeakName.getText();
+                if (!peakName.isBlank())
+                    textAreaFeedback.append("Name: " + peakName + System.lineSeparator());
+                String peakCoord = textFieldPeakCoord.getText();
+                textAreaFeedback.append("Coordinates: " + peakCoord + System.lineSeparator());
+                textAreaFeedback.append("Elevation: " + ele + " m" + System.lineSeparator());
+
                 LatLonEle peak = new LatLonEle(peakNode.getCoor(), ele);
                 double searchDistance = (Double) spinnerSearchDistance.getValue();
                 double minLat = peak.lat() - searchDistance;
@@ -629,7 +640,8 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
                 try {
                     closestPointsFuture = determineReferencePoints(peak, searchBounds, distanceTolerance);
                 } catch (RejectedExecutionException e) {
-
+                    textAreaFeedback.append(
+                            "Determination of closest points rejected by thread executor" + System.lineSeparator());
                 }
             });
         }

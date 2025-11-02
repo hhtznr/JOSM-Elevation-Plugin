@@ -351,14 +351,11 @@ public class SRTMTileGrid {
      * @return A list of two lists providing the coordinate points with the lowest
      *         and highest elevation within the given bounds. The first list holds
      *         the lowest points. The second list holds the highest points.
+     *         {@code null} is returned if not all SRTM tiles are cached yet.
      */
     public List<List<LatLonEle>> getLowestAndHighestPoints(Bounds bounds) {
-        if (!allTilesCached) {
-            List<List<LatLonEle>> highestAndLowestPoints = new LinkedList<>();
-            highestAndLowestPoints.add(new LinkedList<LatLonEle>());
-            highestAndLowestPoints.add(new LinkedList<LatLonEle>());
-            return highestAndLowestPoints;
-        }
+        if (!allTilesCached)
+            return null;
 
         RasterIndexBounds rasterIndexBounds = getRasterIndexBounds(bounds);
         int rasterBoundsWidth = rasterIndexBounds.getWidth();

@@ -7,7 +7,9 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.openstreetmap.josm.data.Bounds;
@@ -304,43 +306,108 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
     private void drawLowestAndHighestPoints(Graphics2D g, MapView mv, Bounds clipBounds) {
         if (lowestAndHighestPoints == null || !clipBounds.equals(previousClipBounds))
             lowestAndHighestPoints = layer.getElevationDataProvider().getLowestAndHighestPoints(clipBounds);
-        if (lowestAndHighestPoints.size() < 2)
+        if (lowestAndHighestPoints == null || lowestAndHighestPoints.size() < 2)
             return;
 
         List<LatLonEle> lowestPoints = lowestAndHighestPoints.get(0);
         List<LatLonEle> highestPoints = lowestAndHighestPoints.get(1);
-
-        // Set the font for elevation value strings
-        Font font = g.getFont().deriveFont(Font.PLAIN, 10);
-        g.setFont(font);
-
-        // Dimensions of an up to 4 digit (+ 2 digits/points space) elevation value
-        // string in screen coordinates
-        FontMetrics metrics = g.getFontMetrics(font);
-        int eleStringDisplayHeight = metrics.getHeight() + 2;
-
-        // The size of the marker of an elevation data point in display coordinates
-        final int markerSize = 6;
-
+        List<Point> lowestPixels = new ArrayList<>(lowestPoints.size());
         for (LatLonEle latLonEle : lowestPoints) {
             Point p = mv.getPoint(latLonEle);
-            String eleText = Integer.toString((int) latLonEle.ele());
-            g.setColor(Color.RED);
-            g.fillRect(p.x - markerSize / 2, p.y - markerSize / 2, markerSize, markerSize);
-            g.setColor(Color.BLACK);
-            g.drawRect(p.x - markerSize / 2, p.y - markerSize / 2, markerSize, markerSize);
-            g.setColor(Color.BLUE);
-            g.drawString(eleText, p.x + markerSize, p.y + eleStringDisplayHeight / 2);
+            lowestPixels.add(p);
         }
+        String textLowestElevation = "";
+        if (lowestPoints.size() > 0)
+            textLowestElevation = Integer.toString((int) lowestPoints.get(0).ele());
+        List<Point> highestPixels = new ArrayList<>(highestPoints.size());
         for (LatLonEle latLonEle : highestPoints) {
             Point p = mv.getPoint(latLonEle);
-            String eleText = Integer.toString((int) latLonEle.ele());
-            g.setColor(Color.RED);
-            g.fillRect(p.x - markerSize / 2, p.y - markerSize / 2, markerSize, markerSize);
-            g.setColor(Color.BLACK);
-            g.drawRect(p.x - markerSize / 2, p.y - markerSize / 2, markerSize, markerSize);
-            g.setColor(Color.BLUE);
-            g.drawString(eleText, p.x + markerSize, p.y + eleStringDisplayHeight / 2);
+            highestPixels.add(p);
+        }
+        String textHighestElevation = "";
+        if (highestPoints.size() > 0)
+            textHighestElevation = Integer.toString((int) highestPoints.get(0).ele());
+
+        // The size of the marker of an elevation data point in display coordinates
+        final int markerSize = 8;
+        final int textOffsetX = markerSize / 2 + 3;
+
+        // Draw the symbols for the lowest and highest points
+        for (Point p : lowestPixels)
+            drawEquilateralTriangle(g, p.x, p.y, markerSize, false, Color.GREEN, Color.BLACK);
+        for (Point p : highestPixels)
+            drawEquilateralTriangle(g, p.x, p.y, markerSize, true, Color.RED, Color.BLACK);
+
+        // Set the font for elevation value strings
+        Font font = g.getFont().deriveFont(Font.BOLD, 12);
+        g.setFont(font);
+        // Draw non-overlapping labels for the highest and lowest points
+        NonOverlappingTextRenderer textRenderer = new NonOverlappingTextRenderer();
+        for (Point p : lowestPixels)
+            textRenderer.drawTextSafely(g, p, textLowestElevation, textOffsetX, Color.BLUE);
+        for (Point p : highestPixels)
+            textRenderer.drawTextSafely(g, p, textHighestElevation, textOffsetX, Color.BLUE);
+    }
+
+    private void drawEquilateralTriangle(Graphics2D g, int centerX, int centerY, int sideLength, boolean upright,
+            Color colorFill, Color colorOutline) {
+        // Calculate height of the triangle
+        double height = sideLength * (Math.sqrt(3.0) / 2.0);
+
+        int[] xPoints = new int[3];
+        int[] yPoints = new int[3];
+
+        if (upright) {
+            // Calculate the vertices
+            // Top vertex: (Cx, Cy - 2/3*H)
+            int topX = centerX;
+            int topY = (int) (centerY - (2.0 / 3.0) * height);
+
+            // Bottom-left vertex: (Cx - S/2, Cy + 1/3*H)
+            int bottomLeftX = (int) (centerX - sideLength / 2.0);
+            int bottomLeftY = (int) (centerY + (1.0 / 3.0) * height);
+
+            // Bottom-right vertex: (Cx + S/2, Cy + 1/3*H)
+            int bottomRightX = (int) (centerX + sideLength / 2.0);
+            int bottomRightY = (int) (centerY + (1.0 / 3.0) * height);
+
+            // Define the polygon coordinates
+            xPoints[0] = topX;
+            xPoints[1] = bottomLeftX;
+            xPoints[2] = bottomRightX;
+            yPoints[0] = topY;
+            yPoints[1] = bottomLeftY;
+            yPoints[2] = bottomRightY;
+        } else {
+            // Calculate the vertices
+            // Bottom vertex: (Cx, Cy + 2/3*H)
+            int bottomX = centerX;
+            int bottomY = (int) (centerY + (2.0 / 3.0) * height);
+
+            // Top-left vertex: (Cx - S/2, Cy - 1/3*H)
+            int topLeftX = (int) (centerX - sideLength / 2.0);
+            int topLeftY = (int) (centerY - (1.0 / 3.0) * height);
+
+            // Top-right vertex: (Cx + S/2, Cy - 1/3*H)
+            int topRightX = (int) (centerX + sideLength / 2.0);
+            int topRightY = (int) (centerY - (1.0 / 3.0) * height);
+
+            // Define the polygon coordinates
+            xPoints[0] = bottomX;
+            xPoints[1] = topRightX;
+            xPoints[2] = topLeftX;
+            yPoints[0] = bottomY;
+            yPoints[1] = topRightY;
+            yPoints[2] = topLeftY;
+        }
+        int nPoints = 3;
+
+        // Draw and fill the triangle
+        g.setColor(colorFill);
+        g.fillPolygon(xPoints, yPoints, nPoints);
+        if (colorOutline != null) {
+            g.setColor(colorOutline);
+            g.drawPolygon(xPoints, yPoints, nPoints);
         }
     }
 
@@ -372,5 +439,46 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
 
     @Override
     public void paintableInvalidated(PaintableInvalidationEvent event) {
+    }
+
+    private static class NonOverlappingTextRenderer {
+
+        // A list to keep track of the screen areas where text has been drawn
+        private final List<Rectangle> occupiedTextAreas = new ArrayList<>();
+
+        private void drawTextSafely(Graphics2D g, Point p, String text, int offSetX, Color color) {
+            // Get font metrics to measure the text size
+            FontMetrics metrics = g.getFontMetrics();
+            int textWidth = metrics.stringWidth(text);
+            int textHeight = metrics.getHeight();
+            int ascent = metrics.getAscent();
+
+            int x = p.x + offSetX;
+            int y = p.y - textHeight / 2 + ascent;
+            /*
+             * Calculate the bounding box for the potential text label We use p.y +
+             * metrics.getAscent() because drawString draws from the baseline up;
+             * metrics.getAscent() = Y start position (top edge of text)
+             */
+            Rectangle textBounds = new Rectangle(x, y - ascent, textWidth, textHeight);
+
+            // Check for overlap with any previously drawn text areas
+            boolean overlaps = false;
+            for (Rectangle existingArea : occupiedTextAreas) {
+                if (textBounds.intersects(existingArea)) {
+                    overlaps = true;
+                    break; // Overlap found, stop checking
+                }
+            }
+
+            // 3. Draw and record only if no overlap
+            if (!overlaps) {
+                g.setColor(color);
+                g.drawString(text, x, y); // drawString uses baseline Y
+
+                // 4. Add this area to our list of occupied spaces
+                occupiedTextAreas.add(textBounds);
+            }
+        }
     }
 }

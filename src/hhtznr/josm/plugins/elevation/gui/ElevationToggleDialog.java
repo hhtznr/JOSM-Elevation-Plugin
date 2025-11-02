@@ -3,14 +3,18 @@ package hhtznr.josm.plugins.elevation.gui;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.util.Arrays;
 
 import javax.swing.AbstractAction;
 import javax.swing.Box;
+import javax.swing.JFormattedTextField;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.text.DefaultFormatter;
 
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.SideButton;
@@ -41,6 +45,7 @@ public class ElevationToggleDialog extends ToggleDialog {
                     ElevationPreferences.MIN_ELEVATION_LAYER_RENDERING_LIMIT,
                     ElevationPreferences.MAX_ELEVATION_LAYER_RENDERING_LIMIT,
                     ElevationPreferences.INCR_ELEVATION_LAYER_RENDERING_LIMIT));
+
     private final JLabel lblRenderingLimitUnit = new JLabel("°");
 
     // Contour lines
@@ -81,6 +86,16 @@ public class ElevationToggleDialog extends ToggleDialog {
         super("Elevation Layer", "elevation.svg",
                 "Dynamic, non-presistent configuration of selected elevation rendering settings", null, 150);
         elevationPlugin = plugin;
+
+        // Configure the spinners to consume key events associated with input of numbers
+        // This will prevent JOSM from interpreting them as global shortcuts
+        // Otherwise, e.g. typing "1" into a spinner would cause a zoom to the world map
+        consumeNumberKeyEvents(spRenderingLimit);
+        consumeNumberKeyEvents(spIsostep);
+        consumeNumberKeyEvents(spUpperCutoffValue);
+        consumeNumberKeyEvents(spLowerCutoffValue);
+        consumeNumberKeyEvents(spHillshadeAltitude);
+        consumeNumberKeyEvents(spHillshadeAzimuth);
 
         spRenderingLimit.setToolTipText(ElevationPluginTexts.TOOL_TIP_LAYER_RENDERING_LIMIT);
         spUpperCutoffValue.setToolTipText(ElevationPluginTexts.TOOL_TIP_HILLSHADE_ALTITUDE);
@@ -198,6 +213,57 @@ public class ElevationToggleDialog extends ToggleDialog {
         SideButton refreshButton = new SideButton(new RefreshAction());
 
         createLayout(pnl, false, Arrays.asList(refreshButton));
+    }
+
+    private static void consumeNumberKeyEvents(JSpinner spinner) {
+        JFormattedTextField textField = ((JSpinner.DefaultEditor) spinner.getEditor()).getTextField();
+        ((DefaultFormatter) textField.getFormatter()).setAllowsInvalid(false);
+        SpinnerNumberModel model = (SpinnerNumberModel) spinner.getModel();
+        Number value = model.getNumber();
+        boolean spinnerAllowsDecimal = value instanceof Double || value instanceof Float;
+
+        textField.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyTyped(KeyEvent e) {
+                // Consume the event. This stops it from propagating to the main JOSM window
+                if (isKeyCharAllowed(e))
+                    textField.replaceSelection(String.valueOf(e.getKeyChar()));
+            }
+
+            @Override
+            public void keyPressed(KeyEvent e) {
+                isKeyCharAllowed(e);
+            }
+
+            private boolean isKeyCharAllowed(KeyEvent e) {
+                char keyChar = e.getKeyChar();
+                String text = textField.getText();
+                int caretPos = textField.getCaretPosition();
+
+                boolean consume = false;
+                boolean allow = false;
+
+                // Check if the character typed is a digit (0-9), dot (.) or dash (-)
+                if (Character.isDigit(keyChar)) {
+                    consume = true;
+                    allow = true; // digits are always allowed
+                } else if (keyChar == '-') {
+                    consume = true;
+                    if (caretPos == 0 && !text.contains("-"))
+                        allow = true; // minus sign only at start, and only once
+                } else if (spinnerAllowsDecimal && keyChar == '.') {
+                    consume = true;
+                    if (!text.contains("."))
+                        allow = true; // decimal point only once, only for double spinners
+                }
+
+                // Consume key chars interpreted by the spinner to prevent them from triggering
+                // a global event
+                if (consume)
+                    e.consume();
+                return allow;
+            }
+        });
     }
 
     private class RefreshAction extends AbstractAction {

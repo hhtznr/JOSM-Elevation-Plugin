@@ -124,7 +124,7 @@ public class MarchingSquares {
 
         // Stores the currently processed row of cells so the northern edges can be
         // reused in the next iteration
-        Cell[] previousCellRowToSouth = new Cell[rasterHeight];
+        Cell[] previousCellRowToSouth = new Cell[rasterWidth];
         // Iterate through the grid, accessing the data as "square" 2 x 2 cells
         // Therefore, we stop to iterate at index "length - 2" in both dimensions
         for (int latIndex = 0; latIndex < rasterHeight - 1; latIndex++) {
@@ -132,11 +132,11 @@ public class MarchingSquares {
             double latNorth = minLatSouth + latRange * (double) (latIndex + 1) / (double) (rasterHeight - 1);
             double latSouth = minLatSouth + latRange * (double) latIndex / (double) (rasterHeight - 1);
 
-            // The cell to the south of the currently processed cell
-            Cell cellToSouth = previousCellRowToSouth[latIndex];
             // The cell to the west of the currently processed cell
             Cell cellToWest = null;
             for (int lonIndex = 0; lonIndex < rasterWidth - 1; lonIndex++) {
+                // The cell to the south of the currently processed cell
+                Cell cellToSouth = previousCellRowToSouth[lonIndex];
                 int gridRasterLonIndex = lonIndex + rasterIndexBounds.lonIndexWest;
                 // Get the elevation values and the edge longitudes
                 short eleNorthWest;
@@ -594,7 +594,7 @@ public class MarchingSquares {
                 }
                 // Remember the cell to reuse data
                 // when iterating over the next cell row to the north
-                previousCellRowToSouth[latIndex] = currentCell;
+                previousCellRowToSouth[lonIndex] = currentCell;
                 // when handling the next cell to the east in the current row
                 cellToWest = currentCell;
             }

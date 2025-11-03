@@ -691,11 +691,12 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
                     textAreaFeedback.setText("No nodes available to add them to the data layer (should not happen)");
                     return;
                 }
-                nodes.add(new Node(peakNode));
 
                 DataSet ds = new DataSet();
+                ds.addPrimitive(new Node(peakNode));
                 for (Node node : nodes) {
-                    ds.addPrimitive(node);
+                    node.getId();
+                    ds.addPrimitive(new Node(node));
                 }
                 String layerName = "Isolation reference points";
                 String peakName = textFieldPeakName.getText();
@@ -705,7 +706,7 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
                 MainApplication.getLayerManager().addLayer(dataLayer);
                 MainApplication.getLayerManager().setActiveLayer(dataLayer);
 
-                ds.setSelected(nodes);
+                ds.setSelected(ds.getNodes());
 
                 MapFrame mapFrame = MainApplication.getMap();
                 if (mapFrame != null) {
@@ -714,7 +715,7 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
                     double minLon = Double.MAX_VALUE;
                     double maxLat = Double.MIN_VALUE;
                     double maxLon = Double.MIN_VALUE;
-                    for (Node node : nodes) {
+                    for (Node node : ds.getNodes()) {
                         double lat = node.getCoor().lat();
                         double lon = node.getCoor().lon();
                         minLat = Math.min(minLat, lat);

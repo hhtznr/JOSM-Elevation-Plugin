@@ -43,8 +43,8 @@ public class ContourLines extends AbstractSRTMTileGridPaintable {
         this.isostep = isostep;
         short[] isovalues = tileGrid.getIsovalues(renderingRasterIndexBounds, isostep, lowerCutoffElevation,
                 upperCutoffElevation);
-        MarchingSquares marchingSquares = new MarchingSquares(tileGrid, renderingBounds, renderingRasterIndexBounds,
-                isovalues);
+        MarchingSquares marchingSquares = new MarchingSquares(this.tileGrid, this.renderingBounds,
+                renderingRasterIndexBounds, isovalues);
         this.isolineSegments = marchingSquares.getIsolineSegments();
     }
 

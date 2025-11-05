@@ -229,6 +229,26 @@ public class SRTMTileGrid {
     }
 
     /**
+     * Returns coordinate bounds which correspond to the given raster index bounds.
+     *
+     * @param rasterIndexBounds The raster index bounds.
+     * @return The corresponding coordinate bounds
+     */
+    public Bounds getBounds(RasterIndexBounds rasterIndexBounds) {
+        double latRange = gridBounds.getHeight();
+        double lonRange = gridBounds.getWidth();
+        double minLat = gridIntLatSouth
+                + latRange * (double) rasterIndexBounds.latIndexSouth / (double) (rasterHeight - 1);
+        double maxLat = gridIntLatSouth
+                + latRange * (double) rasterIndexBounds.latIndexNorth / (double) (rasterHeight - 1);
+        double minLon = gridIntLonWest
+                + lonRange * (double) rasterIndexBounds.lonIndexWest / (double) (rasterWidth - 1);
+        double maxLon = gridIntLonWest
+                + lonRange * (double) rasterIndexBounds.lonIndexEast / (double) (rasterWidth - 1);
+        return new Bounds(minLat, minLon, maxLat, maxLon);
+    }
+
+    /**
      * Returns the indices of the grid raster point which is closest to the given
      * coordinate.
      *

@@ -36,9 +36,10 @@ public abstract class AbstractSRTMTileGridPaintable {
      */
     public AbstractSRTMTileGridPaintable(SRTMTileGrid tileGrid, Bounds viewBounds, Bounds renderingBounds) {
         this.tileGrid = tileGrid;
+        SRTMTileGrid.RasterIndexBounds viewRasterIndexBounds = tileGrid.getRasterIndexBounds(viewBounds);
         this.renderingRasterIndexBounds = tileGrid.getRasterIndexBounds(renderingBounds);
-        this.viewBounds = viewBounds;
-        this.renderingBounds = renderingBounds;
+        this.viewBounds = tileGrid.getBounds(viewRasterIndexBounds);;
+        this.renderingBounds = tileGrid.getBounds(renderingRasterIndexBounds);
     }
 
     /**

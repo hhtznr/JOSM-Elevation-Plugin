@@ -39,7 +39,7 @@ public class HillshadeImageTile extends AbstractSRTMTileGridPaintable {
     public HillshadeImageTile(SRTMTileGrid tileGrid, Bounds renderingBounds, double altitudeDeg, double azimuthDeg,
             boolean withPerimeter) {
         super(tileGrid, renderingBounds, renderingBounds);
-        Hillshade hillshade = new Hillshade(tileGrid, renderingBounds, renderingRasterIndexBounds, altitudeDeg,
+        Hillshade hillshade = new Hillshade(tileGrid, this.renderingBounds, renderingRasterIndexBounds, altitudeDeg,
                 azimuthDeg);
         image = hillshade.getHillshadeImage(withPerimeter);
         this.renderingBounds = hillshade.getRenderingBounds();

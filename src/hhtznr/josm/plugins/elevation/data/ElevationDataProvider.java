@@ -460,15 +460,16 @@ public class ElevationDataProvider implements SRTMFileDownloadListener, SRTMTile
                                 srtmFileDownloadFailed(srtmTileID, srtmTileType, elevationDataSource, e);
                             }
                         }
-
                     }
                 }
 
             }
             // If we could not establish an SRTM tile to be, put an empty data set with
             // status "file missing" into the cache
-            if (srtmTile == null)
-                srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, null, null, SRTMTile.Status.FILE_MISSING, null);
+            if (srtmTile == null) {
+                SRTMTile.Type dummyType = ElevationPreferences.getPreferredSRTMType();
+                srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, dummyType, null, SRTMTile.Status.FILE_MISSING, null);
+            }
             // If we have a valid tile now, remember it as the previous tile
             else if (srtmTile.getStatus() == SRTMTile.Status.VALID)
                 previousTile = srtmTile;

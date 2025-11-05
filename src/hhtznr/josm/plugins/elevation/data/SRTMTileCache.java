@@ -128,8 +128,6 @@ public class SRTMTileCache {
      */
     public synchronized SRTMTile putOrUpdateSRTMTile(String id, SRTMTile.Type type, short[] elevationData,
             SRTMTile.Status status, ElevationDataSource dataSource) {
-        if (type == null)
-            type = SRTMTile.Type.UNKNOWN;
         SRTMTile srtmTile = cache.get(id);
         if (srtmTile == null) {
             srtmTile = new SRTMTile(id, type, elevationData, status, dataSource);

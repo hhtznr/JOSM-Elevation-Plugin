@@ -133,12 +133,7 @@ public class SRTMTile {
         /**
          * SRTM3: elevation sampled at 3 arc-seconds
          */
-        SRTM3("SRTM3"),
-
-        /**
-         * Dummy type to be used as long as the actual SRTM type is not known.
-         */
-        UNKNOWN("unknown");
+        SRTM3("SRTM3");
 
         private final String typeName;
 
@@ -401,16 +396,10 @@ public class SRTMTile {
         this.status = status;
         this.dataSource = dataSource;
         this.accessTime = System.currentTimeMillis();
-        switch (type) {
-        case SRTM1:
+        if (type == Type.SRTM1)
             tileLength = SRTM1_TILE_LENGTH;
-            break;
-        case SRTM3:
+        else
             tileLength = SRTM3_TILE_LENGTH;
-            break;
-        default:
-            tileLength = INVALID_TILE_LENGTH;
-        }
     }
 
     /**

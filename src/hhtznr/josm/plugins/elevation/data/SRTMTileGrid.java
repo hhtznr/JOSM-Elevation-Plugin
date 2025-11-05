@@ -533,14 +533,21 @@ public class SRTMTileGrid {
     public short[] getIsovalues(RasterIndexBounds rasterIndexBounds, int isostep, int lowerCutoffElevation,
             int upperCutoffElevation) {
         short minEle = Short.MAX_VALUE;
-        short maxEle = Short.MIN_VALUE;
+        short maxEle = SRTMTile.SRTM_DATA_VOID;
         for (int latIndex = rasterIndexBounds.latIndexSouth; latIndex <= rasterIndexBounds.latIndexNorth; latIndex++) {
             for (int lonIndex = rasterIndexBounds.lonIndexWest; lonIndex <= rasterIndexBounds.lonIndexEast; lonIndex++) {
                 short ele = getElevation(latIndex, lonIndex);
-                minEle = (short) Math.min(minEle, ele);
+                // Ignore data voids in the assessment of minimum elevation
+                if (ele != SRTMTile.SRTM_DATA_VOID)
+                    minEle = (short) Math.min(minEle, ele);
                 maxEle = (short) Math.max(maxEle, ele);
             }
         }
+        // If the area consists of data voids only,
+        // minEle will still have its initial value
+        if (minEle == Short.MAX_VALUE)
+            minEle = SRTMTile.SRTM_DATA_VOID;
+
         // Apply the lower cutoff elevation value, if it is greater than the minimum
         // elevation within the grid
         minEle = (short) Math.max(minEle, lowerCutoffElevation);

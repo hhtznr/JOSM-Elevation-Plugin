@@ -629,10 +629,23 @@ public class SRTMTile {
      *         dimension is stored at array index {@code 1}.
      */
     protected int[] getClosestIndices(ILatLon latLon) {
+        return getClosestIndices(latLon.lat(), latLon.lon());
+    }
+
+    /**
+     * Returns the indices of the elevation value at the tile raster coordinate that
+     * is closest to the given coordinate.
+     *
+     * @param lat The latitude.
+     * @param lon The longitude.
+     * @return An array of {@code length = 2} which contains the indices of the
+     *         elevation value of interest. The value's index in latitude dimension
+     *         is stored at array index {@code 0}. The value's index in longitude
+     *         dimension is stored at array index {@code 1}.
+     */
+    protected int[] getClosestIndices(double lat, double lon) {
         // Determine the array index at which to retrieve the elevation at the given
         // location
-        double lat = latLon.lat();
-        double lon = latLon.lon();
         // Accept idLat <= lat <= idLat + 1
         // For idLat + 1 next tile to the north is used
         if (lat < idLat || lat > idLat + 1)

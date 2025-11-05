@@ -185,10 +185,24 @@ public class SRTMTileGrid {
      */
     public RasterIndexBounds getRasterIndexBounds(Bounds bounds) {
 
-        int intLatSouth = (int) Math.floor(bounds.getMinLat());
-        int intLatNorth = (int) Math.floor(bounds.getMaxLat());
-        int intLonWest = (int) Math.floor(bounds.getMinLon());
-        int intLonEast = (int) Math.floor(bounds.getMaxLon());
+        double minLat = bounds.getMinLat();
+        double minLon = bounds.getMinLon();
+        double maxLat = bounds.getMaxLat();
+        double maxLon = bounds.getMaxLon();
+
+        double minLatFloor = Math.floor(minLat);
+        double minLonFloor = Math.floor(minLon);
+        double maxLatFloor = Math.floor(maxLat);
+        double maxLonFloor = Math.floor(maxLon);
+
+        int intLatSouth = (int) minLatFloor;
+        int intLonWest = (int) minLonFloor;
+        int intLatNorth = (int) maxLatFloor;
+        if (maxLatFloor == maxLat)
+            intLatNorth -= 1;
+        int intLonEast = (int) maxLonFloor;
+        if (maxLonFloor == maxLon)
+            intLonEast -= 1;
 
         int gridIndexSouth = intLatSouth - gridIntLatSouth;
         int gridIndexNorth = intLatNorth - gridIntLatSouth;
@@ -197,8 +211,8 @@ public class SRTMTileGrid {
 
         SRTMTile tileSouthWest = srtmTiles[gridIndexSouth * gridWidth + gridIndexWest];
         SRTMTile tileNorthEast = srtmTiles[gridIndexNorth * gridWidth + gridIndexEast];
-        int[] tileIndicesSouthWest = tileSouthWest.getClosestIndices(bounds.getMin());
-        int[] tileIndicesNorthEast = tileNorthEast.getClosestIndices(bounds.getMax());
+        int[] tileIndicesSouthWest = tileSouthWest.getClosestIndices(minLat, minLon);
+        int[] tileIndicesNorthEast = tileNorthEast.getClosestIndices(maxLat, maxLon);
         int tileIndexSouth = tileIndicesSouthWest[0];
         int tileIndexWest = tileIndicesSouthWest[1];
         int tileIndexNorth = tileIndicesNorthEast[0];

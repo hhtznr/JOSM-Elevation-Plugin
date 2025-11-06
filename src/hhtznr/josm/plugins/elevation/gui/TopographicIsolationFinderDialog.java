@@ -26,7 +26,6 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
-import javax.swing.SwingUtilities;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
@@ -46,6 +45,7 @@ import org.openstreetmap.josm.tools.GBC;
 
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
+import hhtznr.josm.plugins.elevation.data.LatLonTool;
 import hhtznr.josm.plugins.elevation.tools.ElevationToolListener;
 import hhtznr.josm.plugins.elevation.tools.TopographicIsolationFinder;
 
@@ -68,6 +68,7 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
     private JTextField textFieldPeakEle;
     private JSpinner spinnerDistanceTolerance;
     private JSpinner spinnerSearchDistance;
+    private JTextField textFieldSearchDistanceLatLon;
     private JButton buttonFind;
     private JButton buttonStop;
     private JButton buttonAddToDataLayer;
@@ -77,6 +78,7 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
     private Node peakNode = null;
     private Future<List<LatLonEle>> closestPointsFuture = null;
     private List<Node> nodes = null;
+    private Bounds searchBounds = null;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();;
 
@@ -118,7 +120,12 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
         textAreaFeedback.setEditable(false);
 
         spinnerDistanceTolerance = new JSpinner(new SpinnerNumberModel(0, 0, 999, 1));
-        spinnerSearchDistance = new JSpinner(new SpinnerNumberModel(0.5, 0.1, 2.5, 0.1));
+        spinnerSearchDistance = new JSpinner(new SpinnerNumberModel(10, 1, 10000, 1));
+        spinnerSearchDistance.addChangeListener(e -> {
+            setSearchDistanceLatLon();
+        });
+        textFieldSearchDistanceLatLon = new JTextField(30);
+        textFieldSearchDistanceLatLon.setEditable(false);
 
         buttonFind = new JButton(new FindAction());
 
@@ -240,7 +247,7 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
         gc.weightx = 1.0;
         pnl.add(labelSection2, gc);
 
-        // Row "Search distance"
+        // Row "Search distance (km)"
         gc.gridy++;
         gc.gridx = 0;
         gc.gridwidth = 1;
@@ -251,6 +258,23 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
         gc.fill = GBC.HORIZONTAL;
         gc.weightx = 1.0;
         pnl.add(spinnerSearchDistance, gc);
+
+        gc.gridx++;
+        gc.gridwidth = GBC.REMAINDER;
+        gc.weightx = 0.0;
+        pnl.add(new JLabel("km"), gc);
+
+        // Row "Search distance (lat-lon)"
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnl.add(new JPanel(), gc);
+
+        gc.gridx++;
+        gc.fill = GBC.HORIZONTAL;
+        gc.weightx = 1.0;
+        pnl.add(textFieldSearchDistanceLatLon, gc);
 
         gc.gridx++;
         gc.gridwidth = GBC.REMAINDER;
@@ -372,8 +396,10 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
             buttonStop.setEnabled(false);
             textAreaFeedback.setText(null);
             buttonAddToDataLayer.setEnabled(false);
+            peakNode = null;
             nodes = null;
             closestPointsFuture = null;
+            searchBounds = null;
             break;
         case PEAK_NODE_SELECTED:
             buttonSetPeak.setEnabled(true);
@@ -421,6 +447,30 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
             buttonAddToDataLayer.setEnabled(false);
             break;
         }
+    }
+
+    private void setSearchDistanceLatLon() {
+        Node peakNode = this.peakNode;
+        if (peakNode == null)
+            return;
+        int distance = (Integer) spinnerSearchDistance.getValue();
+        distance *= 1000; // convert from km to m
+        LatLon peak = peakNode.getCoor();
+
+        LatLon north = LatLonTool.destination(peak, distance, 0);
+        LatLon south = LatLonTool.destination(peak, distance, 180);
+        LatLon east = LatLonTool.destination(peak, distance, 90);
+        LatLon west = LatLonTool.destination(peak, distance, 270);
+        double minLat = Math.max(south.lat(), -90.0);
+        double minLon = Math.max(-180.0, west.lon());
+        double maxLat = Math.min(north.lat(), 90.0);
+        double maxLon = Math.min(180.0, east.lon());
+        double latSearchDistance = (maxLat - minLat) / 2;
+        double lonSearchDistance = (maxLon - minLon) / 2;
+        Bounds searchBounds = new Bounds(minLat, minLon, maxLat, maxLon);
+        textFieldSearchDistanceLatLon.setText(String.format("lat: %.4f, lon: %.4f (area: %.4f x %.4f)",
+                latSearchDistance, lonSearchDistance, latSearchDistance * 2, lonSearchDistance * 2));
+        this.searchBounds = searchBounds;
     }
 
     private Future<List<LatLonEle>> determineReferencePoints(LatLonEle peak, Bounds searchBounds,
@@ -506,58 +556,56 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
 
         @Override
         public void actionPerformed(ActionEvent event) {
-            SwingUtilities.invokeLater(() -> {
+            // 1. Get the active data layer
+            OsmDataLayer editLayer = MainApplication.getLayerManager().getActiveDataLayer();
 
-                // 1. Get the active data layer
-                OsmDataLayer editLayer = MainApplication.getLayerManager().getActiveDataLayer();
+            if (editLayer == null) {
+                // No active data layer is available
+                setDialogState(DialogState.INITIAL);
+                textAreaFeedback.setText("No data layer active (should not happen)");
+                return;
+            }
 
-                if (editLayer == null) {
-                    // No active data layer is available
-                    setDialogState(DialogState.INITIAL);
-                    textAreaFeedback.setText("No data layer active (should not happen)");
-                    return;
-                }
+            // 2. Get the DataSet
+            DataSet dataSet = editLayer.getDataSet();
 
-                // 2. Get the DataSet
-                DataSet dataSet = editLayer.getDataSet();
+            if (dataSet == null) {
+                setDialogState(DialogState.INITIAL);
+                textAreaFeedback.setText("Layer contains no data");
+                return;
+            }
 
-                if (dataSet == null) {
-                    setDialogState(DialogState.INITIAL);
-                    textAreaFeedback.setText("Layer contains no data");
-                    return;
-                }
+            // 3. Get the overall selection
+            Collection<OsmPrimitive> selection = dataSet.getSelected();
 
-                // 3. Get the overall selection
-                Collection<OsmPrimitive> selection = dataSet.getSelected();
+            // 4. Filter for Nodes
+            List<Node> selectedNodes = new ArrayList<>();
+            for (OsmPrimitive primitive : selection) {
+                if (primitive instanceof Node)
+                    selectedNodes.add((Node) primitive);
+            }
+            if (selectedNodes.size() == 0) {
+                setDialogState(DialogState.INITIAL);
+                textAreaFeedback.setText("No nodes selected");
+                return;
+            }
 
-                // 4. Filter for Nodes
-                List<Node> selectedNodes = new ArrayList<>();
-                for (OsmPrimitive primitive : selection) {
-                    if (primitive instanceof Node)
-                        selectedNodes.add((Node) primitive);
-                }
-                if (selectedNodes.size() == 0) {
-                    setDialogState(DialogState.INITIAL);
-                    textAreaFeedback.setText("No nodes selected");
-                    return;
-                }
+            if (selectedNodes.size() > 1) {
+                setDialogState(DialogState.INITIAL);
+                textAreaFeedback.setText("More than one node selected");
+                return;
+            }
 
-                if (selectedNodes.size() > 1) {
-                    setDialogState(DialogState.INITIAL);
-                    textAreaFeedback.setText("More than one node selected");
-                    return;
-                }
-
-                peakNode = selectedNodes.get(0);
-                long nodeID = peakNode.getId();
-                textFieldPeakNodeID.setText(Long.toString(nodeID));
-                LatLon latLon = peakNode.getCoor();
-                textFieldPeakCoord.setText(Double.toString(latLon.lat()) + ", " + Double.toString(latLon.lon()));
-                String name = peakNode.get("name");
-                textFieldPeakName.setText(name);
-                String ele = peakNode.get("ele");
-                textFieldPeakEle.setText(ele);
-            });
+            peakNode = selectedNodes.get(0);
+            long nodeID = peakNode.getId();
+            textFieldPeakNodeID.setText(Long.toString(nodeID));
+            LatLon latLon = peakNode.getCoor();
+            textFieldPeakCoord.setText(Double.toString(latLon.lat()) + ", " + Double.toString(latLon.lon()));
+            String name = peakNode.get("name");
+            textFieldPeakName.setText(name);
+            String ele = peakNode.get("ele");
+            textFieldPeakEle.setText(ele);
+            setSearchDistanceLatLon();
         }
     }
 
@@ -582,17 +630,13 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
         }
 
         private void validateInput() {
-            // Use SwingUtilities.invokeLater to ensure thread safety when reading/updating
-            // UI elements
-            SwingUtilities.invokeLater(() -> {
-                String text = textFieldPeakEle.getText();
-                // Enable the isolation finder if the elevation value is a double and a
-                // node providing the coordinates of the peak is selected
-                if (isDouble(text) && peakNode != null)
-                    setDialogState(DialogState.PEAK_DEFINED);
-                else
-                    setDialogState(DialogState.PEAK_NODE_SELECTED);
-            });
+            String text = textFieldPeakEle.getText();
+            // Enable the isolation finder if the elevation value is a double and a
+            // node providing the coordinates of the peak is selected
+            if (isDouble(text) && peakNode != null)
+                setDialogState(DialogState.PEAK_DEFINED);
+            else
+                setDialogState(DialogState.PEAK_NODE_SELECTED);
         }
     }
 
@@ -606,44 +650,35 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
 
         @Override
         public void actionPerformed(ActionEvent event) {
-            SwingUtilities.invokeLater(() -> {
-                setDialogState(DialogState.SEARCH_RUNNING);
-                String eleText = textFieldPeakEle.getText();
-                short ele;
-                try {
-                    ele = (short) Double.parseDouble(eleText);
-                } catch (NumberFormatException e) {
-                    setDialogState(DialogState.PEAK_DEFINED);
-                    textAreaFeedback.append(
-                            "Cannot convert elevation to number, provided value: " + eleText + System.lineSeparator());
-                    return;
-                }
-                textAreaFeedback
-                        .append("Determination of elevation reference points for peak:" + System.lineSeparator());
-                String peakNodeID = textFieldPeakNodeID.getText();
-                textAreaFeedback.append("Node ID: " + peakNodeID + System.lineSeparator());
-                String peakName = textFieldPeakName.getText();
-                if (!peakName.isBlank())
-                    textAreaFeedback.append("Name: " + peakName + System.lineSeparator());
-                String peakCoord = textFieldPeakCoord.getText();
-                textAreaFeedback.append("Coordinates: " + peakCoord + System.lineSeparator());
-                textAreaFeedback.append("Elevation: " + ele + " m" + System.lineSeparator());
+            setDialogState(DialogState.SEARCH_RUNNING);
+            String eleText = textFieldPeakEle.getText();
+            short ele;
+            try {
+                ele = (short) Double.parseDouble(eleText);
+            } catch (NumberFormatException e) {
+                setDialogState(DialogState.PEAK_DEFINED);
+                textAreaFeedback.append(
+                        "Cannot convert elevation to number, provided value: " + eleText + System.lineSeparator());
+                return;
+            }
+            textAreaFeedback.append("Determination of elevation reference points for peak:" + System.lineSeparator());
+            String peakNodeID = textFieldPeakNodeID.getText();
+            textAreaFeedback.append("Node ID: " + peakNodeID + System.lineSeparator());
+            String peakName = textFieldPeakName.getText();
+            if (!peakName.isBlank())
+                textAreaFeedback.append("Name: " + peakName + System.lineSeparator());
+            String peakCoord = textFieldPeakCoord.getText();
+            textAreaFeedback.append("Coordinates: " + peakCoord + System.lineSeparator());
+            textAreaFeedback.append("Elevation: " + ele + " m" + System.lineSeparator());
 
-                LatLonEle peak = new LatLonEle(peakNode.getCoor(), ele);
-                double searchDistance = (Double) spinnerSearchDistance.getValue();
-                double minLat = peak.lat() - searchDistance;
-                double minLon = peak.lon() - searchDistance;
-                double maxLat = peak.lat() + searchDistance;
-                double maxLon = peak.lon() + searchDistance;
-                Bounds searchBounds = new Bounds(minLat, minLon, maxLat, maxLon);
-                int distanceTolerance = (Integer) spinnerDistanceTolerance.getValue();
-                try {
-                    closestPointsFuture = determineReferencePoints(peak, searchBounds, distanceTolerance);
-                } catch (RejectedExecutionException e) {
-                    textAreaFeedback.append(
-                            "Determination of closest points rejected by thread executor" + System.lineSeparator());
-                }
-            });
+            LatLonEle peak = new LatLonEle(peakNode.getCoor(), ele);
+            int distanceTolerance = (Integer) spinnerDistanceTolerance.getValue();
+            try {
+                closestPointsFuture = determineReferencePoints(peak, searchBounds, distanceTolerance);
+            } catch (RejectedExecutionException e) {
+                textAreaFeedback
+                        .append("Determination of closest points rejected by thread executor" + System.lineSeparator());
+            }
         }
     }
 
@@ -657,17 +692,15 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
 
         @Override
         public void actionPerformed(ActionEvent event) {
-            SwingUtilities.invokeLater(() -> {
-                if (closestPointsFuture != null && !closestPointsFuture.isCancelled()) {
-                    boolean canceled = closestPointsFuture.cancel(true);
-                    if (canceled)
-                        setDialogState(DialogState.PEAK_DEFINED);
-                    else
-                        textAreaFeedback.append(
-                                "Failed to cancel the background task that determines the isolation reference points"
-                                        + System.lineSeparator());
-                }
-            });
+            if (closestPointsFuture != null && !closestPointsFuture.isCancelled()) {
+                boolean canceled = closestPointsFuture.cancel(true);
+                if (canceled)
+                    setDialogState(DialogState.PEAK_DEFINED);
+                else
+                    textAreaFeedback.append(
+                            "Failed to cancel the background task that determines the isolation reference points"
+                                    + System.lineSeparator());
+            }
         }
     }
 
@@ -683,66 +716,64 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
 
         @Override
         public void actionPerformed(ActionEvent event) {
-            SwingUtilities.invokeLater(() -> {
-                setDialogState(DialogState.ADDING_POINTS_TO_DATA_LAYER);
+            setDialogState(DialogState.ADDING_POINTS_TO_DATA_LAYER);
 
-                if (nodes == null) {
+            if (nodes == null) {
+                setDialogState(DialogState.PEAK_DEFINED);
+                textAreaFeedback.setText("No nodes available to add them to the data layer (should not happen)");
+                return;
+            }
+
+            DataSet ds = new DataSet();
+            ds.addPrimitive(new Node(peakNode));
+            for (Node node : nodes) {
+                node.getId();
+                ds.addPrimitive(new Node(node));
+            }
+            String layerName = "Isolation reference points";
+            String peakName = textFieldPeakName.getText();
+            if (peakName != null && !peakName.isBlank())
+                layerName += " of " + peakName;
+            OsmDataLayer dataLayer = new OsmDataLayer(ds, layerName, null);
+            MainApplication.getLayerManager().addLayer(dataLayer);
+            MainApplication.getLayerManager().setActiveLayer(dataLayer);
+
+            ds.setSelected(ds.getNodes());
+
+            MapFrame mapFrame = MainApplication.getMap();
+            if (mapFrame != null) {
+                MapView mapView = mapFrame.mapView;
+                double minLat = Double.MAX_VALUE;
+                double minLon = Double.MAX_VALUE;
+                double maxLat = Double.MIN_VALUE;
+                double maxLon = Double.MIN_VALUE;
+                for (Node node : ds.getNodes()) {
+                    double lat = node.getCoor().lat();
+                    double lon = node.getCoor().lon();
+                    minLat = Math.min(minLat, lat);
+                    minLon = Math.min(minLon, lon);
+                    maxLat = Math.max(maxLat, lat);
+                    maxLon = Math.max(maxLon, lon);
+                }
+                if (minLat == Double.MAX_VALUE) {
                     setDialogState(DialogState.PEAK_DEFINED);
-                    textAreaFeedback.setText("No nodes available to add them to the data layer (should not happen)");
+                    textAreaFeedback
+                            .setText("Could not determine the bounds containing the nodes. This should not happen.");
                     return;
                 }
+                // Increase the size of the bounds by 10 %
+                // Prevents points being located at the edges of the map
+                double extraSpaceLat = (maxLat - minLat) * 0.05;
+                double extraSpaceLon = (maxLon - minLon) * 0.05;
+                minLat = Math.max(minLat - extraSpaceLat, -90);
+                minLon = Math.max(minLon - extraSpaceLon, 0);
+                maxLat = Math.min(maxLat + extraSpaceLat, 90);
+                maxLon = Math.min(maxLon + extraSpaceLon, 180);
+                Bounds bounds = new Bounds(minLat, minLon, maxLat, maxLon);
+                mapView.zoomTo(bounds);
+            }
 
-                DataSet ds = new DataSet();
-                ds.addPrimitive(new Node(peakNode));
-                for (Node node : nodes) {
-                    node.getId();
-                    ds.addPrimitive(new Node(node));
-                }
-                String layerName = "Isolation reference points";
-                String peakName = textFieldPeakName.getText();
-                if (peakName != null && !peakName.isBlank())
-                    layerName += " of " + peakName;
-                OsmDataLayer dataLayer = new OsmDataLayer(ds, layerName, null);
-                MainApplication.getLayerManager().addLayer(dataLayer);
-                MainApplication.getLayerManager().setActiveLayer(dataLayer);
-
-                ds.setSelected(ds.getNodes());
-
-                MapFrame mapFrame = MainApplication.getMap();
-                if (mapFrame != null) {
-                    MapView mapView = mapFrame.mapView;
-                    double minLat = Double.MAX_VALUE;
-                    double minLon = Double.MAX_VALUE;
-                    double maxLat = Double.MIN_VALUE;
-                    double maxLon = Double.MIN_VALUE;
-                    for (Node node : ds.getNodes()) {
-                        double lat = node.getCoor().lat();
-                        double lon = node.getCoor().lon();
-                        minLat = Math.min(minLat, lat);
-                        minLon = Math.min(minLon, lon);
-                        maxLat = Math.max(maxLat, lat);
-                        maxLon = Math.max(maxLon, lon);
-                    }
-                    if (minLat == Double.MAX_VALUE) {
-                        setDialogState(DialogState.PEAK_DEFINED);
-                        textAreaFeedback.setText(
-                                "Could not determine the bounds containing the nodes. This should not happen.");
-                        return;
-                    }
-                    // Increase the size of the bounds by 10 %
-                    // Prevents points being located at the edges of the map
-                    double extraSpaceLat = (maxLat - minLat) * 0.05;
-                    double extraSpaceLon = (maxLon - minLon) * 0.05;
-                    minLat = Math.max(minLat - extraSpaceLat, -90);
-                    minLon = Math.max(minLon - extraSpaceLon, 0);
-                    maxLat = Math.min(maxLat + extraSpaceLat, 90);
-                    maxLon = Math.min(maxLon + extraSpaceLon, 180);
-                    Bounds bounds = new Bounds(minLat, minLon, maxLat, maxLon);
-                    mapView.zoomTo(bounds);
-                }
-
-                setDialogState(DialogState.REFERENCE_POINTS_DETERMINED);
-            });
+            setDialogState(DialogState.REFERENCE_POINTS_DETERMINED);
         }
     }
 }

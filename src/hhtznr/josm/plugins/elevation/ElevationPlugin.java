@@ -13,6 +13,8 @@ import hhtznr.josm.plugins.elevation.gui.TopographicIsolationFinderAction;
 import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
 
 import java.awt.Color;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.MainMenu;
@@ -68,7 +70,10 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     }
 
     private static void createElevationDataDirectories() {
-        for (ElevationDataSource elevationDataSource : ElevationPreferences.ELEVATION_DATA_SOURCES) {
+        List<ElevationDataSource> elevationDataSources = new ArrayList<>();
+        elevationDataSources.addAll(ElevationPreferences.ELEVATION_DATA_SOURCES_SRTM1);
+        elevationDataSources.addAll(ElevationPreferences.ELEVATION_DATA_SOURCES_SRTM3);
+        for (ElevationDataSource elevationDataSource : elevationDataSources) {
             if (!elevationDataSource.getDataDirectory().exists() && elevationDataSource.getDataDirectory().mkdirs())
                 Logging.info("Elevation: Created elevation data directory '"
                         + elevationDataSource.getDataDirectory().getAbsolutePath() + "'");
@@ -153,8 +158,8 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     private void setElevationEnabled(boolean enabled, MapFrame mapFrame) {
         // Elevation enabled
         if (enabled) {
-            // SRTM file type that is preferred for reading and downloading
-            SRTMTile.Type preferredSRTMType = ElevationPreferences.getPreferredSRTMType();
+            // SRTM file type to read and download
+            SRTMTile.Type srtmType = ElevationPreferences.getSRTMType();
             // Elevation interpolation method
             SRTMTile.Interpolation elevationInterpolation = ElevationPreferences.getElevationInterpolation();
 
@@ -167,7 +172,9 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
             // Initialize and configure the elevation data provider
             if (elevationDataProvider == null)
                 elevationDataProvider = new ElevationDataProvider();
-            elevationDataProvider.setPreferredSRTMType(preferredSRTMType);
+            // Setting the SRTM type sets the appropriate SRTM data sources as well and
+            // flushes the cache
+            elevationDataProvider.setSRTMType(srtmType);
             elevationDataProvider.setElevationInterpolation(elevationInterpolation);
             elevationDataProvider.setCacheSizeLimit(cacheSizeLimit);
             elevationDataProvider.setAutoDownloadEnabled(elevationAutoDownloadEnabled);
@@ -201,7 +208,6 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                         elevationLayer.setContourLineColor(ElevationPreferences.getContourLineColor());
                         elevationLayer.setHillshadeIllumination(ElevationPreferences.getHillshadeAltitude(),
                                 ElevationPreferences.getHillshadeAzimuth());
-                        elevationLayer.invalidate();
                         if (mapFrame != null)
                             mapFrame.mapView.repaint();
                     }

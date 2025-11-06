@@ -52,7 +52,8 @@ public class SRTMTileGrid {
     public SRTMTileGrid(ElevationDataProvider elevationDataProvider, Bounds bounds) {
         elevationDataProvider.cacheSRTMTiles(bounds);
 
-        if (elevationDataProvider.getPreferredSRTMType() == SRTMTile.Type.SRTM1) {
+        SRTMTile.Type srtmType = elevationDataProvider.getSRTMType();
+        if (srtmType == SRTMTile.Type.SRTM1) {
             latLonStep = SRTMTile.SRTM1_ANGULAR_STEP;
             tileLength = SRTMTile.SRTM1_TILE_LENGTH;
         } else {

@@ -114,7 +114,7 @@ public class SRTMTile {
     private final String id;
     private final int idLat;
     private final int idLon;
-    private Type type;
+    private final Type type;
     private int tileLength;
     private short[] elevationData;
     private Status status;
@@ -185,6 +185,11 @@ public class SRTMTile {
          * Status indicating that the SRTM tile holds valid elevation data.
          */
         VALID("valid"),
+
+        /**
+         * Status indicating that SRTM type and data do not match.
+         */
+        DATA_INVALID("data invalid"),
 
         /**
          * Status indicating that the SRTM file that should contain the elevation data
@@ -290,11 +295,12 @@ public class SRTMTile {
      */
     public SRTMTile(String id, Type type, short[] elevationData, Status status, ElevationDataSource dataSource) {
         this.id = id;
+        this.type = type;
         int[] latLon = parseLatLonFromTileID(id);
         idLat = latLon[0];
         idLon = latLon[1];
         // Sets type, data and status as well as tileLength
-        update(type, elevationData, status, dataSource);
+        update(elevationData, status, dataSource);
     }
 
     /**
@@ -382,16 +388,15 @@ public class SRTMTile {
     }
 
     /**
-     * Updates type, data and status of this SRTM tile.
+     * Updates data, status and source of this SRTM tile, provided that the type
+     * (SRTM1 or SRTM3) stays the same.
      *
-     * @param type          The type of the SRTM tile.
      * @param elevationData The elevation data points or {@code null} if no data is
      *                      available.
      * @param status        The current status of the SRTM tile.
      * @param dataSource    The original source of this SRTM tile.
      */
-    public synchronized void update(Type type, short[] elevationData, Status status, ElevationDataSource dataSource) {
-        this.type = type;
+    public synchronized void update(short[] elevationData, Status status, ElevationDataSource dataSource) {
         this.elevationData = elevationData;
         this.status = status;
         this.dataSource = dataSource;
@@ -722,5 +727,23 @@ public class SRTMTile {
             throw new IllegalArgumentException("Latitude or longitude of SRTM tile ID '" + tileID
                     + "' are outside bounds -90 <= lat < 90, -180 <= lon < 180.");
         return new int[] { lat, lon };
+    }
+
+    /**
+     * Returns whether the size of SRTM data corresponds to a specified type.
+     *
+     * @param type The SRTM data type (SRTM1 or SRTM3).
+     * @param data The SRTM data
+     * @return {@code true} if the size of the data array corresponds to SRTM type.
+     *         {@code false} otherwise or if {@code null} is provided as input.
+     */
+    public static boolean isTypeMatchingDataSize(Type type, short[] data) {
+        if (data == null)
+            return false;
+        if (type == Type.SRTM1)
+            return data.length == SRTM1_TILE_LENGTH * SRTM1_TILE_LENGTH;
+        if (type == Type.SRTM3)
+            return data.length == SRTM3_TILE_LENGTH * SRTM3_TILE_LENGTH;
+        return false;
     }
 }

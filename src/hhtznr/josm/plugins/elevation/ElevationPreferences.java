@@ -8,6 +8,7 @@ import java.net.Authenticator.RequestorType;
 import java.net.MalformedURLException;
 import java.nio.file.Paths;
 import java.util.LinkedList;
+import java.util.List;
 
 import org.openstreetmap.josm.data.Preferences;
 import org.openstreetmap.josm.data.oauth.IOAuthToken;
@@ -53,54 +54,58 @@ public class ElevationPreferences {
     /**
      * Default path, where SRTM1 and SRTM3 files were located until version 0.10.2.
      */
-    public static final File LEGACY_SRTM_DIRECTORY = Paths.get(DEFAULT_ELEVATION_DIRECTORY.toString(), "SRTM")
-            .toFile();
+    public static final File LEGACY_SRTM_DIRECTORY = Paths.get(DEFAULT_ELEVATION_DIRECTORY.toString(), "SRTM").toFile();
 
     /**
-     * Default path, where SRTM files from NASA Earthdata are stored in separate directories for SRTM1 and SRTM3.
+     * Default path, where SRTM files from NASA Earthdata are stored in separate
+     * directories for SRTM1 and SRTM3.
      */
-    public static final File DEFAULT_EARTHDATA_DIRECTORY = Paths.get(DEFAULT_ELEVATION_DIRECTORY.toString(), "Earthdata")
-            .toFile();
+    public static final File DEFAULT_EARTHDATA_DIRECTORY = Paths
+            .get(DEFAULT_ELEVATION_DIRECTORY.toString(), "Earthdata").toFile();
 
     /**
      * Default path, where SRTM1 files from NASA Earthdata are stored locally.
      */
-    public static final File DEFAULT_EARTHDATA_SRTM1_DIRECTORY = Paths.get(DEFAULT_EARTHDATA_DIRECTORY.toString(), "SRTM1")
-            .toFile();
+    public static final File DEFAULT_EARTHDATA_SRTM1_DIRECTORY = Paths
+            .get(DEFAULT_EARTHDATA_DIRECTORY.toString(), "SRTM1").toFile();
 
     /**
      * Default path, where SRTM3 files from NASA Earthdata are stored locally.
      */
-    public static final File DEFAULT_EARTHDATA_SRTM3_DIRECTORY = Paths.get(DEFAULT_EARTHDATA_DIRECTORY.toString(), "SRTM3")
-            .toFile();
+    public static final File DEFAULT_EARTHDATA_SRTM3_DIRECTORY = Paths
+            .get(DEFAULT_EARTHDATA_DIRECTORY.toString(), "SRTM3").toFile();
 
     /**
-     * Default path, where SRTM-compatible HGT files from Sonny's LiDAR Digital Terrain Models of Europe are stored in separate directories for DTM1 and DTM3.
+     * Default path, where SRTM-compatible HGT files from Sonny's LiDAR Digital
+     * Terrain Models of Europe are stored in separate directories for DTM1 and
+     * DTM3.
      */
-    public static final File DEFAULT_SONNY_LIDAR_DIRECTORY = Paths.get(DEFAULT_ELEVATION_DIRECTORY.toString(), "Sonny LiDAR")
-            .toFile();
+    public static final File DEFAULT_SONNY_LIDAR_DIRECTORY = Paths
+            .get(DEFAULT_ELEVATION_DIRECTORY.toString(), "Sonny LiDAR").toFile();
 
     /**
-     * Default path, where DTM1 files from Sonny's LiDAR Digital Terrain Models of Europe are stored locally.
+     * Default path, where DTM1 files from Sonny's LiDAR Digital Terrain Models of
+     * Europe are stored locally.
      */
-    public static final File DEFAULT_SONNY_LIDAR_DTM1_DIRECTORY = Paths.get(DEFAULT_SONNY_LIDAR_DIRECTORY.toString(), "DTM1")
-            .toFile();
+    public static final File DEFAULT_SONNY_LIDAR_DTM1_DIRECTORY = Paths
+            .get(DEFAULT_SONNY_LIDAR_DIRECTORY.toString(), "DTM1").toFile();
 
     /**
-     * Default path, where DTM3 files from Sonny's LiDAR Digital Terrain Models of Europe are stored locally.
+     * Default path, where DTM3 files from Sonny's LiDAR Digital Terrain Models of
+     * Europe are stored locally.
      */
-    public static final File DEFAULT_SONNY_LIDAR_DTM3_DIRECTORY = Paths.get(DEFAULT_SONNY_LIDAR_DIRECTORY.toString(), "DTM3")
-            .toFile();
+    public static final File DEFAULT_SONNY_LIDAR_DTM3_DIRECTORY = Paths
+            .get(DEFAULT_SONNY_LIDAR_DIRECTORY.toString(), "DTM3").toFile();
 
     /**
-     * Property key for preferred SRTM type.
+     * Property key for SRTM type.
      */
-    public static final String PREFERRED_SRTM_TYPE = "elevation.srtm.type.preferred";
+    public static final String SRTM_TYPE = "elevation.srtm.type.preferred";
 
     /**
-     * Default property value for the preferred SRTM type.
+     * Default property value for the SRTM type.
      */
-    private static final SRTMTile.Type DEFAULT_PREFERRED_SRTM_TYPE = SRTMTile.Type.SRTM1;
+    private static final SRTMTile.Type DEFAULT_SRTM_TYPE = SRTMTile.Type.SRTM1;
 
     /**
      * Property key for defining the elevation interpolation method.
@@ -431,7 +436,7 @@ public class ElevationPreferences {
         SRTM3_SERVER_BASE_URL = url;
     }
 
-    public static final  URL SONNY_LIDAR_DTM1_BASE_URL;
+    public static final URL SONNY_LIDAR_DTM1_BASE_URL;
     static {
         URL url = null;
         try {
@@ -441,7 +446,7 @@ public class ElevationPreferences {
         SONNY_LIDAR_DTM1_BASE_URL = url;
     }
 
-    public static final  URL SONNY_LIDAR_DTM3_BASE_URL;
+    public static final URL SONNY_LIDAR_DTM3_BASE_URL;
     static {
         URL url = null;
         try {
@@ -480,14 +485,21 @@ public class ElevationPreferences {
             null, false);
 
     /**
-     * List of elevation data sources.
+     * List of elevation data sources for SRM1 data.
      */
-    public static final LinkedList<ElevationDataSource> ELEVATION_DATA_SOURCES = new LinkedList<>();
+    public static final List<ElevationDataSource> ELEVATION_DATA_SOURCES_SRTM1 = new LinkedList<>();
     static {
-        ELEVATION_DATA_SOURCES.add(ELEVATION_DATA_SOURCE_SONNY_LIDAR_DTM1);
-        ELEVATION_DATA_SOURCES.add(ELEVATION_DATA_SOURCE_EARTHDATA_SRTM1);
-        ELEVATION_DATA_SOURCES.add(ELEVATION_DATA_SOURCE_SONNY_LIDAR_DTM3);
-        ELEVATION_DATA_SOURCES.add(ELEVATION_DATA_SOURCE_EARTHDATA_SRTM3);
+        ELEVATION_DATA_SOURCES_SRTM1.add(ELEVATION_DATA_SOURCE_SONNY_LIDAR_DTM1);
+        ELEVATION_DATA_SOURCES_SRTM1.add(ELEVATION_DATA_SOURCE_EARTHDATA_SRTM1);
+    }
+
+    /**
+     * List of elevation data sources for SRTM3 data.
+     */
+    public static final List<ElevationDataSource> ELEVATION_DATA_SOURCES_SRTM3 = new LinkedList<>();
+    static {
+        ELEVATION_DATA_SOURCES_SRTM3.add(ELEVATION_DATA_SOURCE_SONNY_LIDAR_DTM3);
+        ELEVATION_DATA_SOURCES_SRTM3.add(ELEVATION_DATA_SOURCE_EARTHDATA_SRTM3);
     }
 
     /**
@@ -500,13 +512,12 @@ public class ElevationPreferences {
     }
 
     /**
-     * Returns the preferred SRTM type.
+     * Returns the SRTM type.
      *
-     * @return The preferred SRTM type, {@code SRTM1} or {@code SRTM3}.
+     * @return The SRTM type, {@code SRTM1} or {@code SRTM3}.
      */
-    public static SRTMTile.Type getPreferredSRTMType() {
-        return SRTMTile.Type
-                .fromString(Config.getPref().get(PREFERRED_SRTM_TYPE, DEFAULT_PREFERRED_SRTM_TYPE.toString()));
+    public static SRTMTile.Type getSRTMType() {
+        return SRTMTile.Type.fromString(Config.getPref().get(SRTM_TYPE, DEFAULT_SRTM_TYPE.toString()));
     }
 
     /**
@@ -634,12 +645,14 @@ public class ElevationPreferences {
     }
 
     /**
-     * Returns whether rendering of the lowest and highest points within the map view is enabled.
+     * Returns whether rendering of the lowest and highest points within the map
+     * view is enabled.
      *
      * @return {@code true} if enabled.
      */
     public static boolean getLowestAndHighestPointsEnabled() {
-        return Config.getPref().getBoolean(LOWEST_AND_HIGHEST_POINTS_ENABLED, DEFAULT_LOWEST_AND_HIGHEST_POINTS_ENABLED);
+        return Config.getPref().getBoolean(LOWEST_AND_HIGHEST_POINTS_ENABLED,
+                DEFAULT_LOWEST_AND_HIGHEST_POINTS_ENABLED);
     }
 
     /**
@@ -846,6 +859,17 @@ public class ElevationPreferences {
             Logging.error("Elevation: " + e);
             return null;
         }
+    }
+
+    /**
+     * Returns the list of elevation data sources for the currently used SRTM type.
+     *
+     * @return The elevation data sources.
+     */
+    public static List<ElevationDataSource> getElevationDataSources() {
+        if (getSRTMType() == SRTMTile.Type.SRTM1)
+            return ELEVATION_DATA_SOURCES_SRTM1;
+        return ELEVATION_DATA_SOURCES_SRTM3;
     }
 
     private ElevationPreferences() {

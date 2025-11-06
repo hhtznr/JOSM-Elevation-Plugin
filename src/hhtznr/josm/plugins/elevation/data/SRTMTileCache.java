@@ -24,6 +24,8 @@ public class SRTMTileCache {
 
     private final HashMap<String, SRTMTile> cache = new HashMap<>();
 
+    private SRTMTile.Type srtmType;
+
     /**
      * Current size of the cache in bytes.
      */
@@ -39,9 +41,11 @@ public class SRTMTileCache {
     /**
      * Creates a new cache for SRTM tiles.
      *
+     * @param srtmType       The type of SRTM tiles allowed to be cached.
      * @param cacheSizeLimit The maximum size of the cache in MiB.
      */
-    public SRTMTileCache(int cacheSizeLimit) {
+    public SRTMTileCache(SRTMTile.Type srtmType, int cacheSizeLimit) {
+        this.srtmType = srtmType;
         setCacheSizeLimit(cacheSizeLimit);
     }
 
@@ -97,7 +101,7 @@ public class SRTMTileCache {
         cacheSizeLimit = limit * 1024 * 1024;
         Logging.info("Elevation: Maximum size of the SRTM tile cache set to " + getSizeString(cacheSizeLimit));
         if (cacheSize > cacheSizeLimit)
-            cleanCache();
+            clean();
     }
 
     /**
@@ -128,6 +132,22 @@ public class SRTMTileCache {
      */
     public synchronized SRTMTile putOrUpdateSRTMTile(String id, SRTMTile.Type type, short[] elevationData,
             SRTMTile.Status status, ElevationDataSource dataSource) {
+        if (srtmType != type) {
+            Logging.warn("Elevation: Attempt to cache SRTM tile " + id + ", where SRTM type " + type.toString()
+                    + " does not match the type " + srtmType + " allowed by the cache");
+            type = srtmType;
+            elevationData = null;
+            status = SRTMTile.Status.DATA_INVALID;
+            dataSource = null;
+        }
+        if (elevationData != null && !SRTMTile.isTypeMatchingDataSize(type, elevationData)) {
+            Logging.warn("Elevation: Attempt to cache SRTM tile " + id + ", where data length " + elevationData.length
+                    + " does not correspond to SRTM type " + type.toString());
+            elevationData = null;
+            status = SRTMTile.Status.DATA_INVALID;
+            dataSource = null;
+        }
+
         SRTMTile srtmTile = cache.get(id);
         if (srtmTile == null) {
             srtmTile = new SRTMTile(id, type, elevationData, status, dataSource);
@@ -138,7 +158,12 @@ public class SRTMTileCache {
                     + "; cache size: " + getSizeString(cacheSize));
         } else {
             cacheSize -= srtmTile.getDataSize();
-            srtmTile.update(type, elevationData, status, dataSource);
+            if (srtmTile.getType() == type) {
+                srtmTile.update(elevationData, status, dataSource);
+            } else {
+                srtmTile = new SRTMTile(id, type, elevationData, status, dataSource);
+                cache.put(id, srtmTile);
+            }
             cacheSize += srtmTile.getDataSize();
             Logging.info("Elevation: Updated cached SRTM tile " + id + " with type '" + type.toString() + "', status '"
                     + srtmTile.getStatus().toString() + "' and size " + getSizeString(srtmTile.getDataSize())
@@ -151,7 +176,7 @@ public class SRTMTileCache {
             }
         }
         if (cacheSize > cacheSizeLimit)
-            cleanCache();
+            clean();
         return srtmTile;
     }
 
@@ -170,10 +195,31 @@ public class SRTMTileCache {
     }
 
     /**
+     * Sets the type of SRTM tiles allowed to be cached.
+     *
+     * @param type The SRTM type (SRTM1 or SRTM3).
+     */
+    public synchronized void setSRTMType(SRTMTile.Type type) {
+        if (srtmType == type)
+            return;
+        srtmType = type;
+        flush();
+    }
+
+    /**
+     * Flushes the cache by removing all tiles and sets the cache size to zero.
+     */
+    public synchronized void flush() {
+        cache.clear();
+        cacheSize = 0;
+        Logging.info("Elevation: SRTM tile cache flushed");
+    }
+
+    /**
      * Removes least recently used SRTM tiles actually holding elevation data from
      * the cache ensuring that the cache size limit is not exceeded.
      */
-    private synchronized void cleanCache() {
+    private synchronized void clean() {
         ArrayList<SRTMTile> allTiles = new ArrayList<>(cache.values());
         Collections.sort(allTiles, (SRTMTile tile1, SRTMTile tile2) -> {
             return Long.compare(tile1.getAccessTime(), tile2.getAccessTime());

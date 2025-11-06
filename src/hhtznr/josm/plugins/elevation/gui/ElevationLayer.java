@@ -40,6 +40,7 @@ import org.openstreetmap.josm.tools.Logging;
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProviderListener;
+import hhtznr.josm.plugins.elevation.data.SRTMTile;
 import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
 
 /**
@@ -402,6 +403,12 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         invalidate();
         if (isVisible())
             MainApplication.getMap().mapView.repaint();
+    }
+
+    @Override
+    public void srtmTileTypeChanged(SRTMTile.Type oldType, SRTMTile.Type newType) {
+        layerPainter.invalidate();
+        invalidate();
     }
 
     private static abstract class AbstractElevationLayerAction extends AbstractAction implements LayerAction {

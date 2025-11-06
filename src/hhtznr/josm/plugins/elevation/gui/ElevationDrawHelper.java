@@ -83,11 +83,17 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
 
     @Override
     public void paint(MapViewGraphics graphics) {
-        if (!layer.isContourLinesEnabled())
-            contourLines = null;
-        if (!layer.isHillshadeEnabled()) {
-            hillshadeImageTile = null;
-            scaledHillshadeImage = null;
+        synchronized (this) {
+            if (!layer.isElevationRasterEnabled())
+                elevationRaster = null;
+            if (!layer.isContourLinesEnabled())
+                contourLines = null;
+            if (!layer.isHillshadeEnabled()) {
+                hillshadeImageTile = null;
+                scaledHillshadeImage = null;
+            }
+            if (!layer.isLowestAndHighestPointsEnabled())
+                lowestAndHighestPoints = null;
         }
         if (!layer.isContourLinesEnabled() && !layer.isElevationRasterEnabled() && !layer.isHillshadeEnabled())
             return;
@@ -104,13 +110,8 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         } else {
             if (previousClipBounds != null
                     && (previousClipBounds.getWidth() > SCALE_DISCARD_FACTOR * clipBounds.getWidth()
-                            || previousClipBounds.getHeight() > SCALE_DISCARD_FACTOR * clipBounds.getHeight())) {
-                contourLines = null;
-                hillshadeImageTile = null;
-                scaledHillshadeImage = null;
-                elevationRaster = null;
-                lowestAndHighestPoints = null;
-            }
+                            || previousClipBounds.getHeight() > SCALE_DISCARD_FACTOR * clipBounds.getHeight()))
+                invalidate();
 
             if (layer.isHillshadeEnabled())
                 drawHillshade(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
@@ -128,13 +129,24 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         }
     }
 
+    /**
+     * Enforces repainting of this painter's paintable objects.
+     */
+    public synchronized void invalidate() {
+        contourLines = null;
+        hillshadeImageTile = null;
+        scaledHillshadeImage = null;
+        elevationRaster = null;
+        lowestAndHighestPoints = null;
+    }
+
     private void drawZoomLevelDisabled(Graphics2D g, MapView mv) {
         g.setColor(Color.RED);
         g.setFont(g.getFont().deriveFont(Font.BOLD, 16));
         g.drawString("Elevation layer disabled for this zoom level", 10, mv.getHeight() - 10);
     }
 
-    private void drawHillshade(Graphics2D g, MapView mv, Bounds clipBounds) {
+    private synchronized void drawHillshade(Graphics2D g, MapView mv, Bounds clipBounds) {
         int layerHillshadeAltitude = layer.getHillshadeAltitude();
         int layerHillshadeAzimuth = layer.getHillshadeAzimuth();
 
@@ -192,7 +204,7 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         hillshadeAzimuth = layerHillshadeAzimuth;
     }
 
-    private void drawContourLines(Graphics2D g, MapView mv, Bounds clipBounds) {
+    private synchronized void drawContourLines(Graphics2D g, MapView mv, Bounds clipBounds) {
         float layerContourLineStrokeWidth = layer.getContourLineStrokeWidth();
         Color layerContourLineColor = layer.getContourLineColor();
         if (contourLineStroke.getLineWidth() != layerContourLineStrokeWidth
@@ -229,11 +241,11 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         }
     }
 
-    private void setContourLineStroke(float width) {
+    private synchronized void setContourLineStroke(float width) {
         contourLineStroke = new BasicStroke(width, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
     }
 
-    private void drawElevationRaster(Graphics2D g, MapView mv, Bounds clipBounds) {
+    private synchronized void drawElevationRaster(Graphics2D g, MapView mv, Bounds clipBounds) {
         if (elevationRaster == null || !elevationRaster.covers(clipBounds)) {
             Bounds scaledBounds = getScaledBounds(clipBounds, BOUNDS_SCALE_FACTOR);
             elevationRaster = layer.getElevationDataProvider().getElevationRaster(scaledBounds);
@@ -303,7 +315,7 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         }
     }
 
-    private void drawLowestAndHighestPoints(Graphics2D g, MapView mv, Bounds clipBounds) {
+    private synchronized void drawLowestAndHighestPoints(Graphics2D g, MapView mv, Bounds clipBounds) {
         if (lowestAndHighestPoints == null || !clipBounds.equals(previousClipBounds))
             lowestAndHighestPoints = layer.getElevationDataProvider().getLowestAndHighestPoints(clipBounds);
         if (lowestAndHighestPoints == null || lowestAndHighestPoints.size() < 2)

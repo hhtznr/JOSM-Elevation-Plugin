@@ -90,7 +90,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
             ElevationPreferences.SONNY_LIDAR_DTM3_BASE_URL,
             ElevationPreferences.DEFAULT_SONNY_LIDAR_DTM3_DIRECTORY.getAbsolutePath()));
 
-    private final JLabel lblSRTMType = new JLabel("Preferred SRTM Type:");
+    private final JLabel lblSRTMType = new JLabel("SRTM Type:");
     private final JosmComboBox<SRTMTile.Type> cbSRTMType = new JosmComboBox<>(
             new SRTMTile.Type[] { SRTMTile.Type.SRTM1, SRTMTile.Type.SRTM3 });
 
@@ -534,7 +534,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
      */
     private final void initFromPreferences() {
         cbEnableElevation.setSelected(ElevationPreferences.getElevationEnabled());
-        cbSRTMType.setSelectedItem(ElevationPreferences.getPreferredSRTMType());
+        cbSRTMType.setSelectedItem(ElevationPreferences.getSRTMType());
         cbInterpolation.setSelectedItem(ElevationPreferences.getElevationInterpolation());
         cbEnableElevationLayer.setSelected(ElevationPreferences.getElevationLayerEnabled());
         btnStrokeColor.setBackground(ElevationPreferences.getContourLineColor());
@@ -661,7 +661,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
     public void saveToPreferences() {
         IPreferences pref = Config.getPref();
         pref.putBoolean(ElevationPreferences.ELEVATION_ENABLED, cbEnableElevation.isSelected());
-        pref.put(ElevationPreferences.PREFERRED_SRTM_TYPE, ((SRTMTile.Type) cbSRTMType.getSelectedItem()).toString());
+        pref.put(ElevationPreferences.SRTM_TYPE, ((SRTMTile.Type) cbSRTMType.getSelectedItem()).toString());
         pref.put(ElevationPreferences.ELEVATION_INTERPOLATION,
                 ((SRTMTile.Interpolation) cbInterpolation.getSelectedItem()).toString());
         pref.putInt(ElevationPreferences.RAM_CACHE_SIZE_LIMIT, (Integer) spCacheSize.getValue());

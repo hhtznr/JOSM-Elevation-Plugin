@@ -296,6 +296,10 @@ public class SRTMTile {
     public SRTMTile(String id, Type type, short[] elevationData, Status status, ElevationDataSource dataSource) {
         this.id = id;
         this.type = type;
+        if (type == Type.SRTM1)
+            tileLength = SRTM1_TILE_LENGTH;
+        else
+            tileLength = SRTM3_TILE_LENGTH;
         int[] latLon = parseLatLonFromTileID(id);
         idLat = latLon[0];
         idLon = latLon[1];
@@ -401,10 +405,6 @@ public class SRTMTile {
         this.status = status;
         this.dataSource = dataSource;
         this.accessTime = System.currentTimeMillis();
-        if (type == Type.SRTM1)
-            tileLength = SRTM1_TILE_LENGTH;
-        else
-            tileLength = SRTM3_TILE_LENGTH;
     }
 
     /**

@@ -9,6 +9,7 @@ import hhtznr.josm.plugins.elevation.gui.ElevationTabPreferenceSetting;
 import hhtznr.josm.plugins.elevation.gui.ElevationToggleDialog;
 import hhtznr.josm.plugins.elevation.gui.LocalElevationLabel;
 import hhtznr.josm.plugins.elevation.gui.SRTMFileDownloadErrorDialog;
+import hhtznr.josm.plugins.elevation.gui.SetNodeElevationAction;
 import hhtznr.josm.plugins.elevation.gui.TopographicIsolationFinderAction;
 import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
 
@@ -23,6 +24,7 @@ import org.openstreetmap.josm.gui.layer.LayerManager;
 import org.openstreetmap.josm.gui.layer.LayerManager.LayerAddEvent;
 import org.openstreetmap.josm.gui.layer.LayerManager.LayerOrderChangeEvent;
 import org.openstreetmap.josm.gui.layer.LayerManager.LayerRemoveEvent;
+import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 import org.openstreetmap.josm.gui.preferences.PreferenceSetting;
 import org.openstreetmap.josm.plugins.Plugin;
 import org.openstreetmap.josm.plugins.PluginInformation;
@@ -49,6 +51,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     private boolean elevationLayerEnabled = true;
     private ElevationLayer elevationLayer = null;
     private ElevationToggleDialog elevationToggleDialog = null;
+    private final SetNodeElevationAction setElevationToolAction;
 
     /**
      * Initializes the plugin.
@@ -66,6 +69,10 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
         MainMenu.add(MainApplication.getMenu().imagerySubMenu, addElevationLayerAction,
                 MainMenu.WINDOW_MENU_GROUP.ALWAYS);
         MainMenu.add(MainApplication.getMenu().moreToolsMenu, isolationFinderAction, MainMenu.WINDOW_MENU_GROUP.ALWAYS);
+        setElevationToolAction = new SetNodeElevationAction(getElevationDataProvider());
+        setElevationToolAction.setEnabled(false);
+        if (MainApplication.getToolbar() != null)
+            MainApplication.getToolbar().register(setElevationToolAction);
         Logging.info("Elevation: Plugin initialized");
     }
 
@@ -223,9 +230,11 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                 }
                 addElevationLayerAction.setEnabled(false);
             }
+            MainApplication.getLayerManager().addLayerChangeListener(this);
         }
         // Elevation disabled
         else {
+            MainApplication.getLayerManager().removeLayerChangeListener(this);
             if (localElevationLabel != null) {
                 localElevationLabel.remove();
                 localElevationLabel = null;
@@ -247,6 +256,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                 srtmFileDownloadErrorDialog.disable();
                 srtmFileDownloadErrorDialog = null;
             }
+            setElevationToolAction.setEnabled(false);
             elevationDataProvider = null;
         }
         elevationEnabled = enabled;
@@ -256,6 +266,8 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     public void layerAdded(LayerAddEvent e) {
         if (e.getAddedLayer().equals(elevationLayer))
             addElevationLayerAction.setEnabled(false);
+        boolean hasDataLayer = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class).size() > 0;
+        setElevationToolAction.setEnabled(hasDataLayer);
     }
 
     @Override
@@ -264,7 +276,8 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
             elevationLayer = null;
             addElevationLayerAction.setEnabled(true);
         }
-
+        boolean hasDataLayer = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class).size() > 0;
+        setElevationToolAction.setEnabled(hasDataLayer);
     }
 
     @Override

@@ -119,19 +119,30 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
         textAreaFeedback.setWrapStyleWord(true);
         textAreaFeedback.setEditable(false);
 
-        spinnerDistanceTolerance = new JSpinner(new SpinnerNumberModel(0, 0, 999, 1));
         spinnerSearchDistance = new JSpinner(new SpinnerNumberModel(10, 1, 10000, 1));
         spinnerSearchDistance.addChangeListener(e -> {
             setSearchDistanceLatLon();
         });
         textFieldSearchDistanceLatLon = new JTextField(30);
         textFieldSearchDistanceLatLon.setEditable(false);
+        spinnerDistanceTolerance = new JSpinner(new SpinnerNumberModel(0, 0, 999, 1));
 
         buttonFind = new JButton(new FindAction());
 
         buttonStop = new JButton(new StopFindAction());
 
         buttonAddToDataLayer = new JButton(new AddToNewDataLayerAction());
+
+        textFieldPeakName.setToolTipText(
+                "Peak name taken from the node's name tag, if it exists. It is optional and only used for naming the data layer.");
+        textFieldPeakEle.setToolTipText(
+                "Peak elevation taken from the node's ele tag, if it exists. You can manually set it. Gratually increase it if a higher raster elevation at the peak location prevents finding the actual isolation.");
+        spinnerSearchDistance.setToolTipText(
+                "Search distance along Earth's surface in kilometers into each geographic direction. Search is performed in a square with the peak in its center and side length twice the distance.");
+        textFieldSearchDistanceLatLon.setToolTipText(
+                "The corresponding search distances and search area size in geographic latitude and longitude.");
+        spinnerDistanceTolerance.setToolTipText(
+                "Search distance tolerance in meters. If 0, the result will be the very closest, by 1 m higher raster point. If > 0, the result may contain further points within [closest distance, closest distance + tolerance].");
 
         setDialogState(DialogState.INITIAL);
 

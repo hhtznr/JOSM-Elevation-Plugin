@@ -72,7 +72,6 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         }
     }
 
-    private final JCheckBox cbEnableElevation = new JCheckBox(I18n.tr("Enable Use of Elevation Data"));
     private final JMultilineLabel lblSRTM1Server = new JMultilineLabel(I18n.tr(
             "<html>SRTM1 files (elevation sampled at 1 arc seconds) of the whole Earth can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}",
             ElevationPreferences.SRTM1_SERVER_BASE_URL,
@@ -184,8 +183,6 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
      * @return Panel with elevation preferences.
      */
     private final JPanel buildPreferencePanel() {
-        cbEnableElevation.addItemListener(event -> updateEnabledState());
-
         lblSRTM1Server.setEditable(false);
         lblSRTM1Server.addHyperlinkListener(event -> browseHyperlink(event));
 
@@ -335,16 +332,12 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         // Elevation preferences panel
         JPanel pnl = new AutoSizePanel();
 
-        // Row "Enable elevation"
+        // Row "SRTM1 server"
         gc.gridy = 0;
         gc.gridx = 0;
         gc.fill = GBC.HORIZONTAL;
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
-        pnl.add(cbEnableElevation, gc);
-
-        // Row "SRTM1 server"
-        gc.gridy++;
         pnl.add(lblSRTM1Server, gc);
 
         // Row "SRTM3 server"
@@ -533,7 +526,6 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
      * Initializes the panel with the values from the preferences.
      */
     private final void initFromPreferences() {
-        cbEnableElevation.setSelected(ElevationPreferences.getElevationEnabled());
         cbSRTMType.setSelectedItem(ElevationPreferences.getSRTMType());
         cbInterpolation.setSelectedItem(ElevationPreferences.getElevationInterpolation());
         cbEnableElevationLayer.setSelected(ElevationPreferences.getElevationLayerEnabled());
@@ -561,79 +553,31 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
     }
 
     private final void updateEnabledState() {
-        if (cbEnableElevation.isSelected()) {
-            lblSRTM1Server.setEnabled(true);
-            lblSRTM3Server.setEnabled(true);
-            lblSRTMType.setEnabled(true);
-            cbSRTMType.setEnabled(true);
-            lblInterpolation.setEnabled(true);
-            cbInterpolation.setEnabled(true);
-            lblCacheSize.setEnabled(true);
-            spCacheSize.setEnabled(true);
-            cbEnableElevationLayer.setEnabled(true);
-            lblRenderingLimit.setEnabled(cbEnableElevationLayer.isSelected());
-            spRenderingLimit.setEnabled(cbEnableElevationLayer.isSelected());
-            lblRenderingLimitUnit.setEnabled(cbEnableElevationLayer.isSelected());
-            lblIsostep.setEnabled(cbEnableElevationLayer.isSelected());
-            spIsostep.setEnabled(cbEnableElevationLayer.isSelected());
-            lblIsostepUnit.setEnabled(cbEnableElevationLayer.isSelected());
-            lblStrokeWidth.setEnabled(cbEnableElevationLayer.isSelected());
-            spStrokeWidth.setEnabled(cbEnableElevationLayer.isSelected());
-            lblStrokeWidthUnit.setEnabled(cbEnableElevationLayer.isSelected());
-            lblStrokeColor.setEnabled(cbEnableElevationLayer.isSelected());
-            btnStrokeColor.setEnabled(cbEnableElevationLayer.isSelected());
-            lblHillshadeAltitude.setEnabled(cbEnableElevationLayer.isSelected());
-            spHillshadeAltitude.setEnabled(cbEnableElevationLayer.isSelected());
-            lblHillshadeAltitudeUnit.setEnabled(cbEnableElevationLayer.isSelected());
-            lblHillshadeAzimuth.setEnabled(cbEnableElevationLayer.isSelected());
-            spHillshadeAzimuth.setEnabled(cbEnableElevationLayer.isSelected());
-            lblHillshadeAzimuthUnit.setEnabled(cbEnableElevationLayer.isSelected());
-            cbEnableAutoDownload.setEnabled(true);
-            rbPasswordAuth.setEnabled(cbEnableAutoDownload.isSelected());
-            rbAuthBearer.setEnabled(cbEnableAutoDownload.isSelected());
-            lblEarthdataNotes.setEnabled(cbEnableAutoDownload.isSelected());
-            for (Component component : pnlPasswordAuth.getComponents())
-                component.setEnabled(cbEnableAutoDownload.isSelected());
-            for (Component component : pnlAuthBearer.getComponents())
-                component.setEnabled(cbEnableAutoDownload.isSelected());
-            lblEarthdataNotes.setEnabled(cbEnableAutoDownload.isSelected());
-        } else {
-            lblSRTM1Server.setEnabled(false);
-            lblSRTM3Server.setEnabled(false);
-            lblSRTMType.setEnabled(false);
-            cbSRTMType.setEnabled(false);
-            lblInterpolation.setEnabled(false);
-            cbInterpolation.setEnabled(false);
-            lblCacheSize.setEnabled(false);
-            spCacheSize.setEnabled(false);
-            cbEnableElevationLayer.setEnabled(false);
-            lblRenderingLimit.setEnabled(false);
-            spRenderingLimit.setEnabled(false);
-            lblRenderingLimitUnit.setEnabled(false);
-            lblIsostep.setEnabled(false);
-            spIsostep.setEnabled(false);
-            lblIsostepUnit.setEnabled(false);
-            lblStrokeWidth.setEnabled(false);
-            spStrokeWidth.setEnabled(false);
-            lblStrokeWidthUnit.setEnabled(false);
-            lblStrokeColor.setEnabled(false);
-            btnStrokeColor.setEnabled(false);
-            lblHillshadeAltitude.setEnabled(false);
-            spHillshadeAltitude.setEnabled(false);
-            lblHillshadeAltitudeUnit.setEnabled(false);
-            lblHillshadeAzimuth.setEnabled(false);
-            spHillshadeAzimuth.setEnabled(false);
-            lblHillshadeAzimuthUnit.setEnabled(false);
-            cbEnableAutoDownload.setEnabled(false);
-            rbPasswordAuth.setEnabled(false);
-            rbAuthBearer.setEnabled(false);
-            lblEarthdataNotes.setEnabled(false);
-            for (Component component : pnlPasswordAuth.getComponents())
-                component.setEnabled(false);
-            for (Component component : pnlAuthBearer.getComponents())
-                component.setEnabled(false);
-            lblEarthdataNotes.setEnabled(false);
-        }
+        lblRenderingLimit.setEnabled(cbEnableElevationLayer.isSelected());
+        spRenderingLimit.setEnabled(cbEnableElevationLayer.isSelected());
+        lblRenderingLimitUnit.setEnabled(cbEnableElevationLayer.isSelected());
+        lblIsostep.setEnabled(cbEnableElevationLayer.isSelected());
+        spIsostep.setEnabled(cbEnableElevationLayer.isSelected());
+        lblIsostepUnit.setEnabled(cbEnableElevationLayer.isSelected());
+        lblStrokeWidth.setEnabled(cbEnableElevationLayer.isSelected());
+        spStrokeWidth.setEnabled(cbEnableElevationLayer.isSelected());
+        lblStrokeWidthUnit.setEnabled(cbEnableElevationLayer.isSelected());
+        lblStrokeColor.setEnabled(cbEnableElevationLayer.isSelected());
+        btnStrokeColor.setEnabled(cbEnableElevationLayer.isSelected());
+        lblHillshadeAltitude.setEnabled(cbEnableElevationLayer.isSelected());
+        spHillshadeAltitude.setEnabled(cbEnableElevationLayer.isSelected());
+        lblHillshadeAltitudeUnit.setEnabled(cbEnableElevationLayer.isSelected());
+        lblHillshadeAzimuth.setEnabled(cbEnableElevationLayer.isSelected());
+        spHillshadeAzimuth.setEnabled(cbEnableElevationLayer.isSelected());
+        lblHillshadeAzimuthUnit.setEnabled(cbEnableElevationLayer.isSelected());
+        rbPasswordAuth.setEnabled(cbEnableAutoDownload.isSelected());
+        rbAuthBearer.setEnabled(cbEnableAutoDownload.isSelected());
+        lblEarthdataNotes.setEnabled(cbEnableAutoDownload.isSelected());
+        for (Component component : pnlPasswordAuth.getComponents())
+            component.setEnabled(cbEnableAutoDownload.isSelected());
+        for (Component component : pnlAuthBearer.getComponents())
+            component.setEnabled(cbEnableAutoDownload.isSelected());
+        lblEarthdataNotes.setEnabled(cbEnableAutoDownload.isSelected());
     }
 
     private final void browseHyperlink(HyperlinkEvent event) {
@@ -660,7 +604,6 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
      */
     public void saveToPreferences() {
         IPreferences pref = Config.getPref();
-        pref.putBoolean(ElevationPreferences.ELEVATION_ENABLED, cbEnableElevation.isSelected());
         pref.put(ElevationPreferences.SRTM_TYPE, ((SRTMTile.Type) cbSRTMType.getSelectedItem()).toString());
         pref.put(ElevationPreferences.ELEVATION_INTERPOLATION,
                 ((SRTMTile.Interpolation) cbInterpolation.getSelectedItem()).toString());

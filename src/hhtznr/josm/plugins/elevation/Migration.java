@@ -6,6 +6,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
+import org.openstreetmap.josm.spi.preferences.Config;
+import org.openstreetmap.josm.spi.preferences.IPreferences;
 import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
@@ -25,6 +27,8 @@ public class Migration {
     /**
      * Migrates the directory with the SRTM files to a new directory structure where
      * SRTM1 and SRTM3 files are stored in separate directories.
+     *
+     * @since 0.11.0
      */
     public static void migrateSRTMDirectory() {
         if (ElevationPreferences.LEGACY_SRTM_DIRECTORY.isDirectory()) {
@@ -85,5 +89,15 @@ public class Migration {
                 Logging.error("Elevation: IOException trying to delete legacy SRTM directory: " + e.toString());
             }
         }
+    }
+
+    /**
+     * Removes the preferences key previously used to enable or disable the complete plugin.
+     *
+     * @since 0.13.3
+     */
+    public static void removeElevationEnabledPreference() {
+        IPreferences pref = Config.getPref();
+        pref.put(ElevationPreferences.LEGACY_ELEVATION_ENABLED, null);
     }
 }

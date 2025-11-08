@@ -39,16 +39,14 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
 
     private ElevationTabPreferenceSetting tabPreferenceSetting = null;
 
-    private boolean elevationEnabled = ElevationPreferences.getElevationEnabled();
-
-    private ElevationDataProvider elevationDataProvider = null;
+    private final ElevationDataProvider elevationDataProvider;
     private SRTMFileDownloadErrorDialog srtmFileDownloadErrorDialog = null;
 
     private LocalElevationLabel localElevationLabel = null;
 
     private final AddElevationLayerAction addElevationLayerAction;
     private final TopographicIsolationFinderAction isolationFinderAction;
-    private boolean elevationLayerEnabled = true;
+    private final Object elevationLayerLock = new Object();
     private ElevationLayer elevationLayer = null;
     private ElevationToggleDialog elevationToggleDialog = null;
     private final SetNodeElevationAction setElevationToolAction;
@@ -61,7 +59,10 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     public ElevationPlugin(PluginInformation info) {
         super(info);
         Migration.migrateSRTMDirectory();
+        Migration.removeElevationEnabledPreference();
         createElevationDataDirectories();
+        elevationDataProvider = new ElevationDataProvider();
+        reconfigureElevationDataProvider();
         addElevationLayerAction = new AddElevationLayerAction(this);
         isolationFinderAction = new TopographicIsolationFinderAction(this);
         addElevationLayerAction.setEnabled(false);
@@ -73,6 +74,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
         setElevationToolAction.setEnabled(false);
         if (MainApplication.getToolbar() != null)
             MainApplication.getToolbar().register(setElevationToolAction);
+        MainApplication.getLayerManager().addLayerChangeListener(this);
         Logging.info("Elevation: Plugin initialized");
     }
 
@@ -93,19 +95,29 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
      * @return The elevation layer which displays contour lines and hillshade.
      */
     public ElevationLayer getElevationLayer() {
-        if (elevationLayerEnabled && elevationLayer == null) {
-            double renderingLimit = ElevationPreferences.getElevationLayerRenderingLimit();
-            int isostep = ElevationPreferences.getContourLineIsostep();
-            float strokeWidth = ElevationPreferences.getContourLineStrokeWidth();
-            Color color = ElevationPreferences.getContourLineColor();
-            int altitude = ElevationPreferences.getHillshadeAltitude();
-            int azimuth = ElevationPreferences.getHillshadeAzimuth();
-            int lowerCutoff = ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION;
-            int upperCutoff = ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION;
-            elevationLayer = new ElevationLayer(elevationDataProvider, renderingLimit, isostep, strokeWidth, color,
-                    altitude, azimuth, lowerCutoff, upperCutoff);
-        }
         return elevationLayer;
+    }
+
+    private void removeElevationLayer() {
+        synchronized (elevationLayerLock) {
+            if (elevationLayer != null) {
+                MainApplication.getLayerManager().removeLayer(elevationLayer);
+                elevationLayer = null;
+            }
+        }
+    }
+
+    /**
+     * Returns whether the elevation layer is enabled. We can deduce that the
+     * elevation layer is enabled, if it is not {@code null}.
+     *
+     * @return {@code true} if the elevation layer is enabled, {@code false}
+     *         otherwise.
+     */
+    public boolean isElevationLayerEnabled() {
+        synchronized (elevationLayerLock) {
+            return elevationLayer != null;
+        }
     }
 
     /**
@@ -115,8 +127,6 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
      * @return The elevation data provider of this plugin.
      */
     public ElevationDataProvider getElevationDataProvider() {
-        if (elevationDataProvider == null)
-            elevationDataProvider = new ElevationDataProvider();
         return elevationDataProvider;
     }
 
@@ -127,7 +137,10 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
      */
     @Override
     public void mapFrameInitialized(MapFrame oldFrame, MapFrame newFrame) {
-        setElevationEnabled(elevationEnabled, newFrame);
+        addLocalElevationLabel(newFrame);
+        // newFrame is null if the map was active and the last layer is closed
+        if (newFrame != null)
+            setElevationLayerEnabled(ElevationPreferences.getElevationLayerEnabled());
     }
 
     /**
@@ -144,137 +157,119 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     }
 
     /**
-     * Returns whether displaying elevation is enabled.
-     *
-     * @return {@code true} if enabled, {@code false} otherwise
+     * Reconfigures this plugin's elevation data provider based on the preferences.
      */
-    public boolean isElevationEnabled() {
-        return elevationEnabled;
+    public void reconfigureElevationDataProvider() {
+        // SRTM file type to read and download
+        SRTMTile.Type srtmType = ElevationPreferences.getSRTMType();
+        // Elevation interpolation method
+        SRTMTile.Interpolation elevationInterpolation = ElevationPreferences.getElevationInterpolation();
+        // Maximum size of the SRTM tile cache
+        int cacheSizeLimit = ElevationPreferences.getRAMCacheSizeLimit();
+        // Auto-download of SRTM files
+        boolean elevationAutoDownloadEnabled = ElevationPreferences.getAutoDownloadEnabled();
+        // Configure the elevation data provider
+        // Setting the SRTM type also sets the appropriate SRTM data sources and flushes
+        // the cache
+        elevationDataProvider.setSRTMType(srtmType);
+        elevationDataProvider.setElevationInterpolation(elevationInterpolation);
+        elevationDataProvider.setCacheSizeLimit(cacheSizeLimit);
+        elevationDataProvider.setAutoDownloadEnabled(elevationAutoDownloadEnabled);
+        if (elevationAutoDownloadEnabled) {
+            SRTMFileDownloader.AuthType authType = ElevationPreferences.getElevationServerAuthType();
+            if (authType == SRTMFileDownloader.AuthType.BASIC)
+                elevationDataProvider.getSRTMFileDownloader().setPasswordAuthentication(
+                        ElevationPreferences.lookupEarthdataCredentials(), ElevationPreferences.EARTHDATA_SSO_HOST);
+            else if (authType == SRTMFileDownloader.AuthType.BEARER_TOKEN)
+                elevationDataProvider.getSRTMFileDownloader()
+                        .setOAuthToken(ElevationPreferences.lookupEarthdataOAuthToken());
+            if (srtmFileDownloadErrorDialog == null)
+                srtmFileDownloadErrorDialog = new SRTMFileDownloadErrorDialog(
+                        elevationDataProvider.getSRTMFileDownloader());
+        } else {
+            srtmFileDownloadErrorDialog = null;
+        }
     }
 
     /**
-     * Enable or disable displaying elevation at the position of the mouse pointer.
+     * Enables or disables the elevation layer.
      *
-     * @param enabled If {@code true} displaying of elevation is enabled, else
-     *                disabled.
+     * @param enabled If {@code true}, the layer is enabled. If {@code false}, the
+     *                layer is disabled.
      */
-    public void setElevationEnabled(boolean enabled) {
-        setElevationEnabled(enabled, MainApplication.getMap());
+    public void setElevationLayerEnabled(boolean enabled) {
+        MapFrame mapFrame = MainApplication.getMap();
+
+        if (enabled) {
+            addElevationLayerAction.setEnabled(false);
+            synchronized (elevationLayerLock) {
+                // Initialize and registers the layer, if it is null
+                if (elevationLayer == null) {
+                    double renderingLimit = ElevationPreferences.getElevationLayerRenderingLimit();
+                    int isostep = ElevationPreferences.getContourLineIsostep();
+                    float strokeWidth = ElevationPreferences.getContourLineStrokeWidth();
+                    Color color = ElevationPreferences.getContourLineColor();
+                    int altitude = ElevationPreferences.getHillshadeAltitude();
+                    int azimuth = ElevationPreferences.getHillshadeAzimuth();
+                    int lowerCutoff = ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION;
+                    int upperCutoff = ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION;
+                    elevationLayer = new ElevationLayer(elevationDataProvider, renderingLimit, isostep, strokeWidth, color,
+                            altitude, azimuth, lowerCutoff, upperCutoff);
+                    MainApplication.getLayerManager().addLayer(elevationLayer);
+                }
+                elevationLayer.setRenderingLimit(ElevationPreferences.getElevationLayerRenderingLimit());
+                elevationLayer.setContourLineIsostep(ElevationPreferences.getContourLineIsostep());
+                elevationLayer.setContourLineStrokeWidth(ElevationPreferences.getContourLineStrokeWidth());
+                elevationLayer.setContourLineColor(ElevationPreferences.getContourLineColor());
+                elevationLayer.setHillshadeIllumination(ElevationPreferences.getHillshadeAltitude(),
+                        ElevationPreferences.getHillshadeAzimuth());
+            }
+            if (mapFrame != null)
+                mapFrame.mapView.repaint();
+        } else {
+            removeElevationLayer();
+            // Allow re-adding the elevation layer if enabled in the preferences
+            // i.e. the layer was (temporarily) removed by the user
+            if (ElevationPreferences.getElevationLayerEnabled())
+                addElevationLayerAction.setEnabled(true);
+        }
     }
 
-    private void setElevationEnabled(boolean enabled, MapFrame mapFrame) {
-        // Elevation enabled
-        if (enabled) {
-            // SRTM file type to read and download
-            SRTMTile.Type srtmType = ElevationPreferences.getSRTMType();
-            // Elevation interpolation method
-            SRTMTile.Interpolation elevationInterpolation = ElevationPreferences.getElevationInterpolation();
-
-            // Maximum size of the SRTM tile cache
-            int cacheSizeLimit = ElevationPreferences.getRAMCacheSizeLimit();
-            // Elevation layer
-            elevationLayerEnabled = ElevationPreferences.getElevationLayerEnabled();
-            // Auto-download of SRTM files
-            boolean elevationAutoDownloadEnabled = ElevationPreferences.getAutoDownloadEnabled();
-            // Initialize and configure the elevation data provider
-            if (elevationDataProvider == null)
-                elevationDataProvider = new ElevationDataProvider();
-            // Setting the SRTM type sets the appropriate SRTM data sources as well and
-            // flushes the cache
-            elevationDataProvider.setSRTMType(srtmType);
-            elevationDataProvider.setElevationInterpolation(elevationInterpolation);
-            elevationDataProvider.setCacheSizeLimit(cacheSizeLimit);
-            elevationDataProvider.setAutoDownloadEnabled(elevationAutoDownloadEnabled);
-            if (elevationAutoDownloadEnabled) {
-                SRTMFileDownloader.AuthType authType = ElevationPreferences.getElevationServerAuthType();
-                if (authType == SRTMFileDownloader.AuthType.BASIC)
-                    elevationDataProvider.getSRTMFileDownloader().setPasswordAuthentication(
-                            ElevationPreferences.lookupEarthdataCredentials(), ElevationPreferences.EARTHDATA_SSO_HOST);
-                else if (authType == SRTMFileDownloader.AuthType.BEARER_TOKEN)
-                    elevationDataProvider.getSRTMFileDownloader()
-                            .setOAuthToken(ElevationPreferences.lookupEarthdataOAuthToken());
-                if (srtmFileDownloadErrorDialog == null)
-                    srtmFileDownloadErrorDialog = new SRTMFileDownloadErrorDialog(
-                            elevationDataProvider.getSRTMFileDownloader());
-            } else {
-                srtmFileDownloadErrorDialog = null;
-            }
-            if (mapFrame != null) {
-                if (localElevationLabel == null)
-                    localElevationLabel = new LocalElevationLabel(mapFrame, elevationDataProvider);
-                else
-                    localElevationLabel.addToMapFrame(mapFrame);
-
-                if (elevationLayerEnabled) {
-                    if (elevationLayer == null) {
-                        MainApplication.getLayerManager().addLayer(getElevationLayer());
-                    } else {
-                        elevationLayer.setRenderingLimit(ElevationPreferences.getElevationLayerRenderingLimit());
-                        elevationLayer.setContourLineIsostep(ElevationPreferences.getContourLineIsostep());
-                        elevationLayer.setContourLineStrokeWidth(ElevationPreferences.getContourLineStrokeWidth());
-                        elevationLayer.setContourLineColor(ElevationPreferences.getContourLineColor());
-                        elevationLayer.setHillshadeIllumination(ElevationPreferences.getHillshadeAltitude(),
-                                ElevationPreferences.getHillshadeAzimuth());
-                        if (mapFrame != null)
-                            mapFrame.mapView.repaint();
-                    }
-                    elevationToggleDialog = new ElevationToggleDialog(this);
-                    mapFrame.addToggleDialog(elevationToggleDialog);
-                }
-                isolationFinderAction.setEnabled(true);
-            }
-            if (!elevationLayerEnabled) {
-                if (elevationLayer != null) {
-                    MainApplication.getLayerManager().removeLayer(elevationLayer);
-                    elevationLayer = null;
-                }
-                addElevationLayerAction.setEnabled(false);
-            }
-            MainApplication.getLayerManager().addLayerChangeListener(this);
-        }
-        // Elevation disabled
-        else {
-            MainApplication.getLayerManager().removeLayerChangeListener(this);
-            if (localElevationLabel != null) {
-                localElevationLabel.remove();
-                localElevationLabel = null;
-            }
-            addElevationLayerAction.setEnabled(false);
-            isolationFinderAction.setEnabled(false);
-            if (elevationLayer != null) {
-                elevationLayerEnabled = false;
-                MainApplication.getLayerManager().removeLayer(elevationLayer);
-                elevationLayer = null;
-            }
-            if (elevationToggleDialog != null) {
-                if (mapFrame != null)
-                    mapFrame.removeToggleDialog(elevationToggleDialog);
-                elevationToggleDialog = null;
-            }
-            if (srtmFileDownloadErrorDialog != null) {
-                // Removes the download listener
-                srtmFileDownloadErrorDialog.disable();
-                srtmFileDownloadErrorDialog = null;
-            }
-            setElevationToolAction.setEnabled(false);
-            elevationDataProvider = null;
-        }
-        elevationEnabled = enabled;
+    private void addLocalElevationLabel(MapFrame mapFrame) {
+        if (localElevationLabel == null)
+            localElevationLabel = new LocalElevationLabel(mapFrame, elevationDataProvider);
+        else
+            localElevationLabel.addToMapFrame(mapFrame);
     }
 
     @Override
     public void layerAdded(LayerAddEvent e) {
-        if (e.getAddedLayer().equals(elevationLayer))
-            addElevationLayerAction.setEnabled(false);
+        synchronized (elevationLayerLock) {
+            if (e.getAddedLayer().equals(elevationLayer)) {
+                addElevationLayerAction.setEnabled(false);
+                if (elevationToggleDialog == null)
+                    elevationToggleDialog = new ElevationToggleDialog(this);
+                MapFrame mapFrame = MainApplication.getMap();
+                if (mapFrame != null)
+                    mapFrame.addToggleDialog(elevationToggleDialog);
+            }
+        }
         boolean hasDataLayer = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class).size() > 0;
         setElevationToolAction.setEnabled(hasDataLayer);
     }
 
     @Override
     public void layerRemoving(LayerRemoveEvent e) {
-        if (e.getRemovedLayer().equals(elevationLayer)) {
-            elevationLayer = null;
-            addElevationLayerAction.setEnabled(true);
+        synchronized (elevationLayerLock) {
+            if (e.getRemovedLayer().equals(elevationLayer)) {
+                MapFrame mapFrame = MainApplication.getMap();
+                if (mapFrame != null && elevationToggleDialog != null) {
+                    mapFrame.removeToggleDialog(elevationToggleDialog);
+                    elevationToggleDialog = null;
+                }
+                elevationLayer = null;
+                addElevationLayerAction.setEnabled(true);
+            }
         }
         boolean hasDataLayer = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class).size() > 0;
         setElevationToolAction.setEnabled(hasDataLayer);

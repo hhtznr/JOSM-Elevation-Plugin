@@ -36,14 +36,10 @@ import jakarta.json.JsonObjectBuilder;
 public class ElevationPreferences {
 
     /**
-     * Property key for enabling or disabling use of elevation data.
+     * Former property key for enabling or disabling use of elevation data. It was
+     * available until version 0.13.2.
      */
-    public static final String ELEVATION_ENABLED = "elevation.enabled";
-
-    /**
-     * Default property value for enabling use of elevation data: {@code true}.
-     */
-    private static final boolean DEFAULT_ELEVATION_ENABLED = true;
+    public static final String LEGACY_ELEVATION_ENABLED = "elevation.enabled";
 
     /**
      * Default path, where elevation data is stored.
@@ -53,6 +49,8 @@ public class ElevationPreferences {
 
     /**
      * Default path, where SRTM1 and SRTM3 files were located until version 0.10.2.
+     *
+     * @since 0.11.0
      */
     public static final File LEGACY_SRTM_DIRECTORY = Paths.get(DEFAULT_ELEVATION_DIRECTORY.toString(), "SRTM").toFile();
 
@@ -500,15 +498,6 @@ public class ElevationPreferences {
     static {
         ELEVATION_DATA_SOURCES_SRTM3.add(ELEVATION_DATA_SOURCE_SONNY_LIDAR_DTM3);
         ELEVATION_DATA_SOURCES_SRTM3.add(ELEVATION_DATA_SOURCE_EARTHDATA_SRTM3);
-    }
-
-    /**
-     * Returns whether the elevation plugin functionality is enabled.
-     *
-     * @return {@code true} if enabled.
-     */
-    public static boolean getElevationEnabled() {
-        return Config.getPref().getBoolean(ELEVATION_ENABLED, DEFAULT_ELEVATION_ENABLED);
     }
 
     /**

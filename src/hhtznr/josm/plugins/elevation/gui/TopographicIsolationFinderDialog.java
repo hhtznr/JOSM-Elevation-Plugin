@@ -74,7 +74,7 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
     private JButton buttonAddToDataLayer;
     private JTextArea textAreaFeedback;
 
-    private TopographicIsolationFinder isolationFinder;
+    private final TopographicIsolationFinder isolationFinder;
     private Node peakNode = null;
     private Future<List<LatLonEle>> closestPointsFuture = null;
     private List<Node> nodes = null;

@@ -19,7 +19,7 @@ import hhtznr.josm.plugins.elevation.gui.HillshadeImageTile;
  *
  * @author Harald Hetzner
  */
-public class SRTMTileGrid {
+public class SRTMTileGrid implements SRTMTileCacheListener {
 
     private final Bounds gridBounds;
     private final int gridIntLatSouth;
@@ -40,6 +40,8 @@ public class SRTMTileGrid {
 
     private boolean allTilesCached = false;
 
+    private final ElevationDataProvider elevationDataProvider;
+
     /**
      * Creates a new 2D grid of SRTM tiles to cover the given latitude-longitude
      * bound with elevation data.
@@ -50,8 +52,8 @@ public class SRTMTileGrid {
      *                              coordinate space.
      */
     public SRTMTileGrid(ElevationDataProvider elevationDataProvider, Bounds bounds) {
+        this.elevationDataProvider = elevationDataProvider;
         elevationDataProvider.cacheSRTMTiles(bounds);
-
         SRTMTile.Type srtmType = elevationDataProvider.getSRTMType();
         if (srtmType == SRTMTile.Type.SRTM1) {
             latLonStep = SRTMTile.SRTM1_ANGULAR_STEP;
@@ -132,6 +134,7 @@ public class SRTMTileGrid {
         Logging.info("Elevation: Created new SRTM tile grid: " + gridBounds.toString() + ", grid width x height = "
                 + gridWidth + " x " + gridHeight + ", raster width x height = " + rasterWidth + " x " + rasterHeight);
 
+        elevationDataProvider.addTileCacheListener(this);
         areAllSRTMTilesCached();
     }
 
@@ -579,6 +582,32 @@ public class SRTMTileGrid {
     }
 
     /**
+     * Blocks the calling thread until all SRTM tiles for this grid have been
+     * cached.
+     * <p>
+     * This method should be used by threads that require the grid to be fully
+     * initialized before proceeding. It will return immediately if all tiles are
+     * already cached. Otherwise, the calling thread will wait until another thread
+     * notifies this object (via {@code notifyAll()}) once caching completes.
+     * </p>
+     *
+     * <p>
+     * The method uses a {@code while} loop to guard against spurious wakeups, as
+     * recommended by the Java concurrency specification.
+     * </p>
+     *
+     * @throws InterruptedException if the waiting thread is interrupted while
+     *                              waiting
+     */
+    public synchronized void waitForTilesCached() throws InterruptedException {
+        // Use a while loop to handle spurious wakeups
+        while (!areAllSRTMTilesCached()) {
+            // Wait, releasing the monitor lock until a worker thread notifies us
+            wait();
+        }
+    }
+
+    /**
      * Returns whether all SRTM tiles required to form this grid are available and
      * in memory.
      *
@@ -603,7 +632,8 @@ public class SRTMTileGrid {
                     return false;
             }
         }
-
+        // When all tiles of this grid are cached, we do no longer need to listen
+        elevationDataProvider.removeTileCacheListener(this);
         allTilesCached = true;
         return true;
     }
@@ -661,6 +691,23 @@ public class SRTMTileGrid {
         double lonMin = Math.max(bounds.getMinLon() - rasterStep * latLonStep, -180.0);
         double lonMax = Math.min(bounds.getMaxLon() + rasterStep * latLonStep, 180.0);
         return new Bounds(latMin, lonMin, latMax, lonMax);
+    }
+
+    @Override
+    public void validSRTMTileCached(SRTMTile tile) {
+        synchronized (this) {
+            int latID = tile.getLatID();
+            int lonID = tile.getLonID();
+            if (latID >= gridIntLatSouth && latID < gridIntLatNorth && lonID >= gridIntLonWest
+                    && lonID < gridIntLonEast) {
+                onTileCached();
+            }
+        }
+    }
+
+    private synchronized void onTileCached() {
+        if (areAllSRTMTilesCached())
+            notifyAll(); // wakes all waiting threads
     }
 
     /**

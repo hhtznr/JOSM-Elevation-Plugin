@@ -144,6 +144,25 @@ public class ElevationDataProvider implements SRTMFileDownloadListener, SRTMTile
     }
 
     /**
+     * Adds a listener to this elevation data provider's SRTM tile cache. The
+     * listener will be informed whenever a valid SRTM tile is cached.
+     *
+     * @param listener The listener to add.
+     */
+    public void addTileCacheListener(SRTMTileCacheListener listener) {
+        tileCache.addSRTMTileCacheListener(listener);
+    }
+
+    /**
+     * Removes a listener to this elevation data provider's SRTM tile cache.
+     *
+     * @param listener The listener to remove.
+     */
+    public void removeTileCacheListener(SRTMTileCacheListener listener) {
+        tileCache.removeSRTMTileCacheListener(listener);
+    }
+
+    /**
      * Returns a map that provides information on the currently cached SRTM tiles.
      * The tiles are ordered by their name.
      *

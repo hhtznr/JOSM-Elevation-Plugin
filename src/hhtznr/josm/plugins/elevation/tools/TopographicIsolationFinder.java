@@ -78,17 +78,8 @@ public class TopographicIsolationFinder {
         SRTMTileGrid tileGrid = new SRTMTileGrid(elevationDataProvider, searchBounds);
 
         informListenersAboutStatus("Waiting for all needed SRTM tiles to be cached");
-        while (!tileGrid.areAllSRTMTilesCached()) {
-            try {
-                Thread.sleep(50);
-            } catch (InterruptedException e) {
-                String message = "Topographic isolation finder was terminated while waiting for SRTM tiles to be cached: "
-                        + e.toString();
-                Logging.info("Elevation: " + message);
-                informListenersAboutStatus(message);
-                throw e;
-            }
-        }
+        // Wait for the tiles being cached
+        tileGrid.waitForTilesCached();
         informListenersAboutStatus("All needed SRTM tiles cached");
 
         short isolationReferenceElevation = (short) (peak.ele() + 1);

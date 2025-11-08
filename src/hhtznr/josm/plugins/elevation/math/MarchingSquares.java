@@ -32,7 +32,7 @@ public class MarchingSquares {
     private static final ExecutorService executor;
     static {
         int cores = Runtime.getRuntime().availableProcessors();
-        int threads = Math.min(1, cores - 1);
+        int threads = Math.max(1, cores - 1);
         executor = Executors.newFixedThreadPool(threads);
     }
 
@@ -89,7 +89,7 @@ public class MarchingSquares {
             return new ArrayList<>(0);
         }
 
-        ArrayList<ContourLines.IsolineSegments> isolineSegments = new ArrayList<>();
+        ArrayList<ContourLines.IsolineSegments> isolineSegments = new ArrayList<>(isovalues.length);
         for (Future<ContourLines.IsolineSegments> isolineResult : isolineResultList) {
             try {
                 isolineSegments.add(isolineResult.get());

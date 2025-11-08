@@ -231,13 +231,17 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
                 return;
         }
 
+        Rectangle screenClip = g.getClipBounds();
+
         g.setColor(contourLineColor);
         g.setStroke(contourLineStroke);
         for (ContourLines.IsolineSegments isolineSegment : contourLines.getIsolineSegments()) {
             for (LatLonLine segment : isolineSegment.getLineSegments()) {
                 Point p1 = mv.getPoint(segment.getLatLon1());
                 Point p2 = mv.getPoint(segment.getLatLon2());
-                g.drawLine(p1.x, p1.y, p2.x, p2.y);
+                // Only draw if the line's bounding box intersects the map's bounding box
+                if (screenClip.intersectsLine(p1.x, p1.y, p2.x, p2.y))
+                    g.drawLine(p1.x, p1.y, p2.x, p2.y);
             }
         }
     }

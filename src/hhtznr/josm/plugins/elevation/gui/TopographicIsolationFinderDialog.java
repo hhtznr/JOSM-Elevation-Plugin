@@ -737,10 +737,8 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
 
             DataSet ds = new DataSet();
             ds.addPrimitive(new Node(peakNode));
-            for (Node node : nodes) {
-                node.getId();
+            for (Node node : nodes)
                 ds.addPrimitive(new Node(node));
-            }
             String layerName = "Isolation reference points";
             String peakName = textFieldPeakName.getText();
             if (peakName != null && !peakName.isBlank())

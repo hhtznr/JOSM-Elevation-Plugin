@@ -58,7 +58,7 @@ public class SRTMTileCache {
     public synchronized String getInfo() {
         String info = "";
         int numberOfTiles = cache.size();
-        info += numberOfTiles + (numberOfTiles == 1 ? "tile, " : " tiles, ");
+        info += numberOfTiles + (numberOfTiles == 1 ? " tile, " : " tiles, ");
         info += getSizeString(cacheSize) + " of max. ";
         info += getSizeString(cacheSizeLimit);
         return info;

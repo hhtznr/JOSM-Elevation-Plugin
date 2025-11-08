@@ -262,8 +262,11 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
             }
         }
         boolean hasDataLayer = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class).size() > 0;
-        setNodeElevationAction.setEnabled(hasDataLayer);
-        setPeakProminenceAction.setEnabled(hasDataLayer);
+        if (hasDataLayer) {
+            isolationFinderAction.setEnabled(true);
+            setNodeElevationAction.setEnabled(true);
+            setPeakProminenceAction.setEnabled(true);
+        }
     }
 
     @Override
@@ -280,8 +283,11 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
             }
         }
         boolean hasDataLayer = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class).size() > 0;
-        setNodeElevationAction.setEnabled(hasDataLayer);
-        setPeakProminenceAction.setEnabled(hasDataLayer);
+        if (!hasDataLayer) {
+            isolationFinderAction.setEnabled(false);
+            setNodeElevationAction.setEnabled(false);
+            setPeakProminenceAction.setEnabled(false);
+        }
     }
 
     @Override

@@ -10,6 +10,7 @@ import hhtznr.josm.plugins.elevation.gui.ElevationToggleDialog;
 import hhtznr.josm.plugins.elevation.gui.LocalElevationLabel;
 import hhtznr.josm.plugins.elevation.gui.SRTMFileDownloadErrorDialog;
 import hhtznr.josm.plugins.elevation.gui.SetNodeElevationAction;
+import hhtznr.josm.plugins.elevation.gui.SetPeakProminenceAction;
 import hhtznr.josm.plugins.elevation.gui.TopographicIsolationFinderAction;
 import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
 
@@ -49,7 +50,8 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     private final Object elevationLayerLock = new Object();
     private ElevationLayer elevationLayer = null;
     private ElevationToggleDialog elevationToggleDialog = null;
-    private final SetNodeElevationAction setElevationToolAction;
+    private final SetNodeElevationAction setNodeElevationAction;
+    private final SetPeakProminenceAction setPeakProminenceAction;
 
     /**
      * Initializes the plugin.
@@ -70,10 +72,14 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
         MainMenu.add(MainApplication.getMenu().imagerySubMenu, addElevationLayerAction,
                 MainMenu.WINDOW_MENU_GROUP.ALWAYS);
         MainMenu.add(MainApplication.getMenu().moreToolsMenu, isolationFinderAction, MainMenu.WINDOW_MENU_GROUP.ALWAYS);
-        setElevationToolAction = new SetNodeElevationAction(getElevationDataProvider());
-        setElevationToolAction.setEnabled(false);
-        if (MainApplication.getToolbar() != null)
-            MainApplication.getToolbar().register(setElevationToolAction);
+        setNodeElevationAction = new SetNodeElevationAction(elevationDataProvider);
+        setNodeElevationAction.setEnabled(false);
+        setPeakProminenceAction = new SetPeakProminenceAction(elevationDataProvider);
+        setPeakProminenceAction.setEnabled(false);
+        if (MainApplication.getToolbar() != null) {
+            MainApplication.getToolbar().register(setNodeElevationAction);
+            MainApplication.getToolbar().register(setPeakProminenceAction);
+        }
         MainApplication.getLayerManager().addLayerChangeListener(this);
         Logging.info("Elevation: Plugin initialized");
     }
@@ -255,7 +261,8 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
             }
         }
         boolean hasDataLayer = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class).size() > 0;
-        setElevationToolAction.setEnabled(hasDataLayer);
+        setNodeElevationAction.setEnabled(hasDataLayer);
+        setPeakProminenceAction.setEnabled(hasDataLayer);
     }
 
     @Override
@@ -272,7 +279,8 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
             }
         }
         boolean hasDataLayer = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class).size() > 0;
-        setElevationToolAction.setEnabled(hasDataLayer);
+        setNodeElevationAction.setEnabled(hasDataLayer);
+        setPeakProminenceAction.setEnabled(hasDataLayer);
     }
 
     @Override

@@ -38,6 +38,8 @@ public class ElevationPreferences {
     /**
      * Former property key for enabling or disabling use of elevation data. It was
      * available until version 0.13.2.
+     *
+     * @since 0.14.0
      */
     public static final String LEGACY_ELEVATION_ENABLED = "elevation.enabled";
 

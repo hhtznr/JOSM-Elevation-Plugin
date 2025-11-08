@@ -94,7 +94,7 @@ public class Migration {
     /**
      * Removes the preferences key previously used to enable or disable the complete plugin.
      *
-     * @since 0.13.3
+     * @since 0.14.0
      */
     public static void removeElevationEnabledPreference() {
         IPreferences pref = Config.getPref();

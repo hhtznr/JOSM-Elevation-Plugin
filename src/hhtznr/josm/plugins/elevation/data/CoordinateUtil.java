@@ -8,9 +8,9 @@ import org.openstreetmap.josm.data.coor.LatLon;
  *
  * @author Harald Hetzner
  */
-public class LatLonTool {
+public class CoordinateUtil {
 
-    private LatLonTool() {
+    private CoordinateUtil() {
     }
 
     /**

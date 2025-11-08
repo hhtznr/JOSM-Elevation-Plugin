@@ -45,7 +45,7 @@ import org.openstreetmap.josm.tools.GBC;
 
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
-import hhtznr.josm.plugins.elevation.data.LatLonTool;
+import hhtznr.josm.plugins.elevation.data.CoordinateUtil;
 import hhtznr.josm.plugins.elevation.tools.ElevationToolListener;
 import hhtznr.josm.plugins.elevation.tools.TopographicIsolationFinder;
 
@@ -468,10 +468,10 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
         distance *= 1000; // convert from km to m
         LatLon peak = peakNode.getCoor();
 
-        LatLon north = LatLonTool.destination(peak, distance, 0);
-        LatLon south = LatLonTool.destination(peak, distance, 180);
-        LatLon east = LatLonTool.destination(peak, distance, 90);
-        LatLon west = LatLonTool.destination(peak, distance, 270);
+        LatLon north = CoordinateUtil.destination(peak, distance, 0);
+        LatLon south = CoordinateUtil.destination(peak, distance, 180);
+        LatLon east = CoordinateUtil.destination(peak, distance, 90);
+        LatLon west = CoordinateUtil.destination(peak, distance, 270);
         double minLat = Math.max(south.lat(), -90.0);
         double minLon = Math.max(-180.0, west.lon());
         double maxLat = Math.min(north.lat(), 90.0);

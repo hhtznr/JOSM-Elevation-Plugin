@@ -19,7 +19,7 @@ public class ContourLines extends AbstractSRTMTileGridPaintable {
     public static final int BOUNDS_SCALE_RASTER_STEP = 2;
 
     private final int isostep;
-    private final List<IsolineSegments> isolineSegments;
+    private final IsolineSegments[] isolineSegments;
 
     /**
      * Creates a new set of contour lines covering the specified bounds.
@@ -81,12 +81,12 @@ public class ContourLines extends AbstractSRTMTileGridPaintable {
     }
 
     /**
-     * Returns the list of isoline segments forming the contour lines.
+     * Returns the array of isoline segments forming the contour linescovering the
+     * bounds.
      *
-     * @return The list of isoline segments forming the contour lines covering the
-     *         bounds.
+     * @return The array of isoline segments.
      */
-    public List<IsolineSegments> getIsolineSegments() {
+    public IsolineSegments[] getIsolineSegments() {
         return isolineSegments;
     }
 

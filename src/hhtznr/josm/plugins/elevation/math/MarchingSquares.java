@@ -1,13 +1,7 @@
 package hhtznr.josm.plugins.elevation.math;
 
 import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.RejectedExecutionException;
+import java.util.stream.IntStream;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
@@ -28,13 +22,6 @@ public class MarchingSquares {
     private final SRTMTileGrid.RasterIndexBounds rasterIndexBounds;
     private final Bounds bounds;
     private final short[] isovalues;
-
-    private static final ExecutorService executor;
-    static {
-        int cores = Runtime.getRuntime().availableProcessors();
-        int threads = Math.max(1, cores - 1);
-        executor = Executors.newFixedThreadPool(threads);
-    }
 
     /**
      * Creates a new instance of the Marching Squares algorithm dedicated to
@@ -63,40 +50,17 @@ public class MarchingSquares {
     }
 
     /**
-     * Computes the segments of all isolines for all isovalues based on the Marching
-     * Squares algorithm. Starting and end points of the segments are provided in
-     * latitude-longitude coordinate space.
+     * Returns the array of isoline segments for the isovalues.
      *
-     * @return A list containing all computed isoline segments for all isovalues.
-     *         The segments are ordered as computed. They are not sorted in a way
-     *         that would enable to determine the particular isovalue for which they
-     *         were computed or that they could easily be joined.
+     * @return The isoline segments.
      */
-    public List<ContourLines.IsolineSegments> getIsolineSegments() {
-        ArrayList<Callable<ContourLines.IsolineSegments>> isolineTasks = new ArrayList<>(isovalues.length);
-        for (int i = 0; i < isovalues.length; i++) {
+    public ContourLines.IsolineSegments[] getIsolineSegments() {
+        ContourLines.IsolineSegments[] isolineSegments = new ContourLines.IsolineSegments[isovalues.length];
+
+        IntStream.range(0, isovalues.length).parallel().forEach(i -> {
             short isovalue = isovalues[i];
-            Callable<ContourLines.IsolineSegments> task = () -> {
-                return getIsolineSegments(isovalue);
-            };
-            isolineTasks.add(task);
-        }
-
-        List<Future<ContourLines.IsolineSegments>> isolineResultList;
-        try {
-            isolineResultList = executor.invokeAll(isolineTasks);
-        } catch (InterruptedException | RejectedExecutionException e) {
-            return new ArrayList<>(0);
-        }
-
-        ArrayList<ContourLines.IsolineSegments> isolineSegments = new ArrayList<>(isovalues.length);
-        for (Future<ContourLines.IsolineSegments> isolineResult : isolineResultList) {
-            try {
-                isolineSegments.add(isolineResult.get());
-            } catch (InterruptedException | ExecutionException e) {
-                return new ArrayList<>(0);
-            }
-        }
+            isolineSegments[i] = getIsolineSegments(isovalue);
+        });
 
         return isolineSegments;
     }

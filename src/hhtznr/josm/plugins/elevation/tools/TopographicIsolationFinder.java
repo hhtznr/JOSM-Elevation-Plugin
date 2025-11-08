@@ -96,15 +96,15 @@ public class TopographicIsolationFinder {
 
         informListenersAboutStatus("Creating contour lines");
         ContourLines contourLines = new ContourLines(tileGrid, searchBounds, isovalues);
-        List<ContourLines.IsolineSegments> allIsoLineSegments = contourLines.getIsolineSegments();
-        if (allIsoLineSegments.size() < 1) {
+        ContourLines.IsolineSegments[] allIsoLineSegments = contourLines.getIsolineSegments();
+        if (allIsoLineSegments.length < 1) {
             String message = "Elevation: Topographic isolation finder could not determine isolation for peak "
                     + peak.toString() + ": No higher isolines found within search bounds " + searchBounds.toString();
             Logging.info("Elevation: " + message);
             informListenersAboutStatus(message);
             return new ArrayList<>(0);
         }
-        List<LatLonLine> isolineSegments = allIsoLineSegments.get(0).getLineSegments();
+        List<LatLonLine> isolineSegments = allIsoLineSegments[0].getLineSegments();
         informListenersAboutStatus("Contour lines created");
 
         informListenersAboutStatus("Determining closest points");
@@ -114,7 +114,7 @@ public class TopographicIsolationFinder {
         for (LatLonLine isolineSegment : isolineSegments) {
             // Stop immediately, if the executing thread got interrupted
             if (Thread.currentThread().isInterrupted()) {
-                String message = "Topographic isolation finder was while determining closest points from isoline segments";
+                String message = "Topographic isolation finder was interrupted while determining closest points from isoline segments";
                 Logging.info("Elevation: " + message);
                 throw new InterruptedException("Thread was interrupted while determining closest points from isoline segments");
             }

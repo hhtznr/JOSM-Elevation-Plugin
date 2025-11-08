@@ -1,6 +1,7 @@
 package hhtznr.josm.plugins.elevation.data;
 
 import org.openstreetmap.gui.jmapviewer.OsmMercator;
+import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
 
 /**
@@ -42,5 +43,35 @@ public class CoordinateUtil {
 
         // Convert back to degrees
         return new LatLon(Math.toDegrees(destLatRad), Math.toDegrees(destLonRad));
+    }
+
+    /**
+     * Uniformly scales the bounds by a factor. A factor {@code > 0} expands the
+     * bounds. A factor {@code < 0} shrinks the bounds. A factor equal to {@code 0}
+     * has no scale effect.
+     *
+     * @param bounds The bounds.
+     * @param factor The scale factor.
+     * @return The scaled bounds clamped to the poles, if necessary.
+     */
+    public static Bounds getScaledBounds(Bounds bounds, double factor) {
+        if (factor == 0.0)
+            return new Bounds(bounds);
+
+        double latRange = bounds.getHeight();
+        double lonRange = bounds.getWidth();
+        double halfDeltaLat = 0.5 * (latRange * factor - latRange);
+        double halfDeltaLon = 0.5 * (lonRange * factor - lonRange);
+        double minLat = Math.max(bounds.getMinLat() - halfDeltaLat, -90.0);
+        double maxLat = Math.min(bounds.getMaxLat() + halfDeltaLat, 90.0);
+        double minLon = bounds.getMinLon() - halfDeltaLon;
+        // Across 180th meridian
+        if (minLon < -180.0)
+            minLon = minLon + 360.0;
+        double maxLon = bounds.getMaxLon() + halfDeltaLon;
+        // Across 180th meridian
+        if (maxLon > 180.0)
+            maxLon = maxLon - 360.0;
+        return new Bounds(minLat, minLon, maxLat, maxLon);
     }
 }

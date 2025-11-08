@@ -22,6 +22,7 @@ import org.openstreetmap.josm.gui.layer.MapViewPaintable.PaintableInvalidationEv
 import org.openstreetmap.josm.gui.layer.MapViewPaintable.PaintableInvalidationListener;
 import org.openstreetmap.josm.tools.Logging;
 
+import hhtznr.josm.plugins.elevation.data.CoordinateUtil;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.LatLonLine;
 
@@ -156,7 +157,7 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
                 || !hillshadeImageTile.covers(clipBounds);
 
         if (clipBoundsNotCoveredByHillshade || hillshadeParametersChanged) {
-            Bounds scaledBounds = getScaledBounds(clipBounds, BOUNDS_SCALE_FACTOR);
+            Bounds scaledBounds = CoordinateUtil.getScaledBounds(clipBounds, BOUNDS_SCALE_FACTOR);
             hillshadeImageTile = layer.getElevationDataProvider().getHillshadeImageTile(scaledBounds,
                     layerHillshadeAltitude, layerHillshadeAzimuth, false);
             if (hillshadeImageTile == null)
@@ -223,7 +224,7 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
             lowerCutoffElevation = layerLowerCutoffElevation;
             upperCutoffElevation = layerUpperCutoffElevation;
 
-            Bounds scaledBounds = getScaledBounds(clipBounds, BOUNDS_SCALE_FACTOR);
+            Bounds scaledBounds = CoordinateUtil.getScaledBounds(clipBounds, BOUNDS_SCALE_FACTOR);
             contourLines = layer.getElevationDataProvider().getContourLines(scaledBounds, contourLineIsostep,
                     lowerCutoffElevation, upperCutoffElevation);
             if (contourLines == null)
@@ -247,7 +248,7 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
 
     private synchronized void drawElevationRaster(Graphics2D g, MapView mv, Bounds clipBounds) {
         if (elevationRaster == null || !elevationRaster.covers(clipBounds)) {
-            Bounds scaledBounds = getScaledBounds(clipBounds, BOUNDS_SCALE_FACTOR);
+            Bounds scaledBounds = CoordinateUtil.getScaledBounds(clipBounds, BOUNDS_SCALE_FACTOR);
             elevationRaster = layer.getElevationDataProvider().getElevationRaster(scaledBounds);
             if (elevationRaster == null)
                 return;
@@ -421,27 +422,6 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
             g.setColor(colorOutline);
             g.drawPolygon(xPoints, yPoints, nPoints);
         }
-    }
-
-    private static Bounds getScaledBounds(Bounds bounds, double factor) {
-        if (factor <= 0.0)
-            throw new IllegalArgumentException("Scale factor " + factor + " <= 0");
-
-        double latRange = bounds.getHeight();
-        double lonRange = bounds.getWidth();
-        double halfDeltaLat = 0.5 * (latRange * factor - latRange);
-        double halfDeltaLon = 0.5 * (lonRange * factor - lonRange);
-        double minLat = Math.max(bounds.getMinLat() - halfDeltaLat, -90.0);
-        double maxLat = Math.min(bounds.getMaxLat() + halfDeltaLat, 90.0);
-        double minLon = bounds.getMinLon() - halfDeltaLon;
-        // Across 180th meridian
-        if (minLon < -180.0)
-            minLon = minLon + 360.0;
-        double maxLon = bounds.getMaxLon() + halfDeltaLon;
-        // Across 180th meridian
-        if (maxLon > 180.0)
-            maxLon = maxLon - 360.0;
-        return new Bounds(minLat, minLon, maxLat, maxLon);
     }
 
     @Override

@@ -31,11 +31,7 @@ import hhtznr.josm.plugins.elevation.gui.ContourLines;
  *
  * @author Harald Hetzner
  */
-public class TopographicIsolationFinder {
-
-    private final ElevationDataProvider elevationDataProvider;
-
-    private final List<ElevationToolListener> listeners;
+public class TopographicIsolationFinder extends AbstractElevationTool {
 
     /**
      * Creates a new topographic isolation finder.
@@ -44,8 +40,7 @@ public class TopographicIsolationFinder {
      *                              for this topographic isolation finder.
      */
     public TopographicIsolationFinder(ElevationDataProvider elevationDataProvider) {
-        this.elevationDataProvider = elevationDataProvider;
-        listeners = new ArrayList<>();
+        super(elevationDataProvider);
     }
 
     /**
@@ -153,26 +148,6 @@ public class TopographicIsolationFinder {
         for (LatLonEleDist closestPoint : closestPointsSorted)
             resultList.add(closestPoint.point);
         return resultList;
-    }
-
-    public void addElevationToolListener(ElevationToolListener listener) {
-        synchronized (listeners) {
-            if (!listeners.contains(listener))
-                listeners.add(listener);
-        }
-    }
-
-    public void removeElevationToolListener(ElevationToolListener listener) {
-        synchronized (listeners) {
-            listeners.remove(listener);
-        }
-    }
-
-    private void informListenersAboutStatus(String message) {
-        synchronized (listeners) {
-            for (ElevationToolListener listener : listeners)
-                listener.status(message);
-        }
     }
 
     private static class LatLonEleDist {

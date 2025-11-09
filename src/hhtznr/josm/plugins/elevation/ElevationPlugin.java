@@ -7,6 +7,7 @@ import hhtznr.josm.plugins.elevation.gui.AddElevationLayerAction;
 import hhtznr.josm.plugins.elevation.gui.ElevationLayer;
 import hhtznr.josm.plugins.elevation.gui.ElevationTabPreferenceSetting;
 import hhtznr.josm.plugins.elevation.gui.ElevationToggleDialog;
+import hhtznr.josm.plugins.elevation.gui.KeyColFinderAction;
 import hhtznr.josm.plugins.elevation.gui.LocalElevationLabel;
 import hhtznr.josm.plugins.elevation.gui.SRTMFileDownloadErrorDialog;
 import hhtznr.josm.plugins.elevation.gui.SetNodeElevationAction;
@@ -47,6 +48,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
 
     private final AddElevationLayerAction addElevationLayerAction;
     private final TopographicIsolationFinderAction isolationFinderAction;
+    private final KeyColFinderAction keyColFinderAction;
     private final Object elevationLayerLock = new Object();
     private ElevationLayer elevationLayer = null;
     private ElevationToggleDialog elevationToggleDialog = null;
@@ -62,24 +64,35 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
         super(info);
         Migration.migrateSRTMDirectory();
         Migration.removeElevationEnabledPreference();
+
         createElevationDataDirectories();
+
         elevationDataProvider = new ElevationDataProvider();
         reconfigureElevationDataProvider();
+
         addElevationLayerAction = new AddElevationLayerAction(this);
-        isolationFinderAction = new TopographicIsolationFinderAction(this);
         addElevationLayerAction.setEnabled(false);
-        isolationFinderAction.setEnabled(false);
         MainMenu.add(MainApplication.getMenu().imagerySubMenu, addElevationLayerAction,
                 MainMenu.WINDOW_MENU_GROUP.ALWAYS);
+
+        isolationFinderAction = new TopographicIsolationFinderAction(this);
+        isolationFinderAction.setEnabled(false);
         MainMenu.add(MainApplication.getMenu().moreToolsMenu, isolationFinderAction, MainMenu.WINDOW_MENU_GROUP.ALWAYS);
+
+        keyColFinderAction = new KeyColFinderAction(this);
+        keyColFinderAction.setEnabled(false);
+        MainMenu.add(MainApplication.getMenu().moreToolsMenu, keyColFinderAction, MainMenu.WINDOW_MENU_GROUP.ALWAYS);
+
         setNodeElevationAction = new SetNodeElevationAction(elevationDataProvider);
         setNodeElevationAction.setEnabled(false);
+
         setPeakProminenceAction = new SetPeakProminenceAction(elevationDataProvider);
         setPeakProminenceAction.setEnabled(false);
         if (MainApplication.getToolbar() != null) {
             MainApplication.getToolbar().register(setNodeElevationAction);
             MainApplication.getToolbar().register(setPeakProminenceAction);
         }
+
         MainApplication.getLayerManager().addLayerChangeListener(this);
         Logging.info("Elevation: Plugin initialized");
     }
@@ -220,8 +233,8 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                     int azimuth = ElevationPreferences.getHillshadeAzimuth();
                     int lowerCutoff = ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION;
                     int upperCutoff = ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION;
-                    elevationLayer = new ElevationLayer(elevationDataProvider, renderingLimit, isostep, strokeWidth, color,
-                            altitude, azimuth, lowerCutoff, upperCutoff);
+                    elevationLayer = new ElevationLayer(elevationDataProvider, renderingLimit, isostep, strokeWidth,
+                            color, altitude, azimuth, lowerCutoff, upperCutoff);
                     MainApplication.getLayerManager().addLayer(elevationLayer);
                 }
                 elevationLayer.setRenderingLimit(ElevationPreferences.getElevationLayerRenderingLimit());
@@ -264,6 +277,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
         boolean hasDataLayer = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class).size() > 0;
         if (hasDataLayer) {
             isolationFinderAction.setEnabled(true);
+            keyColFinderAction.setEnabled(true);
             setNodeElevationAction.setEnabled(true);
             setPeakProminenceAction.setEnabled(true);
         }
@@ -285,6 +299,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
         boolean hasDataLayer = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class).size() > 0;
         if (!hasDataLayer) {
             isolationFinderAction.setEnabled(false);
+            keyColFinderAction.setEnabled(false);
             setNodeElevationAction.setEnabled(false);
             setPeakProminenceAction.setEnabled(false);
         }

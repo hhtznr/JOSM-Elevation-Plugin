@@ -55,13 +55,28 @@ public class CoordinateUtil {
      * @return The scaled bounds clamped to the poles, if necessary.
      */
     public static Bounds getScaledBounds(Bounds bounds, double factor) {
-        if (factor == 0.0)
+        return getScaledBounds(bounds, factor, factor);
+    }
+
+    /**
+     * Scales the bounds by provided factory in latitude and longitude direction. A
+     * factor {@code > 0} expands the bounds in the respective direcion. A factor
+     * {@code < 0} shrinks the bounds in the respective direction. A factor equal to
+     * {@code 0} has no scale effect.
+     *
+     * @param bounds    The bounds.
+     * @param factorLat The scale factor in latitude direction.
+     * @param factorLon The scale factor in longitude direction.
+     * @return The scaled bounds clamped to the poles, if necessary.
+     */
+    public static Bounds getScaledBounds(Bounds bounds, double factorLat, double factorLon) {
+        if (factorLat == 0.0 && factorLon == 0.0)
             return new Bounds(bounds);
 
         double latRange = bounds.getHeight();
         double lonRange = bounds.getWidth();
-        double halfDeltaLat = 0.5 * (latRange * factor - latRange);
-        double halfDeltaLon = 0.5 * (lonRange * factor - lonRange);
+        double halfDeltaLat = 0.5 * (latRange * factorLat - latRange);
+        double halfDeltaLon = 0.5 * (lonRange * factorLon - lonRange);
         double minLat = Math.max(bounds.getMinLat() - halfDeltaLat, -90.0);
         double maxLat = Math.min(bounds.getMaxLat() + halfDeltaLat, 90.0);
         double minLon = bounds.getMinLon() - halfDeltaLon;

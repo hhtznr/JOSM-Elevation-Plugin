@@ -85,7 +85,7 @@ public class TopographicIsolationFinder {
             String message = "Interrupted while waiting for tiles to be cached";
             informListenersAboutStatus(message);
             Logging.info("Elevation: Topographic isolation finder: " + message);
-            return null;
+            return new ArrayList<>(0);
         }
         informListenersAboutStatus("All needed SRTM tiles cached");
 

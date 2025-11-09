@@ -74,12 +74,19 @@ public class TopographicIsolationFinder {
      *         point could be determined within the specified bounds.
      * @throws InterruptedException Thrown if the executing thread was interrupted
      */
-    public List<LatLonEle> determineReferencePoints(LatLonEle peak, Bounds searchBounds, double distanceTolerance) throws InterruptedException{
+    public List<LatLonEle> determineReferencePoints(LatLonEle peak, Bounds searchBounds, double distanceTolerance)
+            throws InterruptedException {
         SRTMTileGrid tileGrid = new SRTMTileGrid(elevationDataProvider, searchBounds);
 
         informListenersAboutStatus("Waiting for all needed SRTM tiles to be cached");
         // Wait for the tiles being cached
         tileGrid.waitForTilesCached();
+        if (Thread.currentThread().isInterrupted()) {
+            String message = "Interrupted while waiting for tiles to be cached";
+            informListenersAboutStatus(message);
+            Logging.info("Elevation: Topographic isolation finder: " + message);
+            return null;
+        }
         informListenersAboutStatus("All needed SRTM tiles cached");
 
         short isolationReferenceElevation = (short) (peak.ele() + 1);
@@ -89,9 +96,9 @@ public class TopographicIsolationFinder {
         ContourLines contourLines = new ContourLines(tileGrid, searchBounds, isovalues);
         ContourLines.IsolineSegments[] allIsoLineSegments = contourLines.getIsolineSegments();
         if (allIsoLineSegments.length < 1) {
-            String message = "Elevation: Topographic isolation finder could not determine isolation for peak "
-                    + peak.toString() + ": No higher isolines found within search bounds " + searchBounds.toString();
-            Logging.info("Elevation: " + message);
+            String message = "Could not determine isolation for peak " + peak.toString()
+                    + ": No higher isolines found within search bounds " + searchBounds.toString();
+            Logging.info("Elevation: Topographic isolation finder: " + message);
             informListenersAboutStatus(message);
             return new ArrayList<>(0);
         }
@@ -105,9 +112,10 @@ public class TopographicIsolationFinder {
         for (LatLonLine isolineSegment : isolineSegments) {
             // Stop immediately, if the executing thread got interrupted
             if (Thread.currentThread().isInterrupted()) {
-                String message = "Topographic isolation finder was interrupted while determining closest points from isoline segments";
-                Logging.info("Elevation: " + message);
-                throw new InterruptedException("Thread was interrupted while determining closest points from isoline segments");
+                String message = "Interrupted while determining closest points from isoline segments";
+                Logging.info("Elevation: Topographic isolation finder: " + message);
+                throw new InterruptedException(
+                        "Thread was interrupted while determining closest points from isoline segments");
             }
             LatLon closestPoint = isolineSegment.getClosestPointTo(peak);
             double distance = peak.greatCircleDistance((ILatLon) closestPoint);
@@ -131,9 +139,9 @@ public class TopographicIsolationFinder {
 
         // Should not happen, because otherwise we could not generate the isolines
         if (closestPoints.size() < 1) {
-            String message = "Elevation: Topographic isolation finder could not determine isolation for peak "
-                    + peak.toString() + ": No higher point found within search bounds " + searchBounds.toString();
-            Logging.info("Elevation: " + message);
+            String message = "Could not determine isolation for peak " + peak.toString()
+                    + ": No higher point found within search bounds " + searchBounds.toString();
+            Logging.info("Elevation: Topographic isolation finder: " + message);
             informListenersAboutStatus(message);
             return new ArrayList<>(0);
         }

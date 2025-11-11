@@ -42,7 +42,7 @@ public class SetPeakProminenceAction extends JosmAction {
      *                              elevation values.
      */
     public SetPeakProminenceAction(ElevationDataProvider elevationDataProvider) {
-        super("Set peak prominence", new ImageProvider("toolbar/set_elevation.svg"),
+        super("Set peak prominence", new ImageProvider("toolbar/set_prominence.svg"),
                 "Set the promience tag of a selected peak or hill based on a selected saddle which is the key col and add ele tags if missing.",
                 null, true, "set-prominence-tool", false);
         this.elevationDataProvider = elevationDataProvider;

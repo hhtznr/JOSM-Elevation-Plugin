@@ -62,6 +62,11 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
      *                          To arrive at exactly one highest point (if one
      *                          exists in the specified bounds), a value of
      *                          {@code 0.0} has to be specified.
+     * @param deadZoneRadius    Dead zone radius value in meters. Within the dead
+     *                          zone around the peak any elevation raster points
+     *                          that are higher than its provided elevation will be
+     *                          ignored and not be contained in the returned list of
+     *                          possible reference points.
      * @return A list of possible reference points for the topographic isolation of
      *         the specified peak, ordered by increasing great circle distance to
      *         the peak, i.e. the first point is the closest according to
@@ -69,8 +74,8 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
      *         point could be determined within the specified bounds.
      * @throws InterruptedException Thrown if the executing thread was interrupted
      */
-    public List<LatLonEle> determineReferencePoints(LatLonEle peak, Bounds searchBounds, double distanceTolerance)
-            throws InterruptedException {
+    public List<LatLonEle> determineReferencePoints(LatLonEle peak, Bounds searchBounds, double distanceTolerance,
+            double deadZoneRadius) throws InterruptedException {
         SRTMTileGrid tileGrid = new SRTMTileGrid(elevationDataProvider, searchBounds);
 
         informListenersAboutStatus("Waiting for all needed SRTM tiles to be cached");
@@ -115,7 +120,7 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
             LatLon closestPoint = isolineSegment.getClosestPointTo(peak);
             double distance = peak.greatCircleDistance((ILatLon) closestPoint);
 
-            if (distance < maxClosestDistance) {
+            if (distance > deadZoneRadius && distance < maxClosestDistance) {
                 if (distance < minClosestDistance) {
                     minClosestDistance = distance;
                     maxClosestDistance = minClosestDistance + distanceTolerance;

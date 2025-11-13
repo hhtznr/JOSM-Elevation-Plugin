@@ -66,9 +66,10 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
     private JTextField textFieldPeakName;
     private JTextField textFieldPeakCoord;
     private JTextField textFieldPeakEle;
-    private JSpinner spinnerDistanceTolerance;
     private JSpinner spinnerSearchDistance;
     private JTextField textFieldSearchDistanceLatLon;
+    private JSpinner spinnerDistanceTolerance;
+    private JSpinner spinnerDeadZoneRadius;
     private JButton buttonFind;
     private JButton buttonStop;
     private JButton buttonAddToDataLayer;
@@ -126,6 +127,7 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
         textFieldSearchDistanceLatLon = new JTextField(30);
         textFieldSearchDistanceLatLon.setEditable(false);
         spinnerDistanceTolerance = new JSpinner(new SpinnerNumberModel(0, 0, 999, 1));
+        spinnerDeadZoneRadius = new JSpinner(new SpinnerNumberModel(0, 0, 999, 1));
 
         buttonFind = new JButton(new FindAction());
 
@@ -143,6 +145,8 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
                 "The corresponding search distances and search area size in geographic latitude and longitude.");
         spinnerDistanceTolerance.setToolTipText(
                 "Search distance tolerance in meters. If 0, the result will be the very closest, by 1 m higher raster point. If > 0, the result may contain further points within [closest distance, closest distance + tolerance].");
+        spinnerDeadZoneRadius.setToolTipText(
+                "Search radius in meters around the peak within which to ignore any higher raster points. Useful if raster elevation close to the peak is greater than its actual elevation or if raster elevation of potential nearest neighbors is lower than the peak.");
 
         setDialogState(DialogState.INITIAL);
 
@@ -303,6 +307,23 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
         gc.fill = GBC.HORIZONTAL;
         gc.weightx = 1.0;
         pnl.add(spinnerDistanceTolerance, gc);
+
+        gc.gridx++;
+        gc.gridwidth = GBC.REMAINDER;
+        gc.weightx = 0.0;
+        pnl.add(new JLabel("m"), gc);
+
+        // Row "Dead zone"
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnl.add(new JLabel("Dead zone radius:"), gc);
+
+        gc.gridx++;
+        gc.fill = GBC.HORIZONTAL;
+        gc.weightx = 1.0;
+        pnl.add(spinnerDeadZoneRadius, gc);
 
         gc.gridx++;
         gc.gridwidth = GBC.REMAINDER;
@@ -485,11 +506,11 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
     }
 
     private Future<List<LatLonEle>> determineReferencePoints(LatLonEle peak, Bounds searchBounds,
-            double distanceTolerance) throws RejectedExecutionException {
+            double distanceTolerance, double deadZoneRadius) throws RejectedExecutionException {
         try {
             Callable<List<LatLonEle>> task = () -> {
                 List<LatLonEle> closestPoints = isolationFinder.determineReferencePoints(peak, searchBounds,
-                        distanceTolerance);
+                        distanceTolerance, deadZoneRadius);
                 if (closestPoints.size() > 0)
                     nodes = new ArrayList<>(closestPoints.size());
 
@@ -684,8 +705,9 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
 
             LatLonEle peak = new LatLonEle(peakNode.getCoor(), ele);
             int distanceTolerance = (Integer) spinnerDistanceTolerance.getValue();
+            int deadZoneRadius = (Integer) spinnerDeadZoneRadius.getValue();
             try {
-                closestPointsFuture = determineReferencePoints(peak, searchBounds, distanceTolerance);
+                closestPointsFuture = determineReferencePoints(peak, searchBounds, distanceTolerance, deadZoneRadius);
             } catch (RejectedExecutionException e) {
                 textAreaFeedback
                         .append("Determination of closest points rejected by thread executor" + System.lineSeparator());

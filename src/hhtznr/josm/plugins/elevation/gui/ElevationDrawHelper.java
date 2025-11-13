@@ -258,9 +258,6 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
                 return;
         }
 
-        int lowerCutoffElevation = layer.getLowerCutoffElevation();
-        int upperCutoffElevation = layer.getUpperCutoffElevation();
-
         // Set the font for elevation value strings
         Font font = g.getFont().deriveFont(Font.PLAIN, 10);
         g.setFont(font);
@@ -295,11 +292,6 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
             double lonDist = 0.0;
             for (int lonIndex = 0; lonIndex < elevationRaster.getWidth(); lonIndex++) {
                 LatLonEle latLonEle = elevationRaster.getLatLonEle(latIndex, lonIndex);
-
-                if (latLonEle.ele() <= lowerCutoffElevation)
-                    continue;
-                if (latLonEle.ele() >= upperCutoffElevation)
-                    continue;
 
                 Point p = mv.getPoint(latLonEle);
                 String eleText = Integer.toString((int) latLonEle.ele());

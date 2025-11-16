@@ -47,9 +47,9 @@ public class KeyColFinder extends AbstractElevationTool {
     private boolean[] hasPeakA;
     private boolean[] hasPeakB;
 
-    private static final int[][] DIRECTIONS_4 = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } };
+    private static final int[][] FOUR_DIRECTIONS = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } };
 
-    private static final int[][] DIRECTIONS_8 = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 },
+    private static final int[][] EIGHT_DIRECTIONS = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 },
             { -1, 1 }, { -1, -1 } };
 
     /**
@@ -60,13 +60,29 @@ public class KeyColFinder extends AbstractElevationTool {
         /**
          * Four neighbors: North, south, east, west.
          */
-        FOUR,
+        FOUR("4 neighbors"),
 
         /**
          * Eight neighbors: North, south, east, west, northeast, northwest, southeast,
          * southwest.
          */
-        EIGHT;
+        EIGHT("8 neighbors");
+
+        private final String name;
+
+        UnionFindNeighbors(String name) {
+            this.name = name;
+        }
+
+        /**
+         * Returns the name associated with the enum item.
+         *
+         * @return The name.
+         */
+        @Override
+        public String toString() {
+            return name;
+        }
     }
 
     /**
@@ -216,11 +232,12 @@ public class KeyColFinder extends AbstractElevationTool {
         hasPeakA[peakAIndices[0] * width + peakAIndices[1]] = true;
         hasPeakB[peakBIndices[0] * width + peakBIndices[1]] = true;
 
+        // Number of union-find neighbors (4 or 8)
         int[][] directions;
         if (nNeighbors == UnionFindNeighbors.FOUR)
-            directions = DIRECTIONS_4;
+            directions = FOUR_DIRECTIONS;
         else
-            directions = DIRECTIONS_8;
+            directions = EIGHT_DIRECTIONS;
 
         informListenersAboutStatus("Iterate over cells to find key col");
         // iterate from high to low

@@ -44,6 +44,7 @@ import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.MapFrame;
 import org.openstreetmap.josm.gui.MapView;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
+import org.openstreetmap.josm.gui.widgets.JosmComboBox;
 import org.openstreetmap.josm.tools.GBC;
 import org.openstreetmap.josm.tools.Logging;
 
@@ -76,6 +77,7 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
     private JSpinner spinnerSearchAreaExpansionLon;
     private JTextField textFieldSearchAreaLatLon;
     private JTextField textFieldSearchAreaSize;
+    private JosmComboBox<KeyColFinder.UnionFindNeighbors> comboBoxUnionFindNeighbors;
     private JButton buttonFind;
     private JButton buttonStop;
     private JButton buttonAddToDataLayer;
@@ -188,8 +190,10 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
         textFieldSearchAreaSize = new JTextField(30);
         textFieldSearchAreaSize.setEditable(false);
 
+        comboBoxUnionFindNeighbors = new JosmComboBox<>(new KeyColFinder.UnionFindNeighbors[] {
+                KeyColFinder.UnionFindNeighbors.FOUR, KeyColFinder.UnionFindNeighbors.EIGHT });
+        comboBoxUnionFindNeighbors.setSelectedItem(KeyColFinder.UnionFindNeighbors.FOUR);
         buttonFind = new JButton(new FindAction());
-
         buttonStop = new JButton(new StopFindAction());
 
         buttonAddToDataLayer = new JButton(new AddToNewDataLayerAction());
@@ -208,6 +212,8 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
                 "Arc seconds by which to expand the search area east and west beyond the peaks’ longitude range. Without expansion, the peaks would lie at the left and right of the search area, which may prevent finding the key col.");
         textFieldSearchAreaLatLon.setToolTipText("The coordinates of the corners of the search area.");
         textFieldSearchAreaSize.setToolTipText("The size of the search area in latitude and longitude.");
+        comboBoxUnionFindNeighbors.setToolTipText(
+                "Four neighbors is faster. Eight neighbors results in higher accuracy of the key col location.");
 
         setDialogState(DialogState.INITIAL);
 
@@ -520,6 +526,24 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
         gc.weightx = 1.0;
         pnl.add(labelSection3, gc);
 
+        // Row "Union-find neighbors"
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.fill = GBC.NONE;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnl.add(new JLabel("Union-find:"), gc);
+
+        gc.gridx++;
+        gc.fill = GBC.HORIZONTAL;
+        gc.weightx = 1.0;
+        pnl.add(comboBoxUnionFindNeighbors, gc);
+
+        gc.gridx++;
+        gc.fill = GBC.NONE;
+        gc.weightx = 0.0;
+        pnl.add(new JPanel(), gc);
+
         // Row "Find"
         gc.gridy++;
         gc.gridx = 0;
@@ -605,6 +629,7 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
             textFieldPeakBEle.setText(null);
             textFieldSearchAreaLatLon.setText(null);
             textFieldSearchAreaSize.setText(null);
+            comboBoxUnionFindNeighbors.setEnabled(false);
             buttonFind.setEnabled(false);
             buttonStop.setEnabled(false);
             textAreaFeedback.setText(null);
@@ -620,6 +645,7 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
             textFieldPeakAName.setEditable(true);
             buttonSetPeakB.setEnabled(true);
             textFieldPeakBName.setEditable(true);
+            comboBoxUnionFindNeighbors.setEnabled(false);
             buttonFind.setEnabled(false);
             buttonStop.setEnabled(false);
             textAreaFeedback.setText(null);
@@ -632,6 +658,7 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
             textFieldPeakAName.setEditable(true);
             buttonSetPeakB.setEnabled(true);
             textFieldPeakBName.setEditable(true);
+            comboBoxUnionFindNeighbors.setEnabled(true);
             buttonFind.setEnabled(true);
             buttonStop.setEnabled(false);
             break;
@@ -640,6 +667,7 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
             textFieldPeakAName.setEditable(false);
             buttonSetPeakB.setEnabled(false);
             textFieldPeakBName.setEditable(false);
+            comboBoxUnionFindNeighbors.setEnabled(false);
             buttonFind.setEnabled(false);
             buttonStop.setEnabled(true);
             textAreaFeedback.setText(null);
@@ -652,6 +680,7 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
             textFieldPeakAName.setEditable(true);
             buttonSetPeakB.setEnabled(true);
             textFieldPeakBName.setEditable(true);
+            comboBoxUnionFindNeighbors.setEnabled(true);
             buttonFind.setEnabled(true);
             buttonStop.setEnabled(false);
             buttonAddToDataLayer.setEnabled(true);
@@ -661,6 +690,7 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
             textFieldPeakAName.setEditable(false);
             buttonSetPeakB.setEnabled(false);
             textFieldPeakBName.setEditable(false);
+            comboBoxUnionFindNeighbors.setEnabled(false);
             buttonFind.setEnabled(false);
             buttonStop.setEnabled(false);
             buttonAddToDataLayer.setEnabled(false);
@@ -700,12 +730,11 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
         this.searchBounds = searchBounds;
     }
 
-    private Future<LatLonEle> determineKeyCol(LatLonEle peakA, LatLonEle peakB, Bounds searchBounds)
-            throws RejectedExecutionException {
+    private Future<LatLonEle> determineKeyCol(LatLonEle peakA, LatLonEle peakB, Bounds searchBounds,
+            KeyColFinder.UnionFindNeighbors unionFindNeighbors) throws RejectedExecutionException {
         try {
             Callable<LatLonEle> task = () -> {
-                LatLonEle keyCol = keyColFinder.findKeyCol(peakA, peakB, searchBounds,
-                        KeyColFinder.UnionFindNeighbors.EIGHT);
+                LatLonEle keyCol = keyColFinder.findKeyCol(peakA, peakB, searchBounds, unionFindNeighbors);
 
                 if (keyCol != null) {
                     keyColNode = new Node(keyCol);
@@ -877,6 +906,9 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
                 return;
             }
 
+            KeyColFinder.UnionFindNeighbors unionFindNeighbors = (KeyColFinder.UnionFindNeighbors) comboBoxUnionFindNeighbors
+                    .getSelectedItem();
+
             textAreaFeedback.append("Determination of key col for peaks:" + System.lineSeparator());
             textAreaFeedback.append("Peak A:" + System.lineSeparator());
             String peakANodeID = textFieldPeakANodeID.getText();
@@ -901,7 +933,7 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
                     .append("Raster elevation: " + (int) Math.round(peakB.ele()) + " m" + System.lineSeparator());
 
             try {
-                keyColFuture = determineKeyCol(peakA, peakB, searchBounds);
+                keyColFuture = determineKeyCol(peakA, peakB, searchBounds, unionFindNeighbors);
             } catch (RejectedExecutionException e) {
                 textAreaFeedback
                         .append("Determination of key col rejected by thread executor" + System.lineSeparator());

@@ -103,7 +103,7 @@ public class LatLonEle extends LatLon {
     public boolean equals(Object obj) {
         if (this == obj)
             return true;
-        if (obj == null || getClass() != obj.getClass())
+        if (obj == null || !(obj instanceof LatLonEle))
             return false;
         LatLonEle that = (LatLonEle) obj;
         return Double.compare(that.x, x) == 0 && Double.compare(that.y, y) == 0 && Double.compare(that.ele, ele) == 0;

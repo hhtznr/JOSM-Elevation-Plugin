@@ -1,5 +1,7 @@
 package hhtznr.josm.plugins.elevation.data;
 
+import java.util.Objects;
+
 import org.openstreetmap.josm.data.coor.ILatLon;
 import org.openstreetmap.josm.data.coor.LatLon;
 
@@ -89,6 +91,21 @@ public class LatLonEle extends LatLon {
 
     @Override
     public String toString() {
-        return "LatLonEle[lat=" + lat() + ",lon=" +lon() + ",ele=" +ele() + ']';
+        return "LatLonEle[lat=" + lat() + ",lon=" + lon() + ",ele=" + ele() + ']';
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(x, y, ele);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null || getClass() != obj.getClass())
+            return false;
+        LatLonEle that = (LatLonEle) obj;
+        return Double.compare(that.x, x) == 0 && Double.compare(that.y, y) == 0 && Double.compare(that.ele, ele) == 0;
     }
 }

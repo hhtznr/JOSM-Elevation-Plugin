@@ -77,7 +77,7 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
 
     private final TopographicIsolationFinder isolationFinder;
     private Node peakNode = null;
-    private Future<List<LatLonEle>> closestPointsFuture = null;
+    private Future<List<Node>> closestNodesFuture = null;
     private List<Node> nodes = null;
     private Bounds searchBounds = null;
 
@@ -430,7 +430,7 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
             buttonAddToDataLayer.setEnabled(false);
             peakNode = null;
             nodes = null;
-            closestPointsFuture = null;
+            closestNodesFuture = null;
             searchBounds = null;
             break;
         case PEAK_NODE_SELECTED:
@@ -442,7 +442,7 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
             textAreaFeedback.setText(null);
             buttonAddToDataLayer.setEnabled(false);
             nodes = null;
-            closestPointsFuture = null;
+            closestNodesFuture = null;
             break;
         case PEAK_DEFINED:
             buttonSetPeak.setEnabled(true);
@@ -450,6 +450,9 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
             textFieldPeakEle.setEditable(true);
             buttonFind.setEnabled(true);
             buttonStop.setEnabled(false);
+            buttonAddToDataLayer.setEnabled(false);
+            nodes = null;
+            closestNodesFuture = null;
             break;
         case SEARCH_RUNNING:
             buttonSetPeak.setEnabled(false);
@@ -460,7 +463,7 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
             textAreaFeedback.setText(null);
             buttonAddToDataLayer.setEnabled(false);
             nodes = null;
-            closestPointsFuture = null;
+            closestNodesFuture = null;
             break;
         case REFERENCE_POINTS_DETERMINED:
             buttonSetPeak.setEnabled(true);
@@ -505,46 +508,48 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
         this.searchBounds = searchBounds;
     }
 
-    private Future<List<LatLonEle>> determineReferencePoints(LatLonEle peak, Bounds searchBounds,
-            double distanceTolerance, double deadZoneRadius) throws RejectedExecutionException {
-        try {
-            Callable<List<LatLonEle>> task = () -> {
-                List<LatLonEle> closestPoints = isolationFinder.determineReferencePoints(peak, searchBounds,
-                        distanceTolerance, deadZoneRadius);
-                if (closestPoints.size() > 0)
-                    nodes = new ArrayList<>(closestPoints.size());
+    private Future<List<Node>> determineReferencePoints(LatLonEle peak, Bounds searchBounds, double distanceTolerance,
+            double deadZoneRadius) throws RejectedExecutionException {
+        Callable<List<Node>> task = () -> {
+            List<LatLonEle> closestPoints = isolationFinder.determineReferencePoints(peak, searchBounds,
+                    distanceTolerance, deadZoneRadius);
+            if (closestPoints.size() == 0) {
+                // includes setting this.node to null
+                setDialogState(DialogState.PEAK_DEFINED);
+                return new ArrayList<>(0);
+            }
 
-                int candidateRank = 1;
-                int nCandidates = closestPoints.size();
-                for (LatLonEle point : closestPoints) {
-                    double lat = point.lat();
-                    double lon = point.lon();
-                    int ele = (int) point.ele();
-                    double distance = peakNode.getCoor().greatCircleDistance((ILatLon) point);
-                    textAreaFeedback.append("" + lat + ", " + lon + " (" + ele + " m) -> distance = "
-                            + String.format("%.2f km", distance / 1000.0) + System.lineSeparator());
-                    Node node = new Node(point);
-                    node.put("name", Integer.toString(candidateRank));
-                    node.put("description", "Isolation reference point candidate " + Integer.toString(candidateRank)
-                            + " of " + nCandidates);
-                    if (candidateRank == 1) {
-                        String note = "Isolation reference point, which is closest to the peak";
-                        String peakName = peakNode.get("name");
-                        if (peakName != null)
-                            note += " " + peakName;
-                        node.put("note", note);
-                    }
-                    node.put("ele", Integer.toString(ele));
-                    node.put("distance", Double.toString(distance));
-                    nodes.add(node);
-                    candidateRank++;
+            List<Node> closestNodes = new ArrayList<>(closestPoints.size());
+            int candidateRank = 1;
+            int nCandidates = closestPoints.size();
+            for (LatLonEle point : closestPoints) {
+                double lat = point.lat();
+                double lon = point.lon();
+                int ele = (int) point.ele();
+                double distance = peakNode.getCoor().greatCircleDistance((ILatLon) point);
+                textAreaFeedback.append("" + lat + ", " + lon + " (" + ele + " m) -> distance = "
+                        + String.format("%.2f km", distance / 1000.0) + System.lineSeparator());
+                Node node = new Node(point);
+                node.put("name", Integer.toString(candidateRank));
+                node.put("description", "Isolation reference point candidate " + Integer.toString(candidateRank)
+                        + " of " + nCandidates);
+                if (candidateRank == 1) {
+                    String note = "Isolation reference point, which is closest to the peak";
+                    String peakName = peakNode.get("name");
+                    if (peakName != null)
+                        note += " " + peakName;
+                    node.put("note", note);
                 }
-                if (nodes.size() > 0)
-                    setDialogState(DialogState.REFERENCE_POINTS_DETERMINED);
-                else
-                    setDialogState(DialogState.PEAK_DEFINED);
-                return closestPoints;
-            };
+                node.put("ele", Integer.toString(ele));
+                node.put("distance", Double.toString(distance));
+                closestNodes.add(node);
+                candidateRank++;
+            }
+            nodes = closestNodes;
+            setDialogState(DialogState.REFERENCE_POINTS_DETERMINED);
+            return closestNodes;
+        };
+        try {
             return executor.submit(task);
         } catch (RejectedExecutionException e) {
             setDialogState(DialogState.PEAK_DEFINED);
@@ -707,7 +712,7 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
             int distanceTolerance = (Integer) spinnerDistanceTolerance.getValue();
             int deadZoneRadius = (Integer) spinnerDeadZoneRadius.getValue();
             try {
-                closestPointsFuture = determineReferencePoints(peak, searchBounds, distanceTolerance, deadZoneRadius);
+                closestNodesFuture = determineReferencePoints(peak, searchBounds, distanceTolerance, deadZoneRadius);
             } catch (RejectedExecutionException e) {
                 textAreaFeedback
                         .append("Determination of closest points rejected by thread executor" + System.lineSeparator());
@@ -725,8 +730,8 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
 
         @Override
         public void actionPerformed(ActionEvent event) {
-            if (closestPointsFuture != null && !closestPointsFuture.isCancelled()) {
-                boolean canceled = closestPointsFuture.cancel(true);
+            if (closestNodesFuture != null && !closestNodesFuture.isCancelled()) {
+                boolean canceled = closestNodesFuture.cancel(true);
                 if (canceled)
                     setDialogState(DialogState.PEAK_DEFINED);
                 else

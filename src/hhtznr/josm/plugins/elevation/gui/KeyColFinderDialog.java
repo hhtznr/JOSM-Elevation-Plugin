@@ -715,9 +715,9 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
                     String note = "Key col of ";
                     String peakName = peakANode.get("name");
                     if (peakName != null)
-                        note += " " + peakName;
+                        note += peakName;
                     else
-                        note += " P." + ele;
+                        note += "P." + ele;
                     keyColNode.put("note", note);
                     textAreaFeedback.append("Key col determined:" + System.lineSeparator());
                     textAreaFeedback

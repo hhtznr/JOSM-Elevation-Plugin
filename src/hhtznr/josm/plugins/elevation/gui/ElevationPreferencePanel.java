@@ -72,28 +72,9 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         }
     }
 
-    private final JMultilineLabel lblSRTM1Server = new JMultilineLabel(I18n.tr(
-            "<html>SRTM1 files (elevation sampled at 1 arc seconds) of the whole Earth can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}",
-            ElevationPreferences.SRTM1_SERVER_BASE_URL,
-            ElevationPreferences.DEFAULT_EARTHDATA_SRTM1_DIRECTORY.getAbsolutePath()));
-    private final JMultilineLabel lblSRTM3Server = new JMultilineLabel(I18n.tr(
-            "<html>SRTM3 files (elevation sampled at 3 arc seconds) of the whole Earth can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}",
-            ElevationPreferences.SRTM3_SERVER_BASE_URL,
-            ElevationPreferences.DEFAULT_EARTHDATA_SRTM3_DIRECTORY.getAbsolutePath()));
-    private final JMultilineLabel lblDTM1Server = new JMultilineLabel(I18n.tr(
-            "<html>High quality SRTM1 files (elevation sampled at 1 arc seconds) of Europe can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}",
-            ElevationPreferences.SONNY_LIDAR_DTM1_BASE_URL,
-            ElevationPreferences.DEFAULT_SONNY_LIDAR_DTM1_DIRECTORY.getAbsolutePath()));
-    private final JMultilineLabel lblDTM3Server = new JMultilineLabel(I18n.tr(
-            "<html>High quality SRTM3 files (elevation sampled at 3 arc seconds) of Europe can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}",
-            ElevationPreferences.SONNY_LIDAR_DTM3_BASE_URL,
-            ElevationPreferences.DEFAULT_SONNY_LIDAR_DTM3_DIRECTORY.getAbsolutePath()));
-
-    private final JLabel lblSRTMType = new JLabel("SRTM Type:");
     private final JosmComboBox<SRTMTile.Type> cbSRTMType = new JosmComboBox<>(
             new SRTMTile.Type[] { SRTMTile.Type.SRTM1, SRTMTile.Type.SRTM3 });
 
-    private final JLabel lblInterpolation = new JLabel("Elevation Value Interpolation:");
     private final JosmComboBox<SRTMTile.Interpolation> cbInterpolation = new JosmComboBox<>(
             SRTMTile.Interpolation.values());
 
@@ -101,7 +82,6 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
     private final JSpinner spCacheSize = new JSpinner(new SpinnerNumberModel(
             ElevationPreferences.getRAMCacheSizeLimit(), ElevationPreferences.MIN_RAM_CACHE_SIZE_LIMIT,
             ElevationPreferences.MAX_RAM_CACHE_SIZE_LIMIT, ElevationPreferences.INCR_RAM_CACHE_SIZE_LIMIT));
-    private final JLabel lblCacheSizeUnit = new JLabel("MiB");
 
     private final JCheckBox cbEnableElevationLayer = new JCheckBox("Enable Elevation Visualization Layer");
 
@@ -142,7 +122,8 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
             ElevationPreferences.MAX_HILLSHADE_AZIMUTH, ElevationPreferences.INCR_HILLSHADE_AZIMUTH));
     private final JLabel lblHillshadeAzimuthUnit = new JLabel("°");
 
-    private final JCheckBox cbEnableAutoDownload = new JCheckBox("Enable Automatic Downloading of Elevation Data from NASA Earthdata");
+    private final JCheckBox cbEnableAutoDownload = new JCheckBox(
+            "Enable Automatic Downloading of Elevation Data from NASA Earthdata");
 
     private final JRadioButton rbPasswordAuth = new JRadioButton("Use Password Authentication");
     private final JRadioButton rbAuthBearer = new JRadioButton("Use Authorization Bearer Token");
@@ -183,6 +164,23 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
      * @return Panel with elevation preferences.
      */
     private final JPanel buildPreferencePanel() {
+        JMultilineLabel lblSRTM1Server = new JMultilineLabel(I18n.tr(
+                "<html>SRTM1 files (elevation sampled at 1 arc seconds) of the whole Earth can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}",
+                ElevationPreferences.SRTM1_SERVER_BASE_URL,
+                ElevationPreferences.DEFAULT_EARTHDATA_SRTM1_DIRECTORY.getAbsolutePath()));
+        JMultilineLabel lblSRTM3Server = new JMultilineLabel(I18n.tr(
+                "<html>SRTM3 files (elevation sampled at 3 arc seconds) of the whole Earth can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}",
+                ElevationPreferences.SRTM3_SERVER_BASE_URL,
+                ElevationPreferences.DEFAULT_EARTHDATA_SRTM3_DIRECTORY.getAbsolutePath()));
+        JMultilineLabel lblDTM1Server = new JMultilineLabel(I18n.tr(
+                "<html>High quality SRTM1 files (elevation sampled at 1 arc seconds) of Europe can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}",
+                ElevationPreferences.SONNY_LIDAR_DTM1_BASE_URL,
+                ElevationPreferences.DEFAULT_SONNY_LIDAR_DTM1_DIRECTORY.getAbsolutePath()));
+        JMultilineLabel lblDTM3Server = new JMultilineLabel(I18n.tr(
+                "<html>High quality SRTM3 files (elevation sampled at 3 arc seconds) of Europe can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}",
+                ElevationPreferences.SONNY_LIDAR_DTM3_BASE_URL,
+                ElevationPreferences.DEFAULT_SONNY_LIDAR_DTM3_DIRECTORY.getAbsolutePath()));
+
         lblSRTM1Server.setEditable(false);
         lblSRTM1Server.addHyperlinkListener(event -> browseHyperlink(event));
 
@@ -357,7 +355,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.fill = GBC.NONE;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
-        pnl.add(lblSRTMType, gc);
+        pnl.add(new JLabel("SRTM Type:"), gc);
 
         gc.gridx++;
         gc.gridwidth = GBC.REMAINDER;
@@ -369,7 +367,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.gridx = 0;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
-        pnl.add(lblInterpolation, gc);
+        pnl.add(new JLabel("Elevation Value Interpolation:"), gc);
 
         gc.gridx++;
         gc.gridwidth = GBC.REMAINDER;
@@ -390,7 +388,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.fill = GBC.HORIZONTAL;
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
-        pnl.add(lblCacheSizeUnit, gc);
+        pnl.add(new JLabel("MiB"), gc);
 
         // Row "Enable elevation layer"
         gc.gridy++;

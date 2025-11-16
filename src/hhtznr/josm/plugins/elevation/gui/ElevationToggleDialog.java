@@ -41,48 +41,34 @@ public class ElevationToggleDialog extends ToggleDialog {
     private final ElevationPlugin elevationPlugin;
 
     // General
-    private final JLabel lblSRTMType = new JLabel("SRTM Type:");
     private final JosmComboBox<SRTMTile.Type> comboBoxSRTMType = new JosmComboBox<>(
             new SRTMTile.Type[] { SRTMTile.Type.SRTM1, SRTMTile.Type.SRTM3 });
-    private final JLabel lblRenderingLimit = new JLabel("Layer Rendering Map Size Limit:");
     private final JSpinner spRenderingLimit = new JSpinner(
             new SpinnerNumberModel(ElevationPreferences.getElevationLayerRenderingLimit(),
                     ElevationPreferences.MIN_ELEVATION_LAYER_RENDERING_LIMIT,
                     ElevationPreferences.MAX_ELEVATION_LAYER_RENDERING_LIMIT,
                     ElevationPreferences.INCR_ELEVATION_LAYER_RENDERING_LIMIT));
 
-    private final JLabel lblRenderingLimitUnit = new JLabel("°");
-
     // Contour lines
-    private final JLabel lblIsostep = new JLabel("Contour Line Isostep:");
     private final JSpinner spIsostep = new JSpinner(new SpinnerNumberModel(ElevationPreferences.getContourLineIsostep(),
             1, ElevationPreferences.MAX_CONTOUR_LINE_ISOSTEP, 1));
-    private final JLabel lblIsostepUnit = new JLabel("m");
 
-    private final JLabel lblUpperCutoff = new JLabel("Upper Cutoff Elevation:");
     private final JSpinner spUpperCutoffValue = new JSpinner(new SpinnerNumberModel(
             ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION, ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION,
             ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION, 1));
-    private final JLabel lblUpperCutoffUnit = new JLabel("m");
 
-    private final JLabel lblLowerCutoff = new JLabel("Lower Cutoff Elevation:");
     private final JSpinner spLowerCutoffValue = new JSpinner(new SpinnerNumberModel(
             ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION, ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION,
             ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION, 1));
-    private final JLabel lblLowerCutoffUnit = new JLabel("m");
 
     // Hillshade
-    private final JLabel lblHillshadeAltitude = new JLabel("Hillshade Illumination Source Altitude:");
     private final JSpinner spHillshadeAltitude = new JSpinner(new SpinnerNumberModel(
             ElevationPreferences.getHillshadeAltitude(), ElevationPreferences.MIN_HILLSHADE_ALTITUDE,
             ElevationPreferences.MAX_HILLSHADE_ALTITUDE, ElevationPreferences.INCR_HILLSHADE_ALTITUDE));
-    private final JLabel lblHillshadeAltitudeUnit = new JLabel("°");
 
-    private final JLabel lblHillshadeAzimuth = new JLabel("Hillshade Illumination Source Azimuth:");
     private final JSpinner spHillshadeAzimuth = new JSpinner(new SpinnerNumberModel(
             ElevationPreferences.getHillshadeAzimuth(), ElevationPreferences.MIN_HILLSHADE_AZIMUTH,
             ElevationPreferences.MAX_HILLSHADE_AZIMUTH, ElevationPreferences.INCR_HILLSHADE_AZIMUTH));
-    private final JLabel lblHillshadeAzimuthUnit = new JLabel("°");
 
     /**
      * Constructs <code>ElevationToggleDialog</code>.
@@ -123,7 +109,7 @@ public class ElevationToggleDialog extends ToggleDialog {
         gc.fill = GBC.NONE;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
-        pnl.add(lblSRTMType, gc);
+        pnl.add(new JLabel("SRTM Type:"), gc);
 
         gc.gridx++;
         gc.fill = GBC.HORIZONTAL;
@@ -140,7 +126,7 @@ public class ElevationToggleDialog extends ToggleDialog {
         gc.fill = GBC.NONE;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
-        pnl.add(lblRenderingLimit, gc);
+        pnl.add(new JLabel("Layer Rendering Map Size Limit:"), gc);
 
         gc.gridx++;
         gc.fill = GBC.HORIZONTAL;
@@ -149,14 +135,14 @@ public class ElevationToggleDialog extends ToggleDialog {
         gc.gridx++;
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
-        pnl.add(lblRenderingLimitUnit, gc);
+        pnl.add(new JLabel("°"), gc);
 
         // Row "Contour line isostep"
         gc.gridy++;
         gc.gridx = 0;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
-        pnl.add(lblIsostep, gc);
+        pnl.add(new JLabel("Contour Line Isostep:"), gc);
 
         gc.gridx++;
         pnl.add(spIsostep, gc);
@@ -165,14 +151,14 @@ public class ElevationToggleDialog extends ToggleDialog {
         gc.fill = GBC.HORIZONTAL;
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
-        pnl.add(lblIsostepUnit, gc);
+        pnl.add(new JLabel("m"), gc);
 
         // Row "Upper cutoff limit"
         gc.gridy++;
         gc.gridx = 0;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
-        pnl.add(lblUpperCutoff, gc);
+        pnl.add(new JLabel("Upper Cutoff Elevation:"), gc);
 
         gc.gridx++;
         pnl.add(spUpperCutoffValue, gc);
@@ -181,14 +167,14 @@ public class ElevationToggleDialog extends ToggleDialog {
         gc.fill = GBC.HORIZONTAL;
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
-        pnl.add(lblUpperCutoffUnit, gc);
+        pnl.add(new JLabel("m"), gc);
 
         // Row "Lower cutoff limit"
         gc.gridy++;
         gc.gridx = 0;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
-        pnl.add(lblLowerCutoff, gc);
+        pnl.add(new JLabel("Lower Cutoff Elevation:"), gc);
 
         gc.gridx++;
         pnl.add(spLowerCutoffValue, gc);
@@ -197,14 +183,14 @@ public class ElevationToggleDialog extends ToggleDialog {
         gc.fill = GBC.HORIZONTAL;
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
-        pnl.add(lblLowerCutoffUnit, gc);
+        pnl.add(new JLabel("m"), gc);
 
         // Row "Hillshade altitude"
         gc.gridy++;
         gc.gridx = 0;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
-        pnl.add(lblHillshadeAltitude, gc);
+        pnl.add(new JLabel("Hillshade Illumination Source Altitude:"), gc);
 
         gc.gridx++;
         pnl.add(spHillshadeAltitude, gc);
@@ -213,14 +199,14 @@ public class ElevationToggleDialog extends ToggleDialog {
         gc.fill = GBC.HORIZONTAL;
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
-        pnl.add(lblHillshadeAltitudeUnit, gc);
+        pnl.add(new JLabel("°"), gc);
 
         // Row "Hillshade azimuth"
         gc.gridy++;
         gc.gridx = 0;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
-        pnl.add(lblHillshadeAzimuth, gc);
+        pnl.add(new JLabel("Hillshade Illumination Source Azimuth:"), gc);
 
         gc.gridx++;
         pnl.add(spHillshadeAzimuth, gc);
@@ -229,7 +215,7 @@ public class ElevationToggleDialog extends ToggleDialog {
         gc.fill = GBC.HORIZONTAL;
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
-        pnl.add(lblHillshadeAzimuthUnit, gc);
+        pnl.add(new JLabel("°"), gc);
 
         // add an extra spacer, otherwise the layout is broken
         pnl.add(Box.createVerticalGlue(), GBC.eol().fill());

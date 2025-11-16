@@ -19,12 +19,14 @@ import javax.swing.text.DefaultFormatter;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.SideButton;
 import org.openstreetmap.josm.gui.dialogs.ToggleDialog;
+import org.openstreetmap.josm.gui.widgets.JosmComboBox;
 import org.openstreetmap.josm.tools.GBC;
 import org.openstreetmap.josm.tools.ImageProvider;
 
 import hhtznr.josm.plugins.elevation.ElevationPlugin;
 import hhtznr.josm.plugins.elevation.ElevationPluginTexts;
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
+import hhtznr.josm.plugins.elevation.data.SRTMTile;
 
 /**
  * Toggle dialog for the right JOSM side pane to dynamically adjust rendering
@@ -39,6 +41,9 @@ public class ElevationToggleDialog extends ToggleDialog {
     private final ElevationPlugin elevationPlugin;
 
     // General
+    private final JLabel lblSRTMType = new JLabel("SRTM Type:");
+    private final JosmComboBox<SRTMTile.Type> comboBoxSRTMType = new JosmComboBox<>(
+            new SRTMTile.Type[] { SRTMTile.Type.SRTM1, SRTMTile.Type.SRTM3 });
     private final JLabel lblRenderingLimit = new JLabel("Layer Rendering Map Size Limit:");
     private final JSpinner spRenderingLimit = new JSpinner(
             new SpinnerNumberModel(ElevationPreferences.getElevationLayerRenderingLimit(),
@@ -87,6 +92,8 @@ public class ElevationToggleDialog extends ToggleDialog {
                 "Dynamic, non-presistent configuration of selected elevation rendering settings", null, 150);
         elevationPlugin = plugin;
 
+        comboBoxSRTMType.setSelectedItem(ElevationPreferences.getSRTMType());
+
         // Configure the spinners to consume key events associated with input of numbers
         // This will prevent JOSM from interpreting them as global shortcuts
         // Otherwise, e.g. typing "1" into a spinner would cause a zoom to the world map
@@ -112,7 +119,24 @@ public class ElevationToggleDialog extends ToggleDialog {
         gc.fill = GBC.HORIZONTAL;
         gc.insets = new Insets(5, 5, 0, 0);
 
+        // Row "SRTM Type"
+        gc.fill = GBC.NONE;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnl.add(lblSRTMType, gc);
+
+        gc.gridx++;
+        gc.fill = GBC.HORIZONTAL;
+        pnl.add(comboBoxSRTMType, gc);
+
+        gc.gridx++;
+        gc.gridwidth = GBC.REMAINDER;
+        gc.weightx = 1.0;
+        pnl.add(new JPanel(), gc);
+
         // Row "Layer rendering limit"
+        gc.gridy++;
+        gc.gridx = 0;
         gc.fill = GBC.NONE;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
@@ -278,6 +302,7 @@ public class ElevationToggleDialog extends ToggleDialog {
         public void actionPerformed(ActionEvent e) {
             ElevationLayer elevationLayer = elevationPlugin.getElevationLayer();
             if (elevationLayer != null) {
+                SRTMTile.Type srtmType = (SRTMTile.Type) comboBoxSRTMType.getSelectedItem();
                 double renderingLimit = (Double) spRenderingLimit.getValue();
                 int isostep = (Integer) spIsostep.getValue();
                 int upperCutoff = (Integer) spUpperCutoffValue.getValue();
@@ -292,6 +317,7 @@ public class ElevationToggleDialog extends ToggleDialog {
                 }
                 int hillshadeAltitude = (Integer) spHillshadeAltitude.getValue();
                 int hillshadeAzimuth = (Integer) spHillshadeAzimuth.getValue();
+                elevationLayer.getElevationDataProvider().setSRTMType(srtmType);
                 elevationLayer.setRenderingLimit(renderingLimit);
                 elevationLayer.setContourLineIsostep(isostep);
                 elevationLayer.setLowerCutoffElevation(lowerCutoff);
@@ -302,5 +328,4 @@ public class ElevationToggleDialog extends ToggleDialog {
             }
         }
     }
-
 }

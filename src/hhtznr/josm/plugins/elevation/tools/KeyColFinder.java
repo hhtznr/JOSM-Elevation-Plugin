@@ -47,6 +47,28 @@ public class KeyColFinder extends AbstractElevationTool {
     private boolean[] hasPeakA;
     private boolean[] hasPeakB;
 
+    private static final int[][] DIRECTIONS_4 = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } };
+
+    private static final int[][] DIRECTIONS_8 = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 },
+            { -1, 1 }, { -1, -1 } };
+
+    /**
+     * The number of neighbors of an elevation raster cell to consider in
+     * union-find.
+     */
+    public enum UnionFindNeighbors {
+        /**
+         * Four neighbors: North, south, east, west.
+         */
+        FOUR,
+
+        /**
+         * Eight neighbors: North, south, east, west, northeast, northwest, southeast,
+         * southwest.
+         */
+        EIGHT;
+    }
+
     /**
      * Create a new key col finder.
      *
@@ -115,15 +137,21 @@ public class KeyColFinder extends AbstractElevationTool {
      * specified as peakA or peakB. Adjusts the bounds to include both, peakA and
      * peakB, in case that one or both should be out of bounds.
      *
-     * @param peakA  The peak for which to determine the key col.
-     * @param peakB  The (assumed) line parent of {@code peakA}.
-     * @param bounds The search bounds.
+     * @param peakA      The peak for which to determine the key col.
+     * @param peakB      The (assumed) line parent of {@code peakA}.
+     * @param bounds     The search bounds.
+     * @param nNeighbors The number of neighbors of an elevation raster cell to
+     *                   consider in union-find, {@link UnionFindNeighbors#FOUR} or
+     *                   {@link UnionFindNeighbors#EIGHT}. Eight neighbors results
+     *                   in higher accuracy of the location of the key col, but
+     *                   means more computation effort.
      * @return The coordinates and elevation of the determined key col, or
      *         {@code null} if no key col could be determined.
      * @throws InterruptedException If the thread executing this method is
      *                              interrupted.
      */
-    public LatLonEle findKeyCol(ILatLon peakA, ILatLon peakB, Bounds bounds) throws InterruptedException {
+    public LatLonEle findKeyCol(ILatLon peakA, ILatLon peakB, Bounds bounds, UnionFindNeighbors nNeighbors)
+            throws InterruptedException {
         informListenersAboutStatus("Key col finder running");
         if (!bounds.contains(peakA) || !bounds.contains(peakB)) {
             double minLat = Math.min(bounds.getMinLat(), Math.min(peakA.lat(), peakB.lat()));
@@ -188,8 +216,11 @@ public class KeyColFinder extends AbstractElevationTool {
         hasPeakA[peakAIndices[0] * width + peakAIndices[1]] = true;
         hasPeakB[peakBIndices[0] * width + peakBIndices[1]] = true;
 
-        // neighbor offsets (4-neighbors)
-        int[][] directions = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } };
+        int[][] directions;
+        if (nNeighbors == UnionFindNeighbors.FOUR)
+            directions = DIRECTIONS_4;
+        else
+            directions = DIRECTIONS_8;
 
         informListenersAboutStatus("Iterate over cells to find key col");
         // iterate from high to low

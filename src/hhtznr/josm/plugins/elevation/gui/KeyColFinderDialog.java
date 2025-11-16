@@ -704,7 +704,8 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
             throws RejectedExecutionException {
         try {
             Callable<LatLonEle> task = () -> {
-                LatLonEle keyCol = keyColFinder.findKeyCol(peakA, peakB, searchBounds);
+                LatLonEle keyCol = keyColFinder.findKeyCol(peakA, peakB, searchBounds,
+                        KeyColFinder.UnionFindNeighbors.EIGHT);
 
                 if (keyCol != null) {
                     keyColNode = new Node(keyCol);

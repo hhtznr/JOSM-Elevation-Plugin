@@ -1,7 +1,6 @@
 package hhtznr.josm.plugins.elevation.gui;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Component;
 import java.awt.Desktop;
 import java.awt.Dimension;
@@ -21,7 +20,6 @@ import javax.swing.Box;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
-import javax.swing.JColorChooser;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
@@ -37,7 +35,6 @@ import org.openstreetmap.josm.gui.widgets.JosmTextField;
 import org.openstreetmap.josm.gui.widgets.VerticallyScrollablePanel;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.spi.preferences.IPreferences;
-import org.openstreetmap.josm.tools.ColorHelper;
 import org.openstreetmap.josm.tools.GBC;
 import org.openstreetmap.josm.tools.I18n;
 import org.openstreetmap.josm.tools.ImageProvider;
@@ -108,7 +105,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
     private final JLabel lblStrokeColor = new JLabel("Contour Line Color:");
 
-    private final JButton btnStrokeColor = new JButton();
+    private final ColorChooserButton btnStrokeColor;
 
     private final JLabel lblHillshadeAltitude = new JLabel("Hillshade Illumination Source Altitude:");
     private final JSpinner spHillshadeAltitude = new JSpinner(new SpinnerNumberModel(
@@ -150,6 +147,9 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
      * Constructs a new {@code ElevationPreferencePanel}.
      */
     public ElevationPreferencePanel() {
+        btnStrokeColor = new ColorChooserButton(this, "Choose Color of Contour Lines",
+                ElevationPreferences.getContourLineColor());
+
         setLayout(new GridBagLayout());
         setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
         add(buildPreferencePanel(), GBC.eop().anchor(GBC.NORTHWEST).fill(GBC.BOTH));
@@ -196,23 +196,6 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         cbEnableElevationLayer.addItemListener(event -> updateEnabledState());
 
         spRenderingLimit.setToolTipText(ElevationPluginTexts.TOOL_TIP_LAYER_RENDERING_LIMIT);
-
-        Color contourLineColor = ElevationPreferences.getContourLineColor();
-        btnStrokeColor.setBackground(contourLineColor);
-        btnStrokeColor.setForeground(ColorHelper.getForegroundColor(contourLineColor));
-        btnStrokeColor.setText(ColorHelper.color2html(contourLineColor));
-        btnStrokeColor.setOpaque(true);
-        btnStrokeColor.setBorderPainted(false);
-        btnStrokeColor.setRolloverEnabled(false);
-        btnStrokeColor.addActionListener(event -> {
-            Color selectedColor = JColorChooser.showDialog(ElevationPreferencePanel.this,
-                    "Choose Color of Contour Lines", btnStrokeColor.getBackground());
-            if (selectedColor != null) {
-                btnStrokeColor.setBackground(selectedColor);
-                btnStrokeColor.setForeground(ColorHelper.getForegroundColor(selectedColor));
-                btnStrokeColor.setText(ColorHelper.color2html(selectedColor));
-            }
-        });
 
         spHillshadeAltitude.setToolTipText(ElevationPluginTexts.TOOL_TIP_HILLSHADE_ALTITUDE);
         spHillshadeAzimuth.setToolTipText(ElevationPluginTexts.TOOL_TIP_HILLSHADE_AZIMUTH);
@@ -527,7 +510,6 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         cbSRTMType.setSelectedItem(ElevationPreferences.getSRTMType());
         cbInterpolation.setSelectedItem(ElevationPreferences.getElevationInterpolation());
         cbEnableElevationLayer.setSelected(ElevationPreferences.getElevationLayerEnabled());
-        btnStrokeColor.setBackground(ElevationPreferences.getContourLineColor());
         cbEnableAutoDownload.setSelected(ElevationPreferences.getAutoDownloadEnabled());
 
         if (ElevationPreferences.getElevationServerAuthType() == SRTMFileDownloader.AuthType.BEARER_TOKEN)
@@ -610,7 +592,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         pref.putDouble(ElevationPreferences.ELEVATION_LAYER_RENDERING_LIMIT, (Double) spRenderingLimit.getValue());
         pref.putInt(ElevationPreferences.CONTOUR_LINE_ISOSTEP, (Integer) spIsostep.getValue());
         pref.putDouble(ElevationPreferences.CONTOUR_LINE_STROKE_WIDTH, (Double) spStrokeWidth.getValue());
-        ElevationPreferences.putContourLineColor(btnStrokeColor.getBackground());
+        ElevationPreferences.putContourLineColor(btnStrokeColor.getSelectedColor());
         pref.putInt(ElevationPreferences.HILLSHADE_ALTITUDE, (Integer) spHillshadeAltitude.getValue());
         pref.putInt(ElevationPreferences.HILLSHADE_AZIMUTH, (Integer) spHillshadeAzimuth.getValue());
         pref.putBoolean(ElevationPreferences.ELEVATION_AUTO_DOWNLOAD_ENABLED, cbEnableAutoDownload.isSelected());

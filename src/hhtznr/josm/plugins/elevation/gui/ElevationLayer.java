@@ -24,6 +24,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 
+import org.openstreetmap.josm.actions.JosmAction;
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.osm.visitor.BoundingXYVisitor;
 import org.openstreetmap.josm.gui.MainApplication;
@@ -67,6 +68,8 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
     private boolean hillshadeEnabled;
     private boolean elevationRasterEnabled;
     private boolean lowestAndHighestPointsEnabled;
+
+    private ElevationLayerAdjustmentDialog layerAdjustmentDialog = null;
 
     /**
      * Creates a new elevation layer.
@@ -384,10 +387,12 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         ArrayList<Action> actions = new ArrayList<>();
         actions.add(LayerListDialog.getInstance().createShowHideLayerAction());
         actions.add(SeparatorLayerAction.INSTANCE);
-        actions.add(new ShowContourLinesAction(this));
-        actions.add(new ShowHillshadeAction(this));
-        actions.add(new ShowLowestAndHighestPointsAction(this));
-        actions.add(new ShowElevationRasterAction(this));
+        actions.add(new ShowContourLinesAction());
+        actions.add(new ShowHillshadeAction());
+        actions.add(new ShowLowestAndHighestPointsAction());
+        actions.add(new ShowElevationRasterAction());
+        actions.add(SeparatorLayerAction.INSTANCE);
+        actions.add(new ShowElevationLayerDialogAction());
         actions.add(SeparatorLayerAction.INSTANCE);
         actions.add(new LayerListPopup.InfoAction(this));
         return actions.toArray(new Action[0]);
@@ -396,6 +401,9 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
     @Override
     public synchronized void destroy() {
         elevationDataProvider.removeElevationDataProviderListener(this);
+        layerAdjustmentDialog.setVisible(false);
+        layerAdjustmentDialog.dispose();
+        layerAdjustmentDialog = null;
         super.destroy();
     }
 
@@ -416,10 +424,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
 
         private static final long serialVersionUID = 1L;
 
-        protected final ElevationLayer layer;
-
-        public AbstractElevationLayerAction(ElevationLayer layer, String actionName, String iconName) {
-            this.layer = layer;
+        public AbstractElevationLayerAction(String actionName, String iconName) {
             putValue(NAME, actionName);
             new ImageProvider("dialogs", iconName).getResource().attachImageIcon(this, true);
         }
@@ -436,16 +441,17 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         }
     }
 
-    private static class ShowContourLinesAction extends AbstractElevationLayerAction {
+    private class ShowContourLinesAction extends AbstractElevationLayerAction {
 
         private static final long serialVersionUID = 1L;
 
-        public ShowContourLinesAction(ElevationLayer layer) {
-            super(layer, "Enable/disable contour lines", "contour_lines");
+        public ShowContourLinesAction() {
+            super("Enable/disable contour lines", "contour_lines");
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
+            ElevationLayer layer = ElevationLayer.this;
             layer.contourLinesEnabled = !layer.contourLinesEnabled;
             Config.getPref().putBoolean(ElevationPreferences.ELEVATION_CONTOUR_LINES_ENABLED,
                     layer.contourLinesEnabled);
@@ -461,21 +467,22 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         @Override
         public Component createMenuComponent() {
             JCheckBoxMenuItem item = new JCheckBoxMenuItem(this);
-            item.setSelected(layer.contourLinesEnabled);
+            item.setSelected(ElevationLayer.this.contourLinesEnabled);
             return item;
         }
     }
 
-    private static class ShowHillshadeAction extends AbstractElevationLayerAction {
+    private class ShowHillshadeAction extends AbstractElevationLayerAction {
 
         private static final long serialVersionUID = 1L;
 
-        public ShowHillshadeAction(ElevationLayer layer) {
-            super(layer, "Enable/disable hillshade", "hillshade");
+        public ShowHillshadeAction() {
+            super("Enable/disable hillshade", "hillshade");
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
+            ElevationLayer layer = ElevationLayer.this;
             layer.hillshadeEnabled = !layer.hillshadeEnabled;
             Config.getPref().putBoolean(ElevationPreferences.ELEVATION_HILLSHADE_ENABLED, layer.hillshadeEnabled);
             if (layer.hillshadeEnabled)
@@ -490,21 +497,22 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         @Override
         public Component createMenuComponent() {
             JCheckBoxMenuItem item = new JCheckBoxMenuItem(this);
-            item.setSelected(layer.hillshadeEnabled);
+            item.setSelected(ElevationLayer.this.hillshadeEnabled);
             return item;
         }
     }
 
-    private static class ShowElevationRasterAction extends AbstractElevationLayerAction {
+    private class ShowElevationRasterAction extends AbstractElevationLayerAction {
 
         private static final long serialVersionUID = 1L;
 
-        public ShowElevationRasterAction(ElevationLayer layer) {
-            super(layer, "Enable/disable elevation raster", "elevation_raster");
+        public ShowElevationRasterAction() {
+            super("Enable/disable elevation raster", "elevation_raster");
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
+            ElevationLayer layer = ElevationLayer.this;
             layer.elevationRasterEnabled = !layer.elevationRasterEnabled;
             Config.getPref().putBoolean(ElevationPreferences.ELEVATION_RASTER_ENABLED, layer.elevationRasterEnabled);
             if (layer.elevationRasterEnabled)
@@ -519,21 +527,22 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         @Override
         public Component createMenuComponent() {
             JCheckBoxMenuItem item = new JCheckBoxMenuItem(this);
-            item.setSelected(layer.elevationRasterEnabled);
+            item.setSelected(ElevationLayer.this.elevationRasterEnabled);
             return item;
         }
     }
 
-    private static class ShowLowestAndHighestPointsAction extends AbstractElevationLayerAction {
+    private class ShowLowestAndHighestPointsAction extends AbstractElevationLayerAction {
 
         private static final long serialVersionUID = 1L;
 
-        public ShowLowestAndHighestPointsAction(ElevationLayer layer) {
-            super(layer, "Enable/disable lowest and highest points", "lowest_highest_points");
+        public ShowLowestAndHighestPointsAction() {
+            super("Enable/disable lowest and highest points", "lowest_highest_points");
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
+            ElevationLayer layer = ElevationLayer.this;
             layer.lowestAndHighestPointsEnabled = !layer.lowestAndHighestPointsEnabled;
             Config.getPref().putBoolean(ElevationPreferences.LOWEST_AND_HIGHEST_POINTS_ENABLED,
                     layer.lowestAndHighestPointsEnabled);
@@ -549,8 +558,27 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         @Override
         public Component createMenuComponent() {
             JCheckBoxMenuItem item = new JCheckBoxMenuItem(this);
-            item.setSelected(layer.lowestAndHighestPointsEnabled);
+            item.setSelected(ElevationLayer.this.lowestAndHighestPointsEnabled);
             return item;
+        }
+    }
+
+    private class ShowElevationLayerDialogAction extends JosmAction {
+
+        private static final long serialVersionUID = 1L;
+
+        public ShowElevationLayerDialogAction() {
+            super("Dynamic elevation layer adjustment", new ImageProvider("elevation.svg"),
+                    "Dynamic, non-presistent adjustment of elevation rendering", null, true, "elevation-layer-settings",
+                    false);
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            if (layerAdjustmentDialog == null)
+                layerAdjustmentDialog = new ElevationLayerAdjustmentDialog(MainApplication.getMainFrame(),
+                        ElevationLayer.this);
+            layerAdjustmentDialog.showDialog();
         }
     }
 }

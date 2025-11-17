@@ -6,7 +6,6 @@ import hhtznr.josm.plugins.elevation.data.SRTMTile;
 import hhtznr.josm.plugins.elevation.gui.AddElevationLayerAction;
 import hhtznr.josm.plugins.elevation.gui.ElevationLayer;
 import hhtznr.josm.plugins.elevation.gui.ElevationTabPreferenceSetting;
-import hhtznr.josm.plugins.elevation.gui.ElevationToggleDialog;
 import hhtznr.josm.plugins.elevation.gui.KeyColFinderAction;
 import hhtznr.josm.plugins.elevation.gui.LocalElevationLabel;
 import hhtznr.josm.plugins.elevation.gui.SRTMFileDownloadErrorDialog;
@@ -51,7 +50,6 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     private final KeyColFinderAction keyColFinderAction;
     private final Object elevationLayerLock = new Object();
     private ElevationLayer elevationLayer = null;
-    private ElevationToggleDialog elevationToggleDialog = null;
     private final SetNodeElevationAction setNodeElevationAction;
     private final SetPeakProminenceAction setPeakProminenceAction;
 
@@ -265,14 +263,8 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     @Override
     public void layerAdded(LayerAddEvent e) {
         synchronized (elevationLayerLock) {
-            if (e.getAddedLayer().equals(elevationLayer)) {
+            if (e.getAddedLayer().equals(elevationLayer))
                 addElevationLayerAction.setEnabled(false);
-                if (elevationToggleDialog == null)
-                    elevationToggleDialog = new ElevationToggleDialog(this);
-                MapFrame mapFrame = MainApplication.getMap();
-                if (mapFrame != null)
-                    mapFrame.addToggleDialog(elevationToggleDialog);
-            }
         }
         boolean hasDataLayer = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class).size() > 0;
         if (hasDataLayer) {
@@ -287,11 +279,6 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     public void layerRemoving(LayerRemoveEvent e) {
         synchronized (elevationLayerLock) {
             if (e.getRemovedLayer().equals(elevationLayer)) {
-                MapFrame mapFrame = MainApplication.getMap();
-                if (mapFrame != null && elevationToggleDialog != null) {
-                    mapFrame.removeToggleDialog(elevationToggleDialog);
-                    elevationToggleDialog = null;
-                }
                 elevationLayer = null;
                 addElevationLayerAction.setEnabled(true);
             }

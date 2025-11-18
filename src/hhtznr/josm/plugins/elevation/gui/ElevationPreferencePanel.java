@@ -234,7 +234,10 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         bg.add(rbAuthBearer);
 
         lblEarthdataNotes.setEditable(false);
-        lblEarthdataNotes.addHyperlinkListener(event -> OpenBrowser.displayUrl(event.getURL().toString()));
+        lblEarthdataNotes.addHyperlinkListener(event -> {
+            if (event.getEventType() == HyperlinkEvent.EventType.ACTIVATED)
+                OpenBrowser.displayUrl(event.getURL().toString());
+        });
 
         GBC gc = GBC.std();
 

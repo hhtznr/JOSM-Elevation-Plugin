@@ -17,7 +17,6 @@ import javax.swing.Box;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
-import javax.swing.JEditorPane;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
@@ -186,10 +185,8 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         sb.append("</body>");
         sb.append("</html>");
 
-        JEditorPane editorPaneSRTMSources = new JEditorPane("text/html", sb.toString());
-        editorPaneSRTMSources.setEditable(false);
-        editorPaneSRTMSources.setOpaque(false);
-        editorPaneSRTMSources.addHyperlinkListener(event -> {
+        JMultilineLabel labelSRTMSources = new JMultilineLabel(sb.toString());
+        labelSRTMSources.addHyperlinkListener(event -> {
             if (event.getEventType() == HyperlinkEvent.EventType.ACTIVATED)
                 OpenBrowser.displayUrl(event.getURL().toString());
         });
@@ -323,7 +320,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.fill = GBC.HORIZONTAL;
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
-        pnl.add(editorPaneSRTMSources, gc);
+        pnl.add(labelSRTMSources, gc);
 
         // Separator before next section
         gc.gridy++;

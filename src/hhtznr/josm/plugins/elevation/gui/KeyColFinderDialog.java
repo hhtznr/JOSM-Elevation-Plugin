@@ -17,7 +17,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 
 import javax.swing.JButton;
-import javax.swing.JEditorPane;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -27,7 +26,6 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
-import javax.swing.UIManager;
 import javax.swing.event.HyperlinkEvent;
 
 import org.openstreetmap.josm.actions.JosmAction;
@@ -41,6 +39,7 @@ import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.MapFrame;
 import org.openstreetmap.josm.gui.MapView;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
+import org.openstreetmap.josm.gui.widgets.JMultilineLabel;
 import org.openstreetmap.josm.gui.widgets.JosmComboBox;
 import org.openstreetmap.josm.tools.GBC;
 import org.openstreetmap.josm.tools.OpenBrowser;
@@ -100,15 +99,15 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
         sb.append("<html>");
         sb.append("<body style='width:700px;'>");
         sb.append(
-                "<p>This tool can be CPU- and memory-intensive, especially when applied to peaks that are far apart.</p>");
-        sb.append("<p>In extreme cases, it may cause an out-of-memory error. ");
+                "<p style=\"margin-bottom: 6px;\">This tool can be CPU- and memory-intensive, especially when applied to peaks that are far apart.</p>");
+        sb.append("<p style=\"margin-bottom: 6px;\">In extreme cases, it may cause an out-of-memory error. ");
         sb.append("It is strongly recommended to save or upload your current map work before using this tool.</p>");
-        sb.append("<p>The tool computes the lowest col on the highest path connecting the two selected peaks. ");
+        sb.append("<p style=\"margin-bottom: 6px;\">The tool computes the lowest col on the highest path connecting the two selected peaks. ");
         sb.append("This col corresponds to the true <a href=\"https://en.wikipedia.org/wiki/Key_col\">key col</a> ");
         sb.append(
                 "only if you have selected the true <a href=\"https://en.wikipedia.org/wiki/Line_parent\">line parent</a> as the reference point, or a node along the path to it beyond the key col.</p>");
         sb.append(
-                "<p>If you are unsure about the true line parent, compute the key col for multiple candidate points and select the lowest col among them.</p>");
+                "<p style=\"margin-bottom: 6px;\">If you are unsure about the true line parent, compute the key col for multiple candidate points and select the lowest col among them.</p>");
         sb.append("</body>");
         sb.append("</html>");
         DISCLAIMER = sb.toString();
@@ -132,18 +131,11 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
     }
 
     private void build() {
-        JEditorPane editorPaneDisclaimer = new JEditorPane("text/html", DISCLAIMER);
-        editorPaneDisclaimer.setEditable(false);
-        editorPaneDisclaimer.setOpaque(false);
-        editorPaneDisclaimer.addHyperlinkListener(event -> {
+        JMultilineLabel labelDisclaimer = new JMultilineLabel(DISCLAIMER);
+        labelDisclaimer.addHyperlinkListener(event -> {
             if (event.getEventType() == HyperlinkEvent.EventType.ACTIVATED)
                 OpenBrowser.displayUrl(event.getURL().toString());
         });
-        editorPaneDisclaimer.setBackground(UIManager.getColor("Panel.background"));
-
-        JScrollPane scrollPaneDisclaimer = new JScrollPane(editorPaneDisclaimer);
-        scrollPaneDisclaimer.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        scrollPaneDisclaimer.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
 
         buttonSetPeakA = new JButton(new SelectPeakAction(SelectPeakAction.PEAK_A));
         textFieldPeakANodeID = new JTextField(30);
@@ -213,8 +205,8 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
         // Ensure the vertical scrollbar only appears when needed
         scrollPaneFeedback.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
 
-        JLabel labelDisclaimer = new JLabel("Disclaimer");
-        labelDisclaimer.setFont(labelDisclaimer.getFont().deriveFont(Font.BOLD));
+        JLabel labelSectionDisclaimer = new JLabel("Disclaimer");
+        labelSectionDisclaimer.setFont(labelSectionDisclaimer.getFont().deriveFont(Font.BOLD));
         JLabel labelSection1a = new JLabel("1a. Select a peak node from the data layer");
         labelSection1a.setFont(labelSection1a.getFont().deriveFont(Font.BOLD));
         JLabel labelSection1b = new JLabel("1b. Select a parent peak node from the data layer");
@@ -239,7 +231,7 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
         gc.fill = GBC.HORIZONTAL;
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
-        pnl.add(labelDisclaimer, gc);
+        pnl.add(labelSectionDisclaimer, gc);
 
         // Row "Disclaimer"
         gc.gridy++;
@@ -247,7 +239,7 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
         gc.weighty = 0.0;
-        pnl.add(editorPaneDisclaimer, gc);
+        pnl.add(labelDisclaimer, gc);
         // pnl.add(new JLabel("Placeholder"), gc);
 
         // Separator before section 1a

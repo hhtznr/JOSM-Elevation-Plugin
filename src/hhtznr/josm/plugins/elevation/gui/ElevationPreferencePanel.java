@@ -21,8 +21,10 @@ import javax.swing.JEditorPane;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
+import javax.swing.JSeparator;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.SwingConstants;
 import javax.swing.event.HyperlinkEvent;
 
 import org.openstreetmap.josm.data.oauth.OAuth20Token;
@@ -320,6 +322,14 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.weightx = 1.0;
         pnl.add(editorPaneSRTMSources, gc);
 
+        // Separator before next section
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.fill = GBC.HORIZONTAL;
+        gc.gridwidth = GBC.REMAINDER;
+        gc.weightx = 1.0;
+        pnl.add(new JSeparator(SwingConstants.HORIZONTAL), gc);
+
         // Row "SRTM type"
         gc.gridy++;
         gc.fill = GBC.NONE;
@@ -359,6 +369,14 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
         pnl.add(new JLabel("MiB"), gc);
+
+        // Separator before next section
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.fill = GBC.HORIZONTAL;
+        gc.gridwidth = GBC.REMAINDER;
+        gc.weightx = 1.0;
+        pnl.add(new JSeparator(SwingConstants.HORIZONTAL), gc);
 
         // Row "Enable elevation layer"
         gc.gridy++;
@@ -432,6 +450,14 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.weightx = 1.0;
         pnl.add(new JPanel(), gc);
 
+        // Separator before next section
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.fill = GBC.HORIZONTAL;
+        gc.gridwidth = GBC.REMAINDER;
+        gc.weightx = 1.0;
+        pnl.add(new JSeparator(SwingConstants.HORIZONTAL), gc);
+
         // Row "Hillshade altitude"
         gc.gridy++;
         gc.gridx = 0;
@@ -463,6 +489,14 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
         pnl.add(lblHillshadeAzimuthUnit, gc);
+
+        // Separator before next section
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.fill = GBC.HORIZONTAL;
+        gc.gridwidth = GBC.REMAINDER;
+        gc.weightx = 1.0;
+        pnl.add(new JSeparator(SwingConstants.HORIZONTAL), gc);
 
         // Row "Auto-download enabled"
         gc.gridy++;

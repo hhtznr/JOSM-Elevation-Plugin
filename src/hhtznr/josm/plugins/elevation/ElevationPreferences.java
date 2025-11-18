@@ -413,6 +413,7 @@ public class ElevationPreferences {
         try {
             url = new URL("https://" + EARTHDATA_DOWNLOAD_HOST + "/MEASURES/SRTMGL1.003/2000.02.11/");
         } catch (MalformedURLException e) {
+            throw new IllegalArgumentException("Internal error: hardcoded URL is malformed", e);
         }
         SRTM1_SERVER_BASE_URL = url;
     }
@@ -432,6 +433,7 @@ public class ElevationPreferences {
         try {
             url = new URL("https://" + EARTHDATA_DOWNLOAD_HOST + "/MEASURES/SRTMGL3.003/2000.02.11/");
         } catch (MalformedURLException e) {
+            throw new IllegalArgumentException("Internal error: hardcoded URL is malformed", e);
         }
         SRTM3_SERVER_BASE_URL = url;
     }
@@ -442,6 +444,7 @@ public class ElevationPreferences {
         try {
             url = new URL("https://bit.ly/dtm-europe-1s-v2");
         } catch (MalformedURLException e) {
+            throw new IllegalArgumentException("Internal error: hardcoded URL is malformed", e);
         }
         SONNY_LIDAR_DTM1_BASE_URL = url;
     }
@@ -452,6 +455,7 @@ public class ElevationPreferences {
         try {
             url = new URL("https://bit.ly/dtm-europe-3s-v2");
         } catch (MalformedURLException e) {
+            throw new IllegalArgumentException("Internal error: hardcoded URL is malformed", e);
         }
         SONNY_LIDAR_DTM3_BASE_URL = url;
     }

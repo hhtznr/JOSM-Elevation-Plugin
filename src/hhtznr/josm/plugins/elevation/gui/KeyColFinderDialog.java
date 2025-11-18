@@ -3,13 +3,10 @@ package hhtznr.josm.plugins.elevation.gui;
 import static org.openstreetmap.josm.tools.I18n.tr;
 
 import java.awt.Component;
-import java.awt.Desktop;
 import java.awt.Font;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
-import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -46,7 +43,7 @@ import org.openstreetmap.josm.gui.MapView;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 import org.openstreetmap.josm.gui.widgets.JosmComboBox;
 import org.openstreetmap.josm.tools.GBC;
-import org.openstreetmap.josm.tools.Logging;
+import org.openstreetmap.josm.tools.OpenBrowser;
 
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
@@ -138,14 +135,9 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
         JEditorPane editorPaneDisclaimer = new JEditorPane("text/html", DISCLAIMER);
         editorPaneDisclaimer.setEditable(false);
         editorPaneDisclaimer.setOpaque(false);
-        editorPaneDisclaimer.addHyperlinkListener(e -> {
-            if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
-                try {
-                    Desktop.getDesktop().browse(e.getURL().toURI());
-                } catch (URISyntaxException | IOException ex) {
-                    Logging.warn("Elevation: Cannot browse hyperlink: " + ex.toString());
-                }
-            }
+        editorPaneDisclaimer.addHyperlinkListener(event -> {
+            if (event.getEventType() == HyperlinkEvent.EventType.ACTIVATED)
+                OpenBrowser.displayUrl(event.getURL().toString());
         });
         editorPaneDisclaimer.setBackground(UIManager.getColor("Panel.background"));
 

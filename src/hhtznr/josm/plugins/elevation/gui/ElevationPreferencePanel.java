@@ -2,7 +2,6 @@ package hhtznr.josm.plugins.elevation.gui;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
-import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridBagLayout;
@@ -10,9 +9,7 @@ import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
-import java.io.IOException;
 import java.net.PasswordAuthentication;
-import java.net.URI;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
@@ -20,6 +17,7 @@ import javax.swing.Box;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JEditorPane;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
@@ -38,7 +36,7 @@ import org.openstreetmap.josm.spi.preferences.IPreferences;
 import org.openstreetmap.josm.tools.GBC;
 import org.openstreetmap.josm.tools.I18n;
 import org.openstreetmap.josm.tools.ImageProvider;
-import org.openstreetmap.josm.tools.Logging;
+import org.openstreetmap.josm.tools.OpenBrowser;
 
 import hhtznr.josm.plugins.elevation.ElevationPluginTexts;
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
@@ -164,34 +162,35 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
      * @return Panel with elevation preferences.
      */
     private final JPanel buildPreferencePanel() {
-        JMultilineLabel lblSRTM1Server = new JMultilineLabel(I18n.tr(
-                "<html>SRTM1 files (elevation sampled at 1 arc seconds) of the whole Earth can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}",
+        StringBuilder sb = new StringBuilder();
+        sb.append("<html>");
+        sb.append("<body style='width:700px;'>");
+        sb.append(I18n.tr(
+                "SRTM1 files (elevation sampled at 1 arc seconds) of the whole Earth can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}<br><br>",
                 ElevationPreferences.SRTM1_SERVER_BASE_URL,
                 ElevationPreferences.DEFAULT_EARTHDATA_SRTM1_DIRECTORY.getAbsolutePath()));
-        JMultilineLabel lblSRTM3Server = new JMultilineLabel(I18n.tr(
-                "<html>SRTM3 files (elevation sampled at 3 arc seconds) of the whole Earth can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}",
+        sb.append(I18n.tr(
+                "SRTM3 files (elevation sampled at 3 arc seconds) of the whole Earth can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}<br><br>",
                 ElevationPreferences.SRTM3_SERVER_BASE_URL,
                 ElevationPreferences.DEFAULT_EARTHDATA_SRTM3_DIRECTORY.getAbsolutePath()));
-        JMultilineLabel lblDTM1Server = new JMultilineLabel(I18n.tr(
-                "<html>High quality SRTM1 files (elevation sampled at 1 arc seconds) of Europe can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}",
+        sb.append(I18n.tr(
+                "High quality SRTM1 files (elevation sampled at 1 arc seconds) of Europe can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}<br><br>",
                 ElevationPreferences.SONNY_LIDAR_DTM1_BASE_URL,
                 ElevationPreferences.DEFAULT_SONNY_LIDAR_DTM1_DIRECTORY.getAbsolutePath()));
-        JMultilineLabel lblDTM3Server = new JMultilineLabel(I18n.tr(
-                "<html>High quality SRTM3 files (elevation sampled at 3 arc seconds) of Europe can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}",
+        sb.append(I18n.tr(
+                "High quality SRTM3 files (elevation sampled at 3 arc seconds) of Europe can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}<br>",
                 ElevationPreferences.SONNY_LIDAR_DTM3_BASE_URL,
                 ElevationPreferences.DEFAULT_SONNY_LIDAR_DTM3_DIRECTORY.getAbsolutePath()));
+        sb.append("</body>");
+        sb.append("</html>");
 
-        lblSRTM1Server.setEditable(false);
-        lblSRTM1Server.addHyperlinkListener(event -> browseHyperlink(event));
-
-        lblSRTM3Server.setEditable(false);
-        lblSRTM3Server.addHyperlinkListener(event -> browseHyperlink(event));
-
-        lblDTM1Server.setEditable(false);
-        lblDTM1Server.addHyperlinkListener(event -> browseHyperlink(event));
-
-        lblDTM3Server.setEditable(false);
-        lblDTM3Server.addHyperlinkListener(event -> browseHyperlink(event));
+        JEditorPane editorPaneSRTMSources = new JEditorPane("text/html", sb.toString());
+        editorPaneSRTMSources.setEditable(false);
+        editorPaneSRTMSources.setOpaque(false);
+        editorPaneSRTMSources.addHyperlinkListener(event -> {
+            if (event.getEventType() == HyperlinkEvent.EventType.ACTIVATED)
+                OpenBrowser.displayUrl(event.getURL().toString());
+        });
 
         cbEnableElevationLayer.addItemListener(event -> updateEnabledState());
 
@@ -233,7 +232,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         bg.add(rbAuthBearer);
 
         lblEarthdataNotes.setEditable(false);
-        lblEarthdataNotes.addHyperlinkListener(event -> browseHyperlink(event));
+        lblEarthdataNotes.addHyperlinkListener(event -> OpenBrowser.displayUrl(event.getURL().toString()));
 
         GBC gc = GBC.std();
 
@@ -313,25 +312,13 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         // Elevation preferences panel
         JPanel pnl = new AutoSizePanel();
 
-        // Row "SRTM1 server"
+        // Row "SRTM sources"
         gc.gridy = 0;
         gc.gridx = 0;
         gc.fill = GBC.HORIZONTAL;
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
-        pnl.add(lblSRTM1Server, gc);
-
-        // Row "SRTM3 server"
-        gc.gridy++;
-        pnl.add(lblSRTM3Server, gc);
-
-        // Row "DTM1 server"
-        gc.gridy++;
-        pnl.add(lblDTM1Server, gc);
-
-        // Row "DTM3 server"
-        gc.gridy++;
-        pnl.add(lblDTM3Server, gc);
+        pnl.add(editorPaneSRTMSources, gc);
 
         // Row "SRTM type"
         gc.gridy++;
@@ -558,25 +545,6 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         for (Component component : pnlAuthBearer.getComponents())
             component.setEnabled(cbEnableAutoDownload.isSelected());
         lblEarthdataNotes.setEnabled(cbEnableAutoDownload.isSelected());
-    }
-
-    private final void browseHyperlink(HyperlinkEvent event) {
-        // https://stackoverflow.com/questions/14101000/hyperlink-to-open-in-browser-in-java
-        // https://www.codejava.net/java-se/swing/how-to-create-hyperlink-with-jlabel-in-java-swing
-        if (event.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
-            String url = event.getURL().toString();
-            try {
-                if (Desktop.isDesktopSupported()) {
-                    Desktop desktop = Desktop.getDesktop();
-                    if (desktop.isSupported(Desktop.Action.BROWSE))
-                        Desktop.getDesktop().browse(URI.create(url));
-                    else
-                        Logging.info("BROWSE action is not supported");
-                }
-            } catch (IOException e) {
-                Logging.error(e.toString());
-            }
-        }
     }
 
     /**

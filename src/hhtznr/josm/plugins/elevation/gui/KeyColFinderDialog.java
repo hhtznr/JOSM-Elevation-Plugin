@@ -779,6 +779,13 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
         textAreaFeedback.append(message + System.lineSeparator());
     }
 
+    @Override
+    protected void buttonAction(int buttonIndex, ActionEvent evt) {
+        // Close button
+        if (buttonIndex == 0)
+            dispose();
+    }
+
     private class SelectPeakAction extends JosmAction {
 
         private static final long serialVersionUID = 1L;

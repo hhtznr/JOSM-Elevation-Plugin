@@ -1,8 +1,10 @@
 package hhtznr.josm.plugins.elevation.gui;
 
 import java.awt.event.ActionEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
-import javax.swing.SwingUtilities;
+import javax.swing.WindowConstants;
 
 import org.openstreetmap.josm.actions.JosmAction;
 import org.openstreetmap.josm.gui.MainApplication;
@@ -39,11 +41,17 @@ public class TopographicIsolationFinderAction extends JosmAction {
 
     @Override
     public void actionPerformed(ActionEvent arg0) {
-        SwingUtilities.invokeLater(() -> {
-            if (dialog == null)
-                dialog = new TopographicIsolationFinderDialog(MainApplication.getMainFrame(),
-                        plugin.getElevationDataProvider());
-            dialog.showDialog();
-        });
+        if (dialog == null) {
+            dialog = new TopographicIsolationFinderDialog(MainApplication.getMainFrame(),
+                    plugin.getElevationDataProvider());
+            dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+            dialog.addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosed(WindowEvent e) {
+                    dialog = null;
+                }
+            });
+        }
+        dialog.showDialog();
     }
 }

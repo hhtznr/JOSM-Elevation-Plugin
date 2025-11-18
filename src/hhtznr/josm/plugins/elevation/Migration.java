@@ -34,9 +34,9 @@ public class Migration {
         if (ElevationPreferences.LEGACY_SRTM_DIRECTORY.isDirectory()) {
             if (ElevationPreferences.DEFAULT_EARTHDATA_SRTM1_DIRECTORY.exists()
                     || ElevationPreferences.DEFAULT_EARTHDATA_SRTM1_DIRECTORY.mkdirs()) {
-                try {
-                    DirectoryStream<Path> stream = Files
-                            .newDirectoryStream(ElevationPreferences.LEGACY_SRTM_DIRECTORY.toPath());
+                try (DirectoryStream<Path> stream = Files
+                        .newDirectoryStream(ElevationPreferences.LEGACY_SRTM_DIRECTORY.toPath());) {
+
                     for (Path file : stream) {
                         if (Files.isRegularFile(file) && SRTMFiles.getSRTMTileTypeFromEarthdataFileName(
                                 file.getFileName().toString()) == SRTMTile.Type.SRTM1) {
@@ -54,9 +54,9 @@ public class Migration {
             }
             if (ElevationPreferences.DEFAULT_EARTHDATA_SRTM3_DIRECTORY.exists()
                     || ElevationPreferences.DEFAULT_EARTHDATA_SRTM3_DIRECTORY.mkdirs()) {
-                try {
-                    DirectoryStream<Path> stream = Files
-                            .newDirectoryStream(ElevationPreferences.LEGACY_SRTM_DIRECTORY.toPath());
+                try (DirectoryStream<Path> stream = Files
+                        .newDirectoryStream(ElevationPreferences.LEGACY_SRTM_DIRECTORY.toPath());) {
+
                     for (Path file : stream) {
                         if (Files.isRegularFile(file) && SRTMFiles.getSRTMTileTypeFromEarthdataFileName(
                                 file.getFileName().toString()) == SRTMTile.Type.SRTM3) {
@@ -72,9 +72,9 @@ public class Migration {
                     Logging.error("Elevation: IOException during SRTM3 file migration: " + e.toString());
                 }
             }
-            try {
-                DirectoryStream<Path> stream = Files
-                        .newDirectoryStream(ElevationPreferences.LEGACY_SRTM_DIRECTORY.toPath());
+            try (DirectoryStream<Path> stream = Files
+                    .newDirectoryStream(ElevationPreferences.LEGACY_SRTM_DIRECTORY.toPath());) {
+
                 if (!stream.iterator().hasNext()) {
                     Files.delete(ElevationPreferences.LEGACY_SRTM_DIRECTORY.toPath());
                     Logging.info("Elevation: Deleted empty legacy SRTM directory '"
@@ -92,7 +92,8 @@ public class Migration {
     }
 
     /**
-     * Removes the preferences key previously used to enable or disable the complete plugin.
+     * Removes the preferences key previously used to enable or disable the complete
+     * plugin.
      *
      * @since 0.14.0
      */

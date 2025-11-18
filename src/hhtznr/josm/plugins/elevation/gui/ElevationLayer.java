@@ -401,9 +401,11 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
     @Override
     public synchronized void destroy() {
         elevationDataProvider.removeElevationDataProviderListener(this);
-        layerAdjustmentDialog.setVisible(false);
-        layerAdjustmentDialog.dispose();
-        layerAdjustmentDialog = null;
+        if (layerAdjustmentDialog != null) {
+            layerAdjustmentDialog.setVisible(false);
+            layerAdjustmentDialog.dispose();
+            layerAdjustmentDialog = null;
+        }
         super.destroy();
     }
 

@@ -1,7 +1,20 @@
 # JOSM Elevation Plugin
-**Elevation** is a plugin for the [OpenStreetMap](https://www.openstreetmap.org/) editor [JOSM](https://josm.openstreetmap.de/). It displays terrain elevation at the mouse pointer location on the map as well as elevation contour lines and hillshade. It is designed to use publicly available elevation data from NASA's [Shuttle Radar Topography Mission (SRTM)](https://www.earthdata.nasa.gov/sensors/srtm). It can be configured to automatically download SRTM elevation data as needed.
+**Elevation** is a plugin for the [OpenStreetMap](https://www.openstreetmap.org/) editor [JOSM](https://josm.openstreetmap.de/). It displays local terrain elevation, visualizes terrain elevation in the map view and provides elevation tools. It is designed to use publicly available elevation data from NASA's [Shuttle Radar Topography Mission (SRTM)](https://www.earthdata.nasa.gov/sensors/srtm) and [Sonny's LiDAR Digital Terrain Models of Europe](https://sonny.4lima.de/). It can be configured to automatically download SRTM elevation data from [NASA Earthdata](https://www.earthdata.nasa.gov/).
 
-This JOSM screenshot provides an overview of the most important features of the **Elevation** plugin:
+## Features
+- Terrain elevation at the mouse pointer location
+- Elevation visualization layer
+  - Contour lines
+  - Hillshade
+  - Lowest and highest points in the map view
+  - Elevation raster
+- Elevation tools
+  - Set node elevation
+  - Set peak prominence
+  - Topographic isolation finder
+  - Key col finder
+
+This JOSM screenshot provides an overview of some of the features of the **Elevation** plugin:
 ![JOSM Elevation plugin -  Overview with highlighted features](https://github.com/hhtznr/JOSM-Elevation-Plugin/assets/57875126/6871d9e0-e881-4914-bc59-d08f22e83ae4)
 
 ## Building from source
@@ -22,4 +35,4 @@ This JOSM screenshot provides an overview of the most important features of the 
 3. Adapt the configuration to your needs.
 4. Click the `OK` button at the bottom.
 
-For configuration options visit the [project wiki](https://github.com/hhtznr/JOSM-Elevation-Plugin/wiki). For a more detailed description see [JOSM/Plugins/Elevation on the OpenStreetMap Wiki](https://wiki.openstreetmap.org/wiki/JOSM/Plugins/Elevation).
+For configuration options and a detailed description visit [JOSM/Plugins/Elevation on the OpenStreetMap Wiki](https://wiki.openstreetmap.org/wiki/JOSM/Plugins/Elevation).

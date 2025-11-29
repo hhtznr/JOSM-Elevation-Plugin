@@ -725,13 +725,22 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
                     keyColNode.put("natural", "saddle");
                     int ele = (int) keyCol.ele();
                     keyColNode.put("ele", Integer.toString(ele));
-                    String note = "Key col of ";
+                    String note = null;
                     String peakName = peakANode.get("name");
-                    if (peakName != null)
-                        note += peakName;
-                    else
-                        note += "P." + ele;
-                    keyColNode.put("note", note);
+                    if (peakName != null) {
+                        note = "Key col of " + peakName;
+                    } else {
+                        String peakAEle = peakANode.get("ele");
+                        if (peakAEle != null)
+                            try {
+                                long eleA = Math.round(Double.parseDouble(peakAEle));
+                                note = "Key col of P." + eleA;
+                            } catch (NumberFormatException e) {
+                                note = null;
+                            }
+                    }
+                    if (note != null)
+                        keyColNode.put("note", note);
                     textAreaFeedback.append("Key col determined:" + System.lineSeparator());
                     textAreaFeedback
                             .append("Coordinates: " + keyCol.lat() + ", " + keyCol.lon() + System.lineSeparator());

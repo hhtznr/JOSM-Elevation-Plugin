@@ -96,7 +96,9 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
             if (!layer.isLowestAndHighestPointsEnabled())
                 lowestAndHighestPoints = null;
         }
-        if (!layer.isContourLinesEnabled() && !layer.isElevationRasterEnabled() && !layer.isHillshadeEnabled())
+
+        if (!layer.isContourLinesEnabled() && !layer.isElevationRasterEnabled() && !layer.isHillshadeEnabled()
+                && !layer.isLowestAndHighestPointsEnabled())
             return;
 
         Bounds clipBounds = graphics.getClipBounds().getLatLonBoundsBox();

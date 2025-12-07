@@ -176,7 +176,7 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
 
         comboBoxUnionFindNeighbors = new JosmComboBox<>(new KeyColFinder.UnionFindNeighbors[] {
                 KeyColFinder.UnionFindNeighbors.FOUR, KeyColFinder.UnionFindNeighbors.EIGHT });
-        comboBoxUnionFindNeighbors.setSelectedItem(KeyColFinder.UnionFindNeighbors.FOUR);
+        comboBoxUnionFindNeighbors.setSelectedItem(KeyColFinder.UnionFindNeighbors.EIGHT);
         buttonFind = new JButton(new FindAction());
         buttonStop = new JButton(new StopFindAction());
 

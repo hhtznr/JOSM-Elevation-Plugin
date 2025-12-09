@@ -204,7 +204,8 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                 srtmFileDownloadErrorDialog = new SRTMFileDownloadErrorDialog(
                         elevationDataProvider.getSRTMFileDownloader());
         } else {
-            elevationDataProvider.getSRTMFileDownloader().removeDownloadListener(srtmFileDownloadErrorDialog);
+            if (elevationDataProvider.getSRTMFileDownloader() != null)
+                elevationDataProvider.getSRTMFileDownloader().removeDownloadListener(srtmFileDownloadErrorDialog);
             srtmFileDownloadErrorDialog = null;
         }
     }

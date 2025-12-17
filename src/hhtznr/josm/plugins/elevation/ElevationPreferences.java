@@ -389,7 +389,7 @@ public class ElevationPreferences {
     /**
      * Host name of the NASA Earthdata download server.
      */
-    public static final String EARTHDATA_DOWNLOAD_HOST = "e4ftl01.cr.usgs.gov";
+    public static final String EARTHDATA_DOWNLOAD_HOST = "data.lpdaac.earthdatacloud.nasa.gov";
 
     /**
      * URL of <a href="https://urs.earthdata.nasa.gov/users/new/">NASA Earthdata
@@ -399,8 +399,8 @@ public class ElevationPreferences {
     public static final String SRTM_SERVER_REGISTRATION_URL = "https://" + EARTHDATA_SSO_HOST + "/users/new/";
 
     /**
-     * URL of
-     * <a href="https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL1.003/2000.02.11/">NASA's
+     * URL of <a href=
+     * "https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/SRTMGL1.003/">NASA's
      * Land Processes Distributed Active Archive Center (LP DAAC)</a> where SRTM1
      * files can be downloaded.
      *
@@ -411,7 +411,7 @@ public class ElevationPreferences {
     static {
         URL url = null;
         try {
-            url = new URL("https://" + EARTHDATA_DOWNLOAD_HOST + "/MEASURES/SRTMGL1.003/2000.02.11/");
+            url = new URL("https://" + EARTHDATA_DOWNLOAD_HOST + "/lp-prod-protected/SRTMGL1.003/");
         } catch (MalformedURLException e) {
             throw new IllegalArgumentException("Internal error: hardcoded URL is malformed", e);
         }
@@ -419,8 +419,8 @@ public class ElevationPreferences {
     }
 
     /**
-     * URL of
-     * <a href="https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3.003/2000.02.11/">NASA's
+     * URL of <a
+     * href=""https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/SRTMGL3.003/">NASA's
      * Land Processes Distributed Active Archive Center (LP DAAC)</a> where SRTM3
      * files can be downloaded.
      *
@@ -431,7 +431,7 @@ public class ElevationPreferences {
     static {
         URL url = null;
         try {
-            url = new URL("https://" + EARTHDATA_DOWNLOAD_HOST + "/MEASURES/SRTMGL3.003/2000.02.11/");
+            url = new URL("https://" + EARTHDATA_DOWNLOAD_HOST + "/lp-prod-protected/SRTMGL3.003/");
         } catch (MalformedURLException e) {
             throw new IllegalArgumentException("Internal error: hardcoded URL is malformed", e);
         }

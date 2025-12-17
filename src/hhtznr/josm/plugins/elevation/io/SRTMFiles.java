@@ -83,17 +83,17 @@ public class SRTMFiles {
     }
 
     /**
-     * Get the name of a ZIP-compressed SRTM file based on the SRTM tile ID and the
-     * data type (SRTM1, SRTM3).
+     * Get the name of an SRTM file based on the SRTM tile ID and the data type
+     * (SRTM1, SRTM3).
      *
      * @param srtmTileID The SRTM tile ID.
      * @param srtmType   The SRTM data type.
-     * @return The corresponding name of the compressed file.
+     * @return The corresponding name of the uncompressed file.
      */
     public static String getEarthdataSRTMFileName(String srtmTileID, SRTMTile.Type srtmType) {
         if (srtmType == SRTMTile.Type.SRTM1)
-            return srtmTileID + ".SRTMGL1.hgt.zip";
-        return srtmTileID + ".SRTMGL3.hgt.zip";
+            return srtmTileID + ".SRTMGL1.hgt";
+        return srtmTileID + ".SRTMGL3.hgt";
     }
 
     private SRTMFiles() {

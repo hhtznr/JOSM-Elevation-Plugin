@@ -186,7 +186,11 @@ public class SRTMFileDownloader {
 
     private File download(String srtmTileID, ElevationDataSource elevationDataSource) {
         SRTMTile.Type srtmType = elevationDataSource.getSRTMTileType();
-        String srtmFileName = SRTMFiles.getEarthdataSRTMFileName(srtmTileID, srtmType);
+        // Earthdata URLs look like this:
+        // https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/SRTMGL1.003/N00E013.SRTMGL1.hgt/N00E013.SRTMGL1.hgt.zip
+        String srtmFileBaseName = SRTMFiles.getEarthdataSRTMFileName(srtmTileID, srtmType);
+        String srtmFileName = srtmFileBaseName + ".zip";
+        String urlComponent = String.join("/", srtmFileBaseName, srtmFileName);
 
         if (basicAuthHeader != null)
             Logging.info("Elevation: Trying to download SRTM file " + srtmFileName + " using password authentication.");
@@ -200,7 +204,7 @@ public class SRTMFileDownloader {
 
         URL url = null;
         try {
-            url = new URL(elevationDataSource.getDownloadBaseURL(), srtmFileName);
+            url = new URL(elevationDataSource.getDownloadBaseURL(), urlComponent);
         } catch (MalformedURLException e) {
             downloadFailed(srtmTileID, srtmType, elevationDataSource, e);
             return null;

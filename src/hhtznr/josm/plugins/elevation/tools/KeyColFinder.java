@@ -1,6 +1,7 @@
 package hhtznr.josm.plugins.elevation.tools;
 
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.stream.IntStream;
 
 import org.openstreetmap.josm.data.Bounds;
@@ -43,9 +44,9 @@ import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
 public class KeyColFinder extends AbstractElevationTool {
     private int width, height;
     private int[] parent; // union-find parent array
-    private boolean[] active; // true = this cell is "land" (above water)
-    private boolean[] hasPeakA;
-    private boolean[] hasPeakB;
+    private BitSet active; // true = this cell is "land" (above water)
+    private BitSet hasPeakA;
+    private BitSet hasPeakB;
 
     private static final int[][] FOUR_DIRECTIONS = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } };
 
@@ -104,9 +105,9 @@ public class KeyColFinder extends AbstractElevationTool {
     private void init(int width, int height) {
         int n = width * height;
         parent = new int[n];
-        active = new boolean[n];
-        hasPeakA = new boolean[n];
-        hasPeakB = new boolean[n];
+        active = new BitSet(n);
+        hasPeakA = new BitSet(n);
+        hasPeakB = new BitSet(n);
         this.width = width;
         this.height = height;
     }
@@ -144,8 +145,10 @@ public class KeyColFinder extends AbstractElevationTool {
 
         // Merge components
         parent[rootB] = rootA;
-        hasPeakA[rootA] |= hasPeakA[rootB];
-        hasPeakB[rootA] |= hasPeakB[rootB];
+        if (hasPeakA.get(rootB))
+            hasPeakA.set(rootA);
+        if (hasPeakB.get(rootB))
+            hasPeakB.set(rootA);
     }
 
     /**
@@ -221,16 +224,17 @@ public class KeyColFinder extends AbstractElevationTool {
                 throw new InterruptedException(message);
             }
             parent[i] = i;
-            active[i] = false;
-            hasPeakA[i] = false;
-            hasPeakB[i] = false;
         }
+        // ensure BitSets are cleared
+        active.clear();
+        hasPeakA.clear();
+        hasPeakB.clear();
 
         int[] peakAIndices = tileGrid.getClosestGridRasterIndices(peakA);
         int[] peakBIndices = tileGrid.getClosestGridRasterIndices(peakB);
 
-        hasPeakA[peakAIndices[0] * width + peakAIndices[1]] = true;
-        hasPeakB[peakBIndices[0] * width + peakBIndices[1]] = true;
+        hasPeakA.set(peakAIndices[0] * width + peakAIndices[1]);
+        hasPeakB.set(peakBIndices[0] * width + peakBIndices[1]);
 
         // Number of union-find neighbors (4 or 8)
         int[][] directions;
@@ -249,7 +253,7 @@ public class KeyColFinder extends AbstractElevationTool {
                 throw new InterruptedException(message);
             }
             int cellIndex = cell.latIndex * width + cell.lonIndex;
-            active[cellIndex] = true;
+            active.set(cellIndex);
 
             // union with active neighbors
             for (int[] direction : directions) {
@@ -257,13 +261,13 @@ public class KeyColFinder extends AbstractElevationTool {
                 int neighborLonIndex = cell.lonIndex + direction[1];
                 if (inBounds(neighborLatIndex, neighborLonIndex)) {
                     int neighborIndex = neighborLatIndex * width + neighborLonIndex;
-                    if (active[neighborIndex])
+                    if (active.get(neighborIndex))
                         union(cellIndex, neighborIndex);
                 }
             }
 
             int root = findParent(cellIndex);
-            if (hasPeakA[root] && hasPeakB[root]) {
+            if (hasPeakA.get(root) && hasPeakB.get(root)) {
                 // This elevation is the key col elevation
                 LatLonEle keyColLatEle = tileGrid.getLatLonEle(cell.latIndex, cell.lonIndex);
                 return keyColLatEle;

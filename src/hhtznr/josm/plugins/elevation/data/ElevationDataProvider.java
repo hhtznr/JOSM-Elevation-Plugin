@@ -451,6 +451,11 @@ public class ElevationDataProvider implements SRTMFileDownloadListener, SRTMTile
             if (srtmTile == null) {
                 synchronized (elevationDataSourcesLock) {
                     for (ElevationDataSource elevationDataSource : elevationDataSources) {
+                        if (elevationDataSource.isSRTMTilePermanentlyMissing(srtmTileID)) {
+                            Logging.info("Elevation: SRTM tile with ID " + srtmTileID
+                                    + " is permanently missing for source " + elevationDataSource.toString());
+                            continue;
+                        }
                         SRTMTile.Type srtmTileType = elevationDataSource.getSRTMTileType();
                         File srtmFile = getLocalSRTMFile(srtmTileID, elevationDataSource);
                         // If an SRTM file with the data exists on disk, read it in

@@ -730,6 +730,21 @@ public class SRTMTile {
     }
 
     /**
+     * Returns whether the provided text is a valid SRTM tile ID.
+     *
+     * @param text The text to check.
+     * @return {@code true} if the text is a valid SRTM tile ID.
+     */
+    public static boolean isValidSRTMTileID(String text) {
+        try {
+            SRTMTile.parseLatLonFromTileID(text);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
      * Returns whether the size of SRTM data corresponds to a specified type.
      *
      * @param type The SRTM data type (SRTM1 or SRTM3).

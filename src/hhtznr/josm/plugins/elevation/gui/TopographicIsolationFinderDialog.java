@@ -811,10 +811,10 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
                             .setText("Could not determine the bounds containing the nodes. This should not happen.");
                     return;
                 }
-                // Increase the size of the bounds by 10 %
+                // Increase the size of the bounds by 2 %
                 // Prevents points being located at the edges of the map
-                double extraSpaceLat = (maxLat - minLat) * 0.05;
-                double extraSpaceLon = (maxLon - minLon) * 0.05;
+                double extraSpaceLat = (maxLat - minLat) * 0.01;
+                double extraSpaceLon = (maxLon - minLon) * 0.01;
                 minLat = Math.max(minLat - extraSpaceLat, -90);
                 minLon = Math.max(minLon - extraSpaceLon, 0);
                 maxLat = Math.min(maxLat + extraSpaceLat, 90);

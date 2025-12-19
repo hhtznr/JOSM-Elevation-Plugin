@@ -535,6 +535,7 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
                         + String.format("%.2f km", distance / 1000.0) + System.lineSeparator());
                 Node node = new Node(point);
                 node.put("name", Integer.toString(candidateRank));
+                node.put("historic", "boundary_stone");
                 node.put("description", "Isolation reference point candidate " + Integer.toString(candidateRank)
                         + " of " + nCandidates);
                 if (candidateRank == 1) {

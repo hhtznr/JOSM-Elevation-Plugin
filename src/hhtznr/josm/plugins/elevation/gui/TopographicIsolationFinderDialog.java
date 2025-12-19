@@ -28,6 +28,7 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.text.DefaultCaret;
 
 import org.openstreetmap.josm.actions.JosmAction;
 import org.openstreetmap.josm.data.Bounds;
@@ -119,6 +120,8 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
         textAreaFeedback.setLineWrap(true);
         textAreaFeedback.setWrapStyleWord(true);
         textAreaFeedback.setEditable(false);
+        DefaultCaret caret = (DefaultCaret) textAreaFeedback.getCaret();
+        caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
 
         spinnerSearchDistance = new JSpinner(new SpinnerNumberModel(10, 1, 10000, 1));
         spinnerSearchDistance.addChangeListener(e -> {

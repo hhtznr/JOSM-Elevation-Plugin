@@ -27,6 +27,7 @@ import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
 import javax.swing.event.HyperlinkEvent;
+import javax.swing.text.DefaultCaret;
 
 import org.openstreetmap.josm.actions.JosmAction;
 import org.openstreetmap.josm.data.Bounds;
@@ -160,6 +161,8 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
         textAreaFeedback.setLineWrap(true);
         textAreaFeedback.setWrapStyleWord(true);
         textAreaFeedback.setEditable(false);
+        DefaultCaret caret = (DefaultCaret) textAreaFeedback.getCaret();
+        caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
 
         spinnerSearchAreaExpansionLat = new JSpinner(new SpinnerNumberModel(0.1, 0.0, 5.0, 0.01));
         spinnerSearchAreaExpansionLat.addChangeListener(e -> {

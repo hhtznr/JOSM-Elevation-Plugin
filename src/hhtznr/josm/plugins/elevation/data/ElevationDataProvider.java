@@ -520,7 +520,7 @@ public class ElevationDataProvider implements SRTMFileDownloadListener, SRTMTile
             // If we could not establish an SRTM tile to be, put an empty data set with
             // status "file missing" into the cache
             if (srtmTile == null) {
-                SRTMTile.Type dummyType = ElevationPreferences.getSRTMType();
+                SRTMTile.Type dummyType = getSRTMType();
                 srtmTile = tileCache.putOrUpdateSRTMTile(srtmTileID, dummyType, null, SRTMTile.Status.FILE_MISSING,
                         null);
             }

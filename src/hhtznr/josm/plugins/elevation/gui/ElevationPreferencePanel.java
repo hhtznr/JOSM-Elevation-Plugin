@@ -32,8 +32,6 @@ import org.openstreetmap.josm.gui.widgets.JosmComboBox;
 import org.openstreetmap.josm.gui.widgets.JosmPasswordField;
 import org.openstreetmap.josm.gui.widgets.JosmTextField;
 import org.openstreetmap.josm.gui.widgets.VerticallyScrollablePanel;
-import org.openstreetmap.josm.spi.preferences.Config;
-import org.openstreetmap.josm.spi.preferences.IPreferences;
 import org.openstreetmap.josm.tools.GBC;
 import org.openstreetmap.josm.tools.I18n;
 import org.openstreetmap.josm.tools.ImageProvider;
@@ -585,29 +583,26 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
      * Saves the current values to the preferences.
      */
     public void saveToPreferences() {
-        IPreferences pref = Config.getPref();
-        pref.put(ElevationPreferences.SRTM_TYPE, ((SRTMTile.Type) cbSRTMType.getSelectedItem()).toString());
-        pref.put(ElevationPreferences.ELEVATION_INTERPOLATION,
-                ((SRTMTile.Interpolation) cbInterpolation.getSelectedItem()).toString());
-        pref.putInt(ElevationPreferences.RAM_CACHE_SIZE_LIMIT, (Integer) spCacheSize.getValue());
-        pref.putBoolean(ElevationPreferences.ELEVATION_LAYER_ENABLED, cbEnableElevationLayer.isSelected());
-        pref.putDouble(ElevationPreferences.ELEVATION_LAYER_RENDERING_LIMIT, (Double) spRenderingLimit.getValue());
-        pref.putInt(ElevationPreferences.CONTOUR_LINE_ISOSTEP, (Integer) spIsostep.getValue());
-        pref.putDouble(ElevationPreferences.CONTOUR_LINE_STROKE_WIDTH, (Double) spStrokeWidth.getValue());
-        ElevationPreferences.putContourLineColor(btnStrokeColor.getSelectedColor());
-        pref.putInt(ElevationPreferences.HILLSHADE_ALTITUDE, (Integer) spHillshadeAltitude.getValue());
-        pref.putInt(ElevationPreferences.HILLSHADE_AZIMUTH, (Integer) spHillshadeAzimuth.getValue());
-        pref.putBoolean(ElevationPreferences.ELEVATION_AUTO_DOWNLOAD_ENABLED, cbEnableAutoDownload.isSelected());
+        ElevationPreferences.setSRTMType((SRTMTile.Type) cbSRTMType.getSelectedItem());
+        ElevationPreferences.setElevationInterpolation((SRTMTile.Interpolation) cbInterpolation.getSelectedItem());
+        ElevationPreferences.setRAMCacheSizeLimit((Integer) spCacheSize.getValue());
+        ElevationPreferences.setElevationLayerEnabled(cbEnableElevationLayer.isSelected());
+        ElevationPreferences.setElevationLayerRenderingLimit((Double) spRenderingLimit.getValue());
+        ElevationPreferences.setContourLineIsostep((Integer) spIsostep.getValue());
+        ElevationPreferences.setContourLineStrokeWidth((Double) spStrokeWidth.getValue());
+        ElevationPreferences.setContourLineColor(btnStrokeColor.getSelectedColor());
+        ElevationPreferences.setHillshadeAltitude((Integer) spHillshadeAltitude.getValue());
+        ElevationPreferences.setHillshadeAzimuth((Integer) spHillshadeAzimuth.getValue());
+        ElevationPreferences.setAutoDownloadEnabled(cbEnableAutoDownload.isSelected());
 
         if (rbPasswordAuth.isSelected()) {
             String userName = tfUserName.getText();
             char[] password = tfPassword.getPassword();
             ElevationPreferences.storeEarthdataCredentials(userName, password);
-            pref.put(ElevationPreferences.ELEVATION_SERVER_AUTH_TYPE, SRTMFileDownloader.AuthType.BASIC.toString());
+            ElevationPreferences.setElevationServerAuthType(SRTMFileDownloader.AuthType.BASIC);
         } else if (rbAuthBearer.isSelected()) {
             ElevationPreferences.storeEarthdataOAuthToken(tfAuthBearer.getText());
-            pref.put(ElevationPreferences.ELEVATION_SERVER_AUTH_TYPE,
-                    SRTMFileDownloader.AuthType.BEARER_TOKEN.toString());
+            ElevationPreferences.setElevationServerAuthType(SRTMFileDownloader.AuthType.BEARER_TOKEN);
         }
     }
 
@@ -615,7 +610,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
         private static final long serialVersionUID = 1L;
 
-        RemoveCredentialsAction() {
+        public RemoveCredentialsAction() {
             putValue(NAME, "Remove credentials");
             putValue(SHORT_DESCRIPTION,
                     "Remove user name and password from JOSM. This does not affect the associated Earthdata account.");
@@ -635,7 +630,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
         private static final long serialVersionUID = 1L;
 
-        RemoveAuthBearerAction() {
+        public RemoveAuthBearerAction() {
             putValue(NAME, "Remove bearer token");
             putValue(SHORT_DESCRIPTION, "Remove bearer token from JOSM. This does not revoke the bearer token.");
             new ImageProvider("cancel").getResource().attachImageIcon(this);

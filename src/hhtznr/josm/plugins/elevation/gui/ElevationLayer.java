@@ -33,7 +33,6 @@ import org.openstreetmap.josm.gui.dialogs.LayerListDialog;
 import org.openstreetmap.josm.gui.dialogs.LayerListPopup;
 import org.openstreetmap.josm.gui.layer.Layer;
 import org.openstreetmap.josm.gui.widgets.UrlLabel;
-import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.GBC;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Logging;
@@ -455,8 +454,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         public void actionPerformed(ActionEvent e) {
             ElevationLayer layer = ElevationLayer.this;
             layer.contourLinesEnabled = !layer.contourLinesEnabled;
-            Config.getPref().putBoolean(ElevationPreferences.ELEVATION_CONTOUR_LINES_ENABLED,
-                    layer.contourLinesEnabled);
+            ElevationPreferences.setContourLinesEnabled(layer.contourLinesEnabled);
             if (layer.contourLinesEnabled)
                 Logging.info("Elevation: Contour lines enabled");
             else
@@ -486,7 +484,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         public void actionPerformed(ActionEvent e) {
             ElevationLayer layer = ElevationLayer.this;
             layer.hillshadeEnabled = !layer.hillshadeEnabled;
-            Config.getPref().putBoolean(ElevationPreferences.ELEVATION_HILLSHADE_ENABLED, layer.hillshadeEnabled);
+           ElevationPreferences.setHillshadeEnabled(layer.hillshadeEnabled);
             if (layer.hillshadeEnabled)
                 Logging.info("Elevation: Hillshade enabled");
             else
@@ -516,7 +514,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         public void actionPerformed(ActionEvent e) {
             ElevationLayer layer = ElevationLayer.this;
             layer.elevationRasterEnabled = !layer.elevationRasterEnabled;
-            Config.getPref().putBoolean(ElevationPreferences.ELEVATION_RASTER_ENABLED, layer.elevationRasterEnabled);
+            ElevationPreferences.setElevationRasterEnabled(layer.elevationRasterEnabled);
             if (layer.elevationRasterEnabled)
                 Logging.info("Elevation: Elevation raster points enabled");
             else
@@ -546,8 +544,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         public void actionPerformed(ActionEvent e) {
             ElevationLayer layer = ElevationLayer.this;
             layer.lowestAndHighestPointsEnabled = !layer.lowestAndHighestPointsEnabled;
-            Config.getPref().putBoolean(ElevationPreferences.LOWEST_AND_HIGHEST_POINTS_ENABLED,
-                    layer.lowestAndHighestPointsEnabled);
+            ElevationPreferences.setLowestAndHighestPointsEnabled(layer.lowestAndHighestPointsEnabled);
             if (layer.lowestAndHighestPointsEnabled)
                 Logging.info("Elevation: Lowest and highest points enabled");
             else

@@ -507,12 +507,31 @@ public class ElevationPreferences {
     }
 
     /**
+     * Removes the legacy 'elevation enabled' preference from the settings.
+     *
+     * @return {@code true} if the value has changed.
+     */
+    public static boolean removeElevationEnabledPreference() {
+        return Config.getPref().put(LEGACY_ELEVATION_ENABLED, null);
+    }
+
+    /**
      * Returns the SRTM type.
      *
      * @return The SRTM type, {@code SRTM1} or {@code SRTM3}.
      */
     public static SRTMTile.Type getSRTMType() {
         return SRTMTile.Type.fromString(Config.getPref().get(SRTM_TYPE, DEFAULT_SRTM_TYPE.toString()));
+    }
+
+    /**
+     * Sets the specified SRTM type in the settings.
+     *
+     * @param type The SRTM type.
+     * @return {@code true} if the SRTM type has changed.
+     */
+    public static boolean setSRTMType(SRTMTile.Type type) {
+        return Config.getPref().put(SRTM_TYPE, type.toString());
     }
 
     /**
@@ -526,12 +545,32 @@ public class ElevationPreferences {
     }
 
     /**
+     * Sets the specified elevation interpolation in the settings.
+     *
+     * @param interpolation The interpolation type.
+     * @return {@code true} if the interpolation type has changed.
+     */
+    public static boolean setElevationInterpolation(SRTMTile.Interpolation interpolation) {
+        return Config.getPref().put(ELEVATION_INTERPOLATION, interpolation.toString());
+    }
+
+    /**
      * Returns the size limit of the in-memory SRTM tile cache.
      *
-     * @return Size limit of the in-memory SRTM tile cache.
+     * @return Size limit of the in-memory SRTM tile cache in MiB.
      */
     public static int getRAMCacheSizeLimit() {
         return Config.getPref().getInt(RAM_CACHE_SIZE_LIMIT, DEFAULT_RAM_CACHE_SIZE_LIMIT);
+    }
+
+    /**
+     * Sets the sitze limit of the in-memory SRTM tile cache in the settings.
+     *
+     * @param limit Size limit of the in-memory SRTM tile cache in MiB.
+     * @return {@code true} if the limit value has changed.
+     */
+    public static boolean setRAMCacheSizeLimit(int limit) {
+        return Config.getPref().putInt(RAM_CACHE_SIZE_LIMIT, limit);
     }
 
     /**
@@ -541,6 +580,17 @@ public class ElevationPreferences {
      */
     public static boolean getElevationLayerEnabled() {
         return Config.getPref().getBoolean(ELEVATION_LAYER_ENABLED, DEFAULT_ELEVATION_LAYER_ENABLED);
+    }
+
+    /**
+     * Sets the elevation visualization layer to the specified enabled state in the
+     * settings.
+     *
+     * @param enabled If {@code true}, the elevation layer is enabled.
+     * @return {@code true} if the enabled state has changed.
+     */
+    public static boolean setElevationLayerEnabled(boolean enabled) {
+        return Config.getPref().putBoolean(ELEVATION_LAYER_ENABLED, enabled);
     }
 
     /**
@@ -556,12 +606,36 @@ public class ElevationPreferences {
     }
 
     /**
+     * Sets the limit value for rendering of the elevation visualization layer in
+     * the settings.
+     *
+     * @param arcDegrees The limit value of arc degrees in latitude or longitude
+     *                   covered by the map view, where, if exceeded, elevation data
+     *                   caching as well as contour line and hillshade rendering
+     *                   will be temporarily switched off.
+     * @return {@code true} if the limit value has changed.
+     */
+    public static boolean setElevationLayerRenderingLimit(double arcDegrees) {
+        return Config.getPref().putDouble(ELEVATION_LAYER_RENDERING_LIMIT, arcDegrees);
+    }
+
+    /**
      * Returns whether rendering of elevation contour lines is enabled.
      *
      * @return {@code true} if enabled.
      */
     public static boolean getContourLinesEnabled() {
         return Config.getPref().getBoolean(ELEVATION_CONTOUR_LINES_ENABLED, DEFAULT_ELEVATION_CONTOUR_LINES_ENABLED);
+    }
+
+    /**
+     * Sets rendering of elevation contour lines to the specified state.
+     *
+     * @param enabled If {@code true}, contour line rendering is enabled.
+     * @return {@code true} if the enabled state has changed.
+     */
+    public static boolean setContourLinesEnabled(boolean enabled) {
+        return Config.getPref().putBoolean(ELEVATION_CONTOUR_LINES_ENABLED, enabled);
     }
 
     /**
@@ -574,12 +648,33 @@ public class ElevationPreferences {
     }
 
     /**
+     * Sets the step between adjacent elevation contour lines to the specified value
+     * in the settings.
+     *
+     * @param isostep The step between adjacent elevation contour lines.
+     * @return {@code true} if the isostep value has changed.
+     */
+    public static boolean setContourLineIsostep(int isostep) {
+        return Config.getPref().putInt(CONTOUR_LINE_ISOSTEP, isostep);
+    }
+
+    /**
      * Returns the contour line stroke width.
      *
      * @return The width of the stroke for drawing of contour lines in px.
      */
     public static float getContourLineStrokeWidth() {
         return (float) Config.getPref().getDouble(CONTOUR_LINE_STROKE_WIDTH, DEFAULT_CONTOUR_LINE_STROKE_WIDTH);
+    }
+
+    /**
+     * Sets the contour line stroke width to the specified value in the settings.
+     *
+     * @param width The width of the stroke for drawing of contour lines in px.
+     * @return {@code true} if the stroke width value has changed.
+     */
+    public static boolean setContourLineStrokeWidth(double width) {
+        return Config.getPref().putDouble(CONTOUR_LINE_STROKE_WIDTH, width);
     }
 
     /**
@@ -598,7 +693,7 @@ public class ElevationPreferences {
      * @param color The color to set as contour line color in the settings.
      * @return {@code true} if the color value has changed.
      */
-    public static boolean putContourLineColor(Color color) {
+    public static boolean setContourLineColor(Color color) {
         String htmlColor = ColorHelper.color2html(color, false);
         return Config.getPref().put(CONTOUR_LINE_COLOR, htmlColor);
     }
@@ -613,12 +708,34 @@ public class ElevationPreferences {
     }
 
     /**
+     * Sets rendering of hillshade to the specified state in the settings.
+     *
+     * @param enabled If {@code true}, hillshade rendering is enabled.
+     * @return {@code true} if the enabled state has changed.
+     */
+    public static boolean setHillshadeEnabled(boolean enabled) {
+        return Config.getPref().putBoolean(ELEVATION_HILLSHADE_ENABLED, enabled);
+    }
+
+    /**
      * Returns the altitude of the hillshade illumination source.
      *
      * @return The altitude of the illumination source in hillshade computation.
      */
     public static int getHillshadeAltitude() {
         return Config.getPref().getInt(HILLSHADE_ALTITUDE, DEFAULT_HILLSHADE_ALTITUDE);
+    }
+
+    /**
+     * Sets the altitude of the illumination source in hillshade computation to the
+     * specified value in the settings.
+     *
+     * @param altitude The altitude of the illumination source in hillshade
+     *                 computation.
+     * @return {@code true} if the altitude value has changed.
+     */
+    public static boolean setHillshadeAltitude(int altitude) {
+        return Config.getPref().putInt(HILLSHADE_ALTITUDE, altitude);
     }
 
     /**
@@ -631,12 +748,35 @@ public class ElevationPreferences {
     }
 
     /**
+     * Sets the azimuth of the illumination source in hillshade computation to the
+     * specified value in the settings.
+     *
+     * @param azimuth The azimuth of the illumination source in hillshade
+     *                computation.
+     * @return {@code true} if the azimuth value has changed.
+     */
+    public static boolean setHillshadeAzimuth(int azimuth) {
+        return Config.getPref().putInt(HILLSHADE_ALTITUDE, azimuth);
+    }
+
+    /**
      * Returns whether rendering of the elevation raster is enabled.
      *
      * @return {@code true} if enabled.
      */
     public static boolean getElevationRasterEnabled() {
         return Config.getPref().getBoolean(ELEVATION_RASTER_ENABLED, DEFAULT_ELEVATION_RASTER_ENABLED);
+    }
+
+    /**
+     * Sets rendering of the elevation raster to the specified state in the
+     * settings.
+     *
+     * @param enabled If {@code true}, rendering of the elevation raster is enabled.
+     * @return {@code true} if the enabled state has changed.
+     */
+    public static boolean setElevationRasterEnabled(boolean enabled) {
+        return Config.getPref().putBoolean(ELEVATION_HILLSHADE_ENABLED, enabled);
     }
 
     /**
@@ -651,12 +791,34 @@ public class ElevationPreferences {
     }
 
     /**
+     * Sets rendering of the lowest and highest points within the map view to the
+     * specified state in the settings.
+     *
+     * @param enabled If {@code true}, rendering of the lowest and highest points
+     *                within the map view is enabled.
+     * @return {@code true} if the enabled state has changed.
+     */
+    public static boolean setLowestAndHighestPointsEnabled(boolean enabled) {
+        return Config.getPref().putBoolean(LOWEST_AND_HIGHEST_POINTS_ENABLED, enabled);
+    }
+
+    /**
      * Returns whether auto-download of SRTM tiles is enabled.
      *
      * @return {@code true} if enabled.
      */
     public static boolean getAutoDownloadEnabled() {
         return Config.getPref().getBoolean(ELEVATION_AUTO_DOWNLOAD_ENABLED, DEFAULT_ELEVATION_AUTO_DOWNLOAD_ENABLED);
+    }
+
+    /**
+     * Sets auto-download of SRTM tiles to the specified state in the settings.
+     *
+     * @param enabled If {@code true}, auto-download of SRTM tiles is enabled.
+     * @return {@code true} if the enabled state has changed.
+     */
+    public static boolean setAutoDownloadEnabled(boolean enabled) {
+        return Config.getPref().putBoolean(ELEVATION_AUTO_DOWNLOAD_ENABLED, enabled);
     }
 
     /**
@@ -667,6 +829,18 @@ public class ElevationPreferences {
     public static SRTMFileDownloader.AuthType getElevationServerAuthType() {
         return SRTMFileDownloader.AuthType.fromString(
                 Config.getPref().get(ELEVATION_SERVER_AUTH_TYPE, DEFAULT_ELEVATION_SERVER_AUTH_TYPE.toString()));
+    }
+
+    /**
+     * Sets the type of authentication at the elevation data download server to the
+     * specified type in the settings.
+     *
+     * @param authType The type of authentication at the elevation data download
+     *                 server.
+     * @return {@code true} if the value has changed.
+     */
+    public static boolean setElevationServerAuthType(SRTMFileDownloader.AuthType authType) {
+        return Config.getPref().put(ELEVATION_SERVER_AUTH_TYPE, authType.toString());
     }
 
     /**

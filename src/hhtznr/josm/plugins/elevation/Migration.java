@@ -6,8 +6,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
-import org.openstreetmap.josm.spi.preferences.Config;
-import org.openstreetmap.josm.spi.preferences.IPreferences;
 import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
@@ -98,7 +96,7 @@ public class Migration {
      * @since 0.14.0
      */
     public static void removeElevationEnabledPreference() {
-        IPreferences pref = Config.getPref();
-        pref.put(ElevationPreferences.LEGACY_ELEVATION_ENABLED, null);
+        if (ElevationPreferences.removeElevationEnabledPreference())
+            Logging.info("Removed legacy 'elevation enabled' preference");
     }
 }

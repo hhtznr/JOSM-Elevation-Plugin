@@ -241,14 +241,16 @@ public class SRTMTileGrid implements SRTMTileCacheListener {
     public Bounds getBounds(RasterIndexBounds rasterIndexBounds) {
         double latRange = gridBounds.getHeight();
         double lonRange = gridBounds.getWidth();
+        double latScale = latRange / (double) (rasterHeight - 1);
+        double lonScale = lonRange / (double) (rasterWidth - 1);
         double minLat = gridIntLatSouth
-                + latRange * (double) rasterIndexBounds.latIndexSouth / (double) (rasterHeight - 1);
+                + latScale * (double) rasterIndexBounds.latIndexSouth;
         double maxLat = gridIntLatSouth
-                + latRange * (double) rasterIndexBounds.latIndexNorth / (double) (rasterHeight - 1);
+                + latScale * (double) rasterIndexBounds.latIndexNorth;
         double minLon = gridIntLonWest
-                + lonRange * (double) rasterIndexBounds.lonIndexWest / (double) (rasterWidth - 1);
+                + lonScale * (double) rasterIndexBounds.lonIndexWest;
         double maxLon = gridIntLonWest
-                + lonRange * (double) rasterIndexBounds.lonIndexEast / (double) (rasterWidth - 1);
+                + lonScale * (double) rasterIndexBounds.lonIndexEast;
         return new Bounds(minLat, minLon, maxLat, maxLon);
     }
 
@@ -406,14 +408,16 @@ public class SRTMTileGrid implements SRTMTileCacheListener {
         LinkedList<LatLonEle> lowestPoints = new LinkedList<>();
         LinkedList<LatLonEle> highestPoints = new LinkedList<>();
 
+        double latScale = gridBoundsHeight / (double)(rasterHeight - 1);
+        double lonScale = gridBoundsWidth  / (double)(rasterWidth  - 1);
+
         for (int latIndex = 0; latIndex < rasterBoundsHeight - 1; latIndex++) {
             int gridRasterLatIndex = latIndex + rasterIndexBounds.latIndexSouth;
-            double lat = gridIntLatSouth + gridBoundsHeight * (double) gridRasterLatIndex / (double) (rasterHeight - 1);
+            double lat = gridIntLatSouth + latScale * gridRasterLatIndex;
 
             for (int lonIndex = 0; lonIndex < rasterBoundsWidth - 1; lonIndex++) {
                 int gridRasterLonIndex = lonIndex + rasterIndexBounds.lonIndexWest;
-                double lon = gridIntLonWest
-                        + gridBoundsWidth * (double) gridRasterLonIndex / (double) (rasterWidth - 1);
+                double lon = gridIntLonWest + lonScale * gridRasterLonIndex;
 
                 short ele = getElevation(gridRasterLatIndex, gridRasterLonIndex);
 
@@ -542,8 +546,9 @@ public class SRTMTileGrid implements SRTMTileCacheListener {
             for (int lonIndex = rasterIndexBounds.lonIndexWest; lonIndex <= rasterIndexBounds.lonIndexEast; lonIndex++) {
                 short ele = getElevation(latIndex, lonIndex);
                 // Ignore data voids in the assessment of minimum elevation
-                if (ele != SRTMTile.SRTM_DATA_VOID)
-                    minEle = (short) Math.min(minEle, ele);
+                if (ele == SRTMTile.SRTM_DATA_VOID)
+                    continue;
+                minEle = (short) Math.min(minEle, ele);
                 maxEle = (short) Math.max(maxEle, ele);
             }
         }

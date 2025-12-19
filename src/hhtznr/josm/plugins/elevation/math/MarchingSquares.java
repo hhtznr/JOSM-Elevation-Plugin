@@ -86,6 +86,9 @@ public class MarchingSquares {
         int rasterWidth = rasterIndexBounds.getWidth();
         int rasterHeight = rasterIndexBounds.getHeight();
 
+        double latScale = latRange / (double) (rasterHeight - 1);
+        double lonScale = lonRange / (double) (rasterWidth - 1);
+
         // Stores the currently processed row of cells so the northern edges can be
         // reused in the next iteration
         Cell[] previousCellRowToSouth = new Cell[rasterWidth];
@@ -93,8 +96,8 @@ public class MarchingSquares {
         // Therefore, we stop to iterate at index "length - 2" in both dimensions
         for (int latIndex = 0; latIndex < rasterHeight - 1; latIndex++) {
             int gridRasterLatIndex = latIndex + rasterIndexBounds.latIndexSouth;
-            double latNorth = minLatSouth + latRange * (double) (latIndex + 1) / (double) (rasterHeight - 1);
-            double latSouth = minLatSouth + latRange * (double) latIndex / (double) (rasterHeight - 1);
+            double latNorth = minLatSouth + latScale * (double) (latIndex + 1);
+            double latSouth = minLatSouth + latScale * (double) latIndex;
 
             // The cell to the west of the currently processed cell
             Cell cellToWest = null;
@@ -115,7 +118,7 @@ public class MarchingSquares {
                 if (cellToWest == null) {
                     eleNorthWest = tileGrid.getElevation(gridRasterLatIndex + 1, gridRasterLonIndex);
                     eleSouthWest = tileGrid.getElevation(gridRasterLatIndex, gridRasterLonIndex);
-                    lonWest = minLonWest + lonRange * (double) lonIndex / (double) (rasterWidth - 1);
+                    lonWest = minLonWest + lonScale * (double) lonIndex;
                 }
                 // If there is a previous cell to the west,
                 // copy values of shared edge and vertices instead

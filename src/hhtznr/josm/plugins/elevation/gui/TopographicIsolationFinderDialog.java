@@ -46,6 +46,7 @@ import org.openstreetmap.josm.tools.GBC;
 
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
+import hhtznr.josm.plugins.elevation.data.OsmPrimitiveUtil;
 import hhtznr.josm.plugins.elevation.data.CoordinateUtil;
 import hhtznr.josm.plugins.elevation.tools.ElevationToolListener;
 import hhtznr.josm.plugins.elevation.tools.TopographicIsolationFinder;
@@ -776,6 +777,8 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
             ds.addPrimitive(new Node(peakNode));
             for (Node node : nodes)
                 ds.addPrimitive(new Node(node));
+            // Add a rectangular way to indicate the search bounds
+            OsmPrimitiveUtil.addBoundsToDataSet(ds, searchBounds, "Search bounds");
             String layerName = "Isolation reference points";
             String peakName = textFieldPeakName.getText();
             if (peakName != null && !peakName.isBlank())

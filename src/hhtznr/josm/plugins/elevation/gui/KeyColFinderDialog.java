@@ -47,6 +47,7 @@ import org.openstreetmap.josm.tools.OpenBrowser;
 
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
+import hhtznr.josm.plugins.elevation.data.OsmPrimitiveUtil;
 import hhtznr.josm.plugins.elevation.tools.ElevationToolListener;
 import hhtznr.josm.plugins.elevation.tools.KeyColFinder;
 
@@ -988,6 +989,8 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
             ds.addPrimitive(new Node(peakANode));
             ds.addPrimitive(new Node(peakBNode));
             ds.addPrimitive(new Node(keyColNode));
+            // Add a rectangular way to indicate the search bounds
+            OsmPrimitiveUtil.addBoundsToDataSet(ds, searchBounds, "Search bounds");
             String layerName = "Key col";
             String peakAName = textFieldPeakAName.getText();
             if (peakAName != null && !peakAName.isBlank())

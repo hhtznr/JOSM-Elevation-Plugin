@@ -2,10 +2,8 @@ package hhtznr.josm.plugins.elevation.gui;
 
 import java.util.List;
 
-import org.openstreetmap.josm.data.Bounds;
-
 import hhtznr.josm.plugins.elevation.data.LatLonLine;
-import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
+import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
 import hhtznr.josm.plugins.elevation.math.MarchingSquares;
 
 /**
@@ -18,17 +16,16 @@ public class ContourLines extends AbstractSRTMTileGridPaintable {
 
     public static final int BOUNDS_SCALE_RASTER_STEP = 2;
 
+    private static final int UNDEFINED_ISOSTEP = -1;
+
     private final int isostep;
     private final IsolineSegments[] isolineSegments;
 
     /**
-     * Creates a new set of contour lines covering the specified bounds.
+     * Creates a new set of contour lines covering the bounds of the specified view.
      *
-     * @param tileGrid             The SRTM tile grid from which elevation data
+     * @param tileGridView         The SRTM tile grid view from which elevation data
      *                             should be obtained.
-     * @param renderingBounds      The bounds in latitude-longitude coordinate
-     *                             space, within which these contour lines can be
-     *                             rendered. The very edges might show artifacts.
      * @param isostep              The step in meters between adjacent contour
      *                             lines.
      * @param lowerCutoffElevation The elevation value below which contour lines
@@ -36,38 +33,34 @@ public class ContourLines extends AbstractSRTMTileGridPaintable {
      * @param upperCutoffElevation The elevation value above which contour lines
      *                             will not be generated.
      */
-    public ContourLines(SRTMTileGrid tileGrid, Bounds renderingBounds, int isostep, int lowerCutoffElevation,
+    public ContourLines(SRTMTileGridView tileGridView, int isostep, int lowerCutoffElevation,
             int upperCutoffElevation) {
-        super(tileGrid, tileGrid.getViewBoundsScaledByRasterStep(renderingBounds, BOUNDS_SCALE_RASTER_STEP),
-                renderingBounds);
-        this.isostep = isostep;
-        short[] isovalues = tileGrid.getIsovalues(renderingRasterIndexBounds, isostep, lowerCutoffElevation,
-                upperCutoffElevation);
-        MarchingSquares marchingSquares = new MarchingSquares(this.tileGrid, this.renderingBounds,
-                renderingRasterIndexBounds, isovalues);
-        this.isolineSegments = marchingSquares.getIsolineSegments();
+        this(tileGridView, tileGridView.getIsovalues(isostep, lowerCutoffElevation, upperCutoffElevation), isostep);
     }
 
     /**
      * Creates a new set of contour lines for the specified isovalues only covering
-     * the specified bounds.
+     * the bounds of the specified view.
      *
-     * @param tileGrid        The SRTM tile grid from which elevation data should be
-     *                        obtained.
-     * @param renderingBounds The bounds in latitude-longitude coordinate space,
-     *                        within which these contour lines can be rendered. The
-     *                        very edges might show artifacts.
+     * @param tileGridView    The SRTM tile grid view from which elevation data
+     *                        should be obtained.
      * @param isovalues       The isovalues for which to create contour lines.
      */
-    public ContourLines(SRTMTileGrid tileGrid, Bounds renderingBounds, short[] isovalues) {
-        super(tileGrid, tileGrid.getViewBoundsScaledByRasterStep(renderingBounds, BOUNDS_SCALE_RASTER_STEP),
-                renderingBounds);
-        if (isovalues.length < 2)
-            this.isostep = 1;
-        else
-            this.isostep = isovalues[1] - isovalues[0];
-        MarchingSquares marchingSquares = new MarchingSquares(this.tileGrid, this.renderingBounds,
-                renderingRasterIndexBounds, isovalues);
+    public ContourLines(SRTMTileGridView tileGridView, short[] isovalues) {
+        this(tileGridView, isovalues, UNDEFINED_ISOSTEP);
+    }
+
+    private ContourLines(SRTMTileGridView tileGridView, short[] isovalues, int isostep) {
+        super(tileGridView);
+        if (isostep == UNDEFINED_ISOSTEP) {
+            if (isovalues.length < 2)
+                this.isostep = 1;
+            else
+                this.isostep = isovalues[1] - isovalues[0];
+        } else {
+            this.isostep = isostep;
+        }
+        MarchingSquares marchingSquares = new MarchingSquares(this.tileGridView, isovalues);
         this.isolineSegments = marchingSquares.getIsolineSegments();
     }
 

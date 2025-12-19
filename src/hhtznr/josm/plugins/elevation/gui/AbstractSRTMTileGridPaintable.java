@@ -2,7 +2,7 @@ package hhtznr.josm.plugins.elevation.gui;
 
 import org.openstreetmap.josm.data.Bounds;
 
-import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
+import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
 
 /**
  * Abstract superclass of paintable objects obtained from an
@@ -14,65 +14,38 @@ import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
  */
 public abstract class AbstractSRTMTileGridPaintable {
 
-    protected final SRTMTileGrid tileGrid;
-    protected final SRTMTileGrid.RasterIndexBounds renderingRasterIndexBounds;
-    protected Bounds viewBounds;
-    protected Bounds renderingBounds;
+    protected final SRTMTileGridView tileGridView;
 
     /**
-     * Abstract constructor of a paintable object obtained from an SRTM tile grid.
+     * Abstract constructor of a paintable object obtained from an SRTM tile grid
+     * view.
      *
-     * @param tileGrid        The grid of SRTM tiles, where this paintable should
-     *                        obtain elevation values from its raster.
-     * @param viewBounds      The bounds of the view on this paintable object, where
-     *                        flawless paint output shall be provided.
-     * @param renderingBounds The rendering bounds which are larger than the view
-     *                        bounds. The rendering bounds have to be used for
-     *                        proper alignment of this paintable. They should always
-     *                        be outside the viewport area. The area of the
-     *                        rendering bounds, which is outside the view bounds may
-     *                        contain artifacts present to technical reasons of the
-     *                        implementation.
+     * @param tileGridView The SRTM tile grid view, where this paintable should
+     *                     obtain elevation values from its raster.
      */
-    public AbstractSRTMTileGridPaintable(SRTMTileGrid tileGrid, Bounds viewBounds, Bounds renderingBounds) {
-        this.tileGrid = tileGrid;
-        SRTMTileGrid.RasterIndexBounds viewRasterIndexBounds = tileGrid.getRasterIndexBounds(viewBounds);
-        this.renderingRasterIndexBounds = tileGrid.getRasterIndexBounds(renderingBounds);
-        this.viewBounds = tileGrid.getBounds(viewRasterIndexBounds);;
-        this.renderingBounds = tileGrid.getBounds(renderingRasterIndexBounds);
+    public AbstractSRTMTileGridPaintable(SRTMTileGridView tileGridView) {
+        this.tileGridView = tileGridView;
     }
 
     /**
-     * Returns the view bounds.
-     *
-     * @return The nominal bounds within which useful paint output can be provided
-     *         by this paintable.
-     */
-    public Bounds getViewBounds() {
-        return viewBounds;
-    }
-
-    /**
-     * Returns the rendering bounds.
-     *
-     * @return The actual bounds which are larger than the nominal bounds. The
-     *         actual bounds have to be used for proper alignment of this paintable.
-     *         They should always be outside the viewport area.
-     */
-    public Bounds getRenderingBounds() {
-        return renderingBounds;
-    }
-
-    /**
-     * Returns whether the given bounds are covered by the nominal bounds of this
-     * tile grid paintable.
+     * Returns whether the given bounds are covered by the bounds of this tile grid
+     * paintable.
      *
      * @param bounds The bounds for which to check if they are covered by this tile
      *               grid paintable.
-     * @return {@code true} if the given bounds are contained in the nominal bounds,
+     * @return {@code true} if the given bounds are contained in the bounds,
      *         {@code false} otherwise.
      */
     public boolean covers(Bounds bounds) {
-        return viewBounds.contains(bounds);
+        return tileGridView.getBounds().contains(bounds);
+    }
+
+    /**
+     * Returns the coordinate bounds of this paintable object.
+     *
+     * @return The coordinate bounds.
+     */
+    public Bounds getBounds() {
+        return tileGridView.getBounds();
     }
 }

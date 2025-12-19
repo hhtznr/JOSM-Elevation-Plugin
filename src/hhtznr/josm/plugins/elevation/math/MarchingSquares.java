@@ -7,7 +7,7 @@ import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
 
 import hhtznr.josm.plugins.elevation.data.LatLonLine;
-import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
+import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
 import hhtznr.josm.plugins.elevation.gui.ContourLines;
 
 /**
@@ -18,34 +18,25 @@ import hhtznr.josm.plugins.elevation.gui.ContourLines;
  */
 public class MarchingSquares {
 
-    private final SRTMTileGrid tileGrid;
-    private final SRTMTileGrid.RasterIndexBounds rasterIndexBounds;
-    private final Bounds bounds;
+    private final SRTMTileGridView tileGridView;
     private final short[] isovalues;
 
     /**
      * Creates a new instance of the Marching Squares algorithm dedicated to
      * computing contour lines from elevation raster data.
      *
-     * @param tileGrid          The grid of SRTM tiles, where elevation values can
-     *                          be obtained from its raster.
-     * @param bounds            The bounds of the elevation raster data.
-     * @param rasterIndexBounds The elevation raster indices of the tile grid, which
-     *                          correspond to the bounds.
-     * @param isovalues         An array of elevation values defining the isolevels,
-     *                          i.e. the elevation values for which contour lines
-     *                          should be generated, e.g. {@code { 650, 660, 670,
-     *                          680 }}. The isovalues should be greater or equal to
-     *                          the minimum value of the elevation raster and less
-     *                          or equal to the maximum value of the elevation
-     *                          raster. Otherwise, computation effort will be
-     *                          wasted.
+     * @param tileGridView The SRTM tile grid view from which elevation data should
+     *                     be obtained.
+     * @param isovalues    An array of elevation values defining the isolevels, i.e.
+     *                     the elevation values for which contour lines should be
+     *                     generated, e.g. {@code { 650, 660, 670, 680 }}. The
+     *                     isovalues should be greater or equal to the minimum value
+     *                     of the elevation raster and less or equal to the maximum
+     *                     value of the elevation raster. Otherwise, computation
+     *                     effort will be wasted.
      */
-    public MarchingSquares(SRTMTileGrid tileGrid, Bounds bounds, SRTMTileGrid.RasterIndexBounds rasterIndexBounds,
-            short[] isovalues) {
-        this.tileGrid = tileGrid;
-        this.rasterIndexBounds = rasterIndexBounds;
-        this.bounds = bounds;
+    public MarchingSquares(SRTMTileGridView tileGridView, short[] isovalues) {
+        this.tileGridView = tileGridView;
         this.isovalues = isovalues;
     }
 
@@ -78,13 +69,14 @@ public class MarchingSquares {
     private ContourLines.IsolineSegments getIsolineSegments(short isovalue) {
         ArrayList<LatLonLine> isolineSegments = new ArrayList<>();
 
+        Bounds bounds = tileGridView.getBounds();
         double latRange = bounds.getHeight();
         double lonRange = bounds.getWidth();
         double minLatSouth = bounds.getMinLat();
         double minLonWest = bounds.getMinLon();
 
-        int rasterWidth = rasterIndexBounds.getWidth();
-        int rasterHeight = rasterIndexBounds.getHeight();
+        int rasterWidth = tileGridView.getWidth();
+        int rasterHeight = tileGridView.getHeight();
 
         double latScale = latRange / (double) (rasterHeight - 1);
         double lonScale = lonRange / (double) (rasterWidth - 1);
@@ -95,7 +87,6 @@ public class MarchingSquares {
         // Iterate through the grid, accessing the data as "square" 2 x 2 cells
         // Therefore, we stop to iterate at index "length - 2" in both dimensions
         for (int latIndex = 0; latIndex < rasterHeight - 1; latIndex++) {
-            int gridRasterLatIndex = latIndex + rasterIndexBounds.latIndexSouth;
             double latNorth = minLatSouth + latScale * (double) (latIndex + 1);
             double latSouth = minLatSouth + latScale * (double) latIndex;
 
@@ -104,7 +95,6 @@ public class MarchingSquares {
             for (int lonIndex = 0; lonIndex < rasterWidth - 1; lonIndex++) {
                 // The cell to the south of the currently processed cell
                 Cell cellToSouth = previousCellRowToSouth[lonIndex];
-                int gridRasterLonIndex = lonIndex + rasterIndexBounds.lonIndexWest;
                 // Get the elevation values and the edge longitudes
                 short eleNorthWest;
                 short eleNorthEast;
@@ -116,8 +106,8 @@ public class MarchingSquares {
                 // If there is no previous cell to the west,
                 // compute these values from the elevation raster
                 if (cellToWest == null) {
-                    eleNorthWest = tileGrid.getElevation(gridRasterLatIndex + 1, gridRasterLonIndex);
-                    eleSouthWest = tileGrid.getElevation(gridRasterLatIndex, gridRasterLonIndex);
+                    eleNorthWest = tileGridView.getElevation(latIndex + 1, lonIndex);
+                    eleSouthWest = tileGridView.getElevation(latIndex, lonIndex);
                     lonWest = minLonWest + lonScale * (double) lonIndex;
                 }
                 // If there is a previous cell to the west,
@@ -140,11 +130,11 @@ public class MarchingSquares {
                  *                           +---+---+---+---+---+---+---+---+---+
                  * </pre>
                  */
-                eleNorthEast = tileGrid.getElevation(gridRasterLatIndex + 1, gridRasterLonIndex + 1);
+                eleNorthEast = tileGridView.getElevation(latIndex + 1, lonIndex + 1);
 
                 // Same under consideration of a previous cell to the south
                 if (cellToSouth == null) {
-                    eleSouthEast = tileGrid.getElevation(gridRasterLatIndex, gridRasterLonIndex + 1);
+                    eleSouthEast = tileGridView.getElevation(latIndex, lonIndex + 1);
                     lonEast = minLonWest + lonRange * (double) (lonIndex + 1) / (double) (rasterWidth - 1);
                 } else {
                     eleSouthEast = cellToSouth.eleNorthEast;

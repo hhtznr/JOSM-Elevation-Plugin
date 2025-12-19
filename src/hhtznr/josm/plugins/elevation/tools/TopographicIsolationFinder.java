@@ -16,6 +16,8 @@ import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.LatLonLine;
 import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
+import hhtznr.josm.plugins.elevation.data.SRTMTileGridException;
+import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
 import hhtznr.josm.plugins.elevation.gui.ContourLines;
 
 /**
@@ -76,11 +78,17 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
      */
     public List<LatLonEle> determineReferencePoints(LatLonEle peak, Bounds searchBounds, double distanceTolerance,
             double deadZoneRadius) throws InterruptedException {
-        SRTMTileGrid tileGrid = new SRTMTileGrid(elevationDataProvider, searchBounds);
+        SRTMTileGridView tileGridView;
+        try {
+            tileGridView = new SRTMTileGrid(elevationDataProvider, searchBounds).getView(searchBounds);
+        } catch (SRTMTileGridException e) {
+            Logging.error("Elevation: Cannot establish topographic prominence search: " + e.toString());
+            return null;
+        }
 
         informListenersAboutStatus("Waiting for all needed SRTM tiles to be cached");
         // Wait for the tiles being cached
-        tileGrid.waitForTilesCached();
+        tileGridView.waitForTilesCached();
         if (Thread.currentThread().isInterrupted()) {
             String message = "Interrupted while waiting for tiles to be cached";
             informListenersAboutStatus(message);
@@ -93,7 +101,7 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
         short[] isovalues = new short[] { isolationReferenceElevation };
 
         informListenersAboutStatus("Creating contour lines");
-        ContourLines contourLines = new ContourLines(tileGrid, searchBounds, isovalues);
+        ContourLines contourLines = new ContourLines(tileGridView, isovalues);
         ContourLines.IsolineSegments[] allIsoLineSegments = contourLines.getIsolineSegments();
         if (allIsoLineSegments.length < 1) {
             String message = "Could not determine isolation for peak " + peak.toString()

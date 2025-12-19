@@ -1,15 +1,8 @@
 package hhtznr.josm.plugins.elevation.data;
 
-import java.util.LinkedList;
-import java.util.List;
-
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.ILatLon;
 import org.openstreetmap.josm.tools.Logging;
-
-import hhtznr.josm.plugins.elevation.gui.ContourLines;
-import hhtznr.josm.plugins.elevation.gui.ElevationRaster;
-import hhtznr.josm.plugins.elevation.gui.HillshadeImageTile;
 
 /**
  * A 2D grid of SRTM tiles arranged in their geographic order to cover given
@@ -135,7 +128,7 @@ public class SRTMTileGrid implements SRTMTileCacheListener {
                 + gridWidth + " x " + gridHeight + ", raster width x height = " + rasterWidth + " x " + rasterHeight);
 
         elevationDataProvider.addTileCacheListener(this);
-        areAllSRTMTilesCached();
+        areAllTilesCached();
     }
 
     /**
@@ -179,15 +172,18 @@ public class SRTMTileGrid implements SRTMTileCacheListener {
     }
 
     /**
-     * Returns raster index bounds which correspond to the given coordinate bounds.
+     * Returns a view for convenient index-based access to a subarea of this SRTM
+     * tile grid.
      *
-     * @param bounds The bounds for which to determine the the indices of the
-     *               elevation raster of this SRTM tile grid, which correspond to
-     *               the given bounds.
-     * @return Bounds described by indices of this SRTM tile grid's elevation
-     *         raster, which correspond to the given coordinate bounds.
+     * @param bounds The coordinate bounds of the subarea.
+     * @return The tile grid view corresponding to the specified subarea.
      */
-    public RasterIndexBounds getRasterIndexBounds(Bounds bounds) {
+    public SRTMTileGridView getView(Bounds bounds) throws SRTMTileGridException {
+        if (!gridBounds.contains(bounds)) {
+            String message = "Bounds " + gridBounds.toString()
+                    + " of this SRTM tile grid do not contain the request view bounds " + bounds.toString();
+            throw new SRTMTileGridException(message);
+        }
 
         double minLat = bounds.getMinLat();
         double minLon = bounds.getMinLon();
@@ -229,28 +225,33 @@ public class SRTMTileGrid implements SRTMTileCacheListener {
         int rasterIndexWest = gridIndexWest * effectiveTileLength + tileIndexWest;
         int rasterIndexEast = gridIndexEast * effectiveTileLength + tileIndexEast;
 
-        return new RasterIndexBounds(rasterIndexSouth, rasterIndexNorth, rasterIndexWest, rasterIndexEast);
+        Bounds viewBounds = getBounds(rasterIndexSouth, rasterIndexNorth, rasterIndexWest, rasterIndexEast);
+        return new SRTMTileGridView(this, rasterIndexSouth, rasterIndexNorth, rasterIndexWest, rasterIndexEast,
+                viewBounds);
     }
 
     /**
      * Returns coordinate bounds which correspond to the given raster index bounds.
      *
-     * @param rasterIndexBounds The raster index bounds.
+     * @param latIndexSouth The raster index of the southernmost raster points
+     *                      ({@code 0 <= latIndexSouth <= getHeight()}).
+     * @param latIndexNorth The raster index of the northernmost raster points
+     *                      ({@code 0 <= latIndexNorth <= getHeight(); latIndexSouth < latIndexNorth}).
+     * @param lonIndexWest  The raster index of the westernmost raster points
+     *                      ({@code 0 <= lonIndexWest <= getWidth()}).
+     * @param lonIndexEast  The raster index of the easternmost raster points
+     *                      ({@code 0 <= lonIndexEast <= getWidth(); lonIndexWest < lonIndexEast}).
      * @return The corresponding coordinate bounds
      */
-    public Bounds getBounds(RasterIndexBounds rasterIndexBounds) {
+    private Bounds getBounds(int latIndexSouth, int latIndexNorth, int lonIndexWest, int lonIndexEast) {
         double latRange = gridBounds.getHeight();
         double lonRange = gridBounds.getWidth();
         double latScale = latRange / (double) (rasterHeight - 1);
         double lonScale = lonRange / (double) (rasterWidth - 1);
-        double minLat = gridIntLatSouth
-                + latScale * (double) rasterIndexBounds.latIndexSouth;
-        double maxLat = gridIntLatSouth
-                + latScale * (double) rasterIndexBounds.latIndexNorth;
-        double minLon = gridIntLonWest
-                + lonScale * (double) rasterIndexBounds.lonIndexWest;
-        double maxLon = gridIntLonWest
-                + lonScale * (double) rasterIndexBounds.lonIndexEast;
+        double minLat = gridIntLatSouth + latScale * (double) latIndexSouth;
+        double maxLat = gridIntLatSouth + latScale * (double) latIndexNorth;
+        double minLon = gridIntLonWest + lonScale * (double) lonIndexWest;
+        double maxLon = gridIntLonWest + lonScale * (double) lonIndexEast;
         return new Bounds(minLat, minLon, maxLat, maxLon);
     }
 
@@ -264,23 +265,25 @@ public class SRTMTileGrid implements SRTMTileCacheListener {
      *         point.
      */
     public int[] getClosestGridRasterIndices(ILatLon latLon) {
-        int intLat = (int) Math.floor(latLon.lat());
-        int intLon = (int) Math.floor(latLon.lon());
+        // Determine the array index at which to retrieve the elevation at the given
+        // location
+        double lat = latLon.lat();
+        if (lat < gridIntLatSouth || lat > gridIntLatNorth)
+            throw new IllegalArgumentException(
+                    "Given latitude " + lat + " is not within latitude range of SRTM tile grid from " + gridIntLatSouth
+                            + " to " + gridIntLatNorth);
 
-        int gridIndexLat = intLat - gridIntLatSouth;
-        int gridIndexLon = intLon - gridIntLonWest;
+        double lon = latLon.lon();
+        if (lon < gridIntLonWest || lon > gridIntLonEast)
+            throw new IllegalArgumentException(
+                    "Given longitude " + lon + " is not within longitude range of SRTM tile grid from " + gridIntLonWest
+                            + " to " + gridIntLonEast);
 
-        SRTMTile tile = srtmTiles[gridIndexLat * gridWidth + gridIndexLon];
-        int[] tileIndices = tile.getClosestIndices(latLon);
-        int tileIndexLat = tileIndices[0];
-        int tileIndexLon = tileIndices[1];
-
-        // Tiles overlap by one row or column
-        int effectiveTileLength = tileLength - 1;
-        int rasterIndexLat = gridIndexLat * effectiveTileLength + tileIndexLat;
-        int rasterIndexLon = gridIndexLon * effectiveTileLength + tileIndexLon;
-
-        return new int[] { rasterIndexLat, rasterIndexLon };
+        // gridHeight = gridIntLatNorth - gridIntLatSouth
+        int latIndex = (int) Math.round((lat - gridIntLatSouth) / gridHeight * (rasterHeight - 1));
+        // gridWidth = gridIntLonEast - gridIntLonWest
+        int lonIndex = (int) Math.round((lon - gridIntLonWest) / gridWidth * (rasterWidth - 1));
+        return new int[] { latIndex, lonIndex };
     }
 
     /**
@@ -383,210 +386,6 @@ public class SRTMTileGrid implements SRTMTileCacheListener {
     }
 
     /**
-     * Returns a list with two lists of the coordinate points from the elevation
-     * raster, which have the lowest and highest elevation within the given map
-     * bounds, respectively.
-     *
-     * @param bounds The bounds in latitude-longitude coordinate space.
-     * @return A list of two lists providing the coordinate points with the lowest
-     *         and highest elevation within the given bounds. The first list holds
-     *         the lowest points. The second list holds the highest points.
-     *         {@code null} is returned if not all SRTM tiles are cached yet.
-     */
-    public List<List<LatLonEle>> getLowestAndHighestPoints(Bounds bounds) {
-        if (!allTilesCached)
-            return null;
-
-        RasterIndexBounds rasterIndexBounds = getRasterIndexBounds(bounds);
-        int rasterBoundsWidth = rasterIndexBounds.getWidth();
-        int rasterBoundsHeight = rasterIndexBounds.getHeight();
-        double gridBoundsWidth = gridBounds.getWidth();
-        double gridBoundsHeight = gridBounds.getHeight();
-
-        short previousMinEle = Short.MAX_VALUE;
-        short previousMaxEle = Short.MIN_VALUE;
-        LinkedList<LatLonEle> lowestPoints = new LinkedList<>();
-        LinkedList<LatLonEle> highestPoints = new LinkedList<>();
-
-        double latScale = gridBoundsHeight / (double)(rasterHeight - 1);
-        double lonScale = gridBoundsWidth  / (double)(rasterWidth  - 1);
-
-        for (int latIndex = 0; latIndex < rasterBoundsHeight - 1; latIndex++) {
-            int gridRasterLatIndex = latIndex + rasterIndexBounds.latIndexSouth;
-            double lat = gridIntLatSouth + latScale * gridRasterLatIndex;
-
-            for (int lonIndex = 0; lonIndex < rasterBoundsWidth - 1; lonIndex++) {
-                int gridRasterLonIndex = lonIndex + rasterIndexBounds.lonIndexWest;
-                double lon = gridIntLonWest + lonScale * gridRasterLonIndex;
-
-                short ele = getElevation(gridRasterLatIndex, gridRasterLonIndex);
-
-                if (ele < previousMinEle) {
-                    lowestPoints.clear();
-                    lowestPoints.add(new LatLonEle(lat, lon, ele));
-                    previousMinEle = ele;
-                } else if (ele == previousMinEle) {
-                    lowestPoints.add(new LatLonEle(lat, lon, ele));
-                }
-
-                if (ele > previousMaxEle) {
-                    highestPoints.clear();
-                    highestPoints.add(new LatLonEle(lat, lon, ele));
-                    previousMaxEle = ele;
-                } else if (ele == previousMaxEle) {
-                    highestPoints.add(new LatLonEle(lat, lon, ele));
-                }
-            }
-        }
-
-        List<List<LatLonEle>> highestAndLowestPoints = new LinkedList<>();
-        highestAndLowestPoints.add(lowestPoints);
-        highestAndLowestPoints.add(highestPoints);
-        return highestAndLowestPoints;
-    }
-
-    /**
-     * Returns all raster coordinates and the associated elevation values within the
-     * bounds.
-     *
-     * @param renderingBounds The bounds, within which the requested elevation
-     *                        raster shall be renderable.
-     * @return All raster coordinates and the associated elevation values within the
-     *         bounds or {@code null} if not all of the SRTM tiles have the same
-     *         type (i.e. different raster dimensions) or if at least one of the
-     *         tiles is not valid (i.e. the data was not loaded yet or is not
-     *         available at all).
-     */
-    public ElevationRaster getElevationRaster(Bounds renderingBounds) {
-        if (!allTilesCached)
-            return null;
-        if (!covers(renderingBounds))
-            return null;
-        return new ElevationRaster(this, renderingBounds);
-    }
-
-    /**
-     * Creates a buffered image with the computed hillshade ARGB values for the
-     * elevation values of this SRTM tile grid.
-     *
-     * @param renderingBounds The bounds, within which the requested hillshade image
-     *                        shall be renderable.
-     * @param altitudeDeg     The altitude is the angle of the illumination source
-     *                        above the horizon. The units are in degrees, from 0
-     *                        (on the horizon) to 90 (overhead).
-     * @param azimuthDeg      The azimuth is the angular direction of the sun,
-     *                        measured from north in clockwise degrees from 0 to
-     *                        360.
-     * @param withPerimeter   If {@code} true, the a first and last row as well as
-     *                        the a first and last column without computed values
-     *                        will be added such that the size of the 2D array
-     *                        corresponds to that of the input data. If
-     *                        {@code false}, these rows and columns will be omitted.
-     * @return An image with the computed hillshade values or {@code null} if this
-     *         SRTM tile grid cannot deliver elevation values or there are less than
-     *         3 elevation values in one of the two dimensions.
-     */
-    public HillshadeImageTile getHillshadeImageTile(Bounds renderingBounds, double altitudeDeg, double azimuthDeg,
-            boolean withPerimeter) {
-        if (!allTilesCached)
-            return null;
-        if (!covers(renderingBounds))
-            return null;
-        return new HillshadeImageTile(this, renderingBounds, altitudeDeg, azimuthDeg, withPerimeter);
-    }
-
-    /**
-     * Returns a list of isoline segments defining elevation contour lines within
-     * the bounds. The segments do not have a useful order. This method will
-     * slightly adjust the bounds to the closest coordinates of the elevation
-     * raster.
-     *
-     * @param renderingBounds      The bounds, within which the requested contour
-     *                             lines shall be renderable.
-     * @param isostep              Step between two adjacent elevation contour
-     *                             lines.
-     * @param lowerCutoffElevation The elevation value below which contour lines
-     *                             will not be returned.
-     * @param upperCutoffElevation The elevation value above which contour lines
-     *                             will not be returned.
-     * @return A list of isoline segments defining elevation contour lines within
-     *         the bounds or {@code null} if not all of the SRTM tiles have the same
-     *         type (i.e. different raster dimensions) or if at least one of the
-     *         tiles is not valid (i.e. the data was not loaded yet or is not
-     *         available at all).
-     */
-    public ContourLines getContourLines(Bounds renderingBounds, int isostep, int lowerCutoffElevation,
-            int upperCutoffElevation) {
-        if (!allTilesCached)
-            return null;
-        if (!covers(renderingBounds))
-            return null;
-        return new ContourLines(this, renderingBounds, isostep, lowerCutoffElevation, upperCutoffElevation);
-    }
-
-    /**
-     * Returns an array of isovalues within the given bounds.
-     *
-     * @param rasterIndexBounds    The indices of the elevation raster of this SRTM
-     *                             tile grid, which describe the bounds, within
-     *                             which the isovalues shall be determined.
-     * @param isostep              Step between two adjacent isolines.
-     * @param lowerCutoffElevation The elevation value below which isovalues will
-     *                             not be returned.
-     * @param upperCutoffElevation The elevation value above which isovalues will
-     *                             not be returned.
-     * @return An array of the isovalues within the given bounds considering the
-     *         given isostep and the given cutoff values.
-     */
-    public short[] getIsovalues(RasterIndexBounds rasterIndexBounds, int isostep, int lowerCutoffElevation,
-            int upperCutoffElevation) {
-        short minEle = Short.MAX_VALUE;
-        short maxEle = SRTMTile.SRTM_DATA_VOID;
-        for (int latIndex = rasterIndexBounds.latIndexSouth; latIndex <= rasterIndexBounds.latIndexNorth; latIndex++) {
-            for (int lonIndex = rasterIndexBounds.lonIndexWest; lonIndex <= rasterIndexBounds.lonIndexEast; lonIndex++) {
-                short ele = getElevation(latIndex, lonIndex);
-                // Ignore data voids in the assessment of minimum elevation
-                if (ele == SRTMTile.SRTM_DATA_VOID)
-                    continue;
-                minEle = (short) Math.min(minEle, ele);
-                maxEle = (short) Math.max(maxEle, ele);
-            }
-        }
-        // If the area consists of data voids only,
-        // minEle will still have its initial value
-        if (minEle == Short.MAX_VALUE)
-            minEle = SRTMTile.SRTM_DATA_VOID;
-
-        // Apply the lower cutoff elevation value, if it is greater than the minimum
-        // elevation within the grid
-        minEle = (short) Math.max(minEle, lowerCutoffElevation);
-        // Apply the upper cutoff elevation value, if it is smaller than the maximum
-        // elevation within the grid
-        maxEle = (short) Math.min(maxEle, upperCutoffElevation);
-
-        // Determine the list of isovalues, i.e. the elevation levels for which contour
-        // lines should be computed
-        short minIsovalue;
-        short maxIsovalue;
-        if (minEle % isostep == 0)
-            minIsovalue = minEle;
-        else
-            minIsovalue = (short) ((minEle / isostep) * isostep);
-        if (maxEle % isostep == 0)
-            maxIsovalue = maxEle;
-        else
-            maxIsovalue = (short) ((maxEle / isostep) * isostep);
-        if (maxIsovalue < minIsovalue)
-            return new short[] {};
-        int nSteps = (maxIsovalue - minIsovalue) / isostep + 1;
-        short[] isovalues = new short[nSteps];
-        for (int i = 0; i < nSteps; i++)
-            isovalues[i] = (short) (minIsovalue + i * isostep);
-
-        return isovalues;
-    }
-
-    /**
      * Blocks the calling thread until all SRTM tiles for this grid have been
      * cached.
      * <p>
@@ -606,7 +405,7 @@ public class SRTMTileGrid implements SRTMTileCacheListener {
      */
     public synchronized void waitForTilesCached() throws InterruptedException {
         // Use a while loop to handle spurious wakeups
-        while (!areAllSRTMTilesCached()) {
+        while (!areAllTilesCached()) {
             // Wait, releasing the monitor lock until a worker thread notifies us
             wait();
         }
@@ -619,7 +418,7 @@ public class SRTMTileGrid implements SRTMTileCacheListener {
      * @return {@code true} if all SRTM tiles required to form this grid are
      *         available and in memory.
      */
-    public boolean areAllSRTMTilesCached() {
+    public boolean areAllTilesCached() {
         if (allTilesCached)
             return true;
         for (int gridLatIndex = 0; gridLatIndex < gridHeight; gridLatIndex++) {
@@ -711,68 +510,7 @@ public class SRTMTileGrid implements SRTMTileCacheListener {
     }
 
     private synchronized void onTileCached() {
-        if (areAllSRTMTilesCached())
+        if (areAllTilesCached())
             notifyAll(); // wakes all waiting threads
-    }
-
-    /**
-     * Bounds described by latitude and longitude indices of an SRTM tile grid.
-     */
-    public static class RasterIndexBounds {
-
-        /**
-         * The minimum (southernmost) index in latitude direction.
-         */
-        public final int latIndexSouth;
-
-        /**
-         * The maximum (northernmost) index in latitude direction.
-         */
-        public final int latIndexNorth;
-
-        /**
-         * The minimum (westernnmost) index in longitude direction.
-         */
-        public final int lonIndexWest;
-
-        /**
-         * The maximum (easternmost) index in longitude direction.
-         */
-        public final int lonIndexEast;
-
-        /**
-         * Creates new raster index bounds.
-         *
-         * @param latIndexSouth The minimum (southernmost) index in latitude direction.
-         * @param latIndexNorth The maximum (northernmost) index in latitude direction.
-         * @param lonIndexWest  The minimum (westernnmost) index in longitude direction.
-         * @param lonIndexEast  The maximum (easternmost) index in longitude direction.
-         */
-        public RasterIndexBounds(int latIndexSouth, int latIndexNorth, int lonIndexWest, int lonIndexEast) {
-            this.latIndexSouth = latIndexSouth;
-            this.latIndexNorth = latIndexNorth;
-            this.lonIndexWest = lonIndexWest;
-            this.lonIndexEast = lonIndexEast;
-        }
-
-        /**
-         * Returns the index height of these bounds.
-         *
-         * @return The index height of these bounds, i.e. the difference between
-         *         northernmost and southernmost index {@code +1}.
-         */
-        public int getHeight() {
-            return latIndexNorth - latIndexSouth + 1;
-        }
-
-        /**
-         * Returns the index width of these bounds.
-         *
-         * @return The index width of these bounds, i.e. the difference between
-         *         easternmost and westernmost index {@code +1}.
-         */
-        public int getWidth() {
-            return lonIndexEast - lonIndexWest + 1;
-        }
     }
 }

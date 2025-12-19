@@ -172,7 +172,7 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         Point upperLeft = null;
         if (scaledHillshadeImage == null || clipBoundsNotCoveredByHillshade || hillshadeParametersChanged) {
 
-            Bounds hillshadeRenderingBounds = hillshadeImageTile.renderingBounds;
+            Bounds hillshadeRenderingBounds = hillshadeImageTile.getBounds();
             hillshadeNorthWest = new LatLon(hillshadeRenderingBounds.getMaxLat(), hillshadeRenderingBounds.getMinLon());
             LatLon hillshadeSouthEast = new LatLon(hillshadeRenderingBounds.getMinLat(),
                     hillshadeRenderingBounds.getMaxLon());

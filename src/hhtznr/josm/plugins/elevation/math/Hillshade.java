@@ -15,7 +15,7 @@ import org.openstreetmap.josm.data.coor.ILatLon;
 import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.tools.Logging;
 
-import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
+import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
 
 /**
  * This class implements hill shading.
@@ -38,9 +38,8 @@ public class Hillshade {
      */
     public static final int MAX_HILLSHADE = 0;
 
-    private final SRTMTileGrid tileGrid;
-    private final SRTMTileGrid.RasterIndexBounds renderingRasterIndexBounds;
-    private Bounds renderingBounds;
+    private final SRTMTileGridView tileGridView;
+    private Bounds bounds = null;
 
     private double zenithRad;
     private double sinZenithRad;
@@ -57,27 +56,18 @@ public class Hillshade {
     /**
      * Creates a new hillshade instance.
      *
-     * @param tileGrid                   The SRTM tile grid providing the elevation
-     *                                   raster.
-     * @param renderingBounds            The bounds in latitude-longitude coordinate
-     *                                   space, within which this hillshade shall be
-     *                                   computed.
-     * @param renderingRasterIndexBounds The index bounds of the SRTM tile grid's
-     *                                   elevation raster corresponding to the
-     *                                   rendering bounds.
-     * @param altitudeDeg                The altitude is the angle of the
-     *                                   illumination source above the horizon. The
-     *                                   units are in degrees, from 0 (on the
-     *                                   horizon) to 90 (overhead).
-     * @param azimuthDeg                 The azimuth is the angular direction of the
-     *                                   sun, measured from north in clockwise
-     *                                   degrees from 0 to 360.
+     * @param tileGridView The SRTM tile grid view from which elevation data should
+     *                     be obtained.
+     * @param altitudeDeg  The altitude is the angle of the illumination source
+     *                     above the horizon. The units are in degrees, from 0 (on
+     *                     the horizon) to 90 (overhead).
+     * @param azimuthDeg   The azimuth is the angular direction of the sun, measured
+     *                     from north in clockwise degrees from 0 to 360.
      */
-    public Hillshade(SRTMTileGrid tileGrid, Bounds renderingBounds,
-            SRTMTileGrid.RasterIndexBounds renderingRasterIndexBounds, double altitudeDeg, double azimuthDeg) {
-        this.tileGrid = tileGrid;
-        this.renderingBounds = renderingBounds;
-        this.renderingRasterIndexBounds = renderingRasterIndexBounds;
+    public Hillshade(SRTMTileGridView tileGridView, double altitudeDeg, double azimuthDeg) {
+        this.tileGridView = tileGridView;
+        // Will be fine-adjusted once getHillshadeImage() was called
+        bounds = tileGridView.getBounds();
         zenithRad = getZenithRad(altitudeDeg);
         // Compute sinus and cosinus of zenith in order not to recompute it
         sinZenithRad = Math.sin(zenithRad);
@@ -91,8 +81,8 @@ public class Hillshade {
      *
      * @return The bounds within which hillshade was computed.
      */
-    public Bounds getRenderingBounds() {
-        return renderingBounds;
+    public Bounds getBounds() {
+        return bounds;
     }
 
     /**
@@ -291,14 +281,14 @@ public class Hillshade {
      */
     public BufferedImage getHillshadeImage(boolean withPerimeter) {
 
-        int latHeight = renderingRasterIndexBounds.getHeight();
-        int lonWidth = renderingRasterIndexBounds.getWidth();
+        int latHeight = tileGridView.getHeight();
+        int lonWidth = tileGridView.getWidth();
         if (latHeight < 3 || lonWidth < 3)
             return null;
 
         // Determine the z-factor and the cell size
-        final double zFactor = getZFactor(renderingBounds);
-        final double cellSize = renderingBounds.getHeight() / (double) (latHeight - 1);
+        final double zFactor = getZFactor(bounds);
+        final double cellSize = bounds.getHeight() / (double) (latHeight - 1);
 
         final int perimeterOffset = withPerimeter ? 1 : 0;
 
@@ -316,7 +306,6 @@ public class Hillshade {
         // values before the ends
         for (int latIndex = 0; latIndex < latHeight - 2; latIndex++) {
             // Final copy of the current latIndex for internal reference in the task
-            int gridRasterLatIndex = latIndex + renderingRasterIndexBounds.latIndexSouth;
             final int taskLatIndex = latIndex;
             // Create a task for computing each of the rows of the image
             Callable<BufferedImage> task = () -> {
@@ -324,13 +313,12 @@ public class Hillshade {
                 int[] pixels = new int[width];
                 short[] ele3x3 = new short[3 * 3];
                 for (int lonIndex = 0; lonIndex < lonWidth - 2; lonIndex++) {
-                    int gridRasterLonIndex = lonIndex + renderingRasterIndexBounds.lonIndexWest;
                     // Get 3 x 3 elevation values
-
-                    for (int lat = 0; lat < 3; lat++) {
-                        for (int lon = 0; lon < 3; lon++) {
-                            ele3x3[lat * 3 + lon] = tileGrid.getElevation(gridRasterLatIndex + lat,
-                                    gridRasterLonIndex + lon);
+                    for (int deltaLat = 0; deltaLat < 3; deltaLat++) {
+                        int latOffset = deltaLat * 3;
+                        for (int deltaLon = 0; deltaLon < 3; deltaLon++) {
+                            ele3x3[latOffset + deltaLon] = tileGridView.getElevation(taskLatIndex + deltaLat,
+                                    lonIndex + deltaLon);
                         }
                     }
                     // Compute the hillshade value
@@ -382,13 +370,14 @@ public class Hillshade {
         double south;
         double west;
         double east;
+        double halfCellSize = 0.5 * cellSize;
         if (withPerimeter) {
             // The hillshade bounds are 1/2 of the cell size wider in each direction than
             // the elevation raster bounds
-            north = renderingBounds.getMaxLat() + cellSize / 2;
-            south = renderingBounds.getMinLat() - cellSize / 2;
-            west = renderingBounds.getMinLon() - cellSize / 2;
-            east = renderingBounds.getMaxLon() + cellSize / 2;
+            north = bounds.getMaxLat() + halfCellSize;
+            south = bounds.getMinLat() - halfCellSize;
+            west = bounds.getMinLon() - halfCellSize;
+            east = bounds.getMaxLon() + halfCellSize;
             // Correct coordinates if outside of world map
             if (north > 90.0)
                 north = 90.0;
@@ -400,13 +389,14 @@ public class Hillshade {
                 east = east - 360.0;
         } else {
             // As above, but accommodate for the perimeter having been skipped
-            north = renderingBounds.getMaxLat() - cellSize / 2;
-            south = renderingBounds.getMinLat() + cellSize / 2;
-            west = renderingBounds.getMinLon() + cellSize / 2;
-            east = renderingBounds.getMaxLon() - cellSize / 2;
+            north = bounds.getMaxLat() - halfCellSize;
+            south = bounds.getMinLat() + halfCellSize;
+            west = bounds.getMinLon() + halfCellSize;
+            east = bounds.getMaxLon() - halfCellSize;
         }
 
-        renderingBounds = new Bounds(south, west, north, east);
+        // Fine-adjust the bounds of this hillshade
+        bounds = new Bounds(south, west, north, east);
 
         return image;
     }

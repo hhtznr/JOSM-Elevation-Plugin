@@ -6,7 +6,7 @@ import java.awt.image.BufferedImage;
 
 import org.openstreetmap.josm.data.Bounds;
 
-import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
+import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
 import hhtznr.josm.plugins.elevation.math.Hillshade;
 
 /**
@@ -22,28 +22,33 @@ public class HillshadeImageTile extends AbstractSRTMTileGridPaintable {
     private final BufferedImage image;
 
     /**
+     * Reference to the hillshade bounds, which - for conceptual reasons - are
+     * slightly offset with regard to the SRTM tile grid bounds.
+     */
+    private final Bounds bounds;
+
+    /**
      * Creates a new hillshade image tile.
      *
-     * @param tileGrid        The SRTM tile grid from which elevation data should be
-     *                        obtained.
-     * @param renderingBounds The bounds in latitude-longitude coordinate space,
-     *                        within which this hillshade image tile can be
-     *                        rendered. The very edges might show artifacts.
-     * @param altitudeDeg     The altitude is the angle of the illumination source
-     *                        above the horizon. The units are in degrees, from 0
-     *                        (on the horizon) to 90 (overhead).
-     * @param azimuthDeg      The azimuth is the angular direction of the sun,
-     *                        measured from north in clockwise degrees from 0 to
-     *                        360.
+     * @param tileGridView  The SRTM tile grid view from which elevation data should
+     *                      be obtained.
+     * @param altitudeDeg   The altitude is the angle of the illumination source
+     *                      above the horizon. The units are in degrees, from 0 (on
+     *                      the horizon) to 90 (overhead).
+     * @param azimuthDeg    The azimuth is the angular direction of the sun,
+     *                      measured from north in clockwise degrees from 0 to 360.
+     * @param withPerimeter If {@code} true, the a first and last row as well as the
+     *                      a first and last column without computed values will be
+     *                      added such that the size of the 2D array corresponds to
+     *                      that of the input data. If {@code false}, these rows and
+     *                      columns will be omitted.
      */
-    public HillshadeImageTile(SRTMTileGrid tileGrid, Bounds renderingBounds, double altitudeDeg, double azimuthDeg,
+    public HillshadeImageTile(SRTMTileGridView tileGridView, double altitudeDeg, double azimuthDeg,
             boolean withPerimeter) {
-        super(tileGrid, renderingBounds, renderingBounds);
-        Hillshade hillshade = new Hillshade(tileGrid, this.renderingBounds, renderingRasterIndexBounds, altitudeDeg,
-                azimuthDeg);
+        super(tileGridView);
+        Hillshade hillshade = new Hillshade(tileGridView, altitudeDeg, azimuthDeg);
         image = hillshade.getHillshadeImage(withPerimeter);
-        this.renderingBounds = hillshade.getRenderingBounds();
-        this.viewBounds = tileGrid.getViewBoundsScaledByRasterStep(this.renderingBounds, BOUNDS_SCALE_RASTER_STEP);
+        bounds = hillshade.getBounds();
     }
 
     /**
@@ -73,5 +78,10 @@ public class HillshadeImageTile extends AbstractSRTMTileGridPaintable {
         AffineTransform at = AffineTransform.getScaleInstance(sx, sy);
         AffineTransformOp scaleOp = new AffineTransformOp(at, AffineTransformOp.TYPE_BILINEAR);
         return scaleOp.filter(image, null);
+    }
+
+    @Override
+    public Bounds getBounds() {
+        return bounds;
     }
 }

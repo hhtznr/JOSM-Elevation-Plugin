@@ -1,9 +1,7 @@
 package hhtznr.josm.plugins.elevation.gui;
 
-import org.openstreetmap.josm.data.Bounds;
-
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
-import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
+import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
 
 /**
  * Class implementing an elevation raster composed of individual
@@ -19,13 +17,11 @@ public class ElevationRaster extends AbstractSRTMTileGridPaintable {
      * Creates a new elevation raster which covers the specified bounds with
      * elevation data points.
      *
-     * @param tileGrid        The SRTM tile grid from which elevation data should be
-     *                        obtained.
-     * @param renderingBounds The bounds in latitude-longitude coordinate space
-     *                        where this grid should be rendered.
+     * @param tileGridView The SRTM tile grid view from which elevation data should
+     *                     be obtained.
      */
-    public ElevationRaster(SRTMTileGrid tileGrid, Bounds renderingBounds) {
-        super(tileGrid, renderingBounds, renderingBounds);
+    public ElevationRaster(SRTMTileGridView tileGridView) {
+        super(tileGridView);
     }
 
     /**
@@ -35,9 +31,9 @@ public class ElevationRaster extends AbstractSRTMTileGridPaintable {
      *         dimension.
      */
     public int getHeight() {
-        if (!tileGrid.areAllSRTMTilesCached())
+        if (!tileGridView.areAllTilesCached())
             return 0;
-        return renderingRasterIndexBounds.latIndexNorth - renderingRasterIndexBounds.latIndexSouth;
+        return tileGridView.getHeight();
     }
 
     /**
@@ -47,9 +43,9 @@ public class ElevationRaster extends AbstractSRTMTileGridPaintable {
      *         dimension.
      */
     public int getWidth() {
-        if (!tileGrid.areAllSRTMTilesCached())
+        if (!tileGridView.areAllTilesCached())
             return 0;
-        return renderingRasterIndexBounds.lonIndexEast - renderingRasterIndexBounds.lonIndexWest;
+        return tileGridView.getWidth();
     }
 
     /**
@@ -62,7 +58,7 @@ public class ElevationRaster extends AbstractSRTMTileGridPaintable {
     public double getLatStep() {
         if (getHeight() < 2 || getWidth() < 1)
             return Double.POSITIVE_INFINITY;
-        return tileGrid.getLatLonStep();
+        return tileGridView.getLatLonStep();
     }
 
     /**
@@ -75,7 +71,7 @@ public class ElevationRaster extends AbstractSRTMTileGridPaintable {
     public double getLonStep() {
         if (getWidth() < 2 || getHeight() < 1)
             return Double.POSITIVE_INFINITY;
-        return tileGrid.getLatLonStep();
+        return tileGridView.getLatLonStep();
     }
 
     /**
@@ -86,8 +82,6 @@ public class ElevationRaster extends AbstractSRTMTileGridPaintable {
      * @return The latitude-longitude-elevation point of interest.
      */
     public LatLonEle getLatLonEle(int latIndex, int lonIndex) {
-        int gridRasterLatIndex = renderingRasterIndexBounds.latIndexSouth + latIndex;
-        int gridRasterLonIndex = renderingRasterIndexBounds.lonIndexWest + lonIndex;
-        return tileGrid.getLatLonEle(gridRasterLatIndex, gridRasterLonIndex);
+        return tileGridView.getLatLonEle(latIndex, lonIndex);
     }
 }

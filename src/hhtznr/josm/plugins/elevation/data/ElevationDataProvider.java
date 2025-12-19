@@ -274,7 +274,12 @@ public class ElevationDataProvider implements SRTMFileDownloadListener, SRTMTile
         synchronized (tileGridLock) {
             if (srtmTileGrid == null || !srtmTileGrid.covers(bounds))
                 srtmTileGrid = new SRTMTileGrid(this, bounds);
-            return srtmTileGrid.getLowestAndHighestPoints(bounds);
+            try {
+                return srtmTileGrid.getView(bounds).getLowestAndHighestPoints();
+            } catch (SRTMTileGridException e) {
+                Logging.error("Elevation: Cannot create lowest and highest points: " + e.toString());
+                return null;
+            }
         }
     }
 
@@ -292,7 +297,13 @@ public class ElevationDataProvider implements SRTMFileDownloadListener, SRTMTile
         synchronized (tileGridLock) {
             if (srtmTileGrid == null || !srtmTileGrid.covers(bounds))
                 srtmTileGrid = new SRTMTileGrid(this, bounds);
-            return srtmTileGrid.getElevationRaster(bounds);
+
+            try {
+                return srtmTileGrid.getView(bounds).getElevationRaster();
+            } catch (SRTMTileGridException e) {
+                Logging.error("Elevation: Cannot create elevation raster: " + e.toString());
+                return null;
+            }
         }
     }
 
@@ -322,7 +333,13 @@ public class ElevationDataProvider implements SRTMFileDownloadListener, SRTMTile
                     ContourLines.BOUNDS_SCALE_RASTER_STEP);
             if (!srtmTileGrid.covers(renderingBounds))
                 srtmTileGrid = new SRTMTileGrid(this, renderingBounds);
-            return srtmTileGrid.getContourLines(renderingBounds, isostep, lowerCutoffElevation, upperCutoffElevation);
+            try {
+                return srtmTileGrid.getView(renderingBounds).getContourLines(isostep, lowerCutoffElevation,
+                        upperCutoffElevation);
+            } catch (SRTMTileGridException e) {
+                Logging.error("Elevation: Cannot create contour lines: " + e.toString());
+                return null;
+            }
         }
     }
 
@@ -355,7 +372,14 @@ public class ElevationDataProvider implements SRTMFileDownloadListener, SRTMTile
                     HillshadeImageTile.BOUNDS_SCALE_RASTER_STEP);
             if (!srtmTileGrid.covers(renderingBounds))
                 srtmTileGrid = new SRTMTileGrid(this, renderingBounds);
-            return srtmTileGrid.getHillshadeImageTile(renderingBounds, altitudeDeg, azimuthDeg, withPerimeter);
+
+            try {
+                return srtmTileGrid.getView(renderingBounds).getHillshadeImageTile(altitudeDeg, azimuthDeg,
+                        withPerimeter);
+            } catch (SRTMTileGridException e) {
+                Logging.error("Elevation: Cannot create hillshade: " + e.toString());
+                return null;
+            }
         }
     }
 
@@ -663,7 +687,7 @@ public class ElevationDataProvider implements SRTMFileDownloadListener, SRTMTile
         // Check if all SRTM tiles of most recently requested tile grid are cached now
         // If so, inform listeners
         synchronized (tileGridLock) {
-            if (srtmTileGrid != null && srtmTileGrid.areAllSRTMTilesCached()) {
+            if (srtmTileGrid != null && srtmTileGrid.areAllTilesCached()) {
                 synchronized (listeners) {
                     for (ElevationDataProviderListener listener : listeners)
                         listener.elevationDataAvailable(srtmTileGrid);

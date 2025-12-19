@@ -1,8 +1,6 @@
 package hhtznr.josm.plugins.elevation.tools;
 
-import java.util.Arrays;
 import java.util.BitSet;
-import java.util.stream.IntStream;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.ILatLon;
@@ -10,6 +8,7 @@ import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
+import hhtznr.josm.plugins.elevation.data.SRTMTile;
 import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
 
 /**
@@ -189,6 +188,7 @@ public class KeyColFinder extends AbstractElevationTool {
         }
 
         SRTMTileGrid tileGrid = new SRTMTileGrid(elevationDataProvider, bounds);
+        informListenersAboutStatus("Waiting for SRTM tiles to be cached");
         tileGrid.waitForTilesCached();
         if (Thread.currentThread().isInterrupted()) {
             String message = "Interrupted while waiting for tiles to be cached";
@@ -202,39 +202,133 @@ public class KeyColFinder extends AbstractElevationTool {
         int height = tileGrid.getRasterHeight();
         init(width, height);
 
-        informListenersAboutStatus("Preparing cells");
+        informListenersAboutStatus("Preparing elevation cells for key col search");
 
-        Cell[] cells = new Cell[width * height];
-        IntStream.range(0, height).parallel().forEach(latIndex -> {
-            for (int lonIndex = 0; lonIndex < width; lonIndex++) {
-                short ele = tileGrid.getElevation(latIndex, lonIndex);
-                cells[latIndex * width + lonIndex] = new Cell(latIndex, lonIndex, ele);
+        short minElevation = Short.MAX_VALUE;
+        short maxElevation = Short.MIN_VALUE;
+        int validCount = 0;
+
+        // 1. Find min/max elevation, skipping voids.
+        for (int latIndex = 0; latIndex < height; latIndex++) {
+            // Check thread interruption occasionally.
+            if ((latIndex & 31) == 0 && Thread.currentThread().isInterrupted()) {
+                String message = "Interrupted while scanning elevations";
+                informListenersAboutStatus(message);
+                Logging.info("Elevation: Key col finder: " + message);
+                return null;
             }
-        });
+            for (int lonIndex = 0; lonIndex < width; lonIndex++) {
+                short elevation = tileGrid.getElevation(latIndex, lonIndex);
+                // Skip SRTM data voids
+                if (elevation == SRTMTile.SRTM_DATA_VOID)
+                    continue;
+                validCount++;
+                if (elevation < minElevation)
+                    minElevation = elevation;
+                if (elevation > maxElevation)
+                    maxElevation = elevation;
+            }
+        }
 
-        Arrays.parallelSort(cells, (a, b) -> Short.compare(b.ele, a.ele));
+        if (validCount == 0) {
+            informListenersAboutStatus("No valid elevation data in bounds (all void)");
+            Logging.info("Elevation: Key col finder: All elevation data in searc bounds represents data voids");
+            return null;
+        }
+        informListenersAboutStatus("Minimum and maximum elevation determined: " + minElevation + " / " + maxElevation);
 
-        informListenersAboutStatus("Initialize union-find structures");
-        // init union-find
-        for (int i = 0; i < parent.length; i++) {
-            if (Thread.currentThread().isInterrupted()) {
+        // Compute range. After the earlier 'validCount == 0' check, maxE >= minE is
+        // guaranteed so elevationRange must be >= 1. We only need a defensive check for
+        // an
+        // unexpectedly large range (corrupted tiles or upstream bug). Use 65536 as
+        // an upper bound for 16-bit data.
+        int elevationRange = (int) maxElevation - (int) minElevation + 1;
+
+        // 2. Build histogram counts, skipping voids
+        int[] histogramCounts = new int[elevationRange];
+        for (int latIndex = 0; latIndex < height; latIndex++) {
+            if ((latIndex & 31) == 0 && Thread.currentThread().isInterrupted()) {
+                String message = "Interrupted while building elevation histogram";
+                informListenersAboutStatus(message);
+                Logging.info("Elevation: Key col finder: " + message);
+                return null;
+            }
+            for (int lonIndex = 0; lonIndex < width; lonIndex++) {
+                short elevation = tileGrid.getElevation(latIndex, lonIndex);
+                if (elevation == SRTMTile.SRTM_DATA_VOID)
+                    continue;
+                histogramCounts[elevation - minElevation]++;
+            }
+        }
+        informListenersAboutStatus("Established " + elevationRange + " elevation histogram counts");
+
+        // 3. Compute start positions for descending order (highest elevation first)
+        int[] elevationRangeStartPositions = new int[elevationRange];
+        int position = 0;
+        for (int bucket = elevationRange - 1; bucket >= 0; bucket--) {
+            elevationRangeStartPositions[bucket] = position;
+            position += histogramCounts[bucket];
+        }
+        informListenersAboutStatus("Bucketing of elevation ranges completed");
+
+        // 4. Fill sortedIndices with linear indices of valid cells in descending
+        // elevation order
+        // elevationRangeStartPositions initially holds bucket starts
+        // we reuse it as a write-cursor and advance it while filling
+        int[] sortedIndices = new int[position]; // position == validCount
+        for (int latIndex = 0; latIndex < height; latIndex++) {
+            int latOffset = latIndex * width;
+            for (int lonIndex = 0; lonIndex < width; lonIndex++) {
+                short elevation = tileGrid.getElevation(latIndex, lonIndex);
+                if (elevation == SRTMTile.SRTM_DATA_VOID)
+                    continue;
+                // Determine the bucket
+                int bucket = elevation - minElevation;
+                // Read current write pointer
+                int writePosition = elevationRangeStartPositions[bucket];
+                // Write the linear index value to the current write pointer
+                sortedIndices[writePosition] = latOffset + lonIndex;
+                // Advance the write pointer by 1 to obtain the correct position upon next
+                // access to this bucket
+                elevationRangeStartPositions[bucket] = writePosition + 1;
+            }
+        }
+        informListenersAboutStatus("Cell indices sorted in descending elevation order");
+
+        // 5. Initialize union-find parents
+        for (int index = 0; index < parent.length; index++) {
+            if ((index & 31) == 0 && Thread.currentThread().isInterrupted()) {
                 String message = "Interrupted while initalizing union-find";
                 informListenersAboutStatus(message);
                 Logging.info("Elevation: Key col finder: " + message);
                 throw new InterruptedException(message);
             }
-            parent[i] = i;
+            // Initially, all cells reference to themselves as parent
+            parent[index] = index;
         }
-        // ensure BitSets are cleared
+        // clear flags
         active.clear();
         hasPeakA.clear();
         hasPeakB.clear();
+        informListenersAboutStatus("Union-find structures initialized");
 
+        // 6. Prepare peak indices and search directions
         int[] peakAIndices = tileGrid.getClosestGridRasterIndices(peakA);
         int[] peakBIndices = tileGrid.getClosestGridRasterIndices(peakB);
 
-        hasPeakA.set(peakAIndices[0] * width + peakAIndices[1]);
-        hasPeakB.set(peakBIndices[0] * width + peakBIndices[1]);
+        // If peaks land on void cells, find nearest non-void cell as a fallback.
+        int peakAIndexLinear = peakAIndices[0] * width + peakAIndices[1];
+        int peakBIndexLinear = peakBIndices[0] * width + peakBIndices[1];
+        if (tileGrid.getElevation(peakAIndices[0], peakAIndices[1]) == SRTMTile.SRTM_DATA_VOID)
+            peakAIndexLinear = findNearestNonVoidIndex(tileGrid, peakAIndices[0], peakAIndices[1]);
+
+        if (tileGrid.getElevation(peakBIndices[0], peakBIndices[1]) == SRTMTile.SRTM_DATA_VOID)
+            peakBIndexLinear = findNearestNonVoidIndex(tileGrid, peakBIndices[0], peakBIndices[1]);
+
+        if (peakAIndexLinear >= 0)
+            hasPeakA.set(peakAIndexLinear);
+        if (peakBIndexLinear >= 0)
+            hasPeakB.set(peakBIndexLinear);
 
         // Number of union-find neighbors (4 or 8)
         int[][] directions;
@@ -243,22 +337,24 @@ public class KeyColFinder extends AbstractElevationTool {
         else
             directions = EIGHT_DIRECTIONS;
 
-        informListenersAboutStatus("Iterate over cells to find key col");
-        // iterate from high to low
-        for (Cell cell : cells) {
-            if (Thread.currentThread().isInterrupted()) {
-                String message = "Interrupted while iterating over cells";
+        // 7. Iterate over cells from high to low using sortedIndices (linear indexes)
+        informListenersAboutStatus("Iterate over elevation cells to find key col");
+        for (int linearIndex : sortedIndices) {
+            if ((linearIndex & 31) == 0 && Thread.currentThread().isInterrupted()) {
+                String message = "Interrupted while iterating over elevation cells";
                 informListenersAboutStatus(message);
                 Logging.info("Elevation: Key col finder: " + message);
                 throw new InterruptedException(message);
             }
-            int cellIndex = cell.latIndex * width + cell.lonIndex;
+            int latIndex = linearIndex / width;
+            int lonIndex = linearIndex - latIndex * width;
+            int cellIndex = linearIndex;
             active.set(cellIndex);
 
             // union with active neighbors
             for (int[] direction : directions) {
-                int neighborLatIndex = cell.latIndex + direction[0];
-                int neighborLonIndex = cell.lonIndex + direction[1];
+                int neighborLatIndex = latIndex + direction[0];
+                int neighborLonIndex = lonIndex + direction[1];
                 if (inBounds(neighborLatIndex, neighborLonIndex)) {
                     int neighborIndex = neighborLatIndex * width + neighborLonIndex;
                     if (active.get(neighborIndex))
@@ -269,8 +365,8 @@ public class KeyColFinder extends AbstractElevationTool {
             int root = findParent(cellIndex);
             if (hasPeakA.get(root) && hasPeakB.get(root)) {
                 // This elevation is the key col elevation
-                LatLonEle keyColLatEle = tileGrid.getLatLonEle(cell.latIndex, cell.lonIndex);
-                return keyColLatEle;
+                LatLonEle keyColLatLonEle = tileGrid.getLatLonEle(latIndex, lonIndex);
+                return keyColLatLonEle;
             }
         }
 
@@ -291,35 +387,42 @@ public class KeyColFinder extends AbstractElevationTool {
     }
 
     /**
-     * Represents a single cell in the elevation raster.
-     * <p>
-     * Each cell stores its row and column indices in the raster grid and its
-     * elevation. Used internally by {@link KeyColFinder} to track cells when
-     * computing the key col using the union-find algorithm.
-     * </p>
+     * Find the nearest non-void cell to the given start position using an expanding
+     * square-ring search. Returns linear index (row * width + col) or -1 if no
+     * non-void cell is found within the raster.
      */
-    private static class Cell {
+    private int findNearestNonVoidIndex(SRTMTileGrid tileGrid, int latIndex, int lonIndex) {
+        if (latIndex < 0 || lonIndex < 0 || latIndex >= height || lonIndex >= width)
+            return -1;
+        if (tileGrid.getElevation(latIndex, lonIndex) != SRTMTile.SRTM_DATA_VOID)
+            return latIndex * width + lonIndex;
 
-        /** The row index (latitude) of the cell in the raster. */
-        public final int latIndex;
+        int maxRadius = Math.max(width, height);
+        for (int radius = 1; radius <= maxRadius; radius++) {
+            for (int deltaLat = -radius; deltaLat <= radius; deltaLat++) {
+                int deltaLonAbs = radius - Math.abs(deltaLat);
+                int candidateLatIndex = latIndex + deltaLat;
 
-        /** The column index (longitude) of the cell in the raster. */
-        public final int lonIndex;
+                // check the cell at lonIndex + deltaLonAbs
+                int candidateLonIndex = lonIndex + deltaLonAbs;
+                if (candidateLatIndex >= 0 && candidateLonIndex >= 0 && candidateLatIndex < height
+                        && candidateLonIndex < width) {
+                    if (tileGrid.getElevation(candidateLatIndex, candidateLonIndex) != SRTMTile.SRTM_DATA_VOID)
+                        return candidateLatIndex * width + candidateLonIndex;
+                }
 
-        /** The elevation of the cell in meters. */
-        public final short ele;
-
-        /**
-         * Creates a new cell with the specified indices and elevation.
-         *
-         * @param latIndex The row index (latitude) of the cell.
-         * @param lonIndex The column index (longitude) of the cell.
-         * @param ele      The elevation of the cell in meters.
-         */
-        Cell(int latIndex, int lonIndex, short ele) {
-            this.latIndex = latIndex;
-            this.lonIndex = lonIndex;
-            this.ele = ele;
+                // if deltaLonAbs == 0 the opposite side is the same cell; only check when
+                // deltaLonAbs != 0
+                if (deltaLonAbs != 0) {
+                    candidateLonIndex = lonIndex - deltaLonAbs;
+                    if (candidateLatIndex >= 0 && candidateLonIndex >= 0 && candidateLatIndex < height
+                            && candidateLonIndex < width) {
+                        if (tileGrid.getElevation(candidateLatIndex, candidateLonIndex) != SRTMTile.SRTM_DATA_VOID)
+                            return candidateLatIndex * width + candidateLonIndex;
+                    }
+                }
+            }
         }
+        return -1;
     }
 }

@@ -185,13 +185,15 @@ public class Hillshade {
      *         ({@code dz/dx}, index = {@code 0}) and y direction ({@code dz/dy},
      *         index = {@code 1}).
      */
-    public static double[] getChangeRatesInXY(short[] ele3x3, double cellSize) {
+    private static double[] getChangeRatesInXY(short[] ele3x3, double cellSize) {
         // https://pro.arcgis.com/en/pro-app/latest/tool-reference/3d-analyst/how-hillshade-works.htm
         /**
          * <pre>
-         * a b c
-         * d e f
-         * g h i
+         * +---x--->
+         * | a b c
+         * y d e f
+         * | g h i
+         * v
          * </pre>
          */
         // c @ ix = 0, iy = 2 -> i = ix * 3 + iy = 2
@@ -227,7 +229,7 @@ public class Hillshade {
      * @return The z-factor, i.e. the conversion factor from latitude-longitude
      *         (x-y) dimension of arc degrees to (z) elevation dimension of meters.
      */
-    public static double getZFactor(Bounds bounds) {
+    private static double getZFactor(Bounds bounds) {
         // https://pro.arcgis.com/en/pro-app/latest/tool-reference/3d-analyst/applying-a-z-factor.htm
         double latSouth = bounds.getMinLat();
         double latNorth = bounds.getMaxLat();
@@ -316,9 +318,13 @@ public class Hillshade {
                     // Get 3 x 3 elevation values
                     for (int deltaLat = 0; deltaLat < 3; deltaLat++) {
                         int latOffset = deltaLat * 3;
+                        // Get elevation from taskLatIndex + 2 (north) down to taskLatIndex + 0 (south)
+                        // Hillshade change rate algorithm expects y coordinate oriented from top to bottom
+                        int viewLatIndex = taskLatIndex + (2 - deltaLat);
                         for (int deltaLon = 0; deltaLon < 3; deltaLon++) {
-                            ele3x3[latOffset + deltaLon] = tileGridView.getElevation(taskLatIndex + deltaLat,
-                                    lonIndex + deltaLon);
+                            int viewLonIndex = lonIndex + deltaLon;
+                            int ele3x3LinearIndex = latOffset + deltaLon;
+                            ele3x3[ele3x3LinearIndex] = tileGridView.getElevation(viewLatIndex, viewLonIndex);
                         }
                     }
                     // Compute the hillshade value

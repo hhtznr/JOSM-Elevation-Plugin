@@ -14,7 +14,6 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSeparator;
 import javax.swing.JSpinner;
-import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
 
 import org.openstreetmap.josm.gui.ExtendedDialog;
@@ -40,38 +39,38 @@ public class ElevationLayerAdjustmentDialog extends ExtendedDialog {
     // General
     private final JosmComboBox<SRTMTile.Type> comboBoxSRTMType = new JosmComboBox<>(
             new SRTMTile.Type[] { SRTMTile.Type.SRTM1, SRTMTile.Type.SRTM3 });
-    private final JSpinner spRenderingLimit = new JSpinner(
-            new SpinnerNumberModel(ElevationPreferences.getElevationLayerRenderingLimit(),
-                    ElevationPreferences.MIN_ELEVATION_LAYER_RENDERING_LIMIT,
-                    ElevationPreferences.MAX_ELEVATION_LAYER_RENDERING_LIMIT,
-                    ElevationPreferences.INCR_ELEVATION_LAYER_RENDERING_LIMIT));
+    private final JSpinner spRenderingLimit = UIFactory.createSpinner(
+            ElevationPreferences.getElevationLayerRenderingLimit(),
+            ElevationPreferences.MIN_ELEVATION_LAYER_RENDERING_LIMIT,
+            ElevationPreferences.MAX_ELEVATION_LAYER_RENDERING_LIMIT,
+            ElevationPreferences.INCR_ELEVATION_LAYER_RENDERING_LIMIT);
 
     // Contour lines
-    private final JSpinner spIsostep = new JSpinner(new SpinnerNumberModel(ElevationPreferences.getContourLineIsostep(),
-            1, ElevationPreferences.MAX_CONTOUR_LINE_ISOSTEP, 1));
+    private final JSpinner spIsostep = UIFactory.createSpinner(ElevationPreferences.getContourLineIsostep(), 1,
+            ElevationPreferences.MAX_CONTOUR_LINE_ISOSTEP, 1);
 
-    private final JSpinner spUpperCutoffValue = new JSpinner(new SpinnerNumberModel(
+    private final JSpinner spUpperCutoffValue = UIFactory.createSpinner(
             ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION, ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION,
-            ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION, 1));
+            ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION, 1);
 
-    private final JSpinner spLowerCutoffValue = new JSpinner(new SpinnerNumberModel(
+    private final JSpinner spLowerCutoffValue = UIFactory.createSpinner(
             ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION, ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION,
-            ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION, 1));
+            ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION, 1);
 
-    private final JSpinner spStrokeWidth = new JSpinner(new SpinnerNumberModel(
-            ElevationPreferences.getContourLineStrokeWidth(), ElevationPreferences.MIN_CONTOUR_LINE_STROKE_WIDTH,
-            ElevationPreferences.MAX_CONTOUR_LINE_STROKE_WIDTH, ElevationPreferences.INCR_CONTOUR_LINE_STROKE_WIDTH));
+    private final JSpinner spStrokeWidth = UIFactory.createSpinner(ElevationPreferences.getContourLineStrokeWidth(),
+            ElevationPreferences.MIN_CONTOUR_LINE_STROKE_WIDTH, ElevationPreferences.MAX_CONTOUR_LINE_STROKE_WIDTH,
+            ElevationPreferences.INCR_CONTOUR_LINE_STROKE_WIDTH);
 
     private final ColorChooserButton btnStrokeColor;
 
     // Hillshade
-    private final JSpinner spHillshadeAltitude = new JSpinner(new SpinnerNumberModel(
-            ElevationPreferences.getHillshadeAltitude(), ElevationPreferences.MIN_HILLSHADE_ALTITUDE,
-            ElevationPreferences.MAX_HILLSHADE_ALTITUDE, ElevationPreferences.INCR_HILLSHADE_ALTITUDE));
+    private final JSpinner spHillshadeAltitude = UIFactory.createSpinner(ElevationPreferences.getHillshadeAltitude(),
+            ElevationPreferences.MIN_HILLSHADE_ALTITUDE, ElevationPreferences.MAX_HILLSHADE_ALTITUDE,
+            ElevationPreferences.INCR_HILLSHADE_ALTITUDE);
 
-    private final JSpinner spHillshadeAzimuth = new JSpinner(new SpinnerNumberModel(
-            ElevationPreferences.getHillshadeAzimuth(), ElevationPreferences.MIN_HILLSHADE_AZIMUTH,
-            ElevationPreferences.MAX_HILLSHADE_AZIMUTH, ElevationPreferences.INCR_HILLSHADE_AZIMUTH));
+    private final JSpinner spHillshadeAzimuth = UIFactory.createSpinner(ElevationPreferences.getHillshadeAzimuth(),
+            ElevationPreferences.MIN_HILLSHADE_AZIMUTH, ElevationPreferences.MAX_HILLSHADE_AZIMUTH,
+            ElevationPreferences.INCR_HILLSHADE_AZIMUTH);
 
     /**
      * Constructs a dialog that allows to dynamically adjust rendering parameters of

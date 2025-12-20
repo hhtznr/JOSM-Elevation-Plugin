@@ -22,7 +22,6 @@ import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JSeparator;
 import javax.swing.JSpinner;
-import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
 import javax.swing.event.HyperlinkEvent;
 
@@ -73,30 +72,29 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
             SRTMTile.Interpolation.values());
 
     private final JLabel lblCacheSize = new JLabel("Max. Size of In-Memory Tile Cache:");
-    private final JSpinner spCacheSize = new JSpinner(new SpinnerNumberModel(
-            ElevationPreferences.getRAMCacheSizeLimit(), ElevationPreferences.MIN_RAM_CACHE_SIZE_LIMIT,
-            ElevationPreferences.MAX_RAM_CACHE_SIZE_LIMIT, ElevationPreferences.INCR_RAM_CACHE_SIZE_LIMIT));
+    private final JSpinner spCacheSize = UIFactory.createSpinner(ElevationPreferences.getRAMCacheSizeLimit(),
+            ElevationPreferences.MIN_RAM_CACHE_SIZE_LIMIT, ElevationPreferences.MAX_RAM_CACHE_SIZE_LIMIT,
+            ElevationPreferences.INCR_RAM_CACHE_SIZE_LIMIT);
 
     private final JCheckBox cbEnableElevationLayer = new JCheckBox("Enable Elevation Visualization Layer");
 
     private final JLabel lblRenderingLimit = new JLabel("Layer Rendering Map Size Limit:");
-    private final JSpinner spRenderingLimit = new JSpinner(
-            new SpinnerNumberModel(ElevationPreferences.getElevationLayerRenderingLimit(),
-                    ElevationPreferences.MIN_ELEVATION_LAYER_RENDERING_LIMIT,
-                    ElevationPreferences.MAX_ELEVATION_LAYER_RENDERING_LIMIT,
-                    ElevationPreferences.INCR_ELEVATION_LAYER_RENDERING_LIMIT));
+    private final JSpinner spRenderingLimit = UIFactory.createSpinner(ElevationPreferences.getElevationLayerRenderingLimit(),
+            ElevationPreferences.MIN_ELEVATION_LAYER_RENDERING_LIMIT,
+            ElevationPreferences.MAX_ELEVATION_LAYER_RENDERING_LIMIT,
+            ElevationPreferences.INCR_ELEVATION_LAYER_RENDERING_LIMIT);
     private final JLabel lblRenderingLimitUnit = new JLabel("°");
     private final JLabel lblIsostep = new JLabel("Contour Line Isostep:");
-    private final JSpinner spIsostep = new JSpinner(new SpinnerNumberModel(ElevationPreferences.getContourLineIsostep(),
+    private final JSpinner spIsostep = UIFactory.createSpinner(ElevationPreferences.getContourLineIsostep(),
             ElevationPreferences.MIN_CONTOUR_LINE_ISOSTEP, ElevationPreferences.MAX_CONTOUR_LINE_ISOSTEP,
-            ElevationPreferences.INCR_CONTOUR_LINE_ISOSTEP));
+            ElevationPreferences.INCR_CONTOUR_LINE_ISOSTEP);
     private final JLabel lblIsostepUnit = new JLabel("m");
 
     private final JLabel lblStrokeWidth = new JLabel("Contour Line Stroke Width:");
 
-    private final JSpinner spStrokeWidth = new JSpinner(new SpinnerNumberModel(
-            ElevationPreferences.getContourLineStrokeWidth(), ElevationPreferences.MIN_CONTOUR_LINE_STROKE_WIDTH,
-            ElevationPreferences.MAX_CONTOUR_LINE_STROKE_WIDTH, ElevationPreferences.INCR_CONTOUR_LINE_STROKE_WIDTH));
+    private final JSpinner spStrokeWidth = UIFactory.createSpinner(ElevationPreferences.getContourLineStrokeWidth(),
+            ElevationPreferences.MIN_CONTOUR_LINE_STROKE_WIDTH, ElevationPreferences.MAX_CONTOUR_LINE_STROKE_WIDTH,
+            ElevationPreferences.INCR_CONTOUR_LINE_STROKE_WIDTH);
 
     private final JLabel lblStrokeWidthUnit = new JLabel("px");
 
@@ -105,15 +103,15 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
     private final ColorChooserButton btnStrokeColor;
 
     private final JLabel lblHillshadeAltitude = new JLabel("Hillshade Illumination Source Altitude:");
-    private final JSpinner spHillshadeAltitude = new JSpinner(new SpinnerNumberModel(
-            ElevationPreferences.getHillshadeAltitude(), ElevationPreferences.MIN_HILLSHADE_ALTITUDE,
-            ElevationPreferences.MAX_HILLSHADE_ALTITUDE, ElevationPreferences.INCR_HILLSHADE_ALTITUDE));
+    private final JSpinner spHillshadeAltitude = UIFactory.createSpinner(ElevationPreferences.getHillshadeAltitude(),
+            ElevationPreferences.MIN_HILLSHADE_ALTITUDE, ElevationPreferences.MAX_HILLSHADE_ALTITUDE,
+            ElevationPreferences.INCR_HILLSHADE_ALTITUDE);
     private final JLabel lblHillshadeAltitudeUnit = new JLabel("°");
 
     private final JLabel lblHillshadeAzimuth = new JLabel("Hillshade Illumination Source Azimuth:");
-    private final JSpinner spHillshadeAzimuth = new JSpinner(new SpinnerNumberModel(
-            ElevationPreferences.getHillshadeAzimuth(), ElevationPreferences.MIN_HILLSHADE_AZIMUTH,
-            ElevationPreferences.MAX_HILLSHADE_AZIMUTH, ElevationPreferences.INCR_HILLSHADE_AZIMUTH));
+    private final JSpinner spHillshadeAzimuth = UIFactory.createSpinner(ElevationPreferences.getHillshadeAzimuth(),
+            ElevationPreferences.MIN_HILLSHADE_AZIMUTH, ElevationPreferences.MAX_HILLSHADE_AZIMUTH,
+            ElevationPreferences.INCR_HILLSHADE_AZIMUTH);
     private final JLabel lblHillshadeAzimuthUnit = new JLabel("°");
 
     private final JCheckBox cbEnableAutoDownload = new JCheckBox(

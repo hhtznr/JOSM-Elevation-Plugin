@@ -24,7 +24,6 @@ import javax.swing.JSeparator;
 import javax.swing.JSpinner;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -124,14 +123,14 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
         DefaultCaret caret = (DefaultCaret) textAreaFeedback.getCaret();
         caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
 
-        spinnerSearchDistance = new JSpinner(new SpinnerNumberModel(10, 1, 10000, 1));
+        spinnerSearchDistance = UIFactory.createSpinner(10, 1, 10000, 1);
         spinnerSearchDistance.addChangeListener(e -> {
             setSearchDistanceLatLon();
         });
         textFieldSearchDistanceLatLon = new JTextField(30);
         textFieldSearchDistanceLatLon.setEditable(false);
-        spinnerDistanceTolerance = new JSpinner(new SpinnerNumberModel(0, 0, 999, 1));
-        spinnerDeadZoneRadius = new JSpinner(new SpinnerNumberModel(0, 0, 999, 1));
+        spinnerDistanceTolerance = UIFactory.createSpinner(0, 0, 999, 1);
+        spinnerDeadZoneRadius = UIFactory.createSpinner(0, 0, 999, 1);
 
         buttonFind = new JButton(new FindAction());
 

@@ -8,6 +8,10 @@ import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.awt.RenderingHints;
+import java.awt.Shape;
+import java.awt.font.TextLayout;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
@@ -384,9 +388,9 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         // Draw non-overlapping labels for the highest and lowest points
         NonOverlappingTextRenderer textRenderer = new NonOverlappingTextRenderer();
         for (Point p : lowestPixels)
-            textRenderer.drawTextSafely(g, p, textLowestElevation, textOffsetX, Color.BLUE);
+            textRenderer.drawTextSafely(g, p, textLowestElevation, textOffsetX, Color.BLUE, Color.WHITE);
         for (Point p : highestPixels)
-            textRenderer.drawTextSafely(g, p, textHighestElevation, textOffsetX, Color.BLUE);
+            textRenderer.drawTextSafely(g, p, textHighestElevation, textOffsetX, Color.BLUE, Color.WHITE);
     }
 
     private void drawEquilateralTriangle(Graphics2D g, int centerX, int centerY, int sideLength, boolean upright,
@@ -451,6 +455,26 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         }
     }
 
+    private static void drawOutlinedText(Graphics2D g2, int x, int y, Font font, Color colorFill, Color colorOutline,
+            float outlineWidth, String text) {
+        // Set hints for smooth edges
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        TextLayout tl = new TextLayout(text, font, g2.getFontRenderContext());
+
+        AffineTransform transform = AffineTransform.getTranslateInstance(x, y);
+        Shape textShape = tl.getOutline(transform);
+
+        // Draw the outline
+        g2.setColor(colorOutline);
+        g2.setStroke(new BasicStroke(outlineWidth, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g2.draw(textShape);
+
+        // Fill the interior
+        g2.setColor(colorFill);
+        g2.fill(textShape);
+    }
+
     @Override
     public void detachFromMapView(MapViewEvent event) {
         layer.removeInvalidationListener(this);
@@ -465,7 +489,8 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         // A list to keep track of the screen areas where text has been drawn
         private final List<Rectangle> occupiedTextAreas = new ArrayList<>();
 
-        private void drawTextSafely(Graphics2D g, Point p, String text, int offSetX, Color color) {
+        private void drawTextSafely(Graphics2D g, Point p, String text, int offSetX, Color colorFill,
+                Color colorOutline) {
             // Get font metrics to measure the text size
             FontMetrics metrics = g.getFontMetrics();
             int textWidth = metrics.stringWidth(text);
@@ -492,8 +517,7 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
 
             // 3. Draw and record only if no overlap
             if (!overlaps) {
-                g.setColor(color);
-                g.drawString(text, x, y); // drawString uses baseline Y
+                drawOutlinedText(g, x, y, g.getFont(), colorFill, colorOutline, 2.0f, text);
 
                 // 4. Add this area to our list of occupied spaces
                 occupiedTextAreas.add(textBounds);

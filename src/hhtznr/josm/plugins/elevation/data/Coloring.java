@@ -81,5 +81,4 @@ public class Coloring {
         // 3. Return the color with full saturation and brightness
         return Color.getHSBColor(hue, 1.0f, 1.0f);
     }
-
 }

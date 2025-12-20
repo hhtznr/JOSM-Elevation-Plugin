@@ -893,7 +893,7 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
             }
 
             LatLonEle peakA = elevationDataProvider.getLatLonEle(peakANode.getCoor());
-            if (!peakA.hasValidEle()) {
+            if (!peakA.isValidEle()) {
                 setDialogState(DialogState.PEAKS_DEFINED);
                 textAreaFeedback.append(
                         "Elevation raster does not provide a valid elevation value at the position of peak A. Cannot proceed."
@@ -901,7 +901,7 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
                 return;
             }
             LatLonEle peakB = elevationDataProvider.getLatLonEle(peakBNode.getCoor());
-            if (!peakB.hasValidEle()) {
+            if (!peakB.isValidEle()) {
                 setDialogState(DialogState.PEAKS_DEFINED);
                 textAreaFeedback.append(
                         "Elevation raster does not provide a valid elevation value at the position of peak B. Cannot proceed."

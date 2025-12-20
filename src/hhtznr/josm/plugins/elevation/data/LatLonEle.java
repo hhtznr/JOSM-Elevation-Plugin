@@ -85,7 +85,7 @@ public class LatLonEle extends LatLon {
      * @return {@code true} if a valid elevation value is provided, {@code false}
      *         otherwise.
      */
-    public boolean hasValidEle() {
+    public boolean isValidEle() {
         return !Double.isNaN(ele);
     }
 

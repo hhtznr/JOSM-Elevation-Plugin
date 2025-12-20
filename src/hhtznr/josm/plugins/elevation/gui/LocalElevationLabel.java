@@ -114,7 +114,7 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
             eleFormat = ELEVATION_FORMAT_NO_INTERPOLATION;
         else
             eleFormat = ELEVATION_FORMAT_INTERPOLATION;
-        if (latLonEle.hasValidEle())
+        if (latLonEle.isValidEle())
             setText(eleFormat.format(latLonEle.ele()));
         else
             setText("No data");

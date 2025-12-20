@@ -756,7 +756,7 @@ public class ElevationPreferences {
      * @return {@code true} if the azimuth value has changed.
      */
     public static boolean setHillshadeAzimuth(int azimuth) {
-        return Config.getPref().putInt(HILLSHADE_ALTITUDE, azimuth);
+        return Config.getPref().putInt(HILLSHADE_AZIMUTH, azimuth);
     }
 
     /**

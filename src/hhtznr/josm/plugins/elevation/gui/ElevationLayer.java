@@ -62,8 +62,8 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
     private int hillshadeAltitude;
     private int hillshadeAzimuth;
 
-    private int lowerCutoffElevation;
-    private int upperCutoffElevation;
+    private short lowerCutoffElevation;
+    private short upperCutoffElevation;
 
     private boolean contourLinesEnabled;
     private boolean hillshadeEnabled;
@@ -97,8 +97,8 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
      */
     public ElevationLayer(ElevationDataProvider elevationDataProvider, double renderingLimitArcDegrees,
             int contourLineIsostep, float contourLineStrokeWidth, Coloring.Scheme contourLineColoringScheme,
-            Color contourLineConstantColor, int hillshadeAltitude, int hillshadeAzimuth, int lowerCutoffElevation,
-            int upperCutoffElevation) {
+            Color contourLineConstantColor, int hillshadeAltitude, int hillshadeAzimuth, short lowerCutoffElevation,
+            short upperCutoffElevation) {
         super("Elevation Layer");
         this.icon = ImageProvider.get("", "elevation.svg");
         this.layerPainter = new ElevationDrawHelper(this);
@@ -298,7 +298,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
      * @return The elevation value below which elevation data should not be
      *         visualized.
      */
-    public int getLowerCutoffElevation() {
+    public short getLowerCutoffElevation() {
         return lowerCutoffElevation;
     }
 
@@ -308,7 +308,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
      * @param value The elevation value below which elevation data should not be
      *              visualized.
      */
-    public void setLowerCutoffElevation(int value) {
+    public void setLowerCutoffElevation(short value) {
         lowerCutoffElevation = value;
     }
 
@@ -318,7 +318,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
      * @return The elevation value above which elevation data should not be
      *         visualized.
      */
-    public int getUpperCutoffElevation() {
+    public short getUpperCutoffElevation() {
         return upperCutoffElevation;
     }
 
@@ -328,7 +328,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
      * @param value The elevation value above which elevation data should not be
      *              visualized.
      */
-    public void setUpperCutoffElevation(int value) {
+    public void setUpperCutoffElevation(short value) {
         upperCutoffElevation = value;
     }
 

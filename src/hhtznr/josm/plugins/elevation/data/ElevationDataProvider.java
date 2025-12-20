@@ -22,6 +22,7 @@ import hhtznr.josm.plugins.elevation.ElevationPreferences;
 import hhtznr.josm.plugins.elevation.gui.ContourLines;
 import hhtznr.josm.plugins.elevation.gui.ElevationRaster;
 import hhtznr.josm.plugins.elevation.gui.HillshadeImageTile;
+import hhtznr.josm.plugins.elevation.gui.LowestAndHighestPoints;
 import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
 import hhtznr.josm.plugins.elevation.io.SRTMFileDownloadListener;
 import hhtznr.josm.plugins.elevation.io.SRTMFileReader;
@@ -261,16 +262,16 @@ public class ElevationDataProvider implements SRTMFileDownloadListener, SRTMTile
     }
 
     /**
-     * Returns a list with two lists of the coordinate points from the elevation
-     * raster, which have the lowest and highest elevation within the given map
-     * bounds, respectively.
+     * Returns an object with two lists providing the coordinate points from the
+     * elevation raster, which have the lowest and highest elevation within the
+     * given map bounds, respectively.
      *
      * @param bounds The bounds in latitude-longitude coordinate space.
-     * @return A list of two lists providing the coordinate points with the lowest
-     *         and highest elevation within the given bounds. The first list holds
-     *         the lowest points. The second list holds the highest points.
+     * @return An object with two lists providing the coordinate points with the
+     *         lowest and highest elevation within the given bounds. {@code null} is
+     *         returned if not all SRTM tiles are cached yet.
      */
-    public List<List<LatLonEle>> getLowestAndHighestPoints(Bounds bounds) {
+    public LowestAndHighestPoints getLowestAndHighestPoints(Bounds bounds) {
         synchronized (tileGridLock) {
             if (srtmTileGrid == null || !srtmTileGrid.covers(bounds))
                 srtmTileGrid = new SRTMTileGrid(this, bounds);

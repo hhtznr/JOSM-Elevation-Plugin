@@ -232,8 +232,8 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                     Color color = ElevationPreferences.getContourLineColor();
                     int altitude = ElevationPreferences.getHillshadeAltitude();
                     int azimuth = ElevationPreferences.getHillshadeAzimuth();
-                    int lowerCutoff = ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION;
-                    int upperCutoff = ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION;
+                    short lowerCutoff = ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION;
+                    short upperCutoff = ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION;
                     elevationLayer = new ElevationLayer(elevationDataProvider, renderingLimit, isostep, strokeWidth,
                             coloringScheme, color, altitude, azimuth, lowerCutoff, upperCutoff);
                     MainApplication.getLayerManager().addLayer(elevationLayer);

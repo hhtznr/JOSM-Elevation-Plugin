@@ -337,11 +337,11 @@ public class ElevationLayerAdjustmentDialog extends ExtendedDialog {
         SRTMTile.Type srtmType = (SRTMTile.Type) comboBoxSRTMType.getSelectedItem();
         double renderingLimit = (Double) spRenderingLimit.getValue();
         int isostep = (Integer) spIsostep.getValue();
-        int upperCutoff = (Integer) spUpperCutoffValue.getValue();
-        int lowerCutoff = (Integer) spLowerCutoffValue.getValue();
+        short upperCutoff = ((Integer) spUpperCutoffValue.getValue()).shortValue();
+        short lowerCutoff = ((Integer) spLowerCutoffValue.getValue()).shortValue();
         // Interchange values
         if (upperCutoff < lowerCutoff) {
-            int temp = upperCutoff;
+            short temp = upperCutoff;
             upperCutoff = lowerCutoff;
             lowerCutoff = temp;
             spUpperCutoffValue.setValue(Integer.valueOf(upperCutoff));

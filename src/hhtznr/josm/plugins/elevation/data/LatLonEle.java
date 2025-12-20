@@ -89,6 +89,16 @@ public class LatLonEle extends LatLon {
         return !Double.isNaN(ele);
     }
 
+    /**
+     * Returns whether the provided double is a valid elevation value.
+     *
+     * @return {@code true} if the double is a valid elevation value, {@code false}
+     *         otherwise.
+     */
+    public static boolean isValidEle(double ele) {
+        return !Double.isNaN(ele);
+    }
+
     @Override
     public String toString() {
         return "LatLonEle[lat=" + lat() + ",lon=" + lon() + ",ele=" + ele() + ']';

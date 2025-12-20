@@ -1,14 +1,12 @@
 package hhtznr.josm.plugins.elevation.data;
 
-import java.util.LinkedList;
-import java.util.List;
-
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.ILatLon;
 
 import hhtznr.josm.plugins.elevation.gui.ContourLines;
 import hhtznr.josm.plugins.elevation.gui.ElevationRaster;
 import hhtznr.josm.plugins.elevation.gui.HillshadeImageTile;
+import hhtznr.josm.plugins.elevation.gui.LowestAndHighestPoints;
 
 /**
  * This class implements a view for convenient index-based access to a subarea
@@ -244,57 +242,18 @@ public class SRTMTileGridView {
     }
 
     /**
-     * Returns a list with two lists of the coordinate points from the elevation
-     * raster, which have the lowest and highest elevation within the bounds of this
-     * SRTM tile grid view, respectively.
+     * Returns an object with two lists providing the coordinate points from the
+     * elevation raster, which have the lowest and highest elevation within the
+     * bounds of this SRTM tile grid view, respectively.
      *
-     * @return A list of two lists providing the coordinate points with the lowest
-     *         and highest elevation within the given bounds. The first list holds
-     *         the lowest points. The second list holds the highest points.
-     *         {@code null} is returned if not all SRTM tiles are cached yet.
+     * @return An object with two lists providing the coordinate points with the
+     *         lowest and highest elevation within the given bounds. {@code null} is
+     *         returned if not all SRTM tiles are cached yet.
      */
-    public List<List<LatLonEle>> getLowestAndHighestPoints() {
+    public LowestAndHighestPoints getLowestAndHighestPoints() {
         if (!areAllTilesCached())
             return null;
-
-        short previousMinEle = Short.MAX_VALUE;
-        short previousMaxEle = Short.MIN_VALUE;
-        LinkedList<LatLonEle> lowestPoints = new LinkedList<>();
-        LinkedList<LatLonEle> highestPoints = new LinkedList<>();
-
-        double latScale = bounds.getHeight() / (double) (height - 1);
-        double lonScale = bounds.getWidth() / (double) (width - 1);
-
-        for (int latIndex = 0; latIndex < height; latIndex++) {
-            double lat = bounds.getMinLat() + latScale * latIndex;
-
-            for (int lonIndex = 0; lonIndex < width; lonIndex++) {
-                double lon = bounds.getMinLon() + lonScale * lonIndex;
-
-                short ele = getElevation(latIndex, lonIndex);
-
-                if (ele < previousMinEle) {
-                    lowestPoints.clear();
-                    lowestPoints.add(new LatLonEle(lat, lon, ele));
-                    previousMinEle = ele;
-                } else if (ele == previousMinEle) {
-                    lowestPoints.add(new LatLonEle(lat, lon, ele));
-                }
-
-                if (ele > previousMaxEle) {
-                    highestPoints.clear();
-                    highestPoints.add(new LatLonEle(lat, lon, ele));
-                    previousMaxEle = ele;
-                } else if (ele == previousMaxEle) {
-                    highestPoints.add(new LatLonEle(lat, lon, ele));
-                }
-            }
-        }
-
-        List<List<LatLonEle>> highestAndLowestPoints = new LinkedList<>();
-        highestAndLowestPoints.add(lowestPoints);
-        highestAndLowestPoints.add(highestPoints);
-        return highestAndLowestPoints;
+        return new LowestAndHighestPoints(this);
     }
 
     /**

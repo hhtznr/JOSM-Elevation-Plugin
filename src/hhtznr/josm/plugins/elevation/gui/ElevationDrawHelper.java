@@ -26,6 +26,7 @@ import hhtznr.josm.plugins.elevation.data.Coloring;
 import hhtznr.josm.plugins.elevation.data.CoordinateUtil;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.LatLonLine;
+import hhtznr.josm.plugins.elevation.data.SRTMTile;
 import hhtznr.josm.plugins.elevation.gui.ContourLines.IsolineSegments;
 
 /**
@@ -40,7 +41,7 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
      * Scale factor for bounds of new contour line and hillshade tiles so they do
      * not immediately need to be regenerated when the map is moved.
      */
-    private static final double BOUNDS_SCALE_FACTOR = 1.05;
+    private static final double BOUNDS_SCALE_FACTOR = 1.2;
 
     /**
      * Upon zooming, the previous contour line and hillshade tile are discarded, if
@@ -53,8 +54,8 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
 
     private int contourLineIsostep;
     private BasicStroke contourLineStroke;
-    private int lowerCutoffElevation;
-    private int upperCutoffElevation;
+    private short lowerCutoffElevation;
+    private short upperCutoffElevation;
     private ContourLines contourLines = null;
 
     private int hillshadeAltitude;
@@ -67,7 +68,7 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
 
     private Bounds previousClipBounds = null;
 
-    private List<List<LatLonEle>> lowestAndHighestPoints = null;
+    private LowestAndHighestPoints lowestAndHighestPoints = null;
 
     /**
      * Creates a new elevation draw helper.
@@ -216,8 +217,8 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         Color layerContourLineConstantColor = layer.getContourLineConstantColor();
 
         int layerContourLineIsostep = layer.getContourLineIsostep();
-        int layerLowerCutoffElevation = layer.getLowerCutoffElevation();
-        int layerUpperCutoffElevation = layer.getUpperCutoffElevation();
+        short layerLowerCutoffElevation = layer.getLowerCutoffElevation();
+        short layerUpperCutoffElevation = layer.getUpperCutoffElevation();
         if (contourLines == null || contourLineIsostep != layerContourLineIsostep
                 || lowerCutoffElevation != layerLowerCutoffElevation
                 || upperCutoffElevation != layerUpperCutoffElevation
@@ -241,10 +242,25 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
 
         g.setColor(layerContourLineConstantColor);
         g.setStroke(contourLineStroke);
-        short minEle = isolineSegments[0].getIsoValue();
-        short maxEle = isolineSegments[isolineSegments.length - 1].getIsoValue();
+
+        short minEle = lowerCutoffElevation;
+        short maxEle = upperCutoffElevation;
+        boolean useFalseColor = false;
+        if (layerContourLineColoringScheme == Coloring.Scheme.FALSE_COLOR) {
+            if (lowestAndHighestPoints == null || !lowestAndHighestPoints.getBounds().equals(clipBounds))
+                lowestAndHighestPoints = layer.getElevationDataProvider().getLowestAndHighestPoints(clipBounds);
+            if (lowestAndHighestPoints != null) {
+                short lowestElevation = lowestAndHighestPoints.getLowestElevation();
+                short highestElevation = lowestAndHighestPoints.getHighestElevation();
+                if (lowestElevation != SRTMTile.SRTM_DATA_VOID && highestElevation != SRTMTile.SRTM_DATA_VOID) {
+                    minEle = (short) Math.max(minEle, lowestElevation);
+                    maxEle = (short) Math.min(maxEle, highestElevation);
+                    useFalseColor = true;
+                }
+            }
+        }
         for (ContourLines.IsolineSegments isolineSegment : isolineSegments) {
-            if (layerContourLineColoringScheme == Coloring.Scheme.FALSE_COLOR) {
+            if (useFalseColor) {
                 short ele = isolineSegment.getIsoValue();
                 g.setColor(Coloring.getRainbowColor(ele, minEle, maxEle));
             }
@@ -326,29 +342,31 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
     }
 
     private synchronized void drawLowestAndHighestPoints(Graphics2D g, MapView mv, Bounds clipBounds) {
-        if (lowestAndHighestPoints == null || !clipBounds.equals(previousClipBounds))
+        if (lowestAndHighestPoints == null || !lowestAndHighestPoints.getBounds().equals(clipBounds))
             lowestAndHighestPoints = layer.getElevationDataProvider().getLowestAndHighestPoints(clipBounds);
-        if (lowestAndHighestPoints == null || lowestAndHighestPoints.size() < 2)
+        if (lowestAndHighestPoints == null)
             return;
 
-        List<LatLonEle> lowestPoints = lowestAndHighestPoints.get(0);
-        List<LatLonEle> highestPoints = lowestAndHighestPoints.get(1);
+        List<LatLonEle> lowestPoints = lowestAndHighestPoints.getLowestPoints();
+        List<LatLonEle> highestPoints = lowestAndHighestPoints.getHighestPoints();
         List<Point> lowestPixels = new ArrayList<>(lowestPoints.size());
         for (LatLonEle latLonEle : lowestPoints) {
             Point p = mv.getPoint(latLonEle);
             lowestPixels.add(p);
         }
         String textLowestElevation = "";
-        if (lowestPoints.size() > 0)
-            textLowestElevation = Integer.toString((int) lowestPoints.get(0).ele());
+        short lowestElevation = lowestAndHighestPoints.getLowestElevation();
+        if (lowestElevation != SRTMTile.SRTM_DATA_VOID)
+            textLowestElevation = Short.toString(lowestElevation);
         List<Point> highestPixels = new ArrayList<>(highestPoints.size());
         for (LatLonEle latLonEle : highestPoints) {
             Point p = mv.getPoint(latLonEle);
             highestPixels.add(p);
         }
         String textHighestElevation = "";
-        if (highestPoints.size() > 0)
-            textHighestElevation = Integer.toString((int) highestPoints.get(0).ele());
+        short highestElevation = lowestAndHighestPoints.getHighestElevation();
+        if (highestElevation != SRTMTile.SRTM_DATA_VOID)
+            textHighestElevation = Short.toString(highestElevation);
 
         // The size of the marker of an elevation data point in display coordinates
         final int markerSize = 8;

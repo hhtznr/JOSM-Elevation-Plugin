@@ -48,4 +48,15 @@ public abstract class AbstractSRTMTileGridPaintable {
     public Bounds getBounds() {
         return tileGridView.getBounds();
     }
+
+    /**
+     * Returns the step between two adjacent raster points in latitude or longitude
+     * direction.
+     *
+     * @return The step in arc-seconds between two adjacent raster points in
+     *         latitude or longitude direction.
+     */
+    public double getLatLonStep() {
+        return tileGridView.getLatLonStep();
+    }
 }

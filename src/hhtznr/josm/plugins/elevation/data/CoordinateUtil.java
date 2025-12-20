@@ -89,4 +89,38 @@ public class CoordinateUtil {
             maxLon = maxLon - 360.0;
         return new Bounds(minLat, minLon, maxLat, maxLon);
     }
+
+    /**
+     * Checks if bounds contain other bounds if these are extended by additional
+     * space in each direction. This method is meant to trigger recreation of map
+     * view paintables when the map view is moved prior to the edges of the map view
+     * reaching the edges of the map view paintables. For this,
+     * {@code latLonExtraSpace} should be positive multiples of the
+     * latitude-longitude step between two adjacent elevation raster points.
+     *
+     * @param bounds           The bounds for which to check whether
+     *                         {@code otherBounds} are contained under consideration
+     *                         of extra space.
+     * @param otherBounds      The other bounds for which to check if the are
+     *                         contained within the specified bounds under
+     *                         consideration of the required extra space.
+     * @param latLonExtraSpace The extra space in latitude and longitude direction
+     *                         to be considered.
+     * @return {@code true} if {@code otherBounds} extended by
+     *         {@code latLonExtraSpace} in each direction is contained in
+     *         {@code bounds}.
+     */
+    public static boolean doBoundsContainWithExtraSpace(Bounds bounds, Bounds otherBounds, double latLonExtraSpace) {
+        // The corner coordinates of the other bounds under consideration of the
+        // required extra space, clamped to the edges of the map
+        double minLat = Math.max(otherBounds.getMinLat() - latLonExtraSpace, -90.0);
+        double minLon = Math.max(otherBounds.getMinLon() - latLonExtraSpace, -180.0);
+        double maxLat = Math.min(otherBounds.getMaxLat() + latLonExtraSpace, 90.0);
+        double maxLon = Math.min(otherBounds.getMaxLon() + latLonExtraSpace, 180.0);
+
+        // Return whether the corner coordinates of the other bounds under consideration
+        // of the required extra space are within the bounds
+        return bounds.getMinLat() <= minLat && bounds.getMinLon() <= minLon && bounds.getMaxLat() >= maxLat
+                && bounds.getMaxLon() >= maxLon;
+    }
 }

@@ -156,7 +156,8 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         boolean hillshadeParametersChanged = hillshadeAltitude != layerHillshadeAltitude
                 || hillshadeAzimuth != layerHillshadeAzimuth;
         boolean clipBoundsNotCoveredByHillshade = hillshadeImageTile == null || hillshadeParametersChanged
-                || !hillshadeImageTile.covers(clipBounds);
+                || !CoordinateUtil.doBoundsContainWithExtraSpace(hillshadeImageTile.getBounds(), clipBounds,
+                        2 * hillshadeImageTile.getLatLonStep());
 
         if (clipBoundsNotCoveredByHillshade || hillshadeParametersChanged) {
             Bounds scaledBounds = CoordinateUtil.getScaledBounds(clipBounds, BOUNDS_SCALE_FACTOR);
@@ -221,7 +222,9 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         int layerUpperCutoffElevation = layer.getUpperCutoffElevation();
         if (contourLines == null || contourLineIsostep != layerContourLineIsostep
                 || lowerCutoffElevation != layerLowerCutoffElevation
-                || upperCutoffElevation != layerUpperCutoffElevation || !contourLines.covers(clipBounds)) {
+                || upperCutoffElevation != layerUpperCutoffElevation
+                || !CoordinateUtil.doBoundsContainWithExtraSpace(contourLines.getBounds(), clipBounds,
+                        contourLines.getLatLonStep())) {
             contourLineIsostep = layerContourLineIsostep;
             lowerCutoffElevation = layerLowerCutoffElevation;
             upperCutoffElevation = layerUpperCutoffElevation;
@@ -253,7 +256,8 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
     }
 
     private synchronized void drawElevationRaster(Graphics2D g, MapView mv, Bounds clipBounds) {
-        if (elevationRaster == null || !elevationRaster.covers(clipBounds)) {
+        if (elevationRaster == null || !CoordinateUtil.doBoundsContainWithExtraSpace(elevationRaster.getBounds(),
+                clipBounds, elevationRaster.getLatLonStep())) {
             Bounds scaledBounds = CoordinateUtil.getScaledBounds(clipBounds, BOUNDS_SCALE_FACTOR);
             elevationRaster = layer.getElevationDataProvider().getElevationRaster(scaledBounds);
             if (elevationRaster == null)

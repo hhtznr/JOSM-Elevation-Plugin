@@ -38,6 +38,7 @@ import org.openstreetmap.josm.tools.OpenBrowser;
 
 import hhtznr.josm.plugins.elevation.ElevationPluginTexts;
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
+import hhtznr.josm.plugins.elevation.data.Coloring;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
 import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
 
@@ -98,7 +99,12 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
     private final JLabel lblStrokeWidthUnit = new JLabel("px");
 
-    private final JLabel lblStrokeColor = new JLabel("Contour Line Color:");
+    private final JLabel lblContourLineColoring = new JLabel("Contour Line Coloring Scheme:");
+
+    private final JosmComboBox<Coloring.Scheme> cbContourLineColoring = new JosmComboBox<>(
+            new Coloring.Scheme[] { Coloring.Scheme.CONSTANT_COLOR, Coloring.Scheme.FALSE_COLOR });
+
+    private final JLabel lblStrokeColor = new JLabel("Contour Line Constant Color:");
 
     private final ColorChooserButton btnStrokeColor;
 
@@ -429,7 +435,24 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.weightx = 1.0;
         pnl.add(lblStrokeWidthUnit, gc);
 
-        // Row "Contour line color"
+        // Row "Contour line coloring scheme"
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnl.add(lblContourLineColoring, gc);
+
+        gc.gridx++;
+        gc.fill = GBC.BOTH;
+        pnl.add(cbContourLineColoring, gc);
+
+        gc.gridx++;
+        gc.fill = GBC.HORIZONTAL;
+        gc.gridwidth = GBC.REMAINDER;
+        gc.weightx = 1.0;
+        pnl.add(new JPanel(), gc);
+
+        // Row "Contour line constant color"
         gc.gridy++;
         gc.gridx = 0;
         gc.gridwidth = 1;
@@ -527,6 +550,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         cbSRTMType.setSelectedItem(ElevationPreferences.getSRTMType());
         cbInterpolation.setSelectedItem(ElevationPreferences.getElevationInterpolation());
         cbEnableElevationLayer.setSelected(ElevationPreferences.getElevationLayerEnabled());
+        cbContourLineColoring.setSelectedItem(ElevationPreferences.getContourLineColoringScheme());
         cbEnableAutoDownload.setSelected(ElevationPreferences.getAutoDownloadEnabled());
 
         if (ElevationPreferences.getElevationServerAuthType() == SRTMFileDownloader.AuthType.BEARER_TOKEN)
@@ -550,31 +574,35 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
     }
 
     private final void updateEnabledState() {
-        lblRenderingLimit.setEnabled(cbEnableElevationLayer.isSelected());
-        spRenderingLimit.setEnabled(cbEnableElevationLayer.isSelected());
-        lblRenderingLimitUnit.setEnabled(cbEnableElevationLayer.isSelected());
-        lblIsostep.setEnabled(cbEnableElevationLayer.isSelected());
-        spIsostep.setEnabled(cbEnableElevationLayer.isSelected());
-        lblIsostepUnit.setEnabled(cbEnableElevationLayer.isSelected());
-        lblStrokeWidth.setEnabled(cbEnableElevationLayer.isSelected());
-        spStrokeWidth.setEnabled(cbEnableElevationLayer.isSelected());
-        lblStrokeWidthUnit.setEnabled(cbEnableElevationLayer.isSelected());
-        lblStrokeColor.setEnabled(cbEnableElevationLayer.isSelected());
-        btnStrokeColor.setEnabled(cbEnableElevationLayer.isSelected());
-        lblHillshadeAltitude.setEnabled(cbEnableElevationLayer.isSelected());
-        spHillshadeAltitude.setEnabled(cbEnableElevationLayer.isSelected());
-        lblHillshadeAltitudeUnit.setEnabled(cbEnableElevationLayer.isSelected());
-        lblHillshadeAzimuth.setEnabled(cbEnableElevationLayer.isSelected());
-        spHillshadeAzimuth.setEnabled(cbEnableElevationLayer.isSelected());
-        lblHillshadeAzimuthUnit.setEnabled(cbEnableElevationLayer.isSelected());
-        rbPasswordAuth.setEnabled(cbEnableAutoDownload.isSelected());
-        rbAuthBearer.setEnabled(cbEnableAutoDownload.isSelected());
-        lblEarthdataNotes.setEnabled(cbEnableAutoDownload.isSelected());
+        boolean elevationLayerEnabled = cbEnableElevationLayer.isSelected();
+        boolean autoDownloadEnabled = cbEnableAutoDownload.isSelected();
+        lblRenderingLimit.setEnabled(elevationLayerEnabled);
+        spRenderingLimit.setEnabled(elevationLayerEnabled);
+        lblRenderingLimitUnit.setEnabled(elevationLayerEnabled);
+        lblIsostep.setEnabled(elevationLayerEnabled);
+        spIsostep.setEnabled(elevationLayerEnabled);
+        lblIsostepUnit.setEnabled(elevationLayerEnabled);
+        lblStrokeWidth.setEnabled(elevationLayerEnabled);
+        spStrokeWidth.setEnabled(elevationLayerEnabled);
+        lblStrokeWidthUnit.setEnabled(elevationLayerEnabled);
+        lblContourLineColoring.setEnabled(elevationLayerEnabled);
+        cbContourLineColoring.setEnabled(elevationLayerEnabled);
+        lblStrokeColor.setEnabled(elevationLayerEnabled);
+        btnStrokeColor.setEnabled(elevationLayerEnabled);
+        lblHillshadeAltitude.setEnabled(elevationLayerEnabled);
+        spHillshadeAltitude.setEnabled(elevationLayerEnabled);
+        lblHillshadeAltitudeUnit.setEnabled(elevationLayerEnabled);
+        lblHillshadeAzimuth.setEnabled(elevationLayerEnabled);
+        spHillshadeAzimuth.setEnabled(elevationLayerEnabled);
+        lblHillshadeAzimuthUnit.setEnabled(elevationLayerEnabled);
+        rbPasswordAuth.setEnabled(autoDownloadEnabled);
+        rbAuthBearer.setEnabled(autoDownloadEnabled);
+        lblEarthdataNotes.setEnabled(autoDownloadEnabled);
         for (Component component : pnlPasswordAuth.getComponents())
-            component.setEnabled(cbEnableAutoDownload.isSelected());
+            component.setEnabled(autoDownloadEnabled);
         for (Component component : pnlAuthBearer.getComponents())
-            component.setEnabled(cbEnableAutoDownload.isSelected());
-        lblEarthdataNotes.setEnabled(cbEnableAutoDownload.isSelected());
+            component.setEnabled(autoDownloadEnabled);
+        lblEarthdataNotes.setEnabled(autoDownloadEnabled);
     }
 
     /**
@@ -588,6 +616,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         ElevationPreferences.setElevationLayerRenderingLimit((Double) spRenderingLimit.getValue());
         ElevationPreferences.setContourLineIsostep((Integer) spIsostep.getValue());
         ElevationPreferences.setContourLineStrokeWidth((Double) spStrokeWidth.getValue());
+        ElevationPreferences.setContourLineColoringScheme((Coloring.Scheme) cbContourLineColoring.getSelectedItem());
         ElevationPreferences.setContourLineColor(btnStrokeColor.getSelectedColor());
         ElevationPreferences.setHillshadeAltitude((Integer) spHillshadeAltitude.getValue());
         ElevationPreferences.setHillshadeAzimuth((Integer) spHillshadeAzimuth.getValue());

@@ -38,6 +38,7 @@ import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
+import hhtznr.josm.plugins.elevation.data.Coloring;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProviderListener;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
@@ -55,7 +56,8 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
     private double renderingLimitArcDegrees;
     private int contourLineIsostep;
     private float contourLineStrokeWidth;
-    private Color contourLineColor;
+    private Coloring.Scheme contourLineColoringScheme;
+    private Color contourLineConstantColor;
 
     private int hillshadeAltitude;
     private int hillshadeAzimuth;
@@ -73,35 +75,37 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
     /**
      * Creates a new elevation layer.
      *
-     * @param elevationDataProvider    The elevation data provider providing the
-     *                                 data for this layer.
-     * @param renderingLimitArcDegrees The maximum size of the displayed map
-     *                                 (latitude or longitude) where, if exceeded,
-     *                                 rendering of the layer is switched off to
-     *                                 avoid excessive CPU and memory usage.
-     * @param contourLineIsostep       Step between neighboring elevation contour
-     *                                 lines.
-     * @param contourLineStrokeWidth   Width of the contour line stroke in px.
-     * @param contourLineColor         Color of the contour lines.
-     * @param hillshadeAltitude        The altitude (degrees) of the illumination
-     *                                 source in hillshade computation.
-     * @param hillshadeAzimuth         The azimuth (degrees) of the illumination
-     *                                 source in hillshade computation.
-     * @param lowerCutoffElevation     The elevation value below which elevation
-     *                                 should not be visualized.
-     * @param upperCutoffElevation     The elevation value above which elevation
-     *                                 should not be visualized.
+     * @param elevationDataProvider     The elevation data provider providing the
+     *                                  data for this layer.
+     * @param renderingLimitArcDegrees  The maximum size of the displayed map
+     *                                  (latitude or longitude) where, if exceeded,
+     *                                  rendering of the layer is switched off to
+     *                                  avoid excessive CPU and memory usage.
+     * @param contourLineIsostep        Step between neighboring elevation contour
+     *                                  lines.
+     * @param contourLineStrokeWidth    Width of the contour line stroke in px.
+     * @param contourLineColoringScheme The coloring scheme of the contour lines.
+     * @param contourLineConstantColor  Constant color of the contour lines.
+     * @param hillshadeAltitude         The altitude (degrees) of the illumination
+     *                                  source in hillshade computation.
+     * @param hillshadeAzimuth          The azimuth (degrees) of the illumination
+     *                                  source in hillshade computation.
+     * @param lowerCutoffElevation      The elevation value below which elevation
+     *                                  should not be visualized.
+     * @param upperCutoffElevation      The elevation value above which elevation
+     *                                  should not be visualized.
      */
     public ElevationLayer(ElevationDataProvider elevationDataProvider, double renderingLimitArcDegrees,
-            int contourLineIsostep, float contourLineStrokeWidth, Color contourLineColor, int hillshadeAltitude,
-            int hillshadeAzimuth, int lowerCutoffElevation, int upperCutoffElevation) {
+            int contourLineIsostep, float contourLineStrokeWidth, Coloring.Scheme contourLineColoringScheme,
+            Color contourLineConstantColor, int hillshadeAltitude, int hillshadeAzimuth, int lowerCutoffElevation,
+            int upperCutoffElevation) {
         super("Elevation Layer");
         this.icon = ImageProvider.get("", "elevation.svg");
         this.layerPainter = new ElevationDrawHelper(this);
         this.renderingLimitArcDegrees = renderingLimitArcDegrees;
         this.contourLineIsostep = contourLineIsostep;
         this.contourLineStrokeWidth = contourLineStrokeWidth;
-        this.contourLineColor = contourLineColor;
+        this.contourLineConstantColor = contourLineConstantColor;
         this.hillshadeAltitude = hillshadeAltitude;
         this.hillshadeAzimuth = hillshadeAzimuth;
         this.lowerCutoffElevation = lowerCutoffElevation;
@@ -221,21 +225,39 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
     }
 
     /**
-     * Returns the contour line color.
+     * Returns the coloring scheme of the contour lines.
      *
-     * @return The color of the contour lines.
+     * @return The coloring scheme.
      */
-    public Color getContourLineColor() {
-        return contourLineColor;
+    public Coloring.Scheme getContourLineColoringScheme() {
+        return contourLineColoringScheme;
     }
 
     /**
-     * Sets the color of the contour lines to a new value.
+     * Sets the coloring scheme of the contour lines to a new value.
      *
-     * @param color The new color of the contour lines.
+     * @param scheme The new coloring scheme of the contour lines.
      */
-    public void setContourLineColor(Color color) {
-        contourLineColor = color;
+    public void setContourLineColoringScheme(Coloring.Scheme scheme) {
+        contourLineColoringScheme = scheme;
+    }
+
+    /**
+     * Returns the constant color of the contour lines.
+     *
+     * @return The constant color of the contour lines.
+     */
+    public Color getContourLineConstantColor() {
+        return contourLineConstantColor;
+    }
+
+    /**
+     * Sets the constant color of the contour lines to a new value.
+     *
+     * @param color The new constant color of the contour lines.
+     */
+    public void setContourLineConstantColor(Color color) {
+        contourLineConstantColor = color;
     }
 
     /**
@@ -484,7 +506,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         public void actionPerformed(ActionEvent e) {
             ElevationLayer layer = ElevationLayer.this;
             layer.hillshadeEnabled = !layer.hillshadeEnabled;
-           ElevationPreferences.setHillshadeEnabled(layer.hillshadeEnabled);
+            ElevationPreferences.setHillshadeEnabled(layer.hillshadeEnabled);
             if (layer.hillshadeEnabled)
                 Logging.info("Elevation: Hillshade enabled");
             else

@@ -22,6 +22,7 @@ import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.ColorHelper;
 import org.openstreetmap.josm.tools.Logging;
 
+import hhtznr.josm.plugins.elevation.data.Coloring;
 import hhtznr.josm.plugins.elevation.data.ElevationDataSource;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
 import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
@@ -255,6 +256,16 @@ public class ElevationPreferences {
      * Default property value of the contour line color as HTML color.
      */
     private static final String DEFAULT_CONTOUR_LINE_COLOR = "#D2B473";
+
+    /**
+     * Property key for coloring scheme of contour lines.
+     */
+    public static final String CONTOUR_LINE_COLORING = "elevation.contour-line.coloring";
+
+    /**
+     * Default property value of the contour line coloring scheme..
+     */
+    private static final Coloring.Scheme DEFAULT_CONTOUR_LINE_COLORING = Coloring.Scheme.CONSTANT_COLOR;
 
     /**
      * Property key for enabling or disabling hillshade rendering.
@@ -696,6 +707,27 @@ public class ElevationPreferences {
     public static boolean setContourLineColor(Color color) {
         String htmlColor = ColorHelper.color2html(color, false);
         return Config.getPref().put(CONTOUR_LINE_COLOR, htmlColor);
+    }
+
+    /**
+     * Returns the contour line coloring scheme.
+     *
+     * @return The contour line coloring scheme.
+     */
+    public static Coloring.Scheme getContourLineColoringScheme() {
+        return Coloring.Scheme
+                .fromString(Config.getPref().get(CONTOUR_LINE_COLORING, DEFAULT_CONTOUR_LINE_COLORING.toString()));
+    }
+
+    /**
+     * Sets the value of the contour line coloring scheme in the settings.
+     *
+     * @param scheme The coloring scheme to set as contour line coloring scheme in
+     *               the settings.
+     * @return {@code true} if the value has changed.
+     */
+    public static boolean setContourLineColoringScheme(Coloring.Scheme scheme) {
+        return Config.getPref().put(CONTOUR_LINE_COLORING, scheme.toString());
     }
 
     /**

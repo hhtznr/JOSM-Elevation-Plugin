@@ -23,6 +23,7 @@ import org.openstreetmap.josm.tools.GBC;
 
 import hhtznr.josm.plugins.elevation.ElevationPluginTexts;
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
+import hhtznr.josm.plugins.elevation.data.Coloring;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
 
 /**
@@ -61,6 +62,9 @@ public class ElevationLayerAdjustmentDialog extends ExtendedDialog {
             ElevationPreferences.MIN_CONTOUR_LINE_STROKE_WIDTH, ElevationPreferences.MAX_CONTOUR_LINE_STROKE_WIDTH,
             ElevationPreferences.INCR_CONTOUR_LINE_STROKE_WIDTH);
 
+    private final JosmComboBox<Coloring.Scheme> comboBoxColoring = new JosmComboBox<>(
+            new Coloring.Scheme[] { Coloring.Scheme.CONSTANT_COLOR, Coloring.Scheme.FALSE_COLOR });
+
     private final ColorChooserButton btnStrokeColor;
 
     // Hillshade
@@ -92,6 +96,7 @@ public class ElevationLayerAdjustmentDialog extends ExtendedDialog {
         spUpperCutoffValue.setToolTipText(ElevationPluginTexts.TOOL_TIP_HILLSHADE_ALTITUDE);
         spLowerCutoffValue.setToolTipText(ElevationPluginTexts.TOOL_TIP_LOWER_CUTOFF_ELEVATION);
 
+        comboBoxColoring.setSelectedItem(ElevationPreferences.getContourLineColoringScheme());
         btnStrokeColor = new ColorChooserButton(this, "Choose Color of Contour Lines",
                 ElevationPreferences.getContourLineColor());
 
@@ -234,12 +239,23 @@ public class ElevationLayerAdjustmentDialog extends ExtendedDialog {
         gc.weightx = 1.0;
         pnl.add(new JLabel("px"), gc);
 
-        // Row "Contour line color"
+        // Row "Contour line coloring scheme"
         gc.gridy++;
         gc.gridx = 0;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
-        pnl.add(new JLabel("Contour Line Color:"), gc);
+        pnl.add(new JLabel("Contour Line Coloring Scheme:"), gc);
+
+        gc.gridx++;
+        gc.fill = GBC.BOTH;
+        pnl.add(comboBoxColoring, gc);
+
+        // Row "Contour line constant color"
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnl.add(new JLabel("Contour Line Constant Color:"), gc);
 
         gc.gridx++;
         gc.fill = GBC.BOTH;
@@ -332,6 +348,7 @@ public class ElevationLayerAdjustmentDialog extends ExtendedDialog {
             spLowerCutoffValue.setValue(Integer.valueOf(lowerCutoff));
         }
         float strokeWidth = ((Double) spStrokeWidth.getValue()).floatValue();
+        Coloring.Scheme scheme = (Coloring.Scheme) comboBoxColoring.getSelectedItem();
         Color color = btnStrokeColor.getSelectedColor();
         int hillshadeAltitude = (Integer) spHillshadeAltitude.getValue();
         int hillshadeAzimuth = (Integer) spHillshadeAzimuth.getValue();
@@ -341,7 +358,8 @@ public class ElevationLayerAdjustmentDialog extends ExtendedDialog {
         elevationLayer.setLowerCutoffElevation(lowerCutoff);
         elevationLayer.setUpperCutoffElevation(upperCutoff);
         elevationLayer.setContourLineStrokeWidth(strokeWidth);
-        elevationLayer.setContourLineColor(color);
+        elevationLayer.setContourLineColoringScheme(scheme);
+        elevationLayer.setContourLineConstantColor(color);
         elevationLayer.setHillshadeIllumination(hillshadeAltitude, hillshadeAzimuth);
         elevationLayer.invalidate();
         MainApplication.getMap().mapView.repaint();

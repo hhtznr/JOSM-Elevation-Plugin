@@ -22,9 +22,11 @@ import org.openstreetmap.josm.gui.layer.MapViewPaintable.PaintableInvalidationEv
 import org.openstreetmap.josm.gui.layer.MapViewPaintable.PaintableInvalidationListener;
 import org.openstreetmap.josm.tools.Logging;
 
+import hhtznr.josm.plugins.elevation.data.Coloring;
 import hhtznr.josm.plugins.elevation.data.CoordinateUtil;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.LatLonLine;
+import hhtznr.josm.plugins.elevation.gui.ContourLines.IsolineSegments;
 
 /**
  * The class that helps drawing elevation contour lines, elevation data raster
@@ -38,7 +40,7 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
      * Scale factor for bounds of new contour line and hillshade tiles so they do
      * not immediately need to be regenerated when the map is moved.
      */
-    private static final double BOUNDS_SCALE_FACTOR = 1.2;
+    private static final double BOUNDS_SCALE_FACTOR = 1.05;
 
     /**
      * Upon zooming, the previous contour line and hillshade tile are discarded, if
@@ -51,7 +53,6 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
 
     private int contourLineIsostep;
     private BasicStroke contourLineStroke;
-    private Color contourLineColor;
     private int lowerCutoffElevation;
     private int upperCutoffElevation;
     private ContourLines contourLines = null;
@@ -79,7 +80,6 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         this.layer.addInvalidationListener(this);
         contourLineIsostep = layer.getContourLineIsostep();
         setContourLineStroke(layer.getContourLineStrokeWidth());
-        contourLineColor = layer.getContourLineColor();
     }
 
     @Override
@@ -210,12 +210,10 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
 
     private synchronized void drawContourLines(Graphics2D g, MapView mv, Bounds clipBounds) {
         float layerContourLineStrokeWidth = layer.getContourLineStrokeWidth();
-        Color layerContourLineColor = layer.getContourLineColor();
-        if (contourLineStroke.getLineWidth() != layerContourLineStrokeWidth
-                || contourLineColor != layerContourLineColor) {
+        if (contourLineStroke.getLineWidth() != layerContourLineStrokeWidth)
             setContourLineStroke(layerContourLineStrokeWidth);
-            contourLineColor = layerContourLineColor;
-        }
+        Coloring.Scheme layerContourLineColoringScheme = layer.getContourLineColoringScheme();
+        Color layerContourLineConstantColor = layer.getContourLineConstantColor();
 
         int layerContourLineIsostep = layer.getContourLineIsostep();
         int layerLowerCutoffElevation = layer.getLowerCutoffElevation();
@@ -235,12 +233,21 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
             if (contourLines == null)
                 return;
         }
+        IsolineSegments[] isolineSegments = contourLines.getIsolineSegments();
+        if (isolineSegments.length < 1)
+            return;
 
         Rectangle screenClip = g.getClipBounds();
 
-        g.setColor(contourLineColor);
+        g.setColor(layerContourLineConstantColor);
         g.setStroke(contourLineStroke);
-        for (ContourLines.IsolineSegments isolineSegment : contourLines.getIsolineSegments()) {
+        short minEle = isolineSegments[0].getIsoValue();
+        short maxEle = isolineSegments[isolineSegments.length - 1].getIsoValue();
+        for (ContourLines.IsolineSegments isolineSegment : isolineSegments) {
+            if (layerContourLineColoringScheme == Coloring.Scheme.FALSE_COLOR) {
+                short ele = isolineSegment.getIsoValue();
+                g.setColor(Coloring.getRainbowColor(ele, minEle, maxEle));
+            }
             for (LatLonLine segment : isolineSegment.getLineSegments()) {
                 Point p1 = mv.getPoint(segment.getLatLon1());
                 Point p2 = mv.getPoint(segment.getLatLon2());

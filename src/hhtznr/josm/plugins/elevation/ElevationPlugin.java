@@ -1,5 +1,6 @@
 package hhtznr.josm.plugins.elevation;
 
+import hhtznr.josm.plugins.elevation.data.Coloring;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.ElevationDataSource;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
@@ -227,21 +228,25 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                     double renderingLimit = ElevationPreferences.getElevationLayerRenderingLimit();
                     int isostep = ElevationPreferences.getContourLineIsostep();
                     float strokeWidth = ElevationPreferences.getContourLineStrokeWidth();
+                    Coloring.Scheme coloringScheme = ElevationPreferences.getContourLineColoringScheme();
                     Color color = ElevationPreferences.getContourLineColor();
                     int altitude = ElevationPreferences.getHillshadeAltitude();
                     int azimuth = ElevationPreferences.getHillshadeAzimuth();
                     int lowerCutoff = ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION;
                     int upperCutoff = ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION;
                     elevationLayer = new ElevationLayer(elevationDataProvider, renderingLimit, isostep, strokeWidth,
-                            color, altitude, azimuth, lowerCutoff, upperCutoff);
+                            coloringScheme, color, altitude, azimuth, lowerCutoff, upperCutoff);
                     MainApplication.getLayerManager().addLayer(elevationLayer);
                 }
-                elevationLayer.setRenderingLimit(ElevationPreferences.getElevationLayerRenderingLimit());
-                elevationLayer.setContourLineIsostep(ElevationPreferences.getContourLineIsostep());
-                elevationLayer.setContourLineStrokeWidth(ElevationPreferences.getContourLineStrokeWidth());
-                elevationLayer.setContourLineColor(ElevationPreferences.getContourLineColor());
-                elevationLayer.setHillshadeIllumination(ElevationPreferences.getHillshadeAltitude(),
-                        ElevationPreferences.getHillshadeAzimuth());
+                else {
+                    elevationLayer.setRenderingLimit(ElevationPreferences.getElevationLayerRenderingLimit());
+                    elevationLayer.setContourLineIsostep(ElevationPreferences.getContourLineIsostep());
+                    elevationLayer.setContourLineStrokeWidth(ElevationPreferences.getContourLineStrokeWidth());
+                    elevationLayer.setContourLineColoringScheme(ElevationPreferences.getContourLineColoringScheme());
+                    elevationLayer.setContourLineConstantColor(ElevationPreferences.getContourLineColor());
+                    elevationLayer.setHillshadeIllumination(ElevationPreferences.getHillshadeAltitude(),
+                            ElevationPreferences.getHillshadeAzimuth());
+                }
             }
             if (mapFrame != null)
                 mapFrame.mapView.repaint();

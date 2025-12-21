@@ -15,7 +15,7 @@
   - Key col finder
 
 This JOSM screenshot provides an overview of some of the features of the **Elevation** plugin:
-![JOSM Elevation plugin -  Overview with highlighted features](https://github.com/hhtznr/JOSM-Elevation-Plugin/assets/57875126/6871d9e0-e881-4914-bc59-d08f22e83ae4)
+![JOSM Elevation plugin -  Overview with highlighted features](https://github.com/hhtznr/JOSM-Elevation-Plugin/releases/download/v0.17.0/JOSM_Elevation_plugin_0.17.0_Overview.png)
 
 ## Building from source
 **Elevation** plugin is configured as [Eclipse](https://www.eclipse.org/) Java project. The project directory must be placed in <code>josm/plugins</code> of the original [JOSM source](https://josm.openstreetmap.de/svn/trunk) tree for [build.xml](https://github.com/hhtznr/JOSM-Elevation-Plugin/blob/main/build.xml) to work. The location of the JOSM project needs to be specified on the build path. The built plugin <code>Elevation.jar</code> will be found in <code>josm/dist</code>.

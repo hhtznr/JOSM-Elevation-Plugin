@@ -105,6 +105,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         this.renderingLimitArcDegrees = renderingLimitArcDegrees;
         this.contourLineIsostep = contourLineIsostep;
         this.contourLineStrokeWidth = contourLineStrokeWidth;
+        this.contourLineColoringScheme = contourLineColoringScheme;
         this.contourLineConstantColor = contourLineConstantColor;
         this.hillshadeAltitude = hillshadeAltitude;
         this.hillshadeAzimuth = hillshadeAzimuth;

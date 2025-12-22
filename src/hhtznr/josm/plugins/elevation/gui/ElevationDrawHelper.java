@@ -256,7 +256,8 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
             if (lowestAndHighestPoints != null) {
                 short lowestElevation = lowestAndHighestPoints.getLowestElevation();
                 short highestElevation = lowestAndHighestPoints.getHighestElevation();
-                if (lowestElevation != SRTMTile.SRTM_DATA_VOID && highestElevation != SRTMTile.SRTM_DATA_VOID) {
+                if (lowestElevation != SRTMTile.SRTM_DATA_VOID && highestElevation != SRTMTile.SRTM_DATA_VOID
+                        && lowestElevation != highestElevation) {
                     minEle = (short) Math.max(minEle, lowestElevation);
                     maxEle = (short) Math.min(maxEle, highestElevation);
                     useFalseColor = true;

@@ -115,11 +115,10 @@ public class SRTMTile {
     private final int idLat;
     private final int idLon;
     private final Type type;
-    private int tileLength;
-    private short[] elevationData;
-    private Status status;
-    private ElevationDataSource dataSource;
-    private long accessTime;
+    private final int tileLength;
+    private final short[] elevationData;
+    private final ElevationDataSource dataSource;
+    private final boolean valid;
 
     /**
      * SRTM file types (SRTM1, SRTM3).
@@ -163,77 +162,6 @@ public class SRTMTile {
                     return type;
             }
             return SRTM1;
-        }
-    }
-
-    /**
-     * Status of SRTM tiles (loading, valid, missing, download scheduled,
-     * downloading, download failed).
-     */
-    public static enum Status {
-        /**
-         * Status indicating that reading of the SRTM tile from disk has been scheduled.
-         */
-        READING_SCHEDULED("reading scheduled"),
-
-        /**
-         * Status indicating that the SRTM tile is currently being read from disk.
-         */
-        READING("reading"),
-
-        /**
-         * Status indicating that the SRTM tile holds valid elevation data.
-         */
-        VALID("valid"),
-
-        /**
-         * Status indicating that SRTM type and data do not match.
-         */
-        DATA_INVALID("data invalid"),
-
-        /**
-         * Status indicating that the SRTM file that should contain the elevation data
-         * of the SRTM tile was considered for reading, but was found to be invalid.
-         */
-        FILE_INVALID("file invalid"),
-
-        /**
-         * Status indicating that the SRTM file that should contain the elevation data
-         * of the SRTM tile is missing on disk and cannot be obtained (auto-download
-         * disabled).
-         */
-        FILE_MISSING("file missing"),
-
-        /**
-         * Status indicating that downloading of the SRTM tile has been scheduled.
-         */
-        DOWNLOAD_SCHEDULED("download scheduled"),
-
-        /**
-         * Status indicating that the SRTM tile is currently being downloaded from the
-         * SRTM server.
-         */
-        DOWNLOADING("downloading"),
-
-        /**
-         * Status indicating that downloading the SRTM tile failed.
-         */
-        DOWNLOAD_FAILED("download failed");
-
-        private final String statusName;
-
-        Status(String statusName) {
-            this.statusName = statusName;
-        }
-
-        /**
-         * Returns the name associated with this SRTM status.
-         *
-         * @return The name of the status.
-         */
-        @Override
-        public String toString() {
-            return statusName;
         }
     }
 
@@ -290,10 +218,9 @@ public class SRTMTile {
      * @param type          The type of the SRTM tile.
      * @param elevationData The elevation data points or {@code null} if no data is
      *                      available.
-     * @param status        The current status of the SRTM tile.
      * @param dataSource    The original source of this SRTM tile.
      */
-    public SRTMTile(String id, Type type, short[] elevationData, Status status, ElevationDataSource dataSource) {
+    public SRTMTile(String id, Type type, short[] elevationData, ElevationDataSource dataSource) {
         this.id = id;
         this.type = type;
         if (type == Type.SRTM1)
@@ -303,8 +230,26 @@ public class SRTMTile {
         int[] latLon = parseLatLonFromTileID(id);
         idLat = latLon[0];
         idLon = latLon[1];
-        // Sets type, data and status as well as tileLength
-        update(elevationData, status, dataSource);
+        this.elevationData = elevationData;
+        this.dataSource = dataSource;
+
+        if (elevationData == null)
+            valid = false;
+        else if (type == Type.SRTM1)
+            valid = elevationData.length == SRTM1_TILE_LENGTH * SRTM1_TILE_LENGTH;
+        else
+            valid = elevationData.length == SRTM3_TILE_LENGTH * SRTM3_TILE_LENGTH;
+    }
+
+    /**
+     * Creates an invalid SRTM tile without data.
+     *
+     * @param id   The ID of the SRTM tile.
+     * @param type The type of the SRTM tile.
+     * @return An SRTM tile with the provided parameters, but without data.
+     */
+    public static SRTMTile createInvalidTile(String id, Type type) {
+        return new SRTMTile(id, type, null, null);
     }
 
     /**
@@ -339,43 +284,36 @@ public class SRTMTile {
      *
      * @return The type of the tile.
      */
-    public synchronized Type getType() {
+    public Type getType() {
         return type;
-    }
-
-    /**
-     * Returns the tile status.
-     *
-     * @return The status of the tile.
-     */
-    public synchronized Status getStatus() {
-        return status;
     }
 
     /**
      * Returns the original source of this SRTM tile.
      *
-     * @return The original source of this SRTM tile.
+     * @return The original source of this SRTM tile or {@code null} if the tile is
+     *         invalid.
      */
-    public synchronized ElevationDataSource getDataSource() {
+    public ElevationDataSource getDataSource() {
         return dataSource;
     }
 
     /**
-     * Returns the elevation data of this tile.
+     * Returns whether this SRTM tile actually contains elevation data of the
+     * expected data length.
      *
-     * @return The elevation data of this tile or {@code null} if the tile does not
-     *         contain data.
+     * @return {@code true} if elevation data is present and the data size
+     *         corresponds to the expected size.
      */
-    protected synchronized short[] getElevationData() {
-        return elevationData;
+    public boolean isValid() {
+        return valid;
     }
 
     /**
      * Returns the elevation at the provided raster indices in latitude and
      * longitude coordinate direction. The indices are translated into the
      * corresponding index of the elevation value array provided by
-     * {@link hhtznr.josm.plugins.elevation.io.SRTMFileReader#readSRTMFile(File, Type, ElevationDataSource)}
+     * {@link hhtznr.josm.plugins.elevation.io.SRTMFileReader#readSRTMFile(File, ElevationDataSource)}
      *
      * @param latIndex The index in latitude direction. Range <code>0</code> to
      *                 <code>tileLength - 1</code>.
@@ -392,36 +330,11 @@ public class SRTMTile {
     }
 
     /**
-     * Updates data, status and source of this SRTM tile, provided that the type
-     * (SRTM1 or SRTM3) stays the same.
-     *
-     * @param elevationData The elevation data points or {@code null} if no data is
-     *                      available.
-     * @param status        The current status of the SRTM tile.
-     * @param dataSource    The original source of this SRTM tile.
-     */
-    public synchronized void update(short[] elevationData, Status status, ElevationDataSource dataSource) {
-        this.elevationData = elevationData;
-        this.status = status;
-        this.dataSource = dataSource;
-        this.accessTime = System.currentTimeMillis();
-    }
-
-    /**
-     * Returns the time of last attempted access to the data of this SRTM tile.
-     *
-     * @return The access time stamp.
-     */
-    public synchronized long getAccessTime() {
-        return accessTime;
-    }
-
-    /**
      * Returns the size of the tile's elevation data.
      *
      * @return Size of the elevation data in bytes.
      */
-    public synchronized int getDataSize() {
+    public int getDataSize() {
         if (elevationData == null)
             return 0;
         // Data size in bytes
@@ -435,7 +348,7 @@ public class SRTMTile {
      * @return The number of data points in one tile dimension or
      *         {@code INVALID_TILE_LENGTH} if the SRTM type is inappropriate.
      */
-    public synchronized int getTileLength() {
+    public int getTileLength() {
         return tileLength;
     }
 
@@ -447,7 +360,7 @@ public class SRTMTile {
      * the elevation value was obtained.
      *
      * see
-     * {@link hhtznr.josm.plugins.elevation.io.SRTMFileReader#readSRTMFile(File, Type, ElevationDataSource)}
+     * {@link hhtznr.josm.plugins.elevation.io.SRTMFileReader#readSRTMFile(File, ElevationDataSource)}
      *
      * <b>Data order of an uncompressed SRTM file</b>
      *
@@ -497,12 +410,10 @@ public class SRTMTile {
      * @return The elevation for the given location or {@code SRTM_DATA_VOID} if no
      *         data is available.
      */
-    public synchronized LatLonEle getLatLonEle(ILatLon latLon, Interpolation interpolation) {
-        // Update the access time
-        accessTime = System.currentTimeMillis();
-        int tileLength = getTileLength();
-        if (status != Status.VALID || elevationData == null || tileLength == INVALID_TILE_LENGTH)
-            return new LatLonEle(latLon, LatLonEle.NO_VALID_ELEVATION);
+    public LatLonEle getLatLonEle(ILatLon latLon, Interpolation interpolation) {
+        if (!valid)
+            // Return a LatLonEle without valid elevation
+            return new LatLonEle(latLon);
 
         double idLat = (double) this.idLat;
         double idLon = (double) this.idLon;
@@ -651,6 +562,52 @@ public class SRTMTile {
             throw new IllegalArgumentException("Given longitude " + lon
                     + " is not within longitude range of SRTM tile from " + idLon + " to " + (idLon + 1));
 
+        // Map lat and lon decimal parts = [0, 1] to lat and lon indices = [0,
+        // tileLength - 1]
+        int maxLatLonIndex = tileLength - 1;
+        int latIndex = (int) Math.round((lat - idLat) * maxLatLonIndex);
+        int lonIndex = (int) Math.round((lon - idLon) * maxLatLonIndex);
+        return new int[] { latIndex, lonIndex };
+    }
+
+    /**
+     * Computes the indices of the elevation value at the tile raster coordinate
+     * that is closest to the given coordinate.
+     *
+     * @param latLon The coordinate for which to determine the indices of the
+     *               elevation value at the closest raster position.
+     * @param type   The SRTM type for which to compute the indices.
+     * @return An array of {@code length = 2} which contains the indices of the
+     *         elevation value of interest. The value's index in latitude dimension
+     *         is stored at array index {@code 0}. The value's index in longitude
+     *         dimension is stored at array index {@code 1}.
+     */
+    protected static int[] getClosestIndices(ILatLon latLon, SRTMTile.Type type) {
+        return getClosestIndices(latLon.lat(), latLon.lon(), type);
+    }
+
+    /**
+     * Computes the indices of the elevation value at the tile raster coordinate
+     * that is closest to the given coordinate.
+     *
+     * @param lat  The latitude.
+     * @param lon  The longitude.
+     * @param type The SRTM type for which to compute the indices.
+     * @return An array of {@code length = 2} which contains the indices of the
+     *         elevation value of interest. The value's index in latitude dimension
+     *         is stored at array index {@code 0}. The value's index in longitude
+     *         dimension is stored at array index {@code 1}.
+     */
+    protected static int[] getClosestIndices(double lat, double lon, SRTMTile.Type type) {
+        int tileLength;
+        if (type == SRTMTile.Type.SRTM1)
+            tileLength = SRTM1_TILE_LENGTH;
+        else if (type == SRTMTile.Type.SRTM3)
+            tileLength = SRTM3_TILE_LENGTH;
+        else
+            throw new IllegalArgumentException("Unhandled SRTM type: " + type.toString());
+        int idLat = (int) Math.floor(lat);
+        int idLon = (int) Math.floor(lon);
         // Map lat and lon decimal parts = [0, 1] to lat and lon indices = [0,
         // tileLength - 1]
         int maxLatLonIndex = tileLength - 1;

@@ -66,7 +66,7 @@ public class SetNodeElevationAction extends JosmAction {
         // 5. Set or update the elevation tag
         for (Node node : selectedNodes) {
             LatLon coordinate = node.getCoor();
-            LatLonEle latLonEle = elevationDataProvider.getLatLonEle(coordinate);
+            LatLonEle latLonEle = elevationDataProvider.getLatLonEleNoWait(coordinate);
             if (latLonEle.isValidEle()) {
                 int ele = (int) Math.round(latLonEle.ele());
                 // Create a command to change the property (add or replace)

@@ -108,7 +108,7 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
             setText("");
             return;
         }
-        LatLonEle latLonEle = elevationDataProvider.getLatLonEle(latLon);
+        LatLonEle latLonEle = elevationDataProvider.getLatLonEleNoWait(latLon);
         DecimalFormat eleFormat;
         if (elevationDataProvider.getElevationInterpolation() == SRTMTile.Interpolation.NONE)
             eleFormat = ELEVATION_FORMAT_NO_INTERPOLATION;

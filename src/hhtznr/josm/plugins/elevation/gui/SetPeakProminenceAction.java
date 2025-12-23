@@ -134,7 +134,7 @@ public class SetPeakProminenceAction extends JosmAction {
             return Integer.parseInt(nodeEle);
         }
         LatLon coordinate = node.getCoor();
-        LatLonEle latLonEle = elevationDataProvider.getLatLonEle(coordinate);
+        LatLonEle latLonEle = elevationDataProvider.getLatLonEleNoWait(coordinate);
         int ele = (int) Math.round(latLonEle.ele());
         // Create a command to change the property (add or replace)
         Command cmd = new ChangePropertyCommand(node, "ele", Integer.toString(ele));

@@ -66,14 +66,15 @@ public class SRTMFileReader {
      * no voids in Version 3.0.</i>
      *
      * @param srtmFile   The SRTM file to read.
-     * @param type       The type of SRTM file, SRTM1 or SRTM3.
      * @param dataSource The original source of the SRTM tile.
-     * @return The SRTM tile read from the file.
+     * @return The SRTM tile read from the file or {@code null} if the thread was
+     *         interrupted while reading the file.
      * @throws IOException Thrown if the data in the file has a wrong length or the
      *                     file cannot be read at all.
      */
-    public SRTMTile readSRTMFile(File srtmFile, SRTMTile.Type type, ElevationDataSource dataSource) throws IOException {
+    public SRTMTile readSRTMFile(File srtmFile, ElevationDataSource dataSource) throws IOException {
         String srtmTileID = SRTMFiles.getSRTMTileIDFromFileName(srtmFile.getName());
+        SRTMTile.Type type = dataSource.getSRTMTileType();
 
         Logging.info("Elevation: Reading SRTM file '" + srtmFile.getAbsolutePath() + "' for tile ID " + srtmTileID);
 
@@ -122,6 +123,8 @@ public class SRTMFileReader {
             // - End of array: North-east corner
             short[] elevationData = new short[srtmTileLength * srtmTileLength];
             for (int latIndex = 0; latIndex < srtmTileLength; latIndex++) {
+                if ((latIndex & 31) == 0 && Thread.currentThread().isInterrupted())
+                    return null;
                 int flippedLatIndex = srtmTileLength - 1 - latIndex;
                 for (int lonIndex = 0; lonIndex < srtmTileLength; lonIndex++)
                     // Flip the order of the rows to rearrange the data with southernmost row first
@@ -130,7 +133,7 @@ public class SRTMFileReader {
                     elevationData[flippedLatIndex * srtmTileLength + lonIndex] = byteBuffer
                             .getShort((latIndex * srtmTileLength + lonIndex) * Short.BYTES);
             }
-            return new SRTMTile(srtmTileID, type, elevationData, SRTMTile.Status.VALID, dataSource);
+            return new SRTMTile(srtmTileID, type, elevationData, dataSource);
         } finally {
             if (inputStream != null)
                 inputStream.close();

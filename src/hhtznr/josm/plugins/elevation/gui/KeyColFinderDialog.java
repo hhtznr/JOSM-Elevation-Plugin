@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -42,6 +43,7 @@ import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 import org.openstreetmap.josm.gui.widgets.JMultilineLabel;
 import org.openstreetmap.josm.gui.widgets.JosmComboBox;
 import org.openstreetmap.josm.tools.GBC;
+import org.openstreetmap.josm.tools.Logging;
 import org.openstreetmap.josm.tools.OpenBrowser;
 
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
@@ -103,7 +105,8 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
                 "<p style=\"margin-bottom: 6px;\">This tool can be CPU- and memory-intensive, especially when applied to peaks that are far apart.</p>");
         sb.append("<p style=\"margin-bottom: 6px;\">In extreme cases, it may cause an out-of-memory error. ");
         sb.append("It is strongly recommended to save or upload your current map work before using this tool.</p>");
-        sb.append("<p style=\"margin-bottom: 6px;\">The tool computes the lowest col on the highest path connecting the two selected peaks. ");
+        sb.append(
+                "<p style=\"margin-bottom: 6px;\">The tool computes the lowest col on the highest path connecting the two selected peaks. ");
         sb.append("This col corresponds to the true <a href=\"https://en.wikipedia.org/wiki/Key_col\">key col</a> ");
         sb.append(
                 "only if you have selected the true <a href=\"https://en.wikipedia.org/wiki/Line_parent\">line parent</a> as the reference point, or a node along the path to it beyond the key col.</p>");
@@ -844,7 +847,22 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
             LatLon latLon = selectedNode.getCoor();
             String name = selectedNode.get("name");
             String ele = selectedNode.get("ele");
-            int rasterEle = (int) Math.round(elevationDataProvider.getLatLonEle(latLon).ele());
+            int rasterEle;
+            try {
+                rasterEle = (int) Math.round(elevationDataProvider.getLatLonEleOrWait(latLon).ele());
+            } catch (InterruptedException e) {
+                setDialogState(DialogState.INITIAL);
+                textAreaFeedback.append("Interrupted while waiting for elevation data for peak " + whichPeak + "."
+                        + System.lineSeparator());
+                return;
+            } catch (ExecutionException e) {
+                setDialogState(DialogState.INITIAL);
+                textAreaFeedback.append("Elevation: Could not load elevation data for peak "
+                        + whichPeak + "." + System.lineSeparator());
+                Logging.error("Elevation: Could not load elevation data for peak A: "
+                        + e.getCause().toString());
+                return;
+            }
             String eleText;
             if (ele != null)
                 eleText = "Node: " + ele + ", elevation raster: " + rasterEle;
@@ -892,7 +910,22 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
                 return;
             }
 
-            LatLonEle peakA = elevationDataProvider.getLatLonEle(peakANode.getCoor());
+            LatLonEle peakA;
+            try {
+                peakA = elevationDataProvider.getLatLonEleOrWait(peakANode.getCoor());
+            } catch (InterruptedException e) {
+                setDialogState(DialogState.PEAKS_DEFINED);
+                textAreaFeedback
+                        .append("Interrupted while waiting for elevation data for peak A." + System.lineSeparator());
+                return;
+            } catch (ExecutionException e) {
+                setDialogState(DialogState.PEAKS_DEFINED);
+                textAreaFeedback.append("Elevation: Could not load elevation data for peak A."
+                        + System.lineSeparator());
+                Logging.error("Elevation: Could not load elevation data for peak A: "
+                        + e.getCause().toString());
+                return;
+            }
             if (!peakA.isValidEle()) {
                 setDialogState(DialogState.PEAKS_DEFINED);
                 textAreaFeedback.append(
@@ -900,7 +933,22 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
                                 + System.lineSeparator());
                 return;
             }
-            LatLonEle peakB = elevationDataProvider.getLatLonEle(peakBNode.getCoor());
+            LatLonEle peakB;
+            try {
+                peakB = elevationDataProvider.getLatLonEleOrWait(peakBNode.getCoor());
+            } catch (InterruptedException e) {
+                setDialogState(DialogState.PEAKS_DEFINED);
+                textAreaFeedback
+                        .append("Interrupted while waiting for elevation data for peak B." + System.lineSeparator());
+                return;
+            } catch (ExecutionException e) {
+                setDialogState(DialogState.PEAKS_DEFINED);
+                textAreaFeedback.append("Elevation: Could not load elevation data for peak A."
+                        + System.lineSeparator());
+                Logging.error("Elevation: Could not load for elevation data for peak B: "
+                        + e.getCause().toString());
+                return;
+            }
             if (!peakB.isValidEle()) {
                 setDialogState(DialogState.PEAKS_DEFINED);
                 textAreaFeedback.append(

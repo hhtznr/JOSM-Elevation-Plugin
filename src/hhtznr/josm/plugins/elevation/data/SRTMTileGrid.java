@@ -1,5 +1,10 @@
 package hhtznr.josm.plugins.elevation.data;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.ILatLon;
 import org.openstreetmap.josm.tools.Logging;
@@ -22,16 +27,17 @@ public class SRTMTileGrid implements SRTMTileCacheListener {
     private final int gridWidth;
     private final int gridHeight;
 
+    private final SRTMTile.Type srtmType;
     // Stores the SRTM tiles of this grid in row-major order. Southernmost tile
     // first, within a row from west to east.
-    private final SRTMTile[] srtmTiles;
+    private final Object tileFuturesLock = new Object();
+    private List<CompletableFuture<SRTMTile>> tileFutures = null;
+    private SRTMTile[] srtmTiles = null;
     private final int rasterWidth;
     private final int rasterHeight;
 
     private final double latLonStep;
     private final int tileLength;
-
-    private boolean allTilesCached = false;
 
     private final ElevationDataProvider elevationDataProvider;
 
@@ -47,7 +53,7 @@ public class SRTMTileGrid implements SRTMTileCacheListener {
     public SRTMTileGrid(ElevationDataProvider elevationDataProvider, Bounds bounds) {
         this.elevationDataProvider = elevationDataProvider;
         elevationDataProvider.cacheSRTMTiles(bounds);
-        SRTMTile.Type srtmType = elevationDataProvider.getSRTMType();
+        srtmType = elevationDataProvider.getSRTMType();
         if (srtmType == SRTMTile.Type.SRTM1) {
             latLonStep = SRTMTile.SRTM1_ANGULAR_STEP;
             tileLength = SRTMTile.SRTM1_TILE_LENGTH;
@@ -78,51 +84,47 @@ public class SRTMTileGrid implements SRTMTileCacheListener {
         // TODO: Check how to deal with this across 180th meridian
         gridBounds = new Bounds(gridIntLatSouth, gridIntLonWest, gridIntLatNorth, gridIntLonEast);
 
-        // Create an array, which stores the clipped SRTM tiles covering the bounds
         gridHeight = gridIntLatNorth - gridIntLatSouth;
         gridWidth = gridIntLonEast - gridIntLonWest;
-        srtmTiles = new SRTMTile[gridHeight * gridWidth];
-        // With the exception of the northernmost and easternmost tiles,
-        // the SRTM tiles overlap by one row and column
-        int effectiveTileLength = tileLength - 1;
-        rasterHeight = gridHeight * effectiveTileLength + 1;
-        rasterWidth = gridWidth * effectiveTileLength + 1;
+        int gridSize = gridHeight * gridWidth;
+        tileFutures = new ArrayList<CompletableFuture<SRTMTile>>(gridSize);
 
-        // Fill the 2D array with clipped SRTM tiles
         // Not across 180th meridian
         if (gridIntLonWest < gridIntLonEast) {
-            for (int gridLon = gridIntLonWest; gridLon < gridIntLonEast; gridLon++) {
-                int gridLonIndex = gridLon - gridIntLonWest;
-
-                for (int gridLat = gridIntLatSouth; gridLat < gridIntLatNorth; gridLat++) {
-                    int gridLatIndex = gridLat - gridIntLatSouth;
+            for (int gridLat = gridIntLatSouth; gridLat < gridIntLatNorth; gridLat++) {
+                for (int gridLon = gridIntLonWest; gridLon < gridIntLonEast; gridLon++) {
+                    String srtmTileID = SRTMTile.getTileID(gridLat, gridLon);
                     // Calling the getter method will ensure that tiles are being read or downloaded
-                    SRTMTile tile = elevationDataProvider.getSRTMTile(SRTMTile.getTileID(gridLat, gridLon));
-                    srtmTiles[gridLatIndex * gridWidth + gridLonIndex] = tile;
+                    CompletableFuture<SRTMTile> future = elevationDataProvider.getSRTMTileFuture(srtmTileID);
+                    tileFutures.add(future);
                 }
             }
         }
         // Across 180th meridian
         else {
-            for (int gridLon = gridIntLonWest; gridLon <= 179; gridLon++) {
-                int gridLonIndex = gridLon - gridIntLonWest;
-
-                for (int gridLat = gridIntLatSouth; gridLat < gridIntLatNorth; gridLat++) {
-                    int gridLatIndex = gridLat - gridIntLatSouth;
-                    SRTMTile tile = elevationDataProvider.getSRTMTile(SRTMTile.getTileID(gridLat, gridLon));
-                    srtmTiles[gridLatIndex * gridWidth + gridLonIndex] = tile;
+            for (int gridLat = gridIntLatSouth; gridLat < gridIntLatNorth; gridLat++) {
+                for (int gridLon = gridIntLonWest; gridLon <= 179; gridLon++) {
+                    String srtmTileID = SRTMTile.getTileID(gridLat, gridLon);
+                    // Calling the getter method will ensure that tiles are being read or downloaded
+                    CompletableFuture<SRTMTile> future = elevationDataProvider.getSRTMTileFuture(srtmTileID);
+                    tileFutures.add(future);
                 }
             }
-            for (int gridLon = -180; gridLon < gridIntLonEast; gridLon++) {
-                int gridLonIndex = 180 - gridIntLonWest + gridLon - gridIntLonEast;
-
-                for (int gridLat = gridIntLatSouth; gridLat < gridIntLatNorth; gridLat++) {
-                    int gridLatIndex = gridLat - gridIntLatSouth;
-                    SRTMTile tile = elevationDataProvider.getSRTMTile(SRTMTile.getTileID(gridLat, gridLon));
-                    srtmTiles[gridLatIndex * gridWidth + gridLonIndex] = tile;
+            for (int gridLat = gridIntLatSouth; gridLat < gridIntLatNorth; gridLat++) {
+                for (int gridLon = -180; gridLon < gridIntLonEast; gridLon++) {
+                    String srtmTileID = SRTMTile.getTileID(gridLat, gridLon);
+                    // Calling the getter method will ensure that tiles are being read or downloaded
+                    CompletableFuture<SRTMTile> future = elevationDataProvider.getSRTMTileFuture(srtmTileID);
+                    tileFutures.add(future);
                 }
             }
         }
+
+        // With the exception of the northernmost and easternmost tiles,
+        // the SRTM tiles overlap by one row and column
+        int effectiveTileLength = tileLength - 1;
+        rasterHeight = gridHeight * effectiveTileLength + 1;
+        rasterWidth = gridWidth * effectiveTileLength + 1;
 
         Logging.info("Elevation: Created new SRTM tile grid: " + gridBounds.toString() + ", grid width x height = "
                 + gridWidth + " x " + gridHeight + ", raster width x height = " + rasterWidth + " x " + rasterHeight);
@@ -209,10 +211,8 @@ public class SRTMTileGrid implements SRTMTileCacheListener {
         int gridIndexWest = intLonWest - gridIntLonWest;
         int gridIndexEast = intLonEast - gridIntLonWest;
 
-        SRTMTile tileSouthWest = srtmTiles[gridIndexSouth * gridWidth + gridIndexWest];
-        SRTMTile tileNorthEast = srtmTiles[gridIndexNorth * gridWidth + gridIndexEast];
-        int[] tileIndicesSouthWest = tileSouthWest.getClosestIndices(minLat, minLon);
-        int[] tileIndicesNorthEast = tileNorthEast.getClosestIndices(maxLat, maxLon);
+        int[] tileIndicesSouthWest = SRTMTile.getClosestIndices(minLat, minLon, srtmType);
+        int[] tileIndicesNorthEast = SRTMTile.getClosestIndices(maxLat, maxLon, srtmType);
         int tileIndexSouth = tileIndicesSouthWest[0];
         int tileIndexWest = tileIndicesSouthWest[1];
         int tileIndexNorth = tileIndicesNorthEast[0];
@@ -315,7 +315,7 @@ public class SRTMTileGrid implements SRTMTileCacheListener {
      *         {@link SRTMTile#SRTM_DATA_VOID} if no elevation data is cached yet.
      */
     public short getElevation(int latIndex, int lonIndex) {
-        if (!allTilesCached)
+        if (srtmTiles == null)
             return SRTMTile.SRTM_DATA_VOID;
         if (latIndex < 0)
             throw new IllegalArgumentException("Latitude index " + latIndex + " < min.index = 0");
@@ -360,6 +360,9 @@ public class SRTMTileGrid implements SRTMTileCacheListener {
             tileLonIndex = lonIndex % effectiveTileLength;
         }
 
+        if (srtmTiles == null)
+            return SRTMTile.SRTM_DATA_VOID;
+
         SRTMTile tile = srtmTiles[gridLatIndex * gridWidth + gridLonIndex];
         return tile.getElevation(tileLatIndex, tileLonIndex);
     }
@@ -386,63 +389,6 @@ public class SRTMTileGrid implements SRTMTileCacheListener {
     }
 
     /**
-     * Blocks the calling thread until all SRTM tiles for this grid have been
-     * cached.
-     * <p>
-     * This method should be used by threads that require the grid to be fully
-     * initialized before proceeding. It will return immediately if all tiles are
-     * already cached. Otherwise, the calling thread will wait until another thread
-     * notifies this object (via {@code notifyAll()}) once caching completes.
-     * </p>
-     *
-     * <p>
-     * The method uses a {@code while} loop to guard against spurious wakeups, as
-     * recommended by the Java concurrency specification.
-     * </p>
-     *
-     * @throws InterruptedException if the waiting thread is interrupted while
-     *                              waiting
-     */
-    public synchronized void waitForTilesCached() throws InterruptedException {
-        // Use a while loop to handle spurious wakeups
-        while (!areAllTilesCached()) {
-            // Wait, releasing the monitor lock until a worker thread notifies us
-            wait();
-        }
-    }
-
-    /**
-     * Returns whether all SRTM tiles required to form this grid are available and
-     * in memory.
-     *
-     * @return {@code true} if all SRTM tiles required to form this grid are
-     *         available and in memory.
-     */
-    public boolean areAllTilesCached() {
-        if (allTilesCached)
-            return true;
-        for (int gridLatIndex = 0; gridLatIndex < gridHeight; gridLatIndex++) {
-            for (int gridLonIndex = 0; gridLonIndex < gridWidth; gridLonIndex++) {
-                SRTMTile tile = srtmTiles[gridLatIndex * gridWidth + gridLonIndex];
-                SRTMTile.Status tileStatus = tile.getStatus();
-                // If at least one SRTM tile does not have a final status
-                /**
-                 * Note: E.g. tile N43E014 might always be missing because it is neither
-                 * available from NASA Earthdata nor from Sonny because it would only cover a
-                 * part of the Adriatic Sea and therefore is not really meaningful.
-                 */
-                if (!(tileStatus == SRTMTile.Status.VALID || tileStatus == SRTMTile.Status.DOWNLOAD_FAILED
-                        || tileStatus == SRTMTile.Status.FILE_MISSING))
-                    return false;
-            }
-        }
-        // When all tiles of this grid are cached, we do no longer need to listen
-        elevationDataProvider.removeTileCacheListener(this);
-        allTilesCached = true;
-        return true;
-    }
-
-    /**
      * Returns whether the given bounds are covered by the bounds of this grid.
      *
      * @param bounds The bounds for which to check if they are covered by this grid.
@@ -451,6 +397,23 @@ public class SRTMTileGrid implements SRTMTileCacheListener {
      */
     public boolean covers(Bounds bounds) {
         return gridBounds.contains(bounds);
+    }
+
+    /**
+     * Returns whether this tile grid technically contains an SRTM tile.
+     *
+     * @param tile The tile for which to check if it is technically contained in
+     *             this grid.
+     * @return {@code true} if the coordinates of the tile are within the bounds of
+     *         this grid and the SRTM type of the tile corresponds to this grid's
+     *         SRTM type.
+     */
+    public boolean contains(SRTMTile tile) {
+        int idLat = tile.getLatID();
+        int idLon = tile.getLonID();
+        SRTMTile.Type type = tile.getType();
+        return idLat >= gridIntLatSouth && idLat < gridIntLatNorth && idLon >= gridIntLonWest && idLon < gridIntLonEast
+                && type == srtmType;
     }
 
     /**
@@ -497,20 +460,161 @@ public class SRTMTileGrid implements SRTMTileCacheListener {
         return new Bounds(latMin, lonMin, latMax, lonMax);
     }
 
-    @Override
-    public void validSRTMTileCached(SRTMTile tile) {
-        synchronized (this) {
-            int latID = tile.getLatID();
-            int lonID = tile.getLonID();
-            if (latID >= gridIntLatSouth && latID < gridIntLatNorth && lonID >= gridIntLonWest
-                    && lonID < gridIntLonEast) {
-                onTileCached();
+    /**
+     * Blocks the calling thread until all SRTM tiles for this grid have been
+     * cached.
+     * <p>
+     * This method should be used by threads that require the grid to be fully
+     * initialized before proceeding. It will return immediately if all tiles are
+     * already cached.
+     * </p>
+     *
+     * @throws InterruptedException if the waiting thread is interrupted while
+     *                              waiting
+     */
+    public void waitForTilesCached() throws InterruptedException {
+        List<CompletableFuture<SRTMTile>> futures;
+        synchronized (tileFuturesLock) {
+            futures = this.tileFutures;
+        }
+        if (futures == null)
+            return;
+        for (int gridLatIndex = 0; gridLatIndex < gridHeight; gridLatIndex++) {
+            for (int gridLonIndex = 0; gridLonIndex < gridWidth; gridLonIndex++) {
+                CompletableFuture<SRTMTile> future = futures.get(gridLatIndex * gridWidth + gridLonIndex);
+                try {
+                    // Blocks until the tile is cached or caching is interrupted
+                    future.get();
+                } catch (ExecutionException e) {
+                    // Should never happen because we do not complete exceptionally
+                    Logging.error("Elevation: Could not get tile grid tile at grid indices (" + gridLatIndex + ", "
+                            + gridLonIndex + "): " + e.toString());
+                    continue;
+                }
             }
         }
     }
 
-    private synchronized void onTileCached() {
-        if (areAllTilesCached())
-            notifyAll(); // wakes all waiting threads
+    /**
+     * Returns whether all SRTM tiles required to form this grid are available and
+     * in memory.
+     *
+     * @return {@code true} if all SRTM tiles required to form this grid are
+     *         available and in memory.
+     */
+    public boolean areAllTilesCached() {
+        if (srtmTiles != null)
+            return true;
+        List<CompletableFuture<SRTMTile>> futures;
+        synchronized (tileFuturesLock) {
+            futures = this.tileFutures;
+        }
+        if (futures == null)
+            return true;
+        for (int gridLatIndex = 0; gridLatIndex < gridHeight; gridLatIndex++) {
+            for (int gridLonIndex = 0; gridLonIndex < gridWidth; gridLonIndex++) {
+                CompletableFuture<SRTMTile> future = futures.get(gridLatIndex * gridWidth + gridLonIndex);
+                // Note: "Done" does not necessarily mean that the tiles hold valid data
+                // However, we can deal with no-data tiles by treating them like big data voids
+                if (!future.isDone()) {
+                    return false;
+                }
+            }
+        }
+        try {
+            assmebleGrid();
+        } catch (InterruptedException e) {
+            return false;
+        }
+        return true;
+    }
+
+    private void assmebleGrid() throws InterruptedException {
+        synchronized (tileFuturesLock) {
+            // We only assemble the grid once
+            if (tileFutures == null)
+                return;
+            int gridSize = gridHeight * gridWidth;
+            SRTMTile[] tiles = new SRTMTile[gridSize];
+
+            // Not across 180th meridian
+            if (gridIntLonWest < gridIntLonEast) {
+                for (int gridLat = gridIntLatSouth; gridLat < gridIntLatNorth; gridLat++) {
+                    int gridLatIndex = gridLat - gridIntLatSouth;
+                    for (int gridLon = gridIntLonWest; gridLon < gridIntLonEast; gridLon++) {
+                        int gridLonIndex = gridLon - gridIntLonWest;
+
+                        int linearIndex = gridLatIndex * gridWidth + gridLonIndex;
+                        // Calling the getter method will ensure that tiles are being read or downloaded
+                        String tileID = SRTMTile.getTileID(gridLat, gridLon);
+                        SRTMTile tile;
+                        try {
+                            // The futures are stored in the same linear order as the tiles
+                            tile = tileFutures.get(linearIndex).get();
+                        } catch (ExecutionException e) {
+                            // Should never happen because we do not complete exceptionally
+                            Logging.error("Elevation: Could not assemble tile grid. Exception with tile " + tileID
+                                    + ": " + e.toString());
+                            return;
+                        }
+                        tiles[linearIndex] = tile;
+                    }
+                }
+            }
+            // Across 180th meridian
+            else {
+                for (int gridLat = gridIntLatSouth; gridLat < gridIntLatNorth; gridLat++) {
+                    int gridLatIndex = gridLat - gridIntLatSouth;
+                    for (int gridLon = gridIntLonWest; gridLon <= 179; gridLon++) {
+                        int gridLonIndex = gridLon - gridIntLonWest;
+
+                        int linearIndex = gridLatIndex * gridWidth + gridLonIndex;
+                        String tileID = SRTMTile.getTileID(gridLat, gridLon);
+                        SRTMTile tile;
+                        try {
+                            // The futures are stored in the same linear order as the tiles
+                            tile = tileFutures.get(linearIndex).get();
+                        } catch (ExecutionException e) {
+                            // Should never happen because we do not complete exceptionally
+                            Logging.error("Elevation: Could not assemble tile grid. Exception with tile " + tileID
+                                    + ": " + e.toString());
+                            return;
+                        }
+                        tiles[linearIndex] = tile;
+                    }
+                }
+                for (int gridLat = gridIntLatSouth; gridLat < gridIntLatNorth; gridLat++) {
+                    int gridLatIndex = gridLat - gridIntLatSouth;
+                    for (int gridLon = -180; gridLon < gridIntLonEast; gridLon++) {
+                        int gridLonIndex = 180 - gridIntLonWest + gridLon - gridIntLonEast;
+
+                        int linearIndex = gridLatIndex * gridWidth + gridLonIndex;
+                        String tileID = SRTMTile.getTileID(gridLat, gridLon);
+                        SRTMTile tile;
+                        try {
+                            // The futures are stored in the same linear order as the tiles
+                            tile = tileFutures.get(linearIndex).get();
+                        } catch (ExecutionException e) {
+                            // Should never happen because we do not complete exceptionally
+                            Logging.error("Elevation: Could not assemble tile grid. Exception with tile " + tileID
+                                    + ": " + e.toString());
+                            return;
+                        }
+                        tiles[linearIndex] = tile;
+                    }
+                }
+            }
+            // When all tiles of this grid are cached, we do no longer need to listen
+            elevationDataProvider.removeTileCacheListener(this);
+            srtmTiles = tiles;
+            // We no longer need the list of futures as soon as the grid is assembled
+            tileFutures = null;
+        }
+    }
+
+    @Override
+    public void srtmTileCached(SRTMTile tile, SRTMTileCacheEntry.Status status) {
+        if (contains(tile))
+            areAllTilesCached();
     }
 }

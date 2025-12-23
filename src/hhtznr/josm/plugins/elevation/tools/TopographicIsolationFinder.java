@@ -57,6 +57,9 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
      *                          the elevation of peaks.
      * @param searchBounds      The bounds within which to search for isolation
      *                          reference points.
+     * @param searchDistance    The maximum search distance in meters. It is used in
+     *                          order not to search in corners of the rectangular
+     *                          search bounds.
      * @param distanceTolerance A distance tolerance value in meters. Points that
      *                          are up to the distance tolerance further away from
      *                          the given peak as compared to the very closest
@@ -76,8 +79,8 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
      *         point could be determined within the specified bounds.
      * @throws InterruptedException Thrown if the executing thread was interrupted
      */
-    public List<LatLonEle> determineReferencePoints(LatLonEle peak, Bounds searchBounds, double distanceTolerance,
-            double deadZoneRadius) throws InterruptedException {
+    public List<LatLonEle> determineReferencePoints(LatLonEle peak, Bounds searchBounds, double searchDistance,
+            double distanceTolerance, double deadZoneRadius) throws InterruptedException {
         SRTMTileGridView tileGridView;
         try {
             tileGridView = new SRTMTileGrid(elevationDataProvider, searchBounds).getView(searchBounds);
@@ -128,7 +131,7 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
             LatLon closestPoint = isolineSegment.getClosestPointTo(peak);
             double distance = peak.greatCircleDistance((ILatLon) closestPoint);
 
-            if (distance > deadZoneRadius && distance < maxClosestDistance) {
+            if (distance > deadZoneRadius && distance < maxClosestDistance && distance <= searchDistance) {
                 if (distance < minClosestDistance) {
                     minClosestDistance = distance;
                     maxClosestDistance = minClosestDistance + distanceTolerance;

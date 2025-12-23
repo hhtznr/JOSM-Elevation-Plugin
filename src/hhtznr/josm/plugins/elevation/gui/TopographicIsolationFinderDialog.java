@@ -81,6 +81,7 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
     private Future<List<Node>> closestNodesFuture = null;
     private List<Node> nodes = null;
     private Bounds searchBounds = null;
+    private double searchDistance;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();;
 
@@ -509,12 +510,13 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
         textFieldSearchDistanceLatLon.setText(String.format("lat: %.4f, lon: %.4f (area: %.4f x %.4f)",
                 latSearchDistance, lonSearchDistance, latSearchDistance * 2, lonSearchDistance * 2));
         this.searchBounds = searchBounds;
+        searchDistance = distance;
     }
 
-    private Future<List<Node>> determineReferencePoints(LatLonEle peak, Bounds searchBounds, double distanceTolerance,
-            double deadZoneRadius) throws RejectedExecutionException {
+    private Future<List<Node>> determineReferencePoints(LatLonEle peak, Bounds searchBounds, double searchDistance,
+            double distanceTolerance, double deadZoneRadius) throws RejectedExecutionException {
         Callable<List<Node>> task = () -> {
-            List<LatLonEle> closestPoints = isolationFinder.determineReferencePoints(peak, searchBounds,
+            List<LatLonEle> closestPoints = isolationFinder.determineReferencePoints(peak, searchBounds, searchDistance,
                     distanceTolerance, deadZoneRadius);
             if (closestPoints.size() == 0) {
                 // includes setting this.node to null
@@ -723,7 +725,8 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
             int distanceTolerance = (Integer) spinnerDistanceTolerance.getValue();
             int deadZoneRadius = (Integer) spinnerDeadZoneRadius.getValue();
             try {
-                closestNodesFuture = determineReferencePoints(peak, searchBounds, distanceTolerance, deadZoneRadius);
+                closestNodesFuture = determineReferencePoints(peak, searchBounds, searchDistance, distanceTolerance,
+                        deadZoneRadius);
             } catch (RejectedExecutionException e) {
                 textAreaFeedback
                         .append("Determination of closest points rejected by thread executor" + System.lineSeparator());

@@ -36,7 +36,7 @@ public class LatLonEle extends LatLon {
     /**
      * Creates a new LatLon coordinate with assigned elevation value. Takes the
      * elevation value as a short and sets the internal elevation value to
-     * {@code NO_VALID_ELEVATION} if the provided elevation has the special value
+     * {@link #NO_VALID_ELEVATION} if the provided elevation has the special value
      * {@link SRTMTile#SRTM_DATA_VOID}.
      *
      * @param lat The latitude in degrees.
@@ -60,7 +60,7 @@ public class LatLonEle extends LatLon {
     /**
      * Creates a new LatLon coordinate with assigned elevation value. Takes the
      * elevation value as a short and sets the internal elevation value to
-     * {@code NO_VALID_ELEVATION} if the provided elevation has the special value
+     * {@link #NO_VALID_ELEVATION} if the provided elevation has the special value
      * {@link SRTMTile#SRTM_DATA_VOID}.
      *
      * @param latLon The LatLon coordinate.
@@ -68,6 +68,27 @@ public class LatLonEle extends LatLon {
      */
     public LatLonEle(ILatLon latLon, short ele) {
         this(latLon, ele == SRTMTile.SRTM_DATA_VOID ? NO_VALID_ELEVATION : ele);
+    }
+
+    /**
+     * Creates a new LatLon coordinate with assigned undefined elevation value. The
+     * instance will return {@link #NO_VALID_ELEVATION} as elevation value.
+     *
+     * @param lat The latitude in degrees.
+     * @param lon The longitude in degrees.
+     */
+    public LatLonEle(double lat, double lon) {
+        this(lat, lon, NO_VALID_ELEVATION);
+    }
+
+    /**
+     * Creates a new LatLon coordinate with assigned undefined elevation value. The
+     * instance will return {@link #NO_VALID_ELEVATION} as elevation value.
+     *
+     * @param latLon The LatLon coordinate.
+     */
+    public LatLonEle(ILatLon latLon) {
+        this(latLon.lat(), latLon.lon());
     }
 
     /**

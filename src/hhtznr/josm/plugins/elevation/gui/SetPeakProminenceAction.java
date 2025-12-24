@@ -77,7 +77,7 @@ public class SetPeakProminenceAction extends JosmAction {
             String natural = node.get("natural");
             if (natural == null)
                 return;
-            if (natural.equals("peak") || natural.equals("hill"))
+            if (natural.equals("peak") || natural.equals("hill") || natural.equals("volcano"))
                 peakNode = node;
             else if (natural.equals("saddle"))
                 saddleNode = node;

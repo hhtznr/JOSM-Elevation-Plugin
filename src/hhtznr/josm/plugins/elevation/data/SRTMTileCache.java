@@ -365,10 +365,14 @@ public class SRTMTileCache {
                 }
                 entry.setStatus(status);
                 entry.getFuture().complete(srtmTile); // Wakes up all waiters
+                updateCacheSize(entry.getDataSize());
                 synchronized (listeners) {
                     for (SRTMTileCacheListener listener : listeners)
                         listener.srtmTileCached(srtmTile, status);
                 }
+            } catch (CancellationException e) {
+                // Remove the entry from the cache if the loading task was canceled
+                removeEntry(srtmTileID);
             } catch (Exception e) {
                 SRTMTileCacheEntry.Status status = SRTMTileCacheEntry.Status.DATA_INVALID;
                 entry.setStatus(status);
@@ -414,16 +418,14 @@ public class SRTMTileCache {
      * Flushes the cache by removing all tiles and sets the cache size to zero.
      */
     public synchronized void flush() {
-        synchronized (cache) {
-            // Cancel all currently running/queued file download tasks
-            fileDownloadExecutor.cancelAllTasks();
-            // Cancel all currently running/queued file read tasks
-            fileReadExecutor.cancelAllTasks();
-            cache.clear();
-            cacheSize = 0;
-            synchronized (previousTileLock) {
-                previousTile = null;
-            }
+        // Cancel all currently running/queued file download tasks
+        fileDownloadExecutor.cancelAllTasks();
+        // Cancel all currently running/queued file read tasks
+        fileReadExecutor.cancelAllTasks();
+        cache.clear();
+        cacheSize = 0;
+        synchronized (previousTileLock) {
+            previousTile = null;
         }
         Logging.info("Elevation: SRTM tile cache flushed");
     }
@@ -438,6 +440,11 @@ public class SRTMTileCache {
         ArrayList<SRTMTileCacheEntry> allEntries = new ArrayList<>(cache.values());
         allEntries.sort(Comparator.comparingLong(SRTMTileCacheEntry::getAccessTime));
         for (SRTMTileCacheEntry entry : allEntries) {
+            SRTMTileCacheEntry.Status status = entry.getStatus();
+            // Skip tiles that are known but will always have no size
+            if (status == SRTMTileCacheEntry.Status.FILE_INVALID || status == SRTMTileCacheEntry.Status.FILE_MISSING
+                    || status == SRTMTileCacheEntry.Status.DATA_INVALID)
+                continue;
             CompletableFuture<SRTMTile> future = entry.getFuture();
             if (!future.isDone())
                 future.cancel(true);
@@ -445,12 +452,24 @@ public class SRTMTileCache {
             cache.remove(srtmTileID);
             int dataSize = entry.getDataSize();
             cacheSize -= dataSize;
-            Logging.info("Elevation: Removed SRTM tile " + srtmTileID + " with status '"
-                    + entry.getStatus().toString() + "' and size " + getSizeString(dataSize)
-                    + " from cache; cache size: " + getSizeString(cacheSize));
+            Logging.info("Elevation: Removed SRTM tile " + srtmTileID + " with status '" + entry.getStatus().toString()
+                    + "' and size " + getSizeString(dataSize) + " from cache; cache size: " + getSizeString(cacheSize));
             if (cacheSize <= cacheSizeLimit)
                 break;
         }
+    }
+
+    private synchronized SRTMTileCacheEntry removeEntry(String srtmTileID) {
+        SRTMTileCacheEntry entry = cache.remove(srtmTileID);
+        if (entry != null && entry.getDataSize() > 0)
+            updateCacheSize(entry.getDataSize());
+        return entry;
+    }
+
+    private synchronized void updateCacheSize(int dataSizeToAdd) {
+        cacheSize += dataSizeToAdd;
+        if (cacheSize > cacheSizeLimit)
+            clean();
     }
 
     /**

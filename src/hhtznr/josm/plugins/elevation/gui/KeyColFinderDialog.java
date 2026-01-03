@@ -734,13 +734,13 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
                     String note = null;
                     String peakName = peakANode.get("name");
                     if (peakName != null) {
-                        note = "Key col of " + peakName;
+                        note = "key col of " + peakName;
                     } else {
                         String peakAEle = peakANode.get("ele");
                         if (peakAEle != null)
                             try {
                                 long eleA = Math.round(Double.parseDouble(peakAEle));
-                                note = "Key col of P." + eleA;
+                                note = "key col of P." + eleA;
                             } catch (NumberFormatException e) {
                                 note = null;
                             }

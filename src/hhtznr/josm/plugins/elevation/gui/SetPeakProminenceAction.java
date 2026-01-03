@@ -115,14 +115,20 @@ public class SetPeakProminenceAction extends JosmAction {
         // Add the command to the undo-redo handler (also executes it)
         UndoRedoHandler.getInstance().add(prominenceCmd);
 
-        // Add a note to the saddle that it is the key col of the peak
-        // if the peak is named and the saddle does not have a note tag
-        String peakName = peakNode.get("name");
         String saddleNote = saddleNode.get("note");
-        if (peakName != null && saddleNote == null) {
-            String keyColNote = "key col of " + peakName;
-            Command noteCmd = new ChangePropertyCommand(saddleNode, "note", keyColNote);
-            UndoRedoHandler.getInstance().add(noteCmd);
+        // Add a note to the saddle that it is the key col of the peak
+        // if the saddle does not have a note tag and the peak has a name or elevation
+        if (saddleNote == null) {
+            String peakName = peakNode.get("name");
+            if (peakName == null)
+                peakName = "P." + peakEle;
+
+            if (peakName != null && saddleNote == null) {
+                String keyColNote = "key col of " + peakName;
+
+                Command noteCmd = new ChangePropertyCommand(saddleNode, "note", keyColNote);
+                UndoRedoHandler.getInstance().add(noteCmd);
+            }
         }
     }
 
@@ -130,8 +136,8 @@ public class SetPeakProminenceAction extends JosmAction {
         String nodeEle = node.get("ele");
         if (nodeEle != null) {
             // This may cause a NumberFormatException, if the value of ele cannot be parsed
-            // to an int
-            return Integer.parseInt(nodeEle);
+            // to a double
+            return (int) Math.round(Double.parseDouble(nodeEle));
         }
         LatLon coordinate = node.getCoor();
         LatLonEle latLonEle = elevationDataProvider.getLatLonEleNoWait(coordinate);

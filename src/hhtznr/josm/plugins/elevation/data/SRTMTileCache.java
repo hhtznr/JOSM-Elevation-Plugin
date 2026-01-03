@@ -432,24 +432,24 @@ public class SRTMTileCache {
      * Removes least recently used SRTM tiles actually holding elevation data from
      * the cache ensuring that the cache size limit is not exceeded.
      */
-    private synchronized void clean() {
+    public synchronized void clean() {
+        if (cacheSize <= cacheSizeLimit)
+            return;
         ArrayList<SRTMTileCacheEntry> allEntries = new ArrayList<>(cache.values());
         allEntries.sort(Comparator.comparingLong(SRTMTileCacheEntry::getAccessTime));
         for (SRTMTileCacheEntry entry : allEntries) {
+            CompletableFuture<SRTMTile> future = entry.getFuture();
+            if (!future.isDone())
+                future.cancel(true);
+            String srtmTileID = entry.getID();
+            cache.remove(srtmTileID);
+            int dataSize = entry.getDataSize();
+            cacheSize -= dataSize;
+            Logging.info("Elevation: Removed SRTM tile " + srtmTileID + " with status '"
+                    + entry.getStatus().toString() + "' and size " + getSizeString(dataSize)
+                    + " from cache; cache size: " + getSizeString(cacheSize));
             if (cacheSize <= cacheSizeLimit)
                 break;
-            if (entry != null) {
-                CompletableFuture<SRTMTile> future = entry.getFuture();
-                if (!future.isDone())
-                    future.cancel(true);
-                String srtmTileID = entry.getID();
-                cache.remove(srtmTileID);
-                int dataSize = entry.getDataSize();
-                cacheSize -= dataSize;
-                Logging.info("Elevation: Removed SRTM tile " + srtmTileID + " with status '"
-                        + entry.getStatus().toString() + "' and size " + getSizeString(dataSize)
-                        + " from cache; cache size: " + getSizeString(cacheSize));
-            }
         }
     }
 

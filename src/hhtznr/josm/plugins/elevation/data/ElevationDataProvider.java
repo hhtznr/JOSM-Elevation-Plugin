@@ -374,6 +374,13 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
     }
 
     /**
+     * Cleans the SRTM tile cache if the maximum cache size is currently exceeded.
+     */
+    public synchronized void cleanCache() {
+        tileCache.clean();
+    }
+
+    /**
      * Triggers caching of all SRTM tiles needed to cover the defined area.
      *
      * @param southWest The south west (lower left) coordinate of the area.

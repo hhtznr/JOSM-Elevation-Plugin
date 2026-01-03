@@ -83,7 +83,7 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
     private JTextArea textAreaFeedback;
 
     private final ElevationDataProvider elevationDataProvider;
-    private final KeyColFinder keyColFinder;
+    private KeyColFinder keyColFinder;
     private Node peakANode = null;
     private Node peakBNode = null;
     private Future<LatLonEle> keyColFuture = null;
@@ -770,6 +770,11 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
     @Override
     public void dispose() {
         keyColFinder.removeElevationToolListener(this);
+        Future<LatLonEle> future = keyColFuture;
+        if (future != null && !future.isCancelled())
+            future.cancel(true);
+        keyColFinder = null;
+        elevationDataProvider.cleanCache();
         super.dispose();
     }
 
@@ -1002,8 +1007,9 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
 
         @Override
         public void actionPerformed(ActionEvent event) {
-            if (keyColFuture != null && !keyColFuture.isCancelled()) {
-                boolean canceled = keyColFuture.cancel(true);
+            Future<LatLonEle> future = keyColFuture;
+            if (future != null && !future.isCancelled()) {
+                boolean canceled = future.cancel(true);
                 if (canceled)
                     setDialogState(DialogState.PEAKS_DEFINED);
                 else

@@ -76,7 +76,8 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
     private JButton buttonAddToDataLayer;
     private JTextArea textAreaFeedback;
 
-    private final TopographicIsolationFinder isolationFinder;
+    private final ElevationDataProvider elevationDataProvider;
+    private TopographicIsolationFinder isolationFinder;
     private Node peakNode = null;
     private Future<List<Node>> closestNodesFuture = null;
     private List<Node> nodes = null;
@@ -99,6 +100,7 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
      */
     public TopographicIsolationFinderDialog(Component parent, ElevationDataProvider elevationDataProvider) {
         super(parent, "Topograhic Isolation Finder", new String[] { tr("Close") }, false, false);
+        this.elevationDataProvider = elevationDataProvider;
         // Set the icon of the close button via the superclass method
         setButtonIcons("misc/close.svg");
         isolationFinder = new TopographicIsolationFinder(elevationDataProvider);
@@ -580,6 +582,11 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
     @Override
     public void dispose() {
         isolationFinder.removeElevationToolListener(this);
+        Future<List<Node>> future = closestNodesFuture;
+        if (future != null && !future.isCancelled())
+            future.cancel(true);
+        isolationFinder = null;
+        elevationDataProvider.cleanCache();
         super.dispose();
     }
 
@@ -744,8 +751,9 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
 
         @Override
         public void actionPerformed(ActionEvent event) {
-            if (closestNodesFuture != null && !closestNodesFuture.isCancelled()) {
-                boolean canceled = closestNodesFuture.cancel(true);
+            Future<List<Node>> future = closestNodesFuture;
+            if (future != null && !future.isCancelled()) {
+                boolean canceled = future.cancel(true);
                 if (canceled)
                     setDialogState(DialogState.PEAK_DEFINED);
                 else

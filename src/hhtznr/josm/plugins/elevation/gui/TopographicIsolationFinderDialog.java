@@ -83,7 +83,7 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
     private Bounds searchBounds = null;
     private double searchDistance;
 
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();;
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     private static enum DialogState {
         INITIAL, PEAK_NODE_SELECTED, PEAK_DEFINED, SEARCH_RUNNING, REFERENCE_POINTS_DETERMINED,

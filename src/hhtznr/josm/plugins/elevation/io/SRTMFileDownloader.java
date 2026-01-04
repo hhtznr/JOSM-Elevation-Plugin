@@ -167,8 +167,13 @@ public class SRTMFileDownloader {
      * @param elevationDataSource The elevation data source from which to download.
      * @return An optional either holding the downloaded file if download succeeded
      *         or being empty if it failed.
+     * @throws InterruptedException if the thread was interrupted while downloading.
      */
-    public Optional<File> download(String srtmTileID, ElevationDataSource elevationDataSource) {
+    public Optional<File> download(String srtmTileID, ElevationDataSource elevationDataSource)
+            throws InterruptedException {
+        if (Thread.currentThread().isInterrupted())
+            throw new InterruptedException(
+                    "Download of SRTM tile " + srtmTileID + " from source " + elevationDataSource + " interrupted.");
         SRTMTile.Type srtmType = elevationDataSource.getSRTMTileType();
         // Earthdata URLs look like this:
         // https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/SRTMGL1.003/N00E013.SRTMGL1.hgt/N00E013.SRTMGL1.hgt.zip
@@ -205,6 +210,9 @@ public class SRTMFileDownloader {
             }
         }
         try {
+            if (Thread.currentThread().isInterrupted())
+                throw new InterruptedException("Download of SRTM tile " + srtmTileID + " from source "
+                        + elevationDataSource + " interrupted.");
             if (basicAuthHeader != null)
                 httpClient.connect(null, authRedirectLocation, basicAuthHeader);
             else

@@ -67,12 +67,16 @@ public class SRTMFileReader {
      *
      * @param srtmFile   The SRTM file to read.
      * @param dataSource The original source of the SRTM tile.
-     * @return The SRTM tile read from the file or {@code null} if the thread was
-     *         interrupted while reading the file.
-     * @throws IOException Thrown if the data in the file has a wrong length or the
-     *                     file cannot be read at all.
+     * @return The SRTM tile read from the file.
+     * @throws IOException              if the file cannot be read at all.
+     * @throws InterruptedException     if the thread was interrupted while reading
+     *                                  the file.
+     * @throws InvalidSRTMDataException if the data in the file has a wrong length.
      */
-    public SRTMTile readSRTMFile(File srtmFile, ElevationDataSource dataSource) throws IOException {
+    public SRTMTile readSRTMFile(File srtmFile, ElevationDataSource dataSource)
+            throws IOException, InterruptedException, InvalidSRTMDataException {
+        if (Thread.currentThread().isInterrupted())
+            throw new InterruptedException("Reading SRTM file '" + srtmFile.getAbsolutePath() + "' was interrupted.");
         String srtmTileID = SRTMFiles.getSRTMTileIDFromFileName(srtmFile.getName());
         SRTMTile.Type type = dataSource.getSRTMTileType();
 
@@ -100,13 +104,14 @@ public class SRTMFileReader {
             ByteBuffer byteBuffer = ByteBuffer.allocate(bytesExpected);
             while ((bytesRead = inputStream.read(readBuffer)) != -1) {
                 if (byteBuffer.remaining() < bytesRead)
-                    throw new IOException("SRTM file '" + srtmFile.getName() + "' contains more bytes than expected.");
+                    throw new InvalidSRTMDataException(
+                            "SRTM file '" + srtmFile.getName() + "' contains more bytes than expected.");
                 byteBuffer.put(readBuffer, 0, bytesRead);
             }
 
             if (byteBuffer.position() != bytesExpected)
-                throw new IOException("Wrong number of bytes in SRTM file '" + srtmFile.getName() + "'. Expected: "
-                        + bytesExpected + " bytes; read: " + bytesRead + " bytes");
+                throw new InvalidSRTMDataException("Wrong number of bytes in SRTM file '" + srtmFile.getName()
+                        + "'. Expected: " + bytesExpected + " bytes; read: " + bytesRead + " bytes");
 
             // Convert byte order
             byteBuffer.order(ByteOrder.BIG_ENDIAN);
@@ -124,7 +129,8 @@ public class SRTMFileReader {
             short[] elevationData = new short[srtmTileLength * srtmTileLength];
             for (int latIndex = 0; latIndex < srtmTileLength; latIndex++) {
                 if ((latIndex & 31) == 0 && Thread.currentThread().isInterrupted())
-                    return null;
+                    throw new InterruptedException(
+                            "Reading SRTM file '" + srtmFile.getAbsolutePath() + "' was interrupted.");
                 int flippedLatIndex = srtmTileLength - 1 - latIndex;
                 for (int lonIndex = 0; lonIndex < srtmTileLength; lonIndex++)
                     // Flip the order of the rows to rearrange the data with southernmost row first

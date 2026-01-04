@@ -1,6 +1,7 @@
 package hhtznr.josm.plugins.elevation.data;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -20,6 +21,7 @@ import java.util.concurrent.Executors;
 import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
+import hhtznr.josm.plugins.elevation.io.InvalidSRTMDataException;
 import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
 import hhtznr.josm.plugins.elevation.io.SRTMFileReader;
 import hhtznr.josm.plugins.elevation.util.CancelableExecutor;
@@ -314,7 +316,12 @@ public class SRTMTileCache {
                                 + " is permanently missing for source " + dataSource.toString());
                         continue;
                     }
-                    File srtmFile = dataSource.getLocalSRTMFile(srtmTileID).orElse(null);
+                    File srtmFile = null;
+                    try {
+                        srtmFile = dataSource.getLocalSRTMFile(srtmTileID);
+                    } catch (FileNotFoundException e) {
+                        status = SRTMTileCacheEntry.Status.FILE_MISSING;
+                    }
                     // If an SRTM file with the data exists on disk, read it in
                     if (srtmFile != null) {
                         Logging.info("Elevation: Caching data of SRTM tile " + srtmTileID + " from file "
@@ -327,6 +334,8 @@ public class SRTMTileCache {
                         } catch (ExecutionException e) {
                             if (e.getCause() instanceof IOException)
                                 status = SRTMTileCacheEntry.Status.FILE_INVALID;
+                            if (e.getCause() instanceof InvalidSRTMDataException)
+                                status = SRTMTileCacheEntry.Status.DATA_INVALID;
                         }
                     }
                     // If auto-downloading of SRTM files is enabled, try to download the missing
@@ -336,7 +345,15 @@ public class SRTMTileCache {
                         Optional<File> optionalFile = downloadSRTMFile(entry, dataSource);
                         if (optionalFile.isPresent()) {
                             srtmFile = optionalFile.get();
-                            srtmTile = readSRTMFile(entry, srtmFile, dataSource);
+                            try {
+                                srtmTile = readSRTMFile(entry, srtmFile, dataSource);
+                                break;
+                            } catch (ExecutionException e) {
+                                if (e.getCause() instanceof IOException)
+                                    status = SRTMTileCacheEntry.Status.FILE_INVALID;
+                                if (e.getCause() instanceof InvalidSRTMDataException)
+                                    status = SRTMTileCacheEntry.Status.DATA_INVALID;
+                            }
                         } else {
                             status = SRTMTileCacheEntry.Status.DOWNLOAD_FAILED;
                         }
@@ -351,8 +368,6 @@ public class SRTMTileCache {
 
                 if (srtmTile == null) {
                     srtmTile = SRTMTile.createInvalidTile(srtmTileID, srtmType);
-                } else if (!srtmTile.isValid()) {
-                    status = SRTMTileCacheEntry.Status.DATA_INVALID;
                 } else {
                     status = SRTMTileCacheEntry.Status.VALID;
                     synchronized (previousTileLock) {

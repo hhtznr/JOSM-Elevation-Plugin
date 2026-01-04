@@ -1,6 +1,7 @@
 package hhtznr.josm.plugins.elevation.data;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
@@ -8,7 +9,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -77,24 +77,25 @@ public class ElevationDataSource {
 
     /**
      * Determines the SRTM file for the given tile ID from the data directory of
-     * this data source if it exists
+     * this data source if it exists.
      *
      * @param srtmTileID The SRTM tile ID.
-     * @return An {@code Optional} holding the SRTM file or an empty
-     *         {@code Optional} if no file is available for the given tile ID.
+     * @return The SRTM file for the given tile ID.
+     * @throws FileNotFoundException if no SRMT files exists for the provided ID.
      */
-    public Optional<File> getLocalSRTMFile(String srtmTileID) {
+    public File getLocalSRTMFile(String srtmTileID) throws FileNotFoundException {
         Logging.info("Elevation: Looking for on-disk SRTM file for tile ID " + srtmTileID);
-        File srtmFile = null;
         // List the SRTM directory and filter out files that start with the SRTM tile ID
         // https://www.baeldung.com/java-list-directory-files
         Set<File> files = Stream.of(dataDirectory.listFiles())
                 .filter(file -> file.isFile() && file.getName().startsWith(srtmTileID)).collect(Collectors.toSet());
 
-        if (files.size() > 0)
-            srtmFile = files.iterator().next();
+        if (files.size() == 0)
+            throw new FileNotFoundException(
+                    "SRTM file for SRTM tile ID " + srtmTileID + " does not exist or is not a regular file.");
 
-        return Optional.ofNullable(srtmFile);
+        return files.iterator().next();
+
     }
 
     /**

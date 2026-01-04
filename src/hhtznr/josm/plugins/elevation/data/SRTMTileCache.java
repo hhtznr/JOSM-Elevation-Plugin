@@ -5,6 +5,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -436,27 +437,11 @@ public class SRTMTileCache {
             if (!future.isDone())
                 future.cancel(true);
             String srtmTileID = entry.getID();
-            cache.remove(srtmTileID);
-            int dataSize = entry.getDataSize();
-            cacheSize -= dataSize;
-            Logging.info("Elevation: Removed SRTM tile " + srtmTileID + " with status '" + entry.getStatus().toString()
-                    + "' and size " + getSizeString(dataSize) + " from cache; cache size: " + getSizeString(cacheSize));
+            removeEntry(srtmTileID);
+
             if (cacheSize <= cacheSizeLimit)
                 break;
         }
-    }
-
-    private synchronized SRTMTileCacheEntry removeEntry(String srtmTileID) {
-        SRTMTileCacheEntry entry = cache.remove(srtmTileID);
-        if (entry != null && entry.getDataSize() > 0)
-            updateCacheSize(entry.getDataSize());
-        return entry;
-    }
-
-    private synchronized void updateCacheSize(int dataSizeToAdd) {
-        cacheSize += dataSizeToAdd;
-        if (cacheSize > cacheSizeLimit)
-            clean();
     }
 
     /**
@@ -467,7 +452,37 @@ public class SRTMTileCache {
      *               cache.
      */
     public synchronized void cleanAllTilesWithStatus(SRTMTileCacheEntry.Status status) {
-        cache.entrySet().removeIf(entry -> entry.getValue().getStatus() == status);
+        Iterator<Entry<String, SRTMTileCacheEntry>> iterator = cache.entrySet().iterator();
+        while (iterator.hasNext()) {
+            SRTMTileCacheEntry entry = iterator.next().getValue();
+            if (entry.getStatus() == status) {
+                iterator.remove();
+                int dataSize = entry.getDataSize();
+                updateCacheSize(-dataSize);
+                Logging.info("Elevation: Removed SRTM tile " + entry.getID() + " with status '"
+                        + entry.getStatus().toString() + "' and size " + getSizeString(dataSize)
+                        + " from cache; cache size: " + getSizeString(cacheSize));
+            }
+        }
+    }
+
+    private synchronized SRTMTileCacheEntry removeEntry(String srtmTileID) {
+        SRTMTileCacheEntry entry = cache.remove(srtmTileID);
+        if (entry != null) {
+            int dataSize = entry.getDataSize();
+            if (dataSize > 0)
+                updateCacheSize(-dataSize);
+            Logging.info("Elevation: Removed SRTM tile " + srtmTileID + " with status '" + entry.getStatus().toString()
+                    + "' and size " + getSizeString(dataSize) + " from cache; cache size: " + getSizeString(cacheSize));
+        }
+
+        return entry;
+    }
+
+    private synchronized void updateCacheSize(int dataSizeToAdd) {
+        cacheSize += dataSizeToAdd;
+        if (cacheSize > cacheSizeLimit)
+            clean();
     }
 
     private static String getSizeString(int size) {

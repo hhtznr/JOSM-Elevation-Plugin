@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
@@ -17,8 +16,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.openstreetmap.josm.tools.Logging;
 
@@ -317,7 +314,7 @@ public class SRTMTileCache {
                                 + " is permanently missing for source " + dataSource.toString());
                         continue;
                     }
-                    File srtmFile = getLocalSRTMFile(srtmTileID, dataSource);
+                    File srtmFile = dataSource.getLocalSRTMFile(srtmTileID).orElse(null);
                     // If an SRTM file with the data exists on disk, read it in
                     if (srtmFile != null) {
                         Logging.info("Elevation: Caching data of SRTM tile " + srtmTileID + " from file "
@@ -387,31 +384,6 @@ public class SRTMTileCache {
                 }
             }
         });
-    }
-
-    /**
-     * Determines the SRTM file for the given tile ID from the data directory of the
-     * data source.
-     *
-     * @param srtmTileID          The SRTM tile ID.
-     * @param elevationDataSource The elevation data source where to try to read a
-     *                            matching SRTM file from the local data directory.
-     * @return The SRTM file or {@code null} if no file is available for the given
-     *         tile ID.
-     */
-    private File getLocalSRTMFile(String srtmTileID, ElevationDataSource elevationDataSource) {
-        Logging.info("Elevation: Looking for on-disk SRTM file for tile ID " + srtmTileID);
-        File srtmFile = null;
-        // List the SRTM directory and filter out files that start with the SRTM tile ID
-        // https://www.baeldung.com/java-list-directory-files
-        Set<File> files = Stream.of(elevationDataSource.getDataDirectory().listFiles())
-                .filter(file -> !file.isDirectory() && file.getName().startsWith(srtmTileID))
-                .collect(Collectors.toSet());
-
-        if (files.size() > 0) {
-            srtmFile = files.iterator().next();
-        }
-        return srtmFile;
     }
 
     /**

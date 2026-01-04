@@ -8,6 +8,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -71,6 +73,28 @@ public class ElevationDataSource {
      */
     public File getDataDirectory() {
         return dataDirectory;
+    }
+
+    /**
+     * Determines the SRTM file for the given tile ID from the data directory of
+     * this data source if it exists
+     *
+     * @param srtmTileID The SRTM tile ID.
+     * @return An {@code Optional} holding the SRTM file or an empty
+     *         {@code Optional} if no file is available for the given tile ID.
+     */
+    public Optional<File> getLocalSRTMFile(String srtmTileID) {
+        Logging.info("Elevation: Looking for on-disk SRTM file for tile ID " + srtmTileID);
+        File srtmFile = null;
+        // List the SRTM directory and filter out files that start with the SRTM tile ID
+        // https://www.baeldung.com/java-list-directory-files
+        Set<File> files = Stream.of(dataDirectory.listFiles())
+                .filter(file -> file.isFile() && file.getName().startsWith(srtmTileID)).collect(Collectors.toSet());
+
+        if (files.size() > 0)
+            srtmFile = files.iterator().next();
+
+        return Optional.ofNullable(srtmFile);
     }
 
     /**

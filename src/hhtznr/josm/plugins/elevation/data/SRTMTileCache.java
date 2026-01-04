@@ -186,11 +186,13 @@ public class SRTMTileCache {
                     // Should never happen because we do not complete exceptionally
                     continue;
                 }
-                String info = "Type: " + tile.getType().toString();
-                info += ", status: " + cacheEntry.getStatus().toString();
-                info += ", size: " + getSizeString(tile.getDataSize());
-                info += ", source: " + (tile.getDataSource() == null ? "none" : tile.getDataSource().getName());
-                tileInfo.put("SRTM tile " + tile.getID(), info);
+                synchronized (cacheEntry) {
+                    String info = "Type: " + tile.getType().toString();
+                    info += ", status: " + cacheEntry.getStatus().toString();
+                    info += ", size: " + getSizeString(tile.getDataSize());
+                    info += ", source: " + (tile.getDataSource() == null ? "none" : tile.getDataSource().getName());
+                    tileInfo.put("SRTM tile " + tile.getID(), info);
+                }
             }
         }
         return tileInfo;

@@ -120,7 +120,7 @@ public class SRTMTileCacheEntry {
      *
      * @return The status.
      */
-    public Status getStatus() {
+    public synchronized Status getStatus() {
         return status;
     }
 
@@ -129,7 +129,7 @@ public class SRTMTileCacheEntry {
      *
      * @param status The status to set.
      */
-    public void setStatus(Status status) {
+    public synchronized void setStatus(Status status) {
         this.status = status;
     }
 
@@ -161,7 +161,7 @@ public class SRTMTileCacheEntry {
      * @return The data size of the associated SRTM tiles in bytes or {@code 0} if
      *         the tile is not available.
      */
-    public int getDataSize() {
+    public synchronized int getDataSize() {
         SRTMTile tile = getTile();
         if (tile == null)
             return 0;

@@ -430,16 +430,13 @@ public class SRTMTileCache {
         ArrayList<SRTMTileCacheEntry> allEntries = new ArrayList<>(cache.values());
         allEntries.sort(Comparator.comparingLong(SRTMTileCacheEntry::getAccessTime));
         for (SRTMTileCacheEntry entry : allEntries) {
-            SRTMTileCacheEntry.Status status = entry.getStatus();
-            // Skip tiles that are known but will always have no size
-            if (status == SRTMTileCacheEntry.Status.FILE_INVALID || status == SRTMTileCacheEntry.Status.FILE_MISSING
-                    || status == SRTMTileCacheEntry.Status.DATA_INVALID)
-                continue;
-            CompletableFuture<SRTMTile> future = entry.getFuture();
-            if (!future.isDone())
-                future.cancel(true);
-            String srtmTileID = entry.getID();
-            removeEntry(srtmTileID);
+            synchronized (entry) {
+                // Skip tiles that are known but have no size
+                if (entry.getDataSize() == 0)
+                    continue;
+
+                removeEntry(entry.getID());
+            }
 
             if (cacheSize <= cacheSizeLimit)
                 break;

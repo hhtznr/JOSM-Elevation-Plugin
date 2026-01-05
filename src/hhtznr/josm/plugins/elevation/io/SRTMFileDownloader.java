@@ -256,6 +256,8 @@ public class SRTMFileDownloader {
                     + e.toString());
             downloadFailed(srtmTileID, srtmType, elevationDataSource, e);
             return Optional.empty();
+        } finally {
+            httpClient.disconnect();
         }
 
         // This would happen, if the downloaded file was uncompressed, but it does not

@@ -149,9 +149,15 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
     }
 
     private void drawZoomLevelDisabled(Graphics2D g, MapView mv) {
-        g.setColor(Color.RED);
-        g.setFont(g.getFont().deriveFont(Font.BOLD, 16));
-        g.drawString("Elevation layer disabled for this zoom level", 10, mv.getHeight() - 10);
+        // g.setColor(Color.RED);
+        // g.setFont(g.getFont().deriveFont(Font.BOLD, 16));
+        // g.drawString("Elevation layer disabled for this zoom level", 10,
+        // mv.getHeight() - 10);
+        int x = 10;
+        int y = mv.getHeight() - 10;
+        String text = "Elevation layer disabled for this zoom level";
+        Font font = g.getFont().deriveFont(Font.BOLD, 16);
+        drawOutlinedText(g, x, y, font, Color.RED, Color.WHITE, 1.0f, text);
     }
 
     private synchronized void drawHillshade(Graphics2D g, MapView mv, Bounds clipBounds) {
@@ -456,24 +462,24 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         }
     }
 
-    private static void drawOutlinedText(Graphics2D g2, int x, int y, Font font, Color colorFill, Color colorOutline,
+    private static void drawOutlinedText(Graphics2D g, int x, int y, Font font, Color colorFill, Color colorOutline,
             float outlineWidth, String text) {
         // Set hints for smooth edges
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        TextLayout tl = new TextLayout(text, font, g2.getFontRenderContext());
+        TextLayout tl = new TextLayout(text, font, g.getFontRenderContext());
 
         AffineTransform transform = AffineTransform.getTranslateInstance(x, y);
         Shape textShape = tl.getOutline(transform);
 
         // Draw the outline
-        g2.setColor(colorOutline);
-        g2.setStroke(new BasicStroke(outlineWidth, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g2.draw(textShape);
+        g.setColor(colorOutline);
+        g.setStroke(new BasicStroke(outlineWidth, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.draw(textShape);
 
         // Fill the interior
-        g2.setColor(colorFill);
-        g2.fill(textShape);
+        g.setColor(colorFill);
+        g.fill(textShape);
     }
 
     @Override

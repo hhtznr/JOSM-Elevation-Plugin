@@ -81,7 +81,7 @@ public class ElevationDataSource {
      *
      * @param srtmTileID The SRTM tile ID.
      * @return The SRTM file for the given tile ID.
-     * @throws FileNotFoundException if no SRMT files exists for the provided ID.
+     * @throws FileNotFoundException if no SRTM files exists for the provided ID.
      */
     public File getLocalSRTMFile(String srtmTileID) throws FileNotFoundException {
         Logging.info("Elevation: Looking for on-disk SRTM file for tile ID " + srtmTileID);

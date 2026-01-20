@@ -5,6 +5,7 @@ import java.util.List;
 import hhtznr.josm.plugins.elevation.data.LatLonLine;
 import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
 import hhtznr.josm.plugins.elevation.math.MarchingSquares;
+import hhtznr.josm.plugins.elevation.util.IncrementalNumberedNameCreator;
 
 /**
  * Class implementing contour lines composed of individual segments which cover
@@ -13,6 +14,8 @@ import hhtznr.josm.plugins.elevation.math.MarchingSquares;
  * @author Harald Hetzner
  */
 public class ContourLines extends AbstractSRTMTileGridPaintable {
+
+    private static final IncrementalNumberedNameCreator namer = new IncrementalNumberedNameCreator("Contour lines");
 
     public static final int BOUNDS_SCALE_RASTER_STEP = 2;
 
@@ -51,7 +54,7 @@ public class ContourLines extends AbstractSRTMTileGridPaintable {
     }
 
     private ContourLines(SRTMTileGridView tileGridView, short[] isovalues, int isostep) {
-        super(tileGridView);
+        super(namer.nextName(), tileGridView);
         if (isostep == UNDEFINED_ISOSTEP) {
             if (isovalues.length < 2)
                 this.isostep = 1;

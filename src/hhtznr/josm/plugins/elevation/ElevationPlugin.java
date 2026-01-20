@@ -9,6 +9,7 @@ import hhtznr.josm.plugins.elevation.gui.ElevationLayer;
 import hhtznr.josm.plugins.elevation.gui.ElevationTabPreferenceSetting;
 import hhtznr.josm.plugins.elevation.gui.KeyColFinderAction;
 import hhtznr.josm.plugins.elevation.gui.LocalElevationLabel;
+import hhtznr.josm.plugins.elevation.gui.MapViewElevationDataConsumer;
 import hhtznr.josm.plugins.elevation.gui.SRTMFileDownloadErrorDialog;
 import hhtznr.josm.plugins.elevation.gui.SetNodeElevationAction;
 import hhtznr.josm.plugins.elevation.gui.SetPeakProminenceAction;
@@ -45,6 +46,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     private SRTMFileDownloadErrorDialog srtmFileDownloadErrorDialog = null;
 
     private LocalElevationLabel localElevationLabel = null;
+    private static MapViewElevationDataConsumer mapViewElevationDataConsumer = null;
 
     private final AddElevationLayerAction addElevationLayerAction;
     private final TopographicIsolationFinderAction isolationFinderAction;
@@ -155,6 +157,20 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
      */
     @Override
     public void mapFrameInitialized(MapFrame oldFrame, MapFrame newFrame) {
+        if (newFrame == null) {
+            if (mapViewElevationDataConsumer != null) {
+                mapViewElevationDataConsumer.dispose();
+                mapViewElevationDataConsumer = null;
+            }
+        } else {
+            if (mapViewElevationDataConsumer == null) {
+                double renderingLimit = ElevationPreferences.getElevationLayerRenderingLimit();
+                mapViewElevationDataConsumer = elevationDataProvider.getMapViewElevationDataConsumer(newFrame,
+                        renderingLimit);
+            }
+            mapViewElevationDataConsumer.addToMapFrame(newFrame);
+        }
+
         addLocalElevationLabel(newFrame);
         // newFrame is null if the map was active and the last layer is closed
         if (newFrame != null)
@@ -189,7 +205,17 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
         // Configure the elevation data provider
         // Setting the SRTM type also sets the appropriate SRTM data sources and flushes
         // the cache
-        elevationDataProvider.setSRTMType(srtmType);
+        if (elevationDataProvider.setSRTMType(srtmType)) {
+            // Renew or delete the map view elevation data consumer
+            MapFrame mapFrame = MainApplication.getMap();
+            if (mapFrame != null) {
+                double renderingLimit = ElevationPreferences.getElevationLayerRenderingLimit();
+                mapViewElevationDataConsumer = elevationDataProvider.getMapViewElevationDataConsumer(mapFrame,
+                        renderingLimit);
+            } else {
+                mapViewElevationDataConsumer = null;
+            }
+        }
         elevationDataProvider.setElevationInterpolation(elevationInterpolation);
         elevationDataProvider.setCacheSizeLimit(cacheSizeLimit);
         elevationDataProvider.setAutoDownloadEnabled(elevationAutoDownloadEnabled);
@@ -237,8 +263,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                     elevationLayer = new ElevationLayer(elevationDataProvider, renderingLimit, isostep, strokeWidth,
                             coloringScheme, color, altitude, azimuth, lowerCutoff, upperCutoff);
                     MainApplication.getLayerManager().addLayer(elevationLayer);
-                }
-                else {
+                } else {
                     elevationLayer.setRenderingLimit(ElevationPreferences.getElevationLayerRenderingLimit());
                     elevationLayer.setContourLineIsostep(ElevationPreferences.getContourLineIsostep());
                     elevationLayer.setContourLineStrokeWidth(ElevationPreferences.getContourLineStrokeWidth());
@@ -264,6 +289,10 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
             localElevationLabel = new LocalElevationLabel(mapFrame, elevationDataProvider);
         else
             localElevationLabel.addToMapFrame(mapFrame);
+    }
+
+    public static MapViewElevationDataConsumer getMapViewElevationDataConsumer() {
+        return mapViewElevationDataConsumer;
     }
 
     @Override

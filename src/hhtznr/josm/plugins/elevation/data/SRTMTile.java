@@ -116,9 +116,9 @@ public class SRTMTile {
     private final int idLon;
     private final Type type;
     private final int tileLength;
-    private final short[] elevationData;
+    private short[] elevationData = null;
     private final ElevationDataSource dataSource;
-    private final boolean valid;
+    private volatile boolean valid = false;
 
     /**
      * SRTM file types (SRTM1, SRTM3).
@@ -717,5 +717,14 @@ public class SRTMTile {
         if (type == Type.SRTM3)
             return data.length == SRTM3_TILE_LENGTH * SRTM3_TILE_LENGTH;
         return false;
+    }
+
+    /**
+     * Disposes the SRTM tile by setting its data to {@code null} and flagging it as
+     * invalid.
+     */
+    protected void dispose() {
+        valid = false;
+        elevationData = null;
     }
 }

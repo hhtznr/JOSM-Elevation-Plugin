@@ -1,15 +1,19 @@
 package hhtznr.josm.plugins.elevation.data;
 
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CancellationException;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.ILatLon;
+import org.openstreetmap.josm.gui.MapFrame;
 import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
@@ -17,6 +21,7 @@ import hhtznr.josm.plugins.elevation.gui.ContourLines;
 import hhtznr.josm.plugins.elevation.gui.ElevationRaster;
 import hhtznr.josm.plugins.elevation.gui.HillshadeImageTile;
 import hhtznr.josm.plugins.elevation.gui.LowestAndHighestPoints;
+import hhtznr.josm.plugins.elevation.gui.MapViewElevationDataConsumer;
 import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
 
 /**
@@ -34,8 +39,7 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
      */
     private final SRTMTileCache tileCache;
 
-    private final Object tileGridLock = new Object();
-    private SRTMTileGrid srtmTileGrid = null;
+    private final Set<SRTMTileGrid> activeTileGrids = ConcurrentHashMap.newKeySet();
 
     private SRTMTile.Interpolation eleInterpolation;
 
@@ -72,45 +76,25 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
     }
 
     /**
-     * Returns the dimensions of the SRTM tile grid used by this elevation data
-     * provider.
+     * Returns a list with textual information on the currently active SRTM tile
+     * grids.
      *
-     * @return An array of length {@code 2}, which provides the dimensions of the
-     *         SRTM tile grid: grid width (index {@code 0}) and grid height (index
-     *         {@code 1}).
+     * @return A list with string array of length {@code 2}. The list will contain a
+     *         string array item for each active tile grid. Each string array will
+     *         contain the name of the grid at index {@code 0} and information onf
+     *         the grid at index {@code 1}.
      */
-    public int[] getSRTMTileGridDimensions() {
-        int[] dimensions = new int[2];
-        dimensions[0] = 0;
-        dimensions[1] = 0;
-        synchronized (tileGridLock) {
-            if (srtmTileGrid != null) {
-                dimensions[0] = srtmTileGrid.getGridWidth();
-                dimensions[1] = srtmTileGrid.getGridHeight();
+    public List<String[]> getTileGridInfo() {
+        List<String[]> infoList = new ArrayList<>();
+        synchronized (activeTileGrids) {
+            for (SRTMTileGrid tileGrid : activeTileGrids) {
+                String[] tileGridInfo = new String[2];
+                tileGridInfo[0] = tileGrid.getName();
+                tileGridInfo[1] = tileGrid.getInfoString();
+                infoList.add(tileGridInfo);
             }
         }
-        return dimensions;
-    }
-
-    /**
-     * Returns the dimensions of the elevation raster of the SRTM tile grid used by
-     * this elevation data provider.
-     *
-     * @return An array of length {@code 2}, which provides the dimensions of the
-     *         elevation raster of the SRTM tile grid: raster width (index
-     *         {@code 0}) and raster height (index {@code 1}).
-     */
-    public int[] getSRTMTileGridRasterDimensions() {
-        int[] dimensions = new int[2];
-        dimensions[0] = 0;
-        dimensions[1] = 0;
-        synchronized (tileGridLock) {
-            if (srtmTileGrid != null) {
-                dimensions[0] = srtmTileGrid.getRasterWidth();
-                dimensions[1] = srtmTileGrid.getRasterHeight();
-            }
-        }
-        return dimensions;
+        return infoList;
     }
 
     /**
@@ -180,15 +164,14 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
      * @param type The SRTM type to set.
      */
     public boolean setSRTMType(SRTMTile.Type type) {
-        synchronized (tileGridLock) {
+        synchronized (activeTileGrids) {
             SRTMTile.Type oldType = getSRTMType();
             // Only sets the type of the new type is not equal to the old type
             if (tileCache.setSRTMType(type)) {
-                srtmTileGrid = null;
+                activeTileGrids.clear();
                 synchronized (listeners) {
-                    for (ElevationDataProviderListener listener : listeners) {
+                    for (ElevationDataProviderListener listener : listeners)
                         listener.srtmTileTypeChanged(oldType, type);
-                    }
                 }
                 return true;
             }
@@ -215,15 +198,17 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
     }
 
     /**
-     * Returns the elevation at the raster location that is closest to the provided
-     * location, if an appropriate SRTM file is available in the SRTM directory and
-     * the data is loaded into memory.
+     * Returns the elevation at the given location immediately, if an appropriate
+     * SRTM file is available and the data is already loaded into memory. Otherwise,
+     * a {@link LatLonEle} with elevation set to {@link SRTMTile#SRTM_DATA_VOID
+     * SRTMTile.SRTM_DATA_VOID} is returned. If interpolation is disabled, the
+     * raster location that is closest to the provided location and the
+     * corresponding elevation is returned. Otherwise, the elevation is interpolated
+     * for the provided location.
      *
      * @param latLon The coordinate where the elevation is of interest.
-     * @return The closest raster location to the given location and its elevation
-     *         or the given location and {@link SRTMTile#SRTM_DATA_VOID
-     *         SRTMTile.SRTM_DATA_VOID} if there is a data void or no SRTM data
-     *         covering the location is available or the data is not loaded yet.
+     * @return The coordinate (interpolation enabled) or the closest raster
+     *         coordinate (interpolation disabled) and the corresponding elevation.
      */
     public LatLonEle getLatLonEleNoWait(ILatLon latLon) {
         String tileID = SRTMTile.getTileID(latLon);
@@ -232,12 +217,68 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
                 .orElse(new LatLonEle(latLon));
     }
 
+    /**
+     * Returns the elevation at the given location immediately, if an appropriate
+     * SRTM file is available and the data is already loaded into memory. Otherwise,
+     * waits until data is available. If interpolation is disabled, the raster
+     * location that is closest to the provided location and the corresponding
+     * elevation is returned. Otherwise, the elevation is interpolated for the
+     * provided location.
+     *
+     * @param latLon The coordinates, where elevation should be retrieved.
+     * @return The coordinate (interpolation enabled) or the closest raster
+     *         coordinate (interpolation disabled) and the corresponding elevation.
+     * @throws CancellationException if loading of the SRTM tile was canceled.
+     * @throws ExecutionException    if the thread used to optionally download and
+     *                               read the SRTM file cannot be executed.
+     * @throws InterruptedException  if the current thread was interrupted while
+     *                               waiting.
+     */
     public LatLonEle getLatLonEleOrWait(ILatLon latLon)
             throws CancellationException, ExecutionException, InterruptedException {
-        String tileID = SRTMTile.getTileID(latLon);
-        // May throw an exception
-        SRTMTile srtmTile = tileCache.getTileOrWait(tileID);
-        return srtmTile.getLatLonEle(latLon, eleInterpolation);
+        // Calls ElevationDataProvider.getTileCacheEntryFor()
+        // May throw CancellationException
+        SingleSRTMTileConsumer tileConsumer = new SingleSRTMTileConsumer(this, latLon);
+
+        SRTMTileCacheEntry entry = tileConsumer.getCacheEntry();
+        try {
+            // may throw ExecutionException and InterruptedException
+            SRTMTile srtmTile = entry.getTileOrWait();
+            return srtmTile.getLatLonEle(latLon, eleInterpolation);
+        } finally {
+            tileConsumer.considerDispose();
+        }
+    }
+
+    /**
+     * Returns an SRTM tile grid covering the specified bounds. If possible, a grid
+     * matching the bounds, which is already used by other consumers, is returned.
+     * <br>
+     * Note: An {@link ElevationDataConsumer} needs to register itself to the
+     * returned grid.
+     *
+     * @param bounds The bounds.
+     * @return An SRTM tile grid covering the bounds, but not bigger than needed.
+     * @throws CancellationException if loading of an SRTM tile for the grid was
+     *                               canceled.
+     */
+    public synchronized SRTMTileGrid getGridMatching(Bounds bounds) throws CancellationException {
+        SRTMTileGrid tileGrid = null;
+        SRTMTileGrid nextGrid;
+        synchronized (activeTileGrids) {
+            Iterator<SRTMTileGrid> iterator = activeTileGrids.iterator();
+            while (iterator.hasNext()) {
+                nextGrid = iterator.next();
+                if (nextGrid.matchesTileGridBounds(bounds))
+                    tileGrid = nextGrid;
+            }
+            if (tileGrid == null) {
+                // May throw CancellationException
+                tileGrid = new SRTMTileGrid(this, bounds);
+                activeTileGrids.add(tileGrid);
+            }
+            return tileGrid;
+        }
     }
 
     /**
@@ -251,15 +292,12 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
      *         returned if not all SRTM tiles are cached yet.
      */
     public LowestAndHighestPoints getLowestAndHighestPoints(Bounds bounds) {
-        synchronized (tileGridLock) {
-            if (srtmTileGrid == null || !srtmTileGrid.covers(bounds))
-                srtmTileGrid = new SRTMTileGrid(this, bounds);
-            try {
-                return srtmTileGrid.getView(bounds).getLowestAndHighestPoints();
-            } catch (SRTMTileGridException e) {
-                Logging.error("Elevation: Cannot create lowest and highest points: " + e.toString());
-                return null;
-            }
+        SRTMTileGrid tileGrid = getGridMatching(bounds);
+        try {
+            return tileGrid.getView(bounds).getLowestAndHighestPoints();
+        } catch (SRTMTileGridException e) {
+            Logging.error("Elevation: Cannot create lowest and highest points: " + e.toString());
+            return null;
         }
     }
 
@@ -274,16 +312,12 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
      *         {@code null} if insufficient cached elevation data is available.
      */
     public ElevationRaster getElevationRaster(Bounds bounds) {
-        synchronized (tileGridLock) {
-            if (srtmTileGrid == null || !srtmTileGrid.covers(bounds))
-                srtmTileGrid = new SRTMTileGrid(this, bounds);
-
-            try {
-                return srtmTileGrid.getView(bounds).getElevationRaster();
-            } catch (SRTMTileGridException e) {
-                Logging.error("Elevation: Cannot create elevation raster: " + e.toString());
-                return null;
-            }
+        SRTMTileGrid tileGrid = getGridMatching(bounds);
+        try {
+            return tileGrid.getView(bounds).getElevationRaster();
+        } catch (SRTMTileGridException e) {
+            Logging.error("Elevation: Cannot create elevation raster: " + e.toString());
+            return null;
         }
     }
 
@@ -306,20 +340,17 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
      */
     public ContourLines getContourLines(Bounds bounds, int isostep, int lowerCutoffElevation,
             int upperCutoffElevation) {
-        synchronized (tileGridLock) {
-            if (srtmTileGrid == null)
-                srtmTileGrid = new SRTMTileGrid(this, bounds);
-            Bounds renderingBounds = srtmTileGrid.getRenderingBoundsScaledByRasterStep(bounds,
-                    ContourLines.BOUNDS_SCALE_RASTER_STEP);
-            if (!srtmTileGrid.covers(renderingBounds))
-                srtmTileGrid = new SRTMTileGrid(this, renderingBounds);
-            try {
-                return srtmTileGrid.getView(renderingBounds).getContourLines(isostep, lowerCutoffElevation,
-                        upperCutoffElevation);
-            } catch (SRTMTileGridException e) {
-                Logging.error("Elevation: Cannot create contour lines: " + e.toString());
-                return null;
-            }
+        SRTMTileGrid tileGrid = getGridMatching(bounds);
+        Bounds renderingBounds = tileGrid.getRenderingBoundsScaledByRasterStep(bounds,
+                ContourLines.BOUNDS_SCALE_RASTER_STEP);
+        tileGrid = getGridMatching(renderingBounds);
+
+        try {
+            return tileGrid.getView(renderingBounds).getContourLines(isostep, lowerCutoffElevation,
+                    upperCutoffElevation);
+        } catch (SRTMTileGridException e) {
+            Logging.error("Elevation: Cannot create contour lines: " + e.toString());
+            return null;
         }
     }
 
@@ -345,22 +376,36 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
      */
     public HillshadeImageTile getHillshadeImageTile(Bounds bounds, double altitudeDeg, double azimuthDeg,
             boolean withPerimeter) {
-        synchronized (tileGridLock) {
-            if (srtmTileGrid == null)
-                srtmTileGrid = new SRTMTileGrid(this, bounds);
-            Bounds renderingBounds = srtmTileGrid.getRenderingBoundsScaledByRasterStep(bounds,
-                    HillshadeImageTile.BOUNDS_SCALE_RASTER_STEP);
-            if (!srtmTileGrid.covers(renderingBounds))
-                srtmTileGrid = new SRTMTileGrid(this, renderingBounds);
+        SRTMTileGrid tileGrid = getGridMatching(bounds);
+        Bounds renderingBounds = tileGrid.getRenderingBoundsScaledByRasterStep(bounds,
+                ContourLines.BOUNDS_SCALE_RASTER_STEP);
+        tileGrid = getGridMatching(renderingBounds);
 
-            try {
-                return srtmTileGrid.getView(renderingBounds).getHillshadeImageTile(altitudeDeg, azimuthDeg,
-                        withPerimeter);
-            } catch (SRTMTileGridException e) {
-                Logging.error("Elevation: Cannot create hillshade: " + e.toString());
-                return null;
-            }
+        try {
+            return tileGrid.getView(renderingBounds).getHillshadeImageTile(altitudeDeg, azimuthDeg, withPerimeter);
+        } catch (SRTMTileGridException e) {
+            Logging.error("Elevation: Cannot create hillshade: " + e.toString());
+            return null;
         }
+    }
+
+    /**
+     * Returns a new map view elevation data consumer. This special elevation data
+     * consumer is used to ensure that SRTM tiles covering the map view are loaded
+     * into memory. This ensures that elevation data is available for e.g. the local
+     * elevation label to be operational.
+     *
+     * @param mapFrame              The map frame to which the map view elevation
+     *                              data consumer is bound.
+     * @param switchOffMapDimension The maximum size of the map in the greater of
+     *                              both dimensions, for which, if exceeded, reading
+     *                              of elevation data shall be switched off to avoid
+     *                              high CPU and memory usage.
+     * @return The map view elevation ata consumer.
+     */
+    public MapViewElevationDataConsumer getMapViewElevationDataConsumer(MapFrame mapFrame,
+            double switchOffMapDimension) {
+        return new MapViewElevationDataConsumer(mapFrame, this, switchOffMapDimension);
     }
 
     /**
@@ -381,64 +426,36 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
     }
 
     /**
-     * Triggers caching of all SRTM tiles needed to cover the defined area.
+     * Caches all SRTM tiles required to cover the bounds described by the specified
+     * coordinates.
      *
-     * @param southWest The south west (lower left) coordinate of the area.
-     * @param northEast The north east (upper right) coordinate of the area.
+     * @param latSouth The southern most latitude of the bounds.
+     * @param lonWest  The western most longitude of the bounds.
+     * @param latNorth The northern most latitude of the bounds.
+     * @param lonEast  The eastern most latitude of the bounds.
+     * @param consumer The SRTM tile consumer for which the tiles are to be cached.
      */
-    public void cacheSRTMTiles(ILatLon southWest, ILatLon northEast) {
-        int intLatSouth = (int) Math.floor(southWest.lat());
-        int intLatNorth = (int) Math.floor(northEast.lat());
-        int intLonWest = (int) Math.floor(southWest.lon());
-        int intLonEast = (int) Math.floor(northEast.lon());
-        cacheSRTMTiles(intLatSouth, intLonWest, intLatNorth, intLonEast);
-    }
-
-    /**
-     * Trigger caching of SRTM files within the given bounds if not cached yet.
-     * Latitude and longitude values are full arc degrees and refer to the south
-     * west (lower left) corner of the SRTM tiles to be cached.
-     *
-     * @param intLatSouth The southern most latitude.
-     * @param intLonWest  The western most longitude.
-     * @param intLatNorth The northern most latitude.
-     * @param intLonEast  The eastern most latitude
-     */
-    public void cacheSRTMTiles(int intLatSouth, int intLonWest, int intLatNorth, int intLonEast) {
-        synchronized (tileCache) {
-            // Not across 180th meridian
-            if (intLonWest <= intLonEast) {
-                for (int lon = intLonWest; lon <= intLonEast; lon++) {
-                    for (int lat = intLatSouth; lat <= intLatNorth; lat++)
-                        // Calling the getter method will ensure that tiles are being read or downloaded
-                        tileCache.getTileIfPresent(SRTMTile.getTileID(lat, lon));
-                }
-            }
-            // Across 180th meridian
-            else {
-                for (int lon = intLonWest; lon <= 179; lon++) {
-                    for (int lat = intLatSouth; lat <= intLatNorth; lat++)
-                        tileCache.getTileIfPresent(SRTMTile.getTileID(lat, lon));
-                }
-                for (int lon = -180; lon <= intLonEast; lon++) {
-                    for (int lat = intLatSouth; lat <= intLatNorth; lat++)
-                        tileCache.getTileIfPresent(SRTMTile.getTileID(lat, lon));
-                }
-            }
-        }
+    private void cacheSRTMTiles(double latSouth, double lonWest, double latNorth, double lonEast,
+            SRTMTileConsumer consumer) {
+        int intLatSouth = (int) Math.floor(latSouth);
+        int intLonWest = (int) Math.floor(lonWest);
+        int intLatNorth = (int) Math.floor(latNorth);
+        int intLonEast = (int) Math.floor(lonEast);
+        tileCache.cacheSRTMTiles(intLatSouth, intLonWest, intLatNorth, intLonEast, consumer);
     }
 
     /**
      * Caches all SRTM tiles required to cover the specified bounds.
      *
-     * @param bounds The map bounds.
+     * @param bounds   The map bounds.
+     * @param consumer The SRTM tile consumer for which the tiles are to be cached.
      */
-    public void cacheSRTMTiles(Bounds bounds) {
-        int intLatSouth = (int) Math.floor(bounds.getMinLat());
-        int intLatNorth = (int) Math.floor(bounds.getMaxLat());
-        int intLonWest = (int) Math.floor(bounds.getMinLon());
-        int intLonEast = (int) Math.floor(bounds.getMaxLon());
-        cacheSRTMTiles(intLatSouth, intLonWest, intLatNorth, intLonEast);
+    public void cacheSRTMTiles(Bounds bounds, SRTMTileConsumer consumer) {
+        double latSouth = bounds.getMinLat();
+        double lonWest = bounds.getMinLon();
+        double latNorth = bounds.getMaxLat();
+        double lonEast = bounds.getMaxLon();
+        cacheSRTMTiles(latSouth, lonWest, latNorth, lonEast, consumer);
     }
 
     /**
@@ -455,8 +472,9 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
      * @throws InterruptedException if the current thread was interrupted while
      *                              waiting
      */
-    public SRTMTile getSRTMTileOrWait(String srtmTileID) throws ExecutionException, InterruptedException {
-        return tileCache.getTileOrWait(srtmTileID);
+    public SRTMTile getSRTMTileOrWait(String srtmTileID, SRTMTileConsumer consumer)
+            throws ExecutionException, InterruptedException {
+        return tileCache.getTileOrWait(srtmTileID, consumer);
     }
 
     /**
@@ -470,17 +488,9 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
         return tileCache.getTileIfPresent(srtmTileID);
     }
 
-    /**
-     * Returns a {@code Future} from which an SRTM tile specified by the provided ID
-     * can be obtained. Starts asynchronous loading of the SRTM tile of the tile is
-     * not cached yet.
-     *
-     * @param srtmTileID The ID of the SRTM tile for which to retrieve the future.
-     * @return A {@code Future} from which the SRTM tile can be obtained as soon as
-     *         it is loaded.
-     */
-    public CompletableFuture<SRTMTile> getSRTMTileFuture(String srtmTileID) {
-        return tileCache.getTileFuture(srtmTileID);
+    public SRTMTileCacheEntry getSRTMTileCacheEntryFor(String srtmTileID, SRTMTileConsumer consumer)
+            throws CancellationException {
+        return tileCache.getTileCacheEntryFor(srtmTileID, consumer);
     }
 
     /**
@@ -541,11 +551,41 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
     public void srtmTileCached(SRTMTile tile, SRTMTileCacheEntry.Status status) {
         // Check if all SRTM tiles of most recently requested tile grid are cached now
         // If so, inform listeners
-        synchronized (tileGridLock) {
-            if (srtmTileGrid != null && srtmTileGrid.contains(tile) && srtmTileGrid.areAllTilesCached()) {
-                synchronized (listeners) {
-                    for (ElevationDataProviderListener listener : listeners)
-                        listener.elevationDataAvailable(srtmTileGrid);
+        synchronized (activeTileGrids) {
+            for (SRTMTileGrid tileGrid : activeTileGrids) {
+                if (!tileGrid.isDisposed() && tileGrid.contains(tile) && tileGrid.areAllTilesCached()) {
+                    synchronized (listeners) {
+                        for (ElevationDataProviderListener listener : listeners)
+                            listener.elevationDataAvailable(tileGrid);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Removes the specified SRTM tile consumer from all SRTM tile cache entries
+     * from which it is consuming tiles. Does not execute if the consumer is already
+     * disposed.
+     *
+     * @param consumer The SRTM tile consumer to remove.
+     */
+    protected void removeSRTMTileConsumer(SRTMTileConsumer consumer) {
+        synchronized (consumer) {
+            if (consumer.isDisposed()) {
+                Logging.warn("Elevation: Attempted to remove SRTM tile consumer " + consumer.getName()
+                        + " which is already disposed.");
+                return;
+            }
+            if (consumer instanceof SRTMTileGrid) {
+                SRTMTileGrid tileGrid = (SRTMTileGrid) consumer;
+                activeTileGrids.remove(tileGrid);
+            }
+            synchronized (tileCache) {
+                List<SRTMTileCacheEntry> cacheEntries = consumer.getCacheEntryList();
+                synchronized (cacheEntries) {
+                    for (SRTMTileCacheEntry entry : cacheEntries)
+                        tileCache.removeSRTMTileConsumer(entry, consumer);
                 }
             }
         }

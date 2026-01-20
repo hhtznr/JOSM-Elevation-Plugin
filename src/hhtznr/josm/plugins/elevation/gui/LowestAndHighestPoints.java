@@ -8,6 +8,7 @@ import org.openstreetmap.josm.data.Bounds;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
 import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
+import hhtznr.josm.plugins.elevation.util.IncrementalNumberedNameCreator;
 
 /**
  * Class implementing an object to represent the lowest and highest points
@@ -16,6 +17,8 @@ import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
  * @author Harald Hetzner
  */
 public class LowestAndHighestPoints extends AbstractSRTMTileGridPaintable {
+
+    private static final IncrementalNumberedNameCreator namer = new IncrementalNumberedNameCreator("Lowest and highest points");
 
     private final List<LatLonEle> lowestPoints;
     private final List<LatLonEle> highestPoints;
@@ -29,7 +32,7 @@ public class LowestAndHighestPoints extends AbstractSRTMTileGridPaintable {
      *                     be obtained.
      */
     public LowestAndHighestPoints(SRTMTileGridView tileGridView) {
-        super(tileGridView);
+        super(namer.nextName(), tileGridView);
 
         lowestPoints = new LinkedList<>();
         highestPoints = new LinkedList<>();

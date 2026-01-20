@@ -9,9 +9,9 @@ import org.openstreetmap.josm.tools.Logging;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
-import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
 import hhtznr.josm.plugins.elevation.data.SRTMTileGridException;
 import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
+import hhtznr.josm.plugins.elevation.util.IncrementalNumberedNameCreator;
 
 /**
  * The {@code KeyColFinder} class provides functionality to determine the key
@@ -43,6 +43,12 @@ import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
  * @author Harald Hetzner
  */
 public class KeyColFinder extends AbstractElevationTool {
+
+    private static final IncrementalNumberedNameCreator namer = new IncrementalNumberedNameCreator("Key col finder");
+
+    private final ILatLon peakA;
+    private final ILatLon peakB;
+
     private int width, height;
     private int[] parent; // union-find parent array
     private BitSet active; // true = this cell is "land" (above water)
@@ -92,9 +98,34 @@ public class KeyColFinder extends AbstractElevationTool {
      *
      * @param elevationDataProvider The elevation data provider from which elevation
      *                              data can be obtained.
+     * @param bounds                The search bounds.
+     * @param peakA                 The peak for which to determine the key col.
+     * @param peakB                 The (assumed) line parent of {@code peakA}.
      */
-    public KeyColFinder(ElevationDataProvider elevationDataProvider) {
-        super(elevationDataProvider);
+    public KeyColFinder(ElevationDataProvider elevationDataProvider, Bounds bounds, ILatLon peakA, ILatLon peakB) {
+        super(namer.nextName(), elevationDataProvider, checkAndAdjustBounds(bounds, peakA, peakB));
+        this.peakA = peakA;
+        this.peakB = peakB;
+    }
+
+    private static Bounds checkAndAdjustBounds(Bounds bounds, ILatLon peakA, ILatLon peakB) {
+        if (!bounds.contains(peakA) || !bounds.contains(peakB)) {
+            double minLat = Math.min(bounds.getMinLat(), Math.min(peakA.lat(), peakB.lat()));
+            double minLon = Math.min(bounds.getMinLon(), Math.min(peakA.lon(), peakB.lon()));
+            double maxLat = Math.max(bounds.getMaxLat(), Math.max(peakA.lat(), peakB.lat()));
+            double maxLon = Math.max(bounds.getMaxLon(), Math.max(peakA.lon(), peakB.lon()));
+            double extraSpaceLat = (maxLat - minLat) * 0.2;
+            double extraSpaceLon = (maxLon - minLon) * 0.2;
+            minLat = Math.max(minLat - extraSpaceLat, -90);
+            minLon = Math.max(minLon - extraSpaceLon, 0);
+            maxLat = Math.min(maxLat + extraSpaceLat, 90);
+            maxLon = Math.min(maxLon + extraSpaceLon, 180);
+            Bounds adjustedBounds = new Bounds(minLat, minLon, maxLat, maxLon);
+            Logging.info("Elevation: Key col finder adjusted bounds because it does not contain both peaks: "
+                    + bounds.toString());
+            return adjustedBounds;
+        }
+        return bounds;
     }
 
     /**
@@ -157,9 +188,6 @@ public class KeyColFinder extends AbstractElevationTool {
      * specified as peakA or peakB. Adjusts the bounds to include both, peakA and
      * peakB, in case that one or both should be out of bounds.
      *
-     * @param peakA      The peak for which to determine the key col.
-     * @param peakB      The (assumed) line parent of {@code peakA}.
-     * @param bounds     The search bounds.
      * @param nNeighbors The number of neighbors of an elevation raster cell to
      *                   consider in union-find, {@link UnionFindNeighbors#FOUR} or
      *                   {@link UnionFindNeighbors#EIGHT}. Eight neighbors results
@@ -170,28 +198,12 @@ public class KeyColFinder extends AbstractElevationTool {
      * @throws InterruptedException If the thread executing this method is
      *                              interrupted.
      */
-    public LatLonEle findKeyCol(ILatLon peakA, ILatLon peakB, Bounds bounds, UnionFindNeighbors nNeighbors)
-            throws InterruptedException {
+    public LatLonEle findKeyCol(UnionFindNeighbors nNeighbors) throws InterruptedException {
         informListenersAboutStatus("Key col finder running");
-        if (!bounds.contains(peakA) || !bounds.contains(peakB)) {
-            double minLat = Math.min(bounds.getMinLat(), Math.min(peakA.lat(), peakB.lat()));
-            double minLon = Math.min(bounds.getMinLon(), Math.min(peakA.lon(), peakB.lon()));
-            double maxLat = Math.max(bounds.getMaxLat(), Math.max(peakA.lat(), peakB.lat()));
-            double maxLon = Math.max(bounds.getMaxLon(), Math.max(peakA.lon(), peakB.lon()));
-            double extraSpaceLat = (maxLat - minLat) * 0.2;
-            double extraSpaceLon = (maxLon - minLon) * 0.2;
-            minLat = Math.max(minLat - extraSpaceLat, -90);
-            minLon = Math.max(minLon - extraSpaceLon, 0);
-            maxLat = Math.min(maxLat + extraSpaceLat, 90);
-            maxLon = Math.min(maxLon + extraSpaceLon, 180);
-            bounds = new Bounds(minLat, minLon, maxLat, maxLon);
-            Logging.info("Elevation: Key col finder adjusted bounds because it does not contain both peaks: "
-                    + bounds.toString());
-        }
 
         SRTMTileGridView tileGridView;
         try {
-            tileGridView = new SRTMTileGrid(elevationDataProvider, bounds).getView(bounds);
+            tileGridView = getTileGrid().getView(getBounds());
         } catch (SRTMTileGridException e) {
             Logging.error("Elevation: Cannot establish key col search: " + e.toString());
             return null;
@@ -202,7 +214,7 @@ public class KeyColFinder extends AbstractElevationTool {
             String message = "Interrupted while waiting for tiles to be cached";
             informListenersAboutStatus(message);
             Logging.info("Elevation: Key col finder: " + message);
-            return null;
+            throw new InterruptedException("Key col finder: " + message);
         }
         informListenersAboutStatus("All needed SRTM tiles cached");
 
@@ -223,7 +235,7 @@ public class KeyColFinder extends AbstractElevationTool {
                 String message = "Interrupted while scanning elevations";
                 informListenersAboutStatus(message);
                 Logging.info("Elevation: Key col finder: " + message);
-                return null;
+                throw new InterruptedException("Key col finder: " + message);
             }
             for (int lonIndex = 0; lonIndex < width; lonIndex++) {
                 short elevation = tileGridView.getElevation(latIndex, lonIndex);
@@ -246,10 +258,7 @@ public class KeyColFinder extends AbstractElevationTool {
         informListenersAboutStatus("Minimum and maximum elevation determined: " + minElevation + " / " + maxElevation);
 
         // Compute range. After the earlier 'validCount == 0' check, maxE >= minE is
-        // guaranteed so elevationRange must be >= 1. We only need a defensive check for
-        // an
-        // unexpectedly large range (corrupted tiles or upstream bug). Use 65536 as
-        // an upper bound for 16-bit data.
+        // guaranteed so elevationRange must be >= 1.
         int elevationRange = (int) maxElevation - (int) minElevation + 1;
 
         // 2. Build histogram counts, skipping voids
@@ -259,7 +268,7 @@ public class KeyColFinder extends AbstractElevationTool {
                 String message = "Interrupted while building elevation histogram";
                 informListenersAboutStatus(message);
                 Logging.info("Elevation: Key col finder: " + message);
-                return null;
+                throw new InterruptedException("Key col finder: " + message);
             }
             for (int lonIndex = 0; lonIndex < width; lonIndex++) {
                 short elevation = tileGridView.getElevation(latIndex, lonIndex);
@@ -309,7 +318,7 @@ public class KeyColFinder extends AbstractElevationTool {
                 String message = "Interrupted while initalizing union-find";
                 informListenersAboutStatus(message);
                 Logging.info("Elevation: Key col finder: " + message);
-                throw new InterruptedException(message);
+                throw new InterruptedException("Key col finder: " + message);
             }
             // Initially, all cells reference to themselves as parent
             parent[index] = index;
@@ -352,7 +361,7 @@ public class KeyColFinder extends AbstractElevationTool {
                 String message = "Interrupted while iterating over elevation cells";
                 informListenersAboutStatus(message);
                 Logging.info("Elevation: Key col finder: " + message);
-                throw new InterruptedException(message);
+                throw new InterruptedException("Key col finder: " + message);
             }
             int latIndex = linearIndex / width;
             int lonIndex = linearIndex - latIndex * width;

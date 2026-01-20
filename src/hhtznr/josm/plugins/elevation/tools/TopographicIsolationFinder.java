@@ -15,10 +15,10 @@ import org.openstreetmap.josm.tools.Logging;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.LatLonLine;
-import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
 import hhtznr.josm.plugins.elevation.data.SRTMTileGridException;
 import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
 import hhtznr.josm.plugins.elevation.gui.ContourLines;
+import hhtznr.josm.plugins.elevation.util.IncrementalNumberedNameCreator;
 
 /**
  * This class implements a tool that can compute candidates for reference
@@ -35,14 +35,18 @@ import hhtznr.josm.plugins.elevation.gui.ContourLines;
  */
 public class TopographicIsolationFinder extends AbstractElevationTool {
 
+    private static final IncrementalNumberedNameCreator namer = new IncrementalNumberedNameCreator("Topographic isolation finder");
+
     /**
      * Creates a new topographic isolation finder.
      *
      * @param elevationDataProvider The elevation data provider providing the data
      *                              for this topographic isolation finder.
+     * @param searchBounds          The bounds within which to search for isolation
+     *                              reference points.
      */
-    public TopographicIsolationFinder(ElevationDataProvider elevationDataProvider) {
-        super(elevationDataProvider);
+    public TopographicIsolationFinder(ElevationDataProvider elevationDataProvider, Bounds searchBounds) {
+        super(namer.nextName(), elevationDataProvider, searchBounds);
     }
 
     /**
@@ -55,8 +59,6 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
      *                          value obtained from raster elevation data like SRTM
      *                          data. Raster elevation data tends to underestimate
      *                          the elevation of peaks.
-     * @param searchBounds      The bounds within which to search for isolation
-     *                          reference points.
      * @param searchDistance    The maximum search distance in meters. It is used in
      *                          order not to search in corners of the rectangular
      *                          search bounds.
@@ -79,11 +81,12 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
      *         point could be determined within the specified bounds.
      * @throws InterruptedException Thrown if the executing thread was interrupted
      */
-    public List<LatLonEle> determineReferencePoints(LatLonEle peak, Bounds searchBounds, double searchDistance,
-            double distanceTolerance, double deadZoneRadius) throws InterruptedException {
+    public List<LatLonEle> determineReferencePoints(LatLonEle peak, double searchDistance, double distanceTolerance,
+            double deadZoneRadius) throws InterruptedException {
+        Bounds searchBounds = getBounds();
         SRTMTileGridView tileGridView;
         try {
-            tileGridView = new SRTMTileGrid(elevationDataProvider, searchBounds).getView(searchBounds);
+            tileGridView = getTileGrid().getView(searchBounds);
         } catch (SRTMTileGridException e) {
             Logging.error("Elevation: Cannot establish topographic prominence search: " + e.toString());
             return null;
@@ -96,7 +99,7 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
             String message = "Interrupted while waiting for tiles to be cached";
             informListenersAboutStatus(message);
             Logging.info("Elevation: Topographic isolation finder: " + message);
-            return new ArrayList<>(0);
+            throw new InterruptedException("Topographic isolation finder: " + message);
         }
         informListenersAboutStatus("All needed SRTM tiles cached");
 
@@ -106,6 +109,8 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
         informListenersAboutStatus("Creating contour lines");
         ContourLines contourLines = new ContourLines(tileGridView, isovalues);
         ContourLines.IsolineSegments[] allIsoLineSegments = contourLines.getIsolineSegments();
+        contourLines.dispose();
+        contourLines = null;
         if (allIsoLineSegments.length < 1) {
             String message = "Could not determine isolation for peak " + peak.toString()
                     + ": No higher isolines found within search bounds " + searchBounds.toString();
@@ -114,6 +119,8 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
             return new ArrayList<>(0);
         }
         List<LatLonLine> isolineSegments = allIsoLineSegments[0].getLineSegments();
+        // Immediately set to null to free memory as soon as possible
+        allIsoLineSegments = null;
         informListenersAboutStatus("Contour lines created");
 
         informListenersAboutStatus("Determining closest points");
@@ -123,10 +130,10 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
         for (LatLonLine isolineSegment : isolineSegments) {
             // Stop immediately, if the executing thread got interrupted
             if (Thread.currentThread().isInterrupted()) {
+                isolineSegments = null;
                 String message = "Interrupted while determining closest points from isoline segments";
                 Logging.info("Elevation: Topographic isolation finder: " + message);
-                throw new InterruptedException(
-                        "Thread was interrupted while determining closest points from isoline segments");
+                throw new InterruptedException("Topographic isolation finder: " + message);
             }
             LatLon closestPoint = isolineSegment.getClosestPointTo(peak);
             double distance = peak.greatCircleDistance((ILatLon) closestPoint);
@@ -147,6 +154,8 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
                 closestPoints.add(new LatLonEleDist(point, distance));
             }
         }
+        // Set to null to free memory as soon as possible
+        isolineSegments = null;
 
         // Should not happen, because otherwise we could not generate the isolines
         if (closestPoints.size() < 1) {

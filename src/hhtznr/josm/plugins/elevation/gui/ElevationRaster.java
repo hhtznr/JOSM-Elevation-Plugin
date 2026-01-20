@@ -2,6 +2,7 @@ package hhtznr.josm.plugins.elevation.gui;
 
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
+import hhtznr.josm.plugins.elevation.util.IncrementalNumberedNameCreator;
 
 /**
  * Class implementing an elevation raster composed of individual
@@ -13,6 +14,8 @@ import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
  */
 public class ElevationRaster extends AbstractSRTMTileGridPaintable {
 
+    private static final IncrementalNumberedNameCreator namer = new IncrementalNumberedNameCreator("Elevation raster");
+
     /**
      * Creates a new elevation raster which covers the specified bounds with
      * elevation data points.
@@ -21,7 +24,7 @@ public class ElevationRaster extends AbstractSRTMTileGridPaintable {
      *                     be obtained.
      */
     public ElevationRaster(SRTMTileGridView tileGridView) {
-        super(tileGridView);
+        super(namer.nextName(), tileGridView);
     }
 
     /**
@@ -31,7 +34,7 @@ public class ElevationRaster extends AbstractSRTMTileGridPaintable {
      *         dimension.
      */
     public int getHeight() {
-        if (!tileGridView.areAllTilesCached())
+        if (!tileGridView.areAllTilesCached() || tileGridView.getTileGrid().isDisposed())
             return 0;
         return tileGridView.getHeight();
     }
@@ -43,7 +46,7 @@ public class ElevationRaster extends AbstractSRTMTileGridPaintable {
      *         dimension.
      */
     public int getWidth() {
-        if (!tileGridView.areAllTilesCached())
+        if (!tileGridView.areAllTilesCached() || tileGridView.getTileGrid().isDisposed())
             return 0;
         return tileGridView.getWidth();
     }

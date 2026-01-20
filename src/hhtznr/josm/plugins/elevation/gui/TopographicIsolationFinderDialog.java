@@ -103,8 +103,6 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
         this.elevationDataProvider = elevationDataProvider;
         // Set the icon of the close button via the superclass method
         setButtonIcons("misc/close.svg");
-        isolationFinder = new TopographicIsolationFinder(elevationDataProvider);
-        isolationFinder.addElevationToolListener(this);
         build();
     }
 
@@ -518,7 +516,14 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
     private Future<List<Node>> determineReferencePoints(LatLonEle peak, Bounds searchBounds, double searchDistance,
             double distanceTolerance, double deadZoneRadius) throws RejectedExecutionException {
         Callable<List<Node>> task = () -> {
-            List<LatLonEle> closestPoints = isolationFinder.determineReferencePoints(peak, searchBounds, searchDistance,
+            TopographicIsolationFinder oldIsolationFinder = isolationFinder;
+            isolationFinder = new TopographicIsolationFinder(elevationDataProvider, searchBounds);
+            if (oldIsolationFinder != null) {
+                oldIsolationFinder.dispose();
+                oldIsolationFinder = null;
+            }
+            isolationFinder.addElevationToolListener(this);
+            List<LatLonEle> closestPoints = isolationFinder.determineReferencePoints(peak, searchDistance,
                     distanceTolerance, deadZoneRadius);
             if (closestPoints.size() == 0) {
                 // includes setting this.node to null
@@ -581,12 +586,14 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
 
     @Override
     public void dispose() {
-        isolationFinder.removeElevationToolListener(this);
         Future<List<Node>> future = closestNodesFuture;
         if (future != null && !future.isCancelled())
             future.cancel(true);
-        isolationFinder = null;
-        elevationDataProvider.cleanCache();
+        if (isolationFinder != null) {
+            isolationFinder.removeElevationToolListener(this);
+            isolationFinder.dispose();
+            isolationFinder = null;
+        }
         super.dispose();
     }
 

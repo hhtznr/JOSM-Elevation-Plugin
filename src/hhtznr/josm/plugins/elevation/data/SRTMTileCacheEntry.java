@@ -1,8 +1,13 @@
 package hhtznr.josm.plugins.elevation.data;
 
+import java.lang.ref.Cleaner;
+import java.util.ArrayList;
+import java.util.Optional;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+
+import org.openstreetmap.josm.tools.Logging;
 
 /**
  * This class implements a cache entry for the {@link SRTMTileCache}.
@@ -11,12 +16,17 @@ import java.util.concurrent.ExecutionException;
  */
 public class SRTMTileCacheEntry {
 
+    // TODO: Remove again
+    private static final Cleaner CLEANER = Cleaner.create();
+
     private final String srtmTileID;
     private volatile Status status;
 
-    private final CompletableFuture<SRTMTile> future;
+    private final CompletableFuture<SRTMTile> future = new CompletableFuture<>();
 
-    private long accessTime;
+    private volatile long accessTime;
+
+    private final ArrayList<SRTMTileConsumer> tileConsumers = new ArrayList<>();
 
     /**
      * Status of SRTM tiles (loading, valid, missing, download scheduled,
@@ -75,7 +85,12 @@ public class SRTMTileCacheEntry {
         /**
          * Status indicating that downloading the SRTM tile failed.
          */
-        DOWNLOAD_FAILED("download failed");
+        DOWNLOAD_FAILED("download failed"),
+
+        /**
+         * Status indicating that loading of the SRTM tile was canceled.
+         */
+        LOADING_CANCELED("loading canceled");
 
         private final String statusName;
 
@@ -101,9 +116,11 @@ public class SRTMTileCacheEntry {
      */
     public SRTMTileCacheEntry(String srtmTileID) {
         this.srtmTileID = srtmTileID;
-        this.status = Status.NEW;
-        this.future = new CompletableFuture<>();
-        this.accessTime = System.currentTimeMillis();
+        status = Status.NEW;
+        accessTime = System.currentTimeMillis();
+
+        CLEANER.register(this,
+                () -> Logging.info("Elevation: DEBUG: GC reclaimed SRTM tile cache entry: " + srtmTileID));
     }
 
     /**
@@ -134,16 +151,73 @@ public class SRTMTileCacheEntry {
     }
 
     /**
-     * Returns a {@code Future} that will provide access to the SRTM tile of this
-     * cache entry as soon as the tile is cached.
+     * Waits until loading of the SRTM tile completed normally or exceptionally by
+     * calling {@code get()} on the internal {@code CompletableFuture} of this cache
+     * entry. Returns immediately if loading is already completed.
      *
-     * @return {@code Future} to access the SRTM tile or wait for its availability.
+     * @throws ExecutionException   if the {@code CompletableFuture} was completed
+     *                              exceptionally.
+     * @throws InterruptedException if the current thread was interrupted while
+     *                              waiting.
      */
-    public CompletableFuture<SRTMTile> getFuture() {
+    public void waitUntilLoadingCompleted() throws ExecutionException, InterruptedException {
+        future.get();
+    }
+
+    /**
+     * Waits until loading of the SRTM tile completed normally or exceptionally by
+     * calling {@code get()} on the internal {@code CompletableFuture} of this cache
+     * entry and then returns the SRTM tile of this cache entry. Returns immediately
+     * if loading is already completed.
+     *
+     * @return The SRTM tile of this cache entry.
+     * @throws ExecutionException   if the {@code CompletableFuture} was completed
+     *                              exceptionally.
+     * @throws InterruptedException if the current thread was interrupted while
+     *                              waiting.
+     */
+    public SRTMTile getTileOrWait() throws ExecutionException, InterruptedException {
         synchronized (this) {
             this.accessTime = System.currentTimeMillis();
         }
-        return future;
+        return future.get();
+    }
+
+    /**
+     * Returns whether the SRTM tile held by this SRTM tile cache entry is loaded
+     * into memory or alternatively was found not to be available (e.g. permanently
+     * missing). In this state, the SRTM tile is immediately accessible. Otherwise,
+     * it might be necessary to read the SRTM tile from disk or even download it.
+     *
+     * @return {@code true} if the SRTM tile is loaded into memory
+     */
+    public boolean isLoadingCompleted() {
+        return future.isDone();
+    }
+
+    /**
+     * Completes the internal {@code CompletableFuture} if this cache entry with an
+     * SRTM tile. To be executed after asynchronous loading of the tile to make this
+     * cache entry effectively usable.
+     *
+     * @param tile The SRTM tile to complete this cache entry.
+     * @return {@code true} if the internal {@code CompletableFuture} could be
+     *         completed.
+     */
+    protected synchronized boolean complete(SRTMTile tile) {
+        return future.complete(tile);
+    }
+
+    /**
+     * Cancels loading of the SRTM tile by canceling its internal internal
+     * {@code CompletableFuture}.
+     *
+     * @return {@code true} if the task of the internal {@code CompletableFuture} is
+     *         now canceled.
+     */
+    protected synchronized boolean cancelLoading() {
+        // Note: For CompletableFuture, the boolean mayInterruptIfRunning has no effect
+        return future.cancel(true);
     }
 
     /**
@@ -162,20 +236,77 @@ public class SRTMTileCacheEntry {
      *         the tile is not available.
      */
     public synchronized int getDataSize() {
-        SRTMTile tile = getTile();
-        if (tile == null)
+        Optional<SRTMTile> optional = getTileIfLoaded();
+        if (optional.isEmpty())
             return 0;
-        return tile.getDataSize();
+        return optional.get().getDataSize();
     }
 
-    private SRTMTile getTile() {
+    public Optional<SRTMTile> getTileIfLoaded() {
+        synchronized (this) {
+            this.accessTime = System.currentTimeMillis();
+        }
         if (future.isDone()) {
             try {
-                return future.get();
+                SRTMTile tile = future.get();
+                return Optional.of(tile);
             } catch (CancellationException | InterruptedException | ExecutionException e) {
-                return null;
+                return Optional.empty();
             }
         }
-        return null;
+        return Optional.empty();
+    }
+
+    /**
+     * Registers a tile consumer of this tile.
+     *
+     * @param consumer The tile consumer.
+     * @return {@code true} if the tile consumer is not already registered.
+     */
+    public boolean addTileConsumer(SRTMTileConsumer consumer) {
+        synchronized (tileConsumers) {
+            if (tileConsumers.contains(consumer))
+                return false;
+            tileConsumers.add(consumer);
+            return true;
+        }
+    }
+
+    /**
+     * Unregisters a tile consumer of this tile.
+     *
+     * @param consumer The tile consumer.
+     * @return {@code true} if the tile consumer was actually registered.
+     */
+    public boolean removeTileConsumer(SRTMTileConsumer consumer) {
+        synchronized (tileConsumers) {
+            return tileConsumers.remove(consumer);
+        }
+    }
+
+    /**
+     * Returns the current number of registered tile consumers.
+     *
+     * @return The number of tile consumers.
+     */
+    public int getTileConsumerCount() {
+        synchronized (tileConsumers) {
+            return tileConsumers.size();
+        }
+    }
+
+    /**
+     * Disposes this SRTM tile cache entry by canceling the asynchronous tile
+     * loading operation if still running and disposing the SRTM tile if already
+     * loaded.
+     * <br>
+     * Disposing is intended to free memory.
+     */
+    protected synchronized void disposeTile() {
+        if (!future.isDone())
+            future.cancel(true);
+        Optional<SRTMTile> optional = getTileIfLoaded();
+        if (optional.isPresent())
+            optional.get().dispose();
     }
 }

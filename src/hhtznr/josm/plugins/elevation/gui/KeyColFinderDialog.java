@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -43,7 +42,6 @@ import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 import org.openstreetmap.josm.gui.widgets.JMultilineLabel;
 import org.openstreetmap.josm.gui.widgets.JosmComboBox;
 import org.openstreetmap.josm.tools.GBC;
-import org.openstreetmap.josm.tools.Logging;
 import org.openstreetmap.josm.tools.OpenBrowser;
 
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
@@ -83,7 +81,7 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
     private JTextArea textAreaFeedback;
 
     private final ElevationDataProvider elevationDataProvider;
-    private KeyColFinder keyColFinder;
+    private KeyColFinder keyColFinder = null;
     private Node peakANode = null;
     private Node peakBNode = null;
     private Future<LatLonEle> keyColFuture = null;
@@ -129,8 +127,6 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
         this.elevationDataProvider = elevationDataProvider;
         // Set the icon of the close button via the superclass method
         setButtonIcons("misc/close.svg");
-        keyColFinder = new KeyColFinder(elevationDataProvider);
-        keyColFinder.addElevationToolListener(this);
         build();
     }
 
@@ -724,7 +720,14 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
             KeyColFinder.UnionFindNeighbors unionFindNeighbors) throws RejectedExecutionException {
         try {
             Callable<LatLonEle> task = () -> {
-                LatLonEle keyCol = keyColFinder.findKeyCol(peakA, peakB, searchBounds, unionFindNeighbors);
+                KeyColFinder oldKeyColFinder = keyColFinder;
+                keyColFinder = new KeyColFinder(elevationDataProvider, searchBounds, peakA, peakB);
+                if (oldKeyColFinder != null) {
+                    oldKeyColFinder.dispose();
+                    oldKeyColFinder = null;
+                }
+                keyColFinder.addElevationToolListener(this);
+                LatLonEle keyCol = keyColFinder.findKeyCol(unionFindNeighbors);
 
                 if (keyCol != null) {
                     keyColNode = new Node(keyCol);
@@ -769,11 +772,16 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
 
     @Override
     public void dispose() {
-        keyColFinder.removeElevationToolListener(this);
         Future<LatLonEle> future = keyColFuture;
         if (future != null && !future.isCancelled())
             future.cancel(true);
-        keyColFinder = null;
+
+        if (keyColFinder != null) {
+            keyColFinder.removeElevationToolListener(this);
+            keyColFinder.dispose();
+            keyColFinder = null;
+        }
+
         elevationDataProvider.cleanCache();
         super.dispose();
     }
@@ -854,18 +862,12 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
             String ele = selectedNode.get("ele");
             int rasterEle;
             try {
+                // May throw CancellationException, ExecutionException or InterruptedException
                 rasterEle = (int) Math.round(elevationDataProvider.getLatLonEleOrWait(latLon).ele());
-            } catch (InterruptedException e) {
+            } catch (Exception e) {
                 setDialogState(DialogState.INITIAL);
-                textAreaFeedback.append("Interrupted while waiting for elevation data for peak " + whichPeak + "."
+                textAreaFeedback.append("Loading of elevation data for peak " + whichPeak + " was interrupted."
                         + System.lineSeparator());
-                return;
-            } catch (ExecutionException e) {
-                setDialogState(DialogState.INITIAL);
-                textAreaFeedback.append("Elevation: Could not load elevation data for peak "
-                        + whichPeak + "." + System.lineSeparator());
-                Logging.error("Elevation: Could not load elevation data for peak A: "
-                        + e.getCause().toString());
                 return;
             }
             String eleText;
@@ -917,18 +919,12 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
 
             LatLonEle peakA;
             try {
+                // May throw CancellationException, ExecutionException or InterruptedException
                 peakA = elevationDataProvider.getLatLonEleOrWait(peakANode.getCoor());
-            } catch (InterruptedException e) {
+            } catch (Exception e) {
                 setDialogState(DialogState.PEAKS_DEFINED);
                 textAreaFeedback
-                        .append("Interrupted while waiting for elevation data for peak A." + System.lineSeparator());
-                return;
-            } catch (ExecutionException e) {
-                setDialogState(DialogState.PEAKS_DEFINED);
-                textAreaFeedback.append("Elevation: Could not load elevation data for peak A."
-                        + System.lineSeparator());
-                Logging.error("Elevation: Could not load elevation data for peak A: "
-                        + e.getCause().toString());
+                        .append("Loading of elevation data for elevation data for peak A was interrupted." + System.lineSeparator());
                 return;
             }
             if (!peakA.isValidEle()) {
@@ -941,17 +937,10 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
             LatLonEle peakB;
             try {
                 peakB = elevationDataProvider.getLatLonEleOrWait(peakBNode.getCoor());
-            } catch (InterruptedException e) {
+            } catch (Exception e) {
                 setDialogState(DialogState.PEAKS_DEFINED);
                 textAreaFeedback
-                        .append("Interrupted while waiting for elevation data for peak B." + System.lineSeparator());
-                return;
-            } catch (ExecutionException e) {
-                setDialogState(DialogState.PEAKS_DEFINED);
-                textAreaFeedback.append("Elevation: Could not load elevation data for peak A."
-                        + System.lineSeparator());
-                Logging.error("Elevation: Could not load for elevation data for peak B: "
-                        + e.getCause().toString());
+                        .append("Loading of elevation data for elevation data for peak B was interrupted." + System.lineSeparator());
                 return;
             }
             if (!peakB.isValidEle()) {

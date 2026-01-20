@@ -5,8 +5,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -16,6 +14,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 
@@ -53,7 +52,7 @@ public class SRTMTileCache {
      */
     private int cacheSizeLimit;
 
-    private final LinkedList<SRTMTileCacheListener> listeners = new LinkedList<>();
+    private final CopyOnWriteArrayList<SRTMTileCacheListener> listeners = new CopyOnWriteArrayList<>();
 
     private final SRTMFileReader srtmFileReader;
     private static final CancelableExecutor<SRTMTile> fileReadExecutor = new CancelableExecutor<>(
@@ -173,25 +172,26 @@ public class SRTMTileCache {
      */
     public synchronized Map<String, String> getCachedTilesInfo() {
         Map<String, String> tileInfo = new TreeMap<>();
-        for (Entry<String, SRTMTileCacheEntry> entry : cache.entrySet()) {
-            SRTMTileCacheEntry cacheEntry = entry.getValue();
-            CompletableFuture<SRTMTile> future = cacheEntry.getFuture();
-            if (future.isDone()) {
-                SRTMTile tile;
-                try {
-                    tile = future.get();
-                } catch (InterruptedException e) {
-                    break;
-                } catch (ExecutionException e) {
-                    // Should never happen because we do not complete exceptionally
-                    continue;
-                }
-                synchronized (cacheEntry) {
-                    String info = "Type: " + tile.getType().toString();
-                    info += ", status: " + cacheEntry.getStatus().toString();
-                    info += ", size: " + getSizeString(tile.getDataSize());
-                    info += ", source: " + (tile.getDataSource() == null ? "none" : tile.getDataSource().getName());
-                    tileInfo.put("SRTM tile " + tile.getID(), info);
+        synchronized (cache) {
+            for (Entry<String, SRTMTileCacheEntry> entry : cache.entrySet()) {
+                SRTMTileCacheEntry cacheEntry = entry.getValue();
+                if (cacheEntry.isLoadingCompleted()) {
+                    SRTMTile tile;
+                    try {
+                        tile = cacheEntry.getTileOrWait();
+                    } catch (InterruptedException e) {
+                        break;
+                    } catch (ExecutionException e) {
+                        // Should never happen because we do not complete exceptionally
+                        continue;
+                    }
+                    synchronized (cacheEntry) {
+                        String info = "Type: " + tile.getType().toString();
+                        info += ", status: " + cacheEntry.getStatus().toString();
+                        info += ", size: " + getSizeString(tile.getDataSize());
+                        info += ", source: " + (tile.getDataSource() == null ? "none" : tile.getDataSource().getName());
+                        tileInfo.put("SRTM tile " + tile.getID(), info);
+                    }
                 }
             }
         }
@@ -218,6 +218,57 @@ public class SRTMTileCache {
     }
 
     /**
+     * Initiates caching of the SRTM tiles needed to cover the specified bounds with
+     * elevation data.
+     *
+     * @param intLatSouth The southernmost coordinate of the bounds, as full arc
+     *                    degrees aligning with SRTM tile bounds.
+     * @param intLonWest  The westernmost coordinate of the bounds, as full arc
+     *                    degrees aligning with SRTM tile bounds.
+     * @param intLatNorth The northernmost coordinate of the bounds, as full arc
+     *                    degrees aligning with SRTM tile bounds.
+     * @param intLonEast  The easternmost coordinate of the bounds, as full arc
+     *                    degrees aligning with SRTM tile bounds.
+     * @param consumer    The SRTM tile consumer for which to cache the bounds.
+     *                    Registering the consumer with the tiles will ensure that
+     *                    these are not cleaned up.
+     */
+    public synchronized void cacheSRTMTiles(int intLatSouth, int intLonWest, int intLatNorth, int intLonEast,
+            SRTMTileConsumer consumer) {
+        // Not across 180th meridian
+        if (intLonWest <= intLonEast) {
+            for (int lon = intLonWest; lon <= intLonEast; lon++) {
+                for (int lat = intLatSouth; lat <= intLatNorth; lat++)
+                    // Calling the getter method will ensure that tiles are being read or downloaded
+                    try {
+                        getTileCacheEntryFor(SRTMTile.getTileID(lat, lon), consumer);
+                    } catch (CancellationException e) {
+                        continue;
+                    }
+            }
+        }
+        // Across 180th meridian
+        else {
+            for (int lon = intLonWest; lon <= 179; lon++) {
+                for (int lat = intLatSouth; lat <= intLatNorth; lat++)
+                    try {
+                        getTileCacheEntryFor(SRTMTile.getTileID(lat, lon), consumer);
+                    } catch (CancellationException e) {
+                        continue;
+                    }
+            }
+            for (int lon = -180; lon <= intLonEast; lon++) {
+                for (int lat = intLatSouth; lat <= intLatNorth; lat++)
+                    try {
+                        getTileCacheEntryFor(SRTMTile.getTileID(lat, lon), consumer);
+                    } catch (CancellationException e) {
+                        continue;
+                    }
+            }
+        }
+    }
+
+    /**
      * Returns the SRTM tile with the respective ID as soon as it has been cached.
      * Caching can involve downloading. Blocks the executing thread for as long as
      * it takes and as long as loading is not interrupted.
@@ -227,13 +278,8 @@ public class SRTMTileCache {
      *         data is valid or otherwise as an invalid tile without data.
      * @throws CancellationException if the future used for asynchronous loading was
      *                               cancelled
-     * @throws ExecutionException    should never be thrown; would be thrown if the
-     *                               future used for asynchronous loading completed
-     *                               exceptionally
-     * @throws InterruptedException  if the current thread was interrupted while
-     *                               waiting
      */
-    public SRTMTile getTileOrWait(String srtmTileID)
+    public SRTMTile getTileOrWait(String srtmTileID, SRTMTileConsumer consumer)
             throws CancellationException, ExecutionException, InterruptedException {
         // Map editing is often done in the very same place for a while.
         // Therefore consider the previous tile first of all.
@@ -242,7 +288,12 @@ public class SRTMTileCache {
                 return previousTile;
         }
         // Otherwise wait for the tile to be available with data
-        SRTMTile tile = getTileFuture(srtmTileID).get();
+        // May throw CancellationException
+        SRTMTileCacheEntry entry = getTileCacheEntryFor(srtmTileID, consumer);
+        // May throw ExecutionException or InterruptedException
+        SRTMTile tile = entry.getTileOrWait();
+        if (entry.getStatus() == SRTMTileCacheEntry.Status.LOADING_CANCELED)
+            throw new CancellationException("Loading of SRTM tile " + srtmTileID + " was canceled");
         synchronized (previousTileLock) {
             previousTile = tile;
         }
@@ -264,16 +315,19 @@ public class SRTMTileCache {
                 return Optional.of(previousTile);
         }
 
-        CompletableFuture<SRTMTile> future = getTileFuture(srtmTileID);
-        if (future.isDone()) {
-            try {
-                SRTMTile tile = future.get();
-                synchronized (previousTileLock) {
-                    previousTile = tile;
+        SRTMTileCacheEntry entry = cache.get(srtmTileID);
+        if (entry != null) {
+            if (entry.isLoadingCompleted()) {
+                try {
+                    // May throw ExecutionException or InterruptedException
+                    SRTMTile tile = entry.getTileOrWait();
+                    synchronized (previousTileLock) {
+                        previousTile = tile;
+                    }
+                    return Optional.of(tile);
+                } catch (Exception e) {
+                    return Optional.empty();
                 }
-                return Optional.of(tile);
-            } catch (Exception e) {
-                return Optional.empty();
             }
         }
 
@@ -281,27 +335,47 @@ public class SRTMTileCache {
     }
 
     /**
-     * Returns a {@code Future} from which an SRTM tile specified by the provided ID
-     * can be obtained. Starts asynchronous loading of the SRTM tile of the tile is
-     * not cached yet.
+     * Returns an SRTM tile cache entry enabling access to the requested SRMT tile
+     * as soon as it is loaded. Asynchronously loads the SRTM tile if it is not
+     * cached yet. Registers the provided SRTM tile consumer with the cache entry.
+     * This ensures that the cache entry is not cleaned up as long as the consumer
+     * is registered.
      *
-     * @param srtmTileID The ID of the SRTM tile for which to retrieve the future.
-     * @return A {@code Future} from which the SRTM tile can be obtained as soon as
-     *         it is loaded.
+     * @param srtmTileID The ID of the requested SRTM tile.
+     * @param consumer   The SRTM tile consumer to register with the cache entry of
+     *                   the requested SRTM tile.
+     * @return An SRTM tile cache entry that enables access to the SRTM tile as soon
+     *         as it is loaded.
+     * @throws CancellationException if loading of the SRTM tile was canceled.
      */
-    public CompletableFuture<SRTMTile> getTileFuture(String srtmTileID) {
-        SRTMTileCacheEntry entry = cache.computeIfAbsent(srtmTileID, id -> {
-            SRTMTileCacheEntry newEntry = new SRTMTileCacheEntry(id);
-            startLoadingAsync(newEntry);
-            return newEntry;
-        });
-
-        CompletableFuture<SRTMTile> future = entry.getFuture();
-        return future;
+    public synchronized SRTMTileCacheEntry getTileCacheEntryFor(String srtmTileID, SRTMTileConsumer consumer)
+            throws CancellationException {
+        synchronized (cache) {
+            SRTMTileCacheEntry entry = cache.get(srtmTileID);
+            if (entry != null) {
+                synchronized (entry) {
+                    if (entry.getStatus() == SRTMTileCacheEntry.Status.LOADING_CANCELED) {
+                        cache.remove(srtmTileID);
+                        throw new CancellationException("Loading of SRTM tile " + srtmTileID + " was canceled.");
+                    } else {
+                        entry.addTileConsumer(consumer);
+                        return entry;
+                    }
+                }
+            }
+            entry = cache.computeIfAbsent(srtmTileID, id -> {
+                SRTMTileCacheEntry newEntry = new SRTMTileCacheEntry(id);
+                newEntry.addTileConsumer(consumer);
+                startLoadingAsync(newEntry);
+                return newEntry;
+            });
+            entry.addTileConsumer(consumer);
+            return entry;
+        }
     }
 
-    private void startLoadingAsync(SRTMTileCacheEntry entry) {
-        CompletableFuture.runAsync(() -> {
+    private CompletableFuture<Void> startLoadingAsync(SRTMTileCacheEntry entry) {
+        CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
             String srtmTileID = entry.getID();
             try {
                 List<ElevationDataSource> dataSources;
@@ -379,35 +453,43 @@ public class SRTMTileCache {
                     }
                 }
                 entry.setStatus(status);
-                entry.getFuture().complete(srtmTile); // Wakes up all waiters
+                entry.complete(srtmTile); // Wakes up all waiters
                 updateCacheSize(entry.getDataSize());
                 synchronized (listeners) {
                     for (SRTMTileCacheListener listener : listeners)
                         listener.srtmTileCached(srtmTile, status);
                 }
-            } catch (CancellationException e) {
-                // Remove the entry from the cache if the loading task was canceled
-                removeEntry(srtmTileID);
+                Logging.info("Elevation: SRTM tile " + entry.getID() + " loaded with status "
+                        + entry.getStatus().toString());
             } catch (Exception e) {
-                SRTMTileCacheEntry.Status status = SRTMTileCacheEntry.Status.DATA_INVALID;
+                boolean loadingCanceled = e instanceof ExecutionException || e instanceof InterruptedException;
+                SRTMTileCacheEntry.Status status;
+                if (loadingCanceled)
+                    status = SRTMTileCacheEntry.Status.LOADING_CANCELED;
+                else
+                    status = SRTMTileCacheEntry.Status.DATA_INVALID;
                 entry.setStatus(status);
                 // We don't do this; therefore ExecutionException should be thrown in practice
                 // entry.getFuture().completeExceptionally(e);
                 SRTMTile srtmTile = SRTMTile.createInvalidTile(srtmTileID, srtmType);
-                entry.getFuture().complete(srtmTile);
-                Logging.error("Elevation: Exception retrieving SRTM tile " + srtmTileID + ": " + e.toString());
+                entry.complete(srtmTile);
+                if (!loadingCanceled) {
+                    Logging.error("Elevation: Exception retrieving SRTM tile " + srtmTileID + ": " + e.toString());
+                    e.printStackTrace();
+                }
                 synchronized (listeners) {
                     for (SRTMTileCacheListener listener : listeners)
                         listener.srtmTileCached(srtmTile, status);
                 }
             }
         });
+        return future;
     }
 
     /**
      * Flushes the cache by removing all tiles and sets the cache size to zero.
      */
-    public synchronized void flush() {
+    private synchronized void flush() {
         // Cancel all currently running/queued file download tasks
         fileDownloadExecutor.cancelAllTasks();
         // Cancel all currently running/queued file read tasks
@@ -427,55 +509,49 @@ public class SRTMTileCache {
     public synchronized void clean() {
         if (cacheSize <= cacheSizeLimit)
             return;
-        ArrayList<SRTMTileCacheEntry> allEntries = new ArrayList<>(cache.values());
-        allEntries.sort(Comparator.comparingLong(SRTMTileCacheEntry::getAccessTime));
-        for (SRTMTileCacheEntry entry : allEntries) {
-            synchronized (entry) {
-                // Skip tiles that are known but have no size
-                if (entry.getDataSize() == 0)
-                    continue;
+        synchronized (cache) {
+            ArrayList<SRTMTileCacheEntry> allEntries = new ArrayList<>(cache.values());
+            allEntries.sort(Comparator.comparingLong(SRTMTileCacheEntry::getAccessTime));
+            for (SRTMTileCacheEntry entry : allEntries) {
+                synchronized (entry) {
+                    // Skip tiles that are known but have no size
+                    if (entry.getDataSize() == 0)
+                        continue;
+                    considerRemoveEntry(entry);
+                }
 
-                removeEntry(entry.getID());
+                if (cacheSize <= cacheSizeLimit)
+                    break;
             }
-
-            if (cacheSize <= cacheSizeLimit)
-                break;
         }
     }
 
-    /**
-     * Cleans all SRTM tile cache entries with the given
-     * {@link SRTMTileCacheEntry.Status} from the cache.
-     *
-     * @param status The status of the SRTM tile cache entry to clean from the
-     *               cache.
-     */
-    public synchronized void cleanAllTilesWithStatus(SRTMTileCacheEntry.Status status) {
-        Iterator<Entry<String, SRTMTileCacheEntry>> iterator = cache.entrySet().iterator();
-        while (iterator.hasNext()) {
-            SRTMTileCacheEntry entry = iterator.next().getValue();
-            if (entry.getStatus() == status) {
-                iterator.remove();
-                int dataSize = entry.getDataSize();
-                updateCacheSize(-dataSize);
-                Logging.info("Elevation: Removed SRTM tile " + entry.getID() + " with status '"
+    private synchronized boolean considerRemoveEntry(SRTMTileCacheEntry entry) {
+        if (entry == null)
+            return false;
+
+        String srtmTileID;
+        int dataSize;
+        synchronized (cache) {
+            synchronized (entry) {
+                if (entry.getTileConsumerCount() != 0)
+                    return false;
+                srtmTileID = entry.getID();
+                if (!cache.remove(srtmTileID, entry))
+                    return false;
+                if (!entry.isLoadingCompleted())
+                    entry.cancelLoading();
+                dataSize = entry.getDataSize();
+                entry.disposeTile();
+                if (dataSize > 0)
+                    updateCacheSize(-dataSize);
+                Logging.info("Elevation: Removed SRTM tile " + srtmTileID + " with status '"
                         + entry.getStatus().toString() + "' and size " + getSizeString(dataSize)
                         + " from cache; cache size: " + getSizeString(cacheSize));
             }
         }
-    }
 
-    private synchronized SRTMTileCacheEntry removeEntry(String srtmTileID) {
-        SRTMTileCacheEntry entry = cache.remove(srtmTileID);
-        if (entry != null) {
-            int dataSize = entry.getDataSize();
-            if (dataSize > 0)
-                updateCacheSize(-dataSize);
-            Logging.info("Elevation: Removed SRTM tile " + srtmTileID + " with status '" + entry.getStatus().toString()
-                    + "' and size " + getSizeString(dataSize) + " from cache; cache size: " + getSizeString(cacheSize));
-        }
-
-        return entry;
+        return true;
     }
 
     private synchronized void updateCacheSize(int dataSizeToAdd) {
@@ -546,20 +622,16 @@ public class SRTMTileCache {
      * @param enabled {@code true} enables auto-download, {@code false} disables it.
      */
     public void setAutoDownloadEnabled(boolean enabled) {
-        if (enabled)
-            // If auto-downloading was (re-)enabled, clean all SRTM tiles which previously
-            // failed downloading
-            cleanAllTilesWithStatus(SRTMTileCacheEntry.Status.DOWNLOAD_FAILED);
         // Nothing else to do if the enabled status is unchanged
         if (autoDownloadEnabled == enabled)
             return;
+
         if (enabled) {
             if (srtmFileDownloader == null) {
                 // Create an SRTM file downloader instance
                 srtmFileDownloader = new SRTMFileDownloader();
-                // Clear any SRTM tiles marked as missing from the cache so they will be
-                // downloaded now, if needed
-                cleanAllTilesWithStatus(SRTMTileCacheEntry.Status.FILE_MISSING);
+                // TODO: If auto-downloading was (re-)enabled, try to download all SRTM tiles
+                // that are missing or previously failed to download.
             }
             autoDownloadEnabled = true;
             Logging.info("Elevation: Enabled auto-downloading of SRTM files");
@@ -578,13 +650,17 @@ public class SRTMTileCache {
     }
 
     /**
-     * Removes a listener from this elevation data provider.
+     * Removes the provided SRTM tile consumer from the provided tile cache entry
+     * and removes the entry from the cache if no consumer is any longer registered
+     * with the entry.
      *
-     * @param listener The listener to be removed.
+     * @param entry The cache entry from which to remove the consumer.
+     * @param consumer The consumer to remove.
      */
-    public void removeElevationDataProviderListener(SRTMTileCacheListener listener) {
-        synchronized (listeners) {
-            listeners.remove(listener);
+    public synchronized void removeSRTMTileConsumer(SRTMTileCacheEntry entry, SRTMTileConsumer consumer) {
+        synchronized (entry) {
+            if (entry.removeTileConsumer(consumer))
+                considerRemoveEntry(entry);
         }
     }
 }

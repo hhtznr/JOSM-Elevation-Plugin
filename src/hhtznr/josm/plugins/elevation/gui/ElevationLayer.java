@@ -10,7 +10,6 @@ import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -370,26 +369,21 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
     public Object getInfoComponent() {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.add(new JLabel("Elevation Layer"), GBC.eol());
-        List<List<String>> content = new ArrayList<>();
-        // Tile grid
-        int[] tileGridDimensions = elevationDataProvider.getSRTMTileGridDimensions();
-        content.add(Arrays.asList(tr("SRTM tile grid"),
-                "" + tileGridDimensions[0] + " x " + tileGridDimensions[1] + " SRTM tiles"));
-        // Tile grid raster
-        int[] tileGridRasterDimensions = elevationDataProvider.getSRTMTileGridRasterDimensions();
-        content.add(Arrays.asList(tr("SRTM tile grid raster"),
-                "" + tileGridRasterDimensions[0] + " x " + tileGridRasterDimensions[1] + " elevation data points"));
+        List<String[]> content = new ArrayList<>();
+        // Active tile grid
+        List<String[]> tileGridInfo = elevationDataProvider.getTileGridInfo();
+        for (String[] info : tileGridInfo)
+            content.add(info);
         // Cache size
-        content.add(Arrays.asList(tr("SRTM tile cache"), "" + elevationDataProvider.getTileCacheInfo()));
+        content.add(new String[] {tr("SRTM tile cache"), "" + elevationDataProvider.getTileCacheInfo()});
         // Info on tiles -> type, status, size, source
         Map<String, String> cachedTilesInfo = elevationDataProvider.getCachedTilesInfo();
-        for (Map.Entry<String, String> entry : cachedTilesInfo.entrySet()) {
-            content.add(Arrays.asList(entry.getKey(), entry.getValue()));
-        }
-        for (List<String> entry : content) {
-            panel.add(new JLabel(entry.get(0) + ':'), GBC.std());
+        for (Map.Entry<String, String> entry : cachedTilesInfo.entrySet())
+            content.add(new String[] {entry.getKey(), entry.getValue()});
+        for (String[] entry : content) {
+            panel.add(new JLabel(entry[0] + ':'), GBC.std());
             panel.add(GBC.glue(5, 0), GBC.std());
-            panel.add(createTextField(entry.get(1)), GBC.eol().fill(GridBagConstraints.HORIZONTAL));
+            panel.add(createTextField(entry [1]), GBC.eol().fill(GridBagConstraints.HORIZONTAL));
         }
         return panel;
     }

@@ -8,6 +8,7 @@ import org.openstreetmap.josm.data.Bounds;
 
 import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
 import hhtznr.josm.plugins.elevation.math.Hillshade;
+import hhtznr.josm.plugins.elevation.util.IncrementalNumberedNameCreator;
 
 /**
  * Class implementing a hillshade tile which is an image with the hillshade
@@ -16,6 +17,8 @@ import hhtznr.josm.plugins.elevation.math.Hillshade;
  * @author Harald Hetzner
  */
 public class HillshadeImageTile extends AbstractSRTMTileGridPaintable {
+
+    private static final IncrementalNumberedNameCreator namer = new IncrementalNumberedNameCreator("Hillshade image tile");
 
     public static final int BOUNDS_SCALE_RASTER_STEP = 3;
 
@@ -45,7 +48,7 @@ public class HillshadeImageTile extends AbstractSRTMTileGridPaintable {
      */
     public HillshadeImageTile(SRTMTileGridView tileGridView, double altitudeDeg, double azimuthDeg,
             boolean withPerimeter) {
-        super(tileGridView);
+        super(namer.nextName(), tileGridView);
         Hillshade hillshade = new Hillshade(tileGridView, altitudeDeg, azimuthDeg);
         image = hillshade.getHillshadeImage(withPerimeter);
         bounds = hillshade.getBounds();

@@ -3,16 +3,10 @@ package hhtznr.josm.plugins.elevation.gui;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionListener;
 import java.text.DecimalFormat;
-import java.util.Timer;
-import java.util.TimerTask;
 
-import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.ILatLon;
-import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.gui.MapFrame;
 import org.openstreetmap.josm.gui.MapStatus;
-import org.openstreetmap.josm.gui.MapView;
-import org.openstreetmap.josm.gui.NavigatableComponent.ZoomChangeListener;
 import org.openstreetmap.josm.gui.widgets.ImageLabel;
 import org.openstreetmap.josm.tools.GBC;
 
@@ -22,11 +16,14 @@ import hhtznr.josm.plugins.elevation.data.SRTMTile;
 
 /**
  * An image label for the status line of a map frame, which is intended to
- * display the elevation at the mouse pointer location on the map.
+ * display the elevation at the mouse pointer location on the map. <br>
+ * Note: For the local elevation label to work, an instance of
+ * {@link MapViewElevationDataConsumer} must ensure that the SRTM tiles covering
+ * the map view are cached.
  *
  * @author Harald Hetzner
  */
-public class LocalElevationLabel extends ImageLabel implements MouseMotionListener, ZoomChangeListener {
+public class LocalElevationLabel extends ImageLabel implements MouseMotionListener {
 
     private static final long serialVersionUID = 1L;
 
@@ -37,11 +34,6 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
     private final ElevationDataProvider elevationDataProvider;
 
     private MapFrame mapFrame = null;
-
-    private boolean elevationZoomLevelEnabled = false;
-
-    private final Timer timer = new Timer();
-    private TimerTask pendingTimerTask = null;
 
     /**
      * Creates a new map status label which displays the terrain elevation at the
@@ -71,13 +63,11 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
         if (this.mapFrame != null)
             remove();
         mapFrame.mapView.addMouseMotionListener(this);
-        MapView.addZoomChangeListener(this);
         // Add after the longitude ImageLabel at index = 2
         // or alternatively at index 0 or 1, if index = 2 should be out of range
         int index = Math.min(mapFrame.statusLine.getComponentCount(), 2);
         mapFrame.statusLine.add(this, GBC.std().insets(3, 0, 0, 0), index);
         this.mapFrame = mapFrame;
-        zoomChanged();
     }
 
     /**
@@ -104,10 +94,6 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
     }
 
     private void updateEleText(ILatLon latLon) {
-        if (!elevationZoomLevelEnabled || latLon == null) {
-            setText("");
-            return;
-        }
         LatLonEle latLonEle = elevationDataProvider.getLatLonEleNoWait(latLon);
         DecimalFormat eleFormat;
         if (elevationDataProvider.getElevationInterpolation() == SRTMTile.Interpolation.NONE)
@@ -118,40 +104,5 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
             setText(eleFormat.format(latLonEle.ele()));
         else
             setText("No data");
-    }
-
-    @Override
-    public void zoomChanged() {
-        updateEleText(null);
-
-        final Bounds bounds = mapFrame.mapView.getLatLonBounds(mapFrame.mapView.getBounds());
-        elevationZoomLevelEnabled = bounds.getHeight() <= SRTMTile.SRTM_TILE_ARC_DEGREES
-                && bounds.getWidth() <= SRTMTile.SRTM_TILE_ARC_DEGREES;
-        if (elevationZoomLevelEnabled) {
-            synchronized (timer) {
-                if (pendingTimerTask != null)
-                    pendingTimerTask.cancel();
-                timer.purge();
-                pendingTimerTask = new TimerTask() {
-                    @Override
-                    public void run() {
-                        double latSouth = bounds.getMinLat();
-                        double latNorth = bounds.getMaxLat();
-                        // minLon does always seem to be west, see Bounds.crosses180thMeridian()
-                        double lonWest = bounds.getMinLon();
-                        // maxLon does always seem to be east, see Bounds.crosses180thMeridian()
-                        double lonEast = bounds.getMaxLon();
-                        LatLon southWest = new LatLon(latSouth, lonWest);
-                        LatLon northEast = new LatLon(latNorth, lonEast);
-                        elevationDataProvider.cacheSRTMTiles(southWest, northEast);
-                        synchronized (timer) {
-                            pendingTimerTask = null;
-                        }
-                    }
-                };
-                // Ensure caching of SRTM tiles for current map bounds after 5 s
-                timer.schedule(pendingTimerTask, 5000L);
-            }
-        }
     }
 }

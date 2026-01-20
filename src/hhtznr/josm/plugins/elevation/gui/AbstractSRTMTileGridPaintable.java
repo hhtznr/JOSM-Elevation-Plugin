@@ -2,6 +2,7 @@ package hhtznr.josm.plugins.elevation.gui;
 
 import org.openstreetmap.josm.data.Bounds;
 
+import hhtznr.josm.plugins.elevation.data.ElevationDataConsumer;
 import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
 
 /**
@@ -12,7 +13,7 @@ import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
  *
  * @author Harald Hetzner
  */
-public abstract class AbstractSRTMTileGridPaintable {
+public abstract class AbstractSRTMTileGridPaintable extends ElevationDataConsumer {
 
     protected final SRTMTileGridView tileGridView;
 
@@ -23,7 +24,8 @@ public abstract class AbstractSRTMTileGridPaintable {
      * @param tileGridView The SRTM tile grid view, where this paintable should
      *                     obtain elevation values from its raster.
      */
-    public AbstractSRTMTileGridPaintable(SRTMTileGridView tileGridView) {
+    public AbstractSRTMTileGridPaintable(String name, SRTMTileGridView tileGridView) {
+        super(name, tileGridView.getTileGrid());
         this.tileGridView = tileGridView;
     }
 

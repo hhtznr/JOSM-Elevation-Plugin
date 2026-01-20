@@ -236,7 +236,7 @@ public class SRTMTileGridView {
      *         available at all).
      */
     public ContourLines getContourLines(int isostep, int lowerCutoffElevation, int upperCutoffElevation) {
-        if (!areAllTilesCached())
+        if (!tileGrid.areAllTilesCached() || tileGrid.isDisposed())
             return null;
         return new ContourLines(this, isostep, lowerCutoffElevation, upperCutoffElevation);
     }
@@ -251,7 +251,7 @@ public class SRTMTileGridView {
      *         returned if not all SRTM tiles are cached yet.
      */
     public LowestAndHighestPoints getLowestAndHighestPoints() {
-        if (!areAllTilesCached())
+        if (!tileGrid.areAllTilesCached() || tileGrid.isDisposed())
             return null;
         return new LowestAndHighestPoints(this);
     }
@@ -275,7 +275,7 @@ public class SRTMTileGridView {
      *         3 elevation values in one of the two dimensions.
      */
     public HillshadeImageTile getHillshadeImageTile(double altitudeDeg, double azimuthDeg, boolean withPerimeter) {
-        if (!areAllTilesCached())
+        if (!tileGrid.areAllTilesCached() || tileGrid.isDisposed())
             return null;
         return new HillshadeImageTile(this, altitudeDeg, azimuthDeg, withPerimeter);
     }
@@ -291,7 +291,7 @@ public class SRTMTileGridView {
      *         available at all).
      */
     public ElevationRaster getElevationRaster() {
-        if (!areAllTilesCached())
+        if (!tileGrid.areAllTilesCached() || tileGrid.isDisposed())
             return null;
         return new ElevationRaster(this);
     }
@@ -317,5 +317,14 @@ public class SRTMTileGridView {
      */
     public boolean areAllTilesCached() {
         return tileGrid.areAllTilesCached();
+    }
+
+    /**
+     * Returns the SRTM tile grid this view is based on.
+     *
+     * @return The SRTM tile grid.
+     */
+    public SRTMTileGrid getTileGrid() {
+        return tileGrid;
     }
 }

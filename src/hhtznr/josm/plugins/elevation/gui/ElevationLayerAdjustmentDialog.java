@@ -21,6 +21,7 @@ import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.widgets.JosmComboBox;
 import org.openstreetmap.josm.tools.GBC;
 
+import hhtznr.josm.plugins.elevation.ElevationPlugin;
 import hhtznr.josm.plugins.elevation.ElevationPluginTexts;
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
 import hhtznr.josm.plugins.elevation.data.Coloring;
@@ -363,5 +364,10 @@ public class ElevationLayerAdjustmentDialog extends ExtendedDialog {
         elevationLayer.setHillshadeIllumination(hillshadeAltitude, hillshadeAzimuth);
         elevationLayer.invalidate();
         MainApplication.getMap().mapView.repaint();
+        // Also update the maximum map dimensions of the map view elevation data consumer
+        MapViewElevationDataConsumer mapViewElevationDataConsumer = ElevationPlugin.getMapViewElevationDataConsumer();
+        // Generally, it should not be null if the ElevationLayer is not null
+        if (mapViewElevationDataConsumer != null)
+            mapViewElevationDataConsumer.setSwitchOffDimension(renderingLimit);
     }
 }

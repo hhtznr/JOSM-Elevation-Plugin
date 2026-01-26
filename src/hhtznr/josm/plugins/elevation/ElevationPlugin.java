@@ -1,5 +1,6 @@
 package hhtznr.josm.plugins.elevation;
 
+import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.Coloring;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.ElevationDataSource;
@@ -165,8 +166,12 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
         } else {
             if (mapViewElevationDataConsumer == null) {
                 double renderingLimit = ElevationPreferences.getElevationLayerRenderingLimit();
-                mapViewElevationDataConsumer = elevationDataProvider.getMapViewElevationDataConsumer(newFrame,
-                        renderingLimit);
+                try {
+                    mapViewElevationDataConsumer = elevationDataProvider.getMapViewElevationDataConsumer(newFrame,
+                            renderingLimit);
+                } catch (AsyncOperationException e) {
+                    mapViewElevationDataConsumer = null;
+                }
             }
             mapViewElevationDataConsumer.addToMapFrame(newFrame);
         }
@@ -210,8 +215,12 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
             MapFrame mapFrame = MainApplication.getMap();
             if (mapFrame != null) {
                 double renderingLimit = ElevationPreferences.getElevationLayerRenderingLimit();
-                mapViewElevationDataConsumer = elevationDataProvider.getMapViewElevationDataConsumer(mapFrame,
-                        renderingLimit);
+                try {
+                    mapViewElevationDataConsumer = elevationDataProvider.getMapViewElevationDataConsumer(mapFrame,
+                            renderingLimit);
+                } catch (AsyncOperationException e) {
+                    mapViewElevationDataConsumer = null;
+                }
             } else {
                 mapViewElevationDataConsumer = null;
             }

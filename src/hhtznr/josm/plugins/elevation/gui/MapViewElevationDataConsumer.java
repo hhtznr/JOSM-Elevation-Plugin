@@ -6,6 +6,7 @@ import org.openstreetmap.josm.gui.MapView;
 import org.openstreetmap.josm.gui.NavigatableComponent.ZoomChangeListener;
 import org.openstreetmap.josm.tools.Logging;
 
+import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.ElevationDataConsumer;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
@@ -46,9 +47,12 @@ public class MapViewElevationDataConsumer extends ElevationDataConsumer implemen
      *                              both dimensions, for which, if exceeded, reading
      *                              of elevation data shall be switched off to avoid
      *                              high CPU and memory usage.
+     * @throws AsyncOperationException if the {@code CompletableFuture} was
+     *                                 completed exceptionally or canceled or the
+     *                                 thread was interrupted.
      */
     public MapViewElevationDataConsumer(MapFrame mapFrame, ElevationDataProvider elevationDataProvider,
-            double switchOffMapDimension) {
+            double switchOffMapDimension) throws AsyncOperationException {
         super(namer.nextName(),
                 elevationDataProvider.getGridMatching(mapFrame.mapView.getLatLonBounds(mapFrame.mapView.getBounds())));
         this.elevationDataProvider = elevationDataProvider;
@@ -110,7 +114,12 @@ public class MapViewElevationDataConsumer extends ElevationDataConsumer implemen
         boolean elevationZoomLevelEnabled = bounds.getHeight() <= switchOffMapDimension
                 && bounds.getWidth() <= switchOffMapDimension;
 
-        if (elevationZoomLevelEnabled && !getTileGrid().matchesTileGridBounds(bounds))
-            setTileGrid(elevationDataProvider.getGridMatching(bounds));
+        if (elevationZoomLevelEnabled && !getTileGrid().matchesTileGridBounds(bounds)) {
+            try {
+                setTileGrid(elevationDataProvider.getGridMatching(bounds));
+            } catch (AsyncOperationException e) {
+                return;
+            }
+        }
     }
 }

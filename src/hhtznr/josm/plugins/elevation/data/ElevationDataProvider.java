@@ -9,7 +9,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.ILatLon;
@@ -17,6 +16,7 @@ import org.openstreetmap.josm.gui.MapFrame;
 import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
+import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.gui.ContourLines;
 import hhtznr.josm.plugins.elevation.gui.ElevationRaster;
 import hhtznr.josm.plugins.elevation.gui.HillshadeImageTile;
@@ -228,21 +228,18 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
      * @param latLon The coordinates, where elevation should be retrieved.
      * @return The coordinate (interpolation enabled) or the closest raster
      *         coordinate (interpolation disabled) and the corresponding elevation.
-     * @throws CancellationException if loading of the SRTM tile was canceled.
-     * @throws ExecutionException    if the thread used to optionally download and
-     *                               read the SRTM file cannot be executed.
-     * @throws InterruptedException  if the current thread was interrupted while
-     *                               waiting.
+     * @throws AsyncOperationException if the {@code CompletableFuture} was
+     *                                 completed exceptionally or canceled or the
+     *                                 thread was interrupted.
      */
-    public LatLonEle getLatLonEleOrWait(ILatLon latLon)
-            throws CancellationException, ExecutionException, InterruptedException {
+    public LatLonEle getLatLonEleOrWait(ILatLon latLon) throws AsyncOperationException {
         // Calls ElevationDataProvider.getTileCacheEntryFor()
         // May throw CancellationException
         SingleSRTMTileConsumer tileConsumer = new SingleSRTMTileConsumer(this, latLon);
 
         SRTMTileCacheEntry entry = tileConsumer.getCacheEntry();
         try {
-            // may throw ExecutionException and InterruptedException
+            // may throw CancellationException, ExecutionException and InterruptedException
             SRTMTile srtmTile = entry.getTileOrWait();
             return srtmTile.getLatLonEle(latLon, eleInterpolation);
         } finally {
@@ -259,10 +256,11 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
      *
      * @param bounds The bounds.
      * @return An SRTM tile grid covering the bounds, but not bigger than needed.
-     * @throws CancellationException if loading of an SRTM tile for the grid was
-     *                               canceled.
+     * @throws AsyncOperationException if the {@code CompletableFuture} was
+     *                                 completed exceptionally or canceled or the
+     *                                 thread was interrupted.
      */
-    public synchronized SRTMTileGrid getGridMatching(Bounds bounds) throws CancellationException {
+    public synchronized SRTMTileGrid getGridMatching(Bounds bounds) throws AsyncOperationException {
         SRTMTileGrid tileGrid = null;
         SRTMTileGrid nextGrid;
         synchronized (activeTileGrids) {
@@ -273,7 +271,7 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
                     tileGrid = nextGrid;
             }
             if (tileGrid == null) {
-                // May throw CancellationException
+                // May throw AsyncOperationException
                 tileGrid = new SRTMTileGrid(this, bounds);
                 activeTileGrids.add(tileGrid);
             }
@@ -292,10 +290,10 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
      *         returned if not all SRTM tiles are cached yet.
      */
     public LowestAndHighestPoints getLowestAndHighestPoints(Bounds bounds) {
-        SRTMTileGrid tileGrid = getGridMatching(bounds);
         try {
+            SRTMTileGrid tileGrid = getGridMatching(bounds);
             return tileGrid.getView(bounds).getLowestAndHighestPoints();
-        } catch (SRTMTileGridException e) {
+        } catch (AsyncOperationException | SRTMTileGridException e) {
             Logging.error("Elevation: Cannot create lowest and highest points: " + e.toString());
             return null;
         }
@@ -312,10 +310,10 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
      *         {@code null} if insufficient cached elevation data is available.
      */
     public ElevationRaster getElevationRaster(Bounds bounds) {
-        SRTMTileGrid tileGrid = getGridMatching(bounds);
         try {
+            SRTMTileGrid tileGrid = getGridMatching(bounds);
             return tileGrid.getView(bounds).getElevationRaster();
-        } catch (SRTMTileGridException e) {
+        } catch (AsyncOperationException | SRTMTileGridException e) {
             Logging.error("Elevation: Cannot create elevation raster: " + e.toString());
             return null;
         }
@@ -340,15 +338,15 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
      */
     public ContourLines getContourLines(Bounds bounds, int isostep, int lowerCutoffElevation,
             int upperCutoffElevation) {
-        SRTMTileGrid tileGrid = getGridMatching(bounds);
-        Bounds renderingBounds = tileGrid.getRenderingBoundsScaledByRasterStep(bounds,
-                ContourLines.BOUNDS_SCALE_RASTER_STEP);
-        tileGrid = getGridMatching(renderingBounds);
 
         try {
+            SRTMTileGrid tileGrid = getGridMatching(bounds);
+            Bounds renderingBounds = tileGrid.getRenderingBoundsScaledByRasterStep(bounds,
+                    ContourLines.BOUNDS_SCALE_RASTER_STEP);
+            tileGrid = getGridMatching(renderingBounds);
             return tileGrid.getView(renderingBounds).getContourLines(isostep, lowerCutoffElevation,
                     upperCutoffElevation);
-        } catch (SRTMTileGridException e) {
+        } catch (AsyncOperationException | SRTMTileGridException e) {
             Logging.error("Elevation: Cannot create contour lines: " + e.toString());
             return null;
         }
@@ -376,14 +374,13 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
      */
     public HillshadeImageTile getHillshadeImageTile(Bounds bounds, double altitudeDeg, double azimuthDeg,
             boolean withPerimeter) {
-        SRTMTileGrid tileGrid = getGridMatching(bounds);
-        Bounds renderingBounds = tileGrid.getRenderingBoundsScaledByRasterStep(bounds,
-                ContourLines.BOUNDS_SCALE_RASTER_STEP);
-        tileGrid = getGridMatching(renderingBounds);
-
         try {
+            SRTMTileGrid tileGrid = getGridMatching(bounds);
+            Bounds renderingBounds = tileGrid.getRenderingBoundsScaledByRasterStep(bounds,
+                    ContourLines.BOUNDS_SCALE_RASTER_STEP);
+            tileGrid = getGridMatching(renderingBounds);
             return tileGrid.getView(renderingBounds).getHillshadeImageTile(altitudeDeg, azimuthDeg, withPerimeter);
-        } catch (SRTMTileGridException e) {
+        } catch (AsyncOperationException | SRTMTileGridException e) {
             Logging.error("Elevation: Cannot create hillshade: " + e.toString());
             return null;
         }
@@ -402,9 +399,12 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
      *                              of elevation data shall be switched off to avoid
      *                              high CPU and memory usage.
      * @return The map view elevation ata consumer.
+     * @throws AsyncOperationException if the {@code CompletableFuture} was
+     *                                 completed exceptionally or canceled or the
+     *                                 thread was interrupted.
      */
-    public MapViewElevationDataConsumer getMapViewElevationDataConsumer(MapFrame mapFrame,
-            double switchOffMapDimension) {
+    public MapViewElevationDataConsumer getMapViewElevationDataConsumer(MapFrame mapFrame, double switchOffMapDimension)
+            throws AsyncOperationException {
         return new MapViewElevationDataConsumer(mapFrame, this, switchOffMapDimension);
     }
 
@@ -466,14 +466,11 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
      * @param srtmTileID The ID of the SRTM tile to retrieve.
      * @return The SRTM tile as a valid tile with data if the tile exists and the
      *         data is valid or otherwise as an invalid tile without data.
-     * @throws ExecutionException   should never be thrown; would be thrown if the
-     *                              future used for asynchronous loading completed
-     *                              exceptionally
-     * @throws InterruptedException if the current thread was interrupted while
-     *                              waiting
+     * @throws AsyncOperationException if the {@code CompletableFuture} was
+     *                                 completed exceptionally or canceled or the
+     *                                 thread was interrupted.
      */
-    public SRTMTile getSRTMTileOrWait(String srtmTileID, SRTMTileConsumer consumer)
-            throws ExecutionException, InterruptedException {
+    public SRTMTile getSRTMTileOrWait(String srtmTileID, SRTMTileConsumer consumer) throws AsyncOperationException {
         return tileCache.getTileOrWait(srtmTileID, consumer);
     }
 
@@ -553,11 +550,15 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
         // If so, inform listeners
         synchronized (activeTileGrids) {
             for (SRTMTileGrid tileGrid : activeTileGrids) {
-                if (!tileGrid.isDisposed() && tileGrid.contains(tile) && tileGrid.areAllTilesCached()) {
-                    synchronized (listeners) {
-                        for (ElevationDataProviderListener listener : listeners)
-                            listener.elevationDataAvailable(tileGrid);
+                try {
+                    if (!tileGrid.isDisposed() && tileGrid.contains(tile) && tileGrid.areAllTilesCached()) {
+                        synchronized (listeners) {
+                            for (ElevationDataProviderListener listener : listeners)
+                                listener.elevationDataAvailable(tileGrid);
+                        }
                     }
+                } catch (AsyncOperationException e) {
+                    continue;
                 }
             }
         }

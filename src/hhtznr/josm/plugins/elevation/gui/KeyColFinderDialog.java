@@ -44,6 +44,7 @@ import org.openstreetmap.josm.gui.widgets.JosmComboBox;
 import org.openstreetmap.josm.tools.GBC;
 import org.openstreetmap.josm.tools.OpenBrowser;
 
+import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.OsmPrimitiveUtil;
@@ -718,56 +719,76 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
 
     private Future<LatLonEle> determineKeyCol(LatLonEle peakA, LatLonEle peakB, Bounds searchBounds,
             KeyColFinder.UnionFindNeighbors unionFindNeighbors) throws RejectedExecutionException {
-        try {
-            Callable<LatLonEle> task = () -> {
-                KeyColFinder oldKeyColFinder = keyColFinder;
+        Callable<LatLonEle> task = () -> {
+            LatLonEle keyCol;
+            KeyColFinder oldKeyColFinder = keyColFinder;
+            try {
+                // May throw AsyncOperationException
                 keyColFinder = new KeyColFinder(elevationDataProvider, searchBounds, peakA, peakB);
                 if (oldKeyColFinder != null) {
                     oldKeyColFinder.dispose();
                     oldKeyColFinder = null;
                 }
                 keyColFinder.addElevationToolListener(this);
-                LatLonEle keyCol = keyColFinder.findKeyCol(unionFindNeighbors);
+                // May throw AsyncOperationException
+                keyCol = keyColFinder.findKeyCol(unionFindNeighbors);
+            } catch (AsyncOperationException e) {
+                stopSearch();
+                textAreaFeedback
+                        .setText("Loading of SRTM tile was canceled while dermining key col" + System.lineSeparator());
+                return null;
+            }
 
-                if (keyCol != null) {
-                    keyColNode = new Node(keyCol);
-                    keyColNode.put("natural", "saddle");
-                    int ele = (int) keyCol.ele();
-                    keyColNode.put("ele", Integer.toString(ele));
-                    String note = null;
-                    String peakName = peakANode.get("name");
-                    if (peakName != null) {
-                        note = "key col of " + peakName;
-                    } else {
-                        String peakAEle = peakANode.get("ele");
-                        if (peakAEle != null)
-                            try {
-                                long eleA = Math.round(Double.parseDouble(peakAEle));
-                                note = "key col of P." + eleA;
-                            } catch (NumberFormatException e) {
-                                note = null;
-                            }
-                    }
-                    if (note != null)
-                        keyColNode.put("note", note);
-                    textAreaFeedback.append("Key col determined:" + System.lineSeparator());
-                    textAreaFeedback
-                            .append("Coordinates: " + keyCol.lat() + ", " + keyCol.lon() + System.lineSeparator());
-                    textAreaFeedback.append("Elevation: " + ele + " m" + System.lineSeparator());
-                    setDialogState(DialogState.KEY_COL_DETERMINED);
+            if (keyCol != null) {
+                keyColNode = new Node(keyCol);
+                keyColNode.put("natural", "saddle");
+                int ele = (int) keyCol.ele();
+                keyColNode.put("ele", Integer.toString(ele));
+                String note = null;
+                String peakName = peakANode.get("name");
+                if (peakName != null) {
+                    note = "key col of " + peakName;
                 } else {
-                    textAreaFeedback
-                            .append("Could not determine a key col in the search area" + System.lineSeparator());
-                    setDialogState(DialogState.PEAKS_DEFINED);
+                    String peakAEle = peakANode.get("ele");
+                    if (peakAEle != null)
+                        try {
+                            long eleA = Math.round(Double.parseDouble(peakAEle));
+                            note = "key col of P." + eleA;
+                        } catch (NumberFormatException e) {
+                            note = null;
+                        }
                 }
-                return keyCol;
-            };
-            return executor.submit(task);
-        } catch (RejectedExecutionException e) {
-            setDialogState(DialogState.PEAKS_DEFINED);
-            textAreaFeedback.setText("Search task could not be executed as thread");
-            throw e;
+                if (note != null)
+                    keyColNode.put("note", note);
+                textAreaFeedback.append("Key col determined:" + System.lineSeparator());
+                textAreaFeedback.append("Coordinates: " + keyCol.lat() + ", " + keyCol.lon() + System.lineSeparator());
+                textAreaFeedback.append("Elevation: " + ele + " m" + System.lineSeparator());
+                setDialogState(DialogState.KEY_COL_DETERMINED);
+            } else {
+                textAreaFeedback.append("Could not determine a key col in the search area" + System.lineSeparator());
+                setDialogState(DialogState.PEAKS_DEFINED);
+            }
+            return keyCol;
+        };
+        return executor.submit(task);
+    }
+
+    private void stopSearch() {
+        Future<LatLonEle> future = keyColFuture;
+        if (future != null && !future.isCancelled()) {
+            boolean canceled = future.cancel(true);
+            if (canceled) {
+                if (keyColFinder != null) {
+                    keyColFinder.removeElevationToolListener(KeyColFinderDialog.this);
+                    keyColFinder.dispose();
+                    keyColFinder = null;
+                }
+            } else {
+                textAreaFeedback.append(
+                        "Failed to cancel the background task that determines the key col" + System.lineSeparator());
+            }
         }
+        setDialogState(DialogState.PEAKS_DEFINED);
     }
 
     @Override
@@ -923,8 +944,8 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
                 peakA = elevationDataProvider.getLatLonEleOrWait(peakANode.getCoor());
             } catch (Exception e) {
                 setDialogState(DialogState.PEAKS_DEFINED);
-                textAreaFeedback
-                        .append("Loading of elevation data for elevation data for peak A was interrupted." + System.lineSeparator());
+                textAreaFeedback.append("Loading of elevation data for elevation data for peak A was interrupted."
+                        + System.lineSeparator());
                 return;
             }
             if (!peakA.isValidEle()) {
@@ -939,8 +960,8 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
                 peakB = elevationDataProvider.getLatLonEleOrWait(peakBNode.getCoor());
             } catch (Exception e) {
                 setDialogState(DialogState.PEAKS_DEFINED);
-                textAreaFeedback
-                        .append("Loading of elevation data for elevation data for peak B was interrupted." + System.lineSeparator());
+                textAreaFeedback.append("Loading of elevation data for elevation data for peak B was interrupted."
+                        + System.lineSeparator());
                 return;
             }
             if (!peakB.isValidEle()) {
@@ -980,8 +1001,7 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
             try {
                 keyColFuture = determineKeyCol(peakA, peakB, searchBounds, unionFindNeighbors);
             } catch (RejectedExecutionException e) {
-                textAreaFeedback
-                        .append("Determination of key col rejected by thread executor" + System.lineSeparator());
+                textAreaFeedback.append("Determination of key col aborted" + System.lineSeparator());
             }
         }
     }
@@ -996,15 +1016,8 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
 
         @Override
         public void actionPerformed(ActionEvent event) {
-            Future<LatLonEle> future = keyColFuture;
-            if (future != null && !future.isCancelled()) {
-                boolean canceled = future.cancel(true);
-                if (canceled)
-                    setDialogState(DialogState.PEAKS_DEFINED);
-                else
-                    textAreaFeedback.append("Failed to cancel the background task that determines the key col"
-                            + System.lineSeparator());
-            }
+            stopSearch();
+            textAreaFeedback.setText("Key col search stopped." + System.lineSeparator());
         }
     }
 

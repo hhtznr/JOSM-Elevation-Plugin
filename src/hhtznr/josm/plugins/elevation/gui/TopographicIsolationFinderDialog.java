@@ -46,6 +46,7 @@ import org.openstreetmap.josm.tools.GBC;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.OsmPrimitiveUtil;
+import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.CoordinateUtil;
 import hhtznr.josm.plugins.elevation.tools.ElevationToolListener;
 import hhtznr.josm.plugins.elevation.tools.TopographicIsolationFinder;
@@ -513,18 +514,47 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
         searchDistance = distance;
     }
 
+    private void stopSearch() {
+        Future<List<Node>> future = closestNodesFuture;
+        if (future != null && !future.isCancelled()) {
+            boolean canceled = future.cancel(true);
+            if (canceled) {
+                if (isolationFinder != null) {
+                    isolationFinder.removeElevationToolListener(TopographicIsolationFinderDialog.this);
+                    isolationFinder.dispose();
+                    isolationFinder = null;
+                }
+            } else {
+                textAreaFeedback
+                        .append("Failed to cancel the background task that determines the isolation reference points"
+                                + System.lineSeparator());
+            }
+        }
+        setDialogState(DialogState.PEAK_DEFINED);
+    }
+
     private Future<List<Node>> determineReferencePoints(LatLonEle peak, Bounds searchBounds, double searchDistance,
             double distanceTolerance, double deadZoneRadius) throws RejectedExecutionException {
         Callable<List<Node>> task = () -> {
+            List<LatLonEle> closestPoints;
             TopographicIsolationFinder oldIsolationFinder = isolationFinder;
-            isolationFinder = new TopographicIsolationFinder(elevationDataProvider, searchBounds);
-            if (oldIsolationFinder != null) {
-                oldIsolationFinder.dispose();
-                oldIsolationFinder = null;
+            try {
+                // May throw AsyncOperationException
+                isolationFinder = new TopographicIsolationFinder(elevationDataProvider, searchBounds);
+                if (oldIsolationFinder != null) {
+                    oldIsolationFinder.dispose();
+                    oldIsolationFinder = null;
+                }
+                isolationFinder.addElevationToolListener(this);
+                // May throw AsyncOperationException
+                closestPoints = isolationFinder.determineReferencePoints(peak, searchDistance,
+                        distanceTolerance, deadZoneRadius);
+            } catch (AsyncOperationException e) {
+                stopSearch();
+                textAreaFeedback.setText("Loading of SRTM tile was canceled while dermining isolation reference points"
+                        + System.lineSeparator());
+                return null;
             }
-            isolationFinder.addElevationToolListener(this);
-            List<LatLonEle> closestPoints = isolationFinder.determineReferencePoints(peak, searchDistance,
-                    distanceTolerance, deadZoneRadius);
             if (closestPoints.size() == 0) {
                 // includes setting this.node to null
                 setDialogState(DialogState.PEAK_DEFINED);
@@ -562,13 +592,7 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
             setDialogState(DialogState.REFERENCE_POINTS_DETERMINED);
             return closestNodes;
         };
-        try {
-            return executor.submit(task);
-        } catch (RejectedExecutionException e) {
-            setDialogState(DialogState.PEAK_DEFINED);
-            textAreaFeedback.setText("Search task could not be executed as thread");
-            throw e;
-        }
+        return executor.submit(task);
     }
 
     private static boolean isDouble(String str) {
@@ -742,8 +766,7 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
                 closestNodesFuture = determineReferencePoints(peak, searchBounds, searchDistance, distanceTolerance,
                         deadZoneRadius);
             } catch (RejectedExecutionException e) {
-                textAreaFeedback
-                        .append("Determination of closest points rejected by thread executor" + System.lineSeparator());
+                textAreaFeedback.append("Determination of closest points aborted" + System.lineSeparator());
             }
         }
     }
@@ -758,16 +781,7 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
 
         @Override
         public void actionPerformed(ActionEvent event) {
-            Future<List<Node>> future = closestNodesFuture;
-            if (future != null && !future.isCancelled()) {
-                boolean canceled = future.cancel(true);
-                if (canceled)
-                    setDialogState(DialogState.PEAK_DEFINED);
-                else
-                    textAreaFeedback.append(
-                            "Failed to cancel the background task that determines the isolation reference points"
-                                    + System.lineSeparator());
-            }
+            stopSearch();
         }
     }
 

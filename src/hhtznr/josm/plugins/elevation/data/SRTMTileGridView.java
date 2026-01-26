@@ -3,6 +3,7 @@ package hhtznr.josm.plugins.elevation.data;
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.ILatLon;
 
+import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.gui.ContourLines;
 import hhtznr.josm.plugins.elevation.gui.ElevationRaster;
 import hhtznr.josm.plugins.elevation.gui.HillshadeImageTile;
@@ -236,8 +237,12 @@ public class SRTMTileGridView {
      *         available at all).
      */
     public ContourLines getContourLines(int isostep, int lowerCutoffElevation, int upperCutoffElevation) {
-        if (!tileGrid.areAllTilesCached() || tileGrid.isDisposed())
+        try {
+            if (!tileGrid.areAllTilesCached() || tileGrid.isDisposed())
+                return null;
+        } catch (AsyncOperationException e) {
             return null;
+        }
         return new ContourLines(this, isostep, lowerCutoffElevation, upperCutoffElevation);
     }
 
@@ -251,8 +256,12 @@ public class SRTMTileGridView {
      *         returned if not all SRTM tiles are cached yet.
      */
     public LowestAndHighestPoints getLowestAndHighestPoints() {
-        if (!tileGrid.areAllTilesCached() || tileGrid.isDisposed())
+        try {
+            if (!tileGrid.areAllTilesCached() || tileGrid.isDisposed())
+                return null;
+        } catch (AsyncOperationException e) {
             return null;
+        }
         return new LowestAndHighestPoints(this);
     }
 
@@ -275,8 +284,12 @@ public class SRTMTileGridView {
      *         3 elevation values in one of the two dimensions.
      */
     public HillshadeImageTile getHillshadeImageTile(double altitudeDeg, double azimuthDeg, boolean withPerimeter) {
-        if (!tileGrid.areAllTilesCached() || tileGrid.isDisposed())
+        try {
+            if (!tileGrid.areAllTilesCached() || tileGrid.isDisposed())
+                return null;
+        } catch (AsyncOperationException e) {
             return null;
+        }
         return new HillshadeImageTile(this, altitudeDeg, azimuthDeg, withPerimeter);
     }
 
@@ -291,8 +304,12 @@ public class SRTMTileGridView {
      *         available at all).
      */
     public ElevationRaster getElevationRaster() {
-        if (!tileGrid.areAllTilesCached() || tileGrid.isDisposed())
+        try {
+            if (!tileGrid.areAllTilesCached() || tileGrid.isDisposed())
+                return null;
+        } catch (AsyncOperationException e) {
             return null;
+        }
         return new ElevationRaster(this);
     }
 
@@ -300,10 +317,11 @@ public class SRTMTileGridView {
      * Blocks the calling thread until all SRTM tiles for the underlying grid have
      * been cached. See {@link SRTMTileGrid#waitForTilesCached}.
      *
-     * @throws InterruptedException if the waiting thread is interrupted while
-     *                              waiting
+     * @throws AsyncOperationException if the {@code CompletableFuture} was
+     *                                 completed exceptionally or canceled or the
+     *                                 thread was interrupted.
      */
-    public void waitForTilesCached() throws InterruptedException {
+    public void waitForTilesCached() throws AsyncOperationException {
         tileGrid.waitForTilesCached();
     }
 
@@ -314,8 +332,11 @@ public class SRTMTileGridView {
      *
      * @return {@code true} if all SRTM tiles required to form the underlying grid
      *         are available and in memory.
+     * @throws AsyncOperationException if the {@code CompletableFuture} was
+     *                                 completed exceptionally or canceled or the
+     *                                 thread was interrupted.
      */
-    public boolean areAllTilesCached() {
+    public boolean areAllTilesCached() throws AsyncOperationException {
         return tileGrid.areAllTilesCached();
     }
 

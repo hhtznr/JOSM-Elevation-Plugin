@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.openstreetmap.josm.data.Bounds;
 
+import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.ElevationDataConsumer;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 
@@ -29,8 +30,12 @@ public abstract class AbstractElevationTool extends ElevationDataConsumer {
      * @param elevationDataProvider The elevation data provider from which elevation
      *                              data can be obtained.
      * @param bounds                The coordinate bound, the tool works in.
+     * @throws AsyncOperationException if the {@code CompletableFuture} was
+     *                                 completed exceptionally or canceled or the
+     *                                 thread was interrupted.
      */
-    public AbstractElevationTool(String name, ElevationDataProvider elevationDataProvider, Bounds bounds) {
+    public AbstractElevationTool(String name, ElevationDataProvider elevationDataProvider, Bounds bounds)
+            throws AsyncOperationException {
         super(name, elevationDataProvider.getGridMatching(bounds));
         this.elevationDataProvider = elevationDataProvider;
         this.bounds = bounds;

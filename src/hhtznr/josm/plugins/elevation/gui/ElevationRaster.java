@@ -1,5 +1,6 @@
 package hhtznr.josm.plugins.elevation.gui;
 
+import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
 import hhtznr.josm.plugins.elevation.util.IncrementalNumberedNameCreator;
@@ -34,8 +35,12 @@ public class ElevationRaster extends AbstractSRTMTileGridPaintable {
      *         dimension.
      */
     public int getHeight() {
-        if (!tileGridView.areAllTilesCached() || tileGridView.getTileGrid().isDisposed())
+        try {
+            if (!tileGridView.areAllTilesCached() || tileGridView.getTileGrid().isDisposed())
+                return 0;
+        } catch (AsyncOperationException e) {
             return 0;
+        }
         return tileGridView.getHeight();
     }
 
@@ -46,8 +51,12 @@ public class ElevationRaster extends AbstractSRTMTileGridPaintable {
      *         dimension.
      */
     public int getWidth() {
-        if (!tileGridView.areAllTilesCached() || tileGridView.getTileGrid().isDisposed())
+        try {
+            if (!tileGridView.areAllTilesCached() || tileGridView.getTileGrid().isDisposed())
+                return 0;
+        } catch (AsyncOperationException e) {
             return 0;
+        }
         return tileGridView.getWidth();
     }
 

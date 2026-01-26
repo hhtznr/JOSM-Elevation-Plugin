@@ -1,8 +1,5 @@
 package hhtznr.josm.plugins.elevation.data;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -10,21 +7,18 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.TreeMap;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
-import hhtznr.josm.plugins.elevation.io.InvalidSRTMDataException;
+import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
 import hhtznr.josm.plugins.elevation.io.SRTMFileReader;
-import hhtznr.josm.plugins.elevation.util.CancelableExecutor;
 
 /**
  * In-memory cache for SRTM tiles which can be limited in size. If the cache
@@ -55,13 +49,12 @@ public class SRTMTileCache {
     private final CopyOnWriteArrayList<SRTMTileCacheListener> listeners = new CopyOnWriteArrayList<>();
 
     private final SRTMFileReader srtmFileReader;
-    private static final CancelableExecutor<SRTMTile> fileReadExecutor = new CancelableExecutor<>(
-            Executors.newSingleThreadExecutor());
+
+    protected static ExecutorService fileReadExecutor = Executors.newFixedThreadPool(1);
 
     private boolean autoDownloadEnabled = false;
     private SRTMFileDownloader srtmFileDownloader = null;
-    private static final CancelableExecutor<Optional<File>> fileDownloadExecutor = new CancelableExecutor<>(
-            Executors.newFixedThreadPool(2));
+    protected static ExecutorService fileDownloadExecutor = Executors.newFixedThreadPool(2);
 
     private final Object elevationDataSourcesLock = new Object();
     private List<ElevationDataSource> elevationDataSources;
@@ -179,10 +172,10 @@ public class SRTMTileCache {
                     SRTMTile tile;
                     try {
                         tile = cacheEntry.getTileOrWait();
-                    } catch (InterruptedException e) {
-                        break;
-                    } catch (ExecutionException e) {
-                        // Should never happen because we do not complete exceptionally
+                    } catch (AsyncOperationException e) {
+                        String info = "Status: " + cacheEntry.getStatus().toString();
+                        info += ", size: " + getSizeString(cacheEntry.getDataSize());
+                        tileInfo.put("SRTM tile " + cacheEntry.getID(), info);
                         continue;
                     }
                     synchronized (cacheEntry) {
@@ -276,11 +269,11 @@ public class SRTMTileCache {
      * @param srtmTileID The ID of the SRTM tile to retrieve.
      * @return The SRTM tile as a valid tile with data if the tile exists and the
      *         data is valid or otherwise as an invalid tile without data.
-     * @throws CancellationException if the future used for asynchronous loading was
-     *                               cancelled
+     * @throws AsyncOperationException if the {@code CompletableFuture} was
+     *                                 completed exceptionally or canceled or the
+     *                                 thread was interrupted.
      */
-    public SRTMTile getTileOrWait(String srtmTileID, SRTMTileConsumer consumer)
-            throws CancellationException, ExecutionException, InterruptedException {
+    public SRTMTile getTileOrWait(String srtmTileID, SRTMTileConsumer consumer) throws AsyncOperationException {
         // Map editing is often done in the very same place for a while.
         // Therefore consider the previous tile first of all.
         synchronized (previousTileLock) {
@@ -290,10 +283,8 @@ public class SRTMTileCache {
         // Otherwise wait for the tile to be available with data
         // May throw CancellationException
         SRTMTileCacheEntry entry = getTileCacheEntryFor(srtmTileID, consumer);
-        // May throw ExecutionException or InterruptedException
+        // May throw AsyncOperationException
         SRTMTile tile = entry.getTileOrWait();
-        if (entry.getStatus() == SRTMTileCacheEntry.Status.LOADING_CANCELED)
-            throw new CancellationException("Loading of SRTM tile " + srtmTileID + " was canceled");
         synchronized (previousTileLock) {
             previousTile = tile;
         }
@@ -317,9 +308,9 @@ public class SRTMTileCache {
 
         SRTMTileCacheEntry entry = cache.get(srtmTileID);
         if (entry != null) {
-            if (entry.isLoadingCompleted()) {
+            if (entry.isLoadingCompleted() && !entry.isCompletedExceptionally()) {
                 try {
-                    // May throw ExecutionException or InterruptedException
+                    // May throw CancellationException, ExecutionException or InterruptedException
                     SRTMTile tile = entry.getTileOrWait();
                     synchronized (previousTileLock) {
                         previousTile = tile;
@@ -366,7 +357,7 @@ public class SRTMTileCache {
             entry = cache.computeIfAbsent(srtmTileID, id -> {
                 SRTMTileCacheEntry newEntry = new SRTMTileCacheEntry(id);
                 newEntry.addTileConsumer(consumer);
-                startLoadingAsync(newEntry);
+                newEntry.loadAsync(this);
                 return newEntry;
             });
             entry.addTileConsumer(consumer);
@@ -374,131 +365,31 @@ public class SRTMTileCache {
         }
     }
 
-    private CompletableFuture<Void> startLoadingAsync(SRTMTileCacheEntry entry) {
-        CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-            String srtmTileID = entry.getID();
-            try {
-                List<ElevationDataSource> dataSources;
-                synchronized (elevationDataSourcesLock) {
-                    dataSources = elevationDataSources;
-                }
-
-                SRTMTile srtmTile = null;
-                SRTMTileCacheEntry.Status status = null;
-                for (ElevationDataSource dataSource : dataSources) {
-                    if (Thread.currentThread().isInterrupted())
-                        throw new InterruptedException("Loading of SRTM tile " + entry.getID() + " was interrupted.");
-                    if (dataSource.isSRTMTilePermanentlyMissing(srtmTileID)) {
-                        Logging.info("Elevation: SRTM tile with ID " + srtmTileID
-                                + " is permanently missing for source " + dataSource.toString());
-                        continue;
-                    }
-                    File srtmFile = null;
-                    try {
-                        srtmFile = dataSource.getLocalSRTMFile(srtmTileID);
-                    } catch (FileNotFoundException e) {
-                        status = SRTMTileCacheEntry.Status.FILE_MISSING;
-                    }
-                    // If an SRTM file with the data exists on disk, read it in
-                    if (srtmFile != null) {
-                        Logging.info("Elevation: Caching data of SRTM tile " + srtmTileID + " from file "
-                                + srtmFile.getAbsolutePath());
-                        // Read the SRTM file as task in a separate thread
-                        entry.setStatus(SRTMTileCacheEntry.Status.READING_SCHEDULED);
-                        try {
-                            srtmTile = readSRTMFile(entry, srtmFile, dataSource);
-                            break;
-                        } catch (ExecutionException e) {
-                            if (e.getCause() instanceof IOException)
-                                status = SRTMTileCacheEntry.Status.FILE_INVALID;
-                            if (e.getCause() instanceof InvalidSRTMDataException)
-                                status = SRTMTileCacheEntry.Status.DATA_INVALID;
-                        }
-                    }
-                    // If auto-downloading of SRTM files is enabled, try to download the missing
-                    // file
-                    else if (autoDownloadEnabled && dataSource.canAutoDownload()) {
-                        entry.setStatus(SRTMTileCacheEntry.Status.DOWNLOAD_SCHEDULED);
-                        Optional<File> optionalFile = downloadSRTMFile(entry, dataSource);
-                        if (optionalFile.isPresent()) {
-                            srtmFile = optionalFile.get();
-                            try {
-                                srtmTile = readSRTMFile(entry, srtmFile, dataSource);
-                                break;
-                            } catch (ExecutionException e) {
-                                if (e.getCause() instanceof IOException)
-                                    status = SRTMTileCacheEntry.Status.FILE_INVALID;
-                                if (e.getCause() instanceof InvalidSRTMDataException)
-                                    status = SRTMTileCacheEntry.Status.DATA_INVALID;
-                            }
-                        } else {
-                            status = SRTMTileCacheEntry.Status.DOWNLOAD_FAILED;
-                        }
-                    }
-                }
-
-                if (Thread.currentThread().isInterrupted())
-                    throw new InterruptedException("Loading of SRTM tile " + entry.getID() + " was interrupted.");
-
-                if (status == null)
-                    status = SRTMTileCacheEntry.Status.FILE_MISSING;
-
-                if (srtmTile == null) {
-                    srtmTile = SRTMTile.createInvalidTile(srtmTileID, srtmType);
-                } else {
-                    status = SRTMTileCacheEntry.Status.VALID;
-                    synchronized (previousTileLock) {
-                        if (previousTile == null)
-                            previousTile = srtmTile;
-                    }
-                }
-                entry.setStatus(status);
-                entry.complete(srtmTile); // Wakes up all waiters
-                updateCacheSize(entry.getDataSize());
-                synchronized (listeners) {
-                    for (SRTMTileCacheListener listener : listeners)
-                        listener.srtmTileCached(srtmTile, status);
-                }
-                Logging.info("Elevation: SRTM tile " + entry.getID() + " loaded with status "
-                        + entry.getStatus().toString());
-            } catch (Exception e) {
-                boolean loadingCanceled = e instanceof ExecutionException || e instanceof InterruptedException;
-                SRTMTileCacheEntry.Status status;
-                if (loadingCanceled)
-                    status = SRTMTileCacheEntry.Status.LOADING_CANCELED;
-                else
-                    status = SRTMTileCacheEntry.Status.DATA_INVALID;
-                entry.setStatus(status);
-                // We don't do this; therefore ExecutionException should be thrown in practice
-                // entry.getFuture().completeExceptionally(e);
-                SRTMTile srtmTile = SRTMTile.createInvalidTile(srtmTileID, srtmType);
-                entry.complete(srtmTile);
-                if (!loadingCanceled) {
-                    Logging.error("Elevation: Exception retrieving SRTM tile " + srtmTileID + ": " + e.toString());
-                    e.printStackTrace();
-                }
-                synchronized (listeners) {
-                    for (SRTMTileCacheListener listener : listeners)
-                        listener.srtmTileCached(srtmTile, status);
-                }
-            }
-        });
-        return future;
-    }
-
     /**
      * Flushes the cache by removing all tiles and sets the cache size to zero.
      */
     private synchronized void flush() {
         // Cancel all currently running/queued file download tasks
-        fileDownloadExecutor.cancelAllTasks();
+        fileDownloadExecutor.shutdownNow();
+        fileDownloadExecutor = Executors.newFixedThreadPool(2);
         // Cancel all currently running/queued file read tasks
-        fileReadExecutor.cancelAllTasks();
-        cache.clear();
-        cacheSize = 0;
-        synchronized (previousTileLock) {
-            previousTile = null;
+        fileReadExecutor.shutdownNow();
+        fileReadExecutor = Executors.newFixedThreadPool(1);
+        synchronized (cache) {
+            ArrayList<SRTMTileCacheEntry> allEntries = new ArrayList<>(cache.values());
+            for (SRTMTileCacheEntry entry : allEntries) {
+                synchronized (entry) {
+                    if (!entry.isLoadingCompleted())
+                        entry.cancelLoading();
+                }
+            }
+            cache.clear();
+            cacheSize = 0;
+            synchronized (previousTileLock) {
+                previousTile = null;
+            }
         }
+
         Logging.info("Elevation: SRTM tile cache flushed");
     }
 
@@ -588,25 +479,6 @@ public class SRTMTileCache {
         }
     }
 
-    private SRTMTile readSRTMFile(SRTMTileCacheEntry entry, File srtmFile, ElevationDataSource dataSource)
-            throws InterruptedException, ExecutionException {
-        Callable<SRTMTile> fileReadTask = () -> {
-            entry.setStatus(SRTMTileCacheEntry.Status.READING);
-            return srtmFileReader.readSRTMFile(srtmFile, dataSource);
-        };
-        return fileReadExecutor.submit(fileReadTask).get();
-    }
-
-    private Optional<File> downloadSRTMFile(SRTMTileCacheEntry entry, ElevationDataSource elevationDataSource)
-            throws InterruptedException, ExecutionException {
-        Callable<Optional<File>> downloadTask = () -> {
-            entry.setStatus(SRTMTileCacheEntry.Status.DOWNLOADING);
-            String srtmTileID = entry.getID();
-            return srtmFileDownloader.download(srtmTileID, elevationDataSource);
-        };
-        return fileDownloadExecutor.submit(downloadTask).get();
-    }
-
     /**
      * Returns whether automatic downloading of missing SRTM files is enabled.
      *
@@ -639,6 +511,15 @@ public class SRTMTileCache {
     }
 
     /**
+     * Returns the SRTM file reader used to read SRTM files from disk.
+     *
+     * @return The SRTM file reader.
+     */
+    public SRTMFileReader getSRTMFileReader() {
+        return srtmFileReader;
+    }
+
+    /**
      * Returns the SRTM file downloader used for auto-download of missing SRTM
      * tiles.
      *
@@ -654,13 +535,28 @@ public class SRTMTileCache {
      * and removes the entry from the cache if no consumer is any longer registered
      * with the entry.
      *
-     * @param entry The cache entry from which to remove the consumer.
+     * @param entry    The cache entry from which to remove the consumer.
      * @param consumer The consumer to remove.
      */
     public synchronized void removeSRTMTileConsumer(SRTMTileCacheEntry entry, SRTMTileConsumer consumer) {
         synchronized (entry) {
             if (entry.removeTileConsumer(consumer))
                 considerRemoveEntry(entry);
+        }
+    }
+
+    /**
+     * Informs all SRTM tile cache listeners registered with this tile cache about
+     * caching of an SRTM tile and updates the cache size.
+     *
+     * @param srtmTile The cached tile.
+     * @param status   The status of the cached tile.
+     */
+    protected void srtmTileCached(SRTMTile srtmTile, SRTMTileCacheEntry.Status status) {
+        updateCacheSize(srtmTile.getDataSize());
+        synchronized (listeners) {
+            for (SRTMTileCacheListener listener : listeners)
+                listener.srtmTileCached(srtmTile, status);
         }
     }
 }

@@ -1,13 +1,12 @@
 package hhtznr.josm.plugins.elevation.data;
 
 import java.util.List;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.ILatLon;
 import org.openstreetmap.josm.tools.Logging;
 
+import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.util.IncrementalNumberedNameCreator;
 
 /**
@@ -48,9 +47,11 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
      *                              this grid.
      * @param bounds                The bounds of the map view in latitude-longitude
      *                              coordinate space.
-     * @throws CancellationException if loading of the SRTM tile was canceled.
+     * @throws AsyncOperationException if the {@code CompletableFuture} was
+     *                                 completed exceptionally or canceled or the
+     *                                 thread was interrupted.
      */
-    protected SRTMTileGrid(ElevationDataProvider elevationDataProvider, Bounds bounds) throws CancellationException {
+    protected SRTMTileGrid(ElevationDataProvider elevationDataProvider, Bounds bounds) throws AsyncOperationException {
         super(namer.nextName(), elevationDataProvider);
         elevationDataProvider.cacheSRTMTiles(bounds, this);
         srtmType = elevationDataProvider.getSRTMType();
@@ -115,6 +116,7 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
                 + rasterHeight);
 
         elevationDataProvider.addTileCacheListener(this);
+        // Assembles the grid
         areAllTilesCached();
     }
 
@@ -537,30 +539,20 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
      * already cached.
      * </p>
      *
-     * @throws InterruptedException if the waiting thread is interrupted while
-     *                              waiting
+     * @throws AsyncOperationException if the {@code CompletableFuture} was
+     *                                 completed exceptionally or canceled or the
+     *                                 thread was interrupted.
      */
-    public void waitForTilesCached() throws InterruptedException {
+    public void waitForTilesCached() throws AsyncOperationException {
         List<SRTMTileCacheEntry> cacheEntries = getCacheEntryList();
         if (cacheEntries == null)
             return;
         for (int gridLatIndex = 0; gridLatIndex < gridHeight; gridLatIndex++) {
             for (int gridLonIndex = 0; gridLonIndex < gridWidth; gridLonIndex++) {
                 SRTMTileCacheEntry entry = cacheEntries.get(gridLatIndex * gridWidth + gridLonIndex);
-                try {
-                    // Blocks until the tile is cached or caching is interrupted
-                    // May throw ExecutionException or InterruptedException
-                    entry.waitUntilLoadingCompleted();
-                    if (entry.getStatus() == SRTMTileCacheEntry.Status.LOADING_CANCELED)
-                        throw new CancellationException("Loading of SRTM tile " + entry.getID() + " was cancelled");
-                } catch (CancellationException e) {
-                    continue;
-                } catch (ExecutionException e) {
-                    // Should never happen because we do not complete exceptionally
-                    Logging.error("Elevation: Could not get tile grid tile at grid indices (" + gridLatIndex + ", "
-                            + gridLonIndex + "): " + e.toString());
-                    continue;
-                }
+                // Blocks until the tile is cached or caching is interrupted
+                // May throw AsyncOperationException
+                entry.waitUntilLoadingCompleted();
             }
         }
     }
@@ -571,8 +563,11 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
      *
      * @return {@code true} if all SRTM tiles required to form this grid are
      *         available and in memory.
+     * @throws AsyncOperationException if the {@code CompletableFuture} was
+     *                                 completed exceptionally or canceled or the
+     *                                 thread was interrupted.
      */
-    public boolean areAllTilesCached() {
+    public boolean areAllTilesCached() throws AsyncOperationException {
         if (isDisposed()) {
             Logging.info("Elevation: " + toString() + " is already disposed.");
             return true;
@@ -589,16 +584,13 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
                     }
                 }
             }
-            try {
-                assmebleGrid(cacheEntries);
-            } catch (InterruptedException e) {
-                return false;
-            }
+            // May throw AsyncOperationException
+            assembleGrid(cacheEntries);
         }
         return true;
     }
 
-    private void assmebleGrid(List<SRTMTileCacheEntry> cacheEntries) throws InterruptedException {
+    private void assembleGrid(List<SRTMTileCacheEntry> cacheEntries) throws AsyncOperationException {
         // We only assemble the grid once
         if (srtmTiles != null)
             return;
@@ -614,18 +606,9 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
                         int gridLonIndex = gridLon - gridIntLonWest;
 
                         int linearIndex = gridLatIndex * gridWidth + gridLonIndex;
-                        // Calling the getter method will ensure that tiles are being read or downloaded
-                        String tileID = SRTMTile.getTileID(gridLat, gridLon);
-                        SRTMTile tile;
-                        try {
-                            // The futures are stored in the same linear order as the tiles
-                            tile = cacheEntries.get(linearIndex).getTileOrWait();
-                        } catch (ExecutionException e) {
-                            // Should never happen because we do not complete exceptionally
-                            Logging.error("Elevation: Could not assemble tile grid. Exception with tile " + tileID
-                                    + ": " + e.toString());
-                            return;
-                        }
+                        // The futures are stored in the same linear order as the tiles
+                        // May throw AsyncOperationException
+                        SRTMTile tile = cacheEntries.get(linearIndex).getTileOrWait();
                         tiles[linearIndex] = tile;
                     }
                 }
@@ -643,11 +626,11 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
                         try {
                             // The futures are stored in the same linear order as the tiles
                             tile = cacheEntries.get(linearIndex).getTileOrWait();
-                        } catch (ExecutionException e) {
+                        } catch (Exception e) {
                             // Should never happen because we do not complete exceptionally
-                            Logging.error("Elevation: Could not assemble tile grid. Exception with tile " + tileID
-                                    + ": " + e.toString());
-                            return;
+                            Logging.info("Elevation: Could not assemble tile grid. Exception with tile " + tileID + ": "
+                                    + e.toString());
+                            throw e;
                         }
                         tiles[linearIndex] = tile;
                     }
@@ -663,11 +646,11 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
                         try {
                             // The futures are stored in the same linear order as the tiles
                             tile = cacheEntries.get(linearIndex).getTileOrWait();
-                        } catch (ExecutionException e) {
+                        } catch (Exception e) {
                             // Should never happen because we do not complete exceptionally
-                            Logging.error("Elevation: Could not assemble tile grid. Exception with tile " + tileID
-                                    + ": " + e.toString());
-                            return;
+                            Logging.info("Elevation: Could not assemble tile grid. Exception with tile " + tileID + ": "
+                                    + e.toString());
+                            throw e;
                         }
                         tiles[linearIndex] = tile;
                     }
@@ -676,8 +659,6 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
             // When all tiles of this grid are cached, we do no longer need to listen
             elevationDataProvider.removeTileCacheListener(this);
             srtmTiles = tiles;
-            // We no longer need the list of futures as soon as the grid is assembled
-            // tileFutures = null;
             Logging.info("Elevation: " + toString() + " assembled.");
         }
     }
@@ -706,6 +687,10 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
     @Override
     public void srtmTileCached(SRTMTile tile, SRTMTileCacheEntry.Status status) {
         if (contains(tile))
-            areAllTilesCached();
+            try {
+                areAllTilesCached();
+            } catch (AsyncOperationException e) {
+                return;
+            }
     }
 }

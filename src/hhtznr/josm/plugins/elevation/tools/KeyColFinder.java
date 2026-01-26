@@ -6,6 +6,7 @@ import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.ILatLon;
 import org.openstreetmap.josm.tools.Logging;
 
+import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
@@ -101,8 +102,12 @@ public class KeyColFinder extends AbstractElevationTool {
      * @param bounds                The search bounds.
      * @param peakA                 The peak for which to determine the key col.
      * @param peakB                 The (assumed) line parent of {@code peakA}.
+     * @throws AsyncOperationException if the {@code CompletableFuture} was
+     *                                 completed exceptionally or canceled or the
+     *                                 thread was interrupted.
      */
-    public KeyColFinder(ElevationDataProvider elevationDataProvider, Bounds bounds, ILatLon peakA, ILatLon peakB) {
+    public KeyColFinder(ElevationDataProvider elevationDataProvider, Bounds bounds, ILatLon peakA, ILatLon peakB)
+            throws AsyncOperationException {
         super(namer.nextName(), elevationDataProvider, checkAndAdjustBounds(bounds, peakA, peakB));
         this.peakA = peakA;
         this.peakB = peakB;
@@ -195,10 +200,11 @@ public class KeyColFinder extends AbstractElevationTool {
      *                   means more computation effort.
      * @return The coordinates and elevation of the determined key col, or
      *         {@code null} if no key col could be determined.
-     * @throws InterruptedException If the thread executing this method is
-     *                              interrupted.
+     * @throws AsyncOperationException if the {@code CompletableFuture} was
+     *                                 completed exceptionally or canceled or the
+     *                                 thread was interrupted.
      */
-    public LatLonEle findKeyCol(UnionFindNeighbors nNeighbors) throws InterruptedException {
+    public LatLonEle findKeyCol(UnionFindNeighbors nNeighbors) throws AsyncOperationException {
         informListenersAboutStatus("Key col finder running");
 
         SRTMTileGridView tileGridView;
@@ -209,12 +215,13 @@ public class KeyColFinder extends AbstractElevationTool {
             return null;
         }
         informListenersAboutStatus("Waiting for SRTM tiles to be cached");
+        // May throw AsyncOperationException
         tileGridView.waitForTilesCached();
         if (Thread.currentThread().isInterrupted()) {
             String message = "Interrupted while waiting for tiles to be cached";
             informListenersAboutStatus(message);
             Logging.info("Elevation: Key col finder: " + message);
-            throw new InterruptedException("Key col finder: " + message);
+            throw new AsyncOperationException(new InterruptedException("Key col finder: " + message));
         }
         informListenersAboutStatus("All needed SRTM tiles cached");
 
@@ -235,7 +242,7 @@ public class KeyColFinder extends AbstractElevationTool {
                 String message = "Interrupted while scanning elevations";
                 informListenersAboutStatus(message);
                 Logging.info("Elevation: Key col finder: " + message);
-                throw new InterruptedException("Key col finder: " + message);
+                throw new AsyncOperationException(new InterruptedException("Key col finder: " + message));
             }
             for (int lonIndex = 0; lonIndex < width; lonIndex++) {
                 short elevation = tileGridView.getElevation(latIndex, lonIndex);
@@ -252,7 +259,7 @@ public class KeyColFinder extends AbstractElevationTool {
 
         if (validCount == 0) {
             informListenersAboutStatus("No valid elevation data in bounds (all void)");
-            Logging.info("Elevation: Key col finder: All elevation data in searc bounds represents data voids");
+            Logging.info("Elevation: Key col finder: All elevation data in search bounds represents data voids");
             return null;
         }
         informListenersAboutStatus("Minimum and maximum elevation determined: " + minElevation + " / " + maxElevation);
@@ -268,7 +275,7 @@ public class KeyColFinder extends AbstractElevationTool {
                 String message = "Interrupted while building elevation histogram";
                 informListenersAboutStatus(message);
                 Logging.info("Elevation: Key col finder: " + message);
-                throw new InterruptedException("Key col finder: " + message);
+                throw new AsyncOperationException(new InterruptedException("Key col finder: " + message));
             }
             for (int lonIndex = 0; lonIndex < width; lonIndex++) {
                 short elevation = tileGridView.getElevation(latIndex, lonIndex);
@@ -318,7 +325,7 @@ public class KeyColFinder extends AbstractElevationTool {
                 String message = "Interrupted while initalizing union-find";
                 informListenersAboutStatus(message);
                 Logging.info("Elevation: Key col finder: " + message);
-                throw new InterruptedException("Key col finder: " + message);
+                throw new AsyncOperationException(new InterruptedException("Key col finder: " + message));
             }
             // Initially, all cells reference to themselves as parent
             parent[index] = index;
@@ -361,7 +368,7 @@ public class KeyColFinder extends AbstractElevationTool {
                 String message = "Interrupted while iterating over elevation cells";
                 informListenersAboutStatus(message);
                 Logging.info("Elevation: Key col finder: " + message);
-                throw new InterruptedException("Key col finder: " + message);
+                throw new AsyncOperationException(new InterruptedException("Key col finder: " + message));
             }
             int latIndex = linearIndex / width;
             int lonIndex = linearIndex - latIndex * width;

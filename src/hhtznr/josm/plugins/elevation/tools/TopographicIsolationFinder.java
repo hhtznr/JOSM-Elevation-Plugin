@@ -12,6 +12,7 @@ import org.openstreetmap.josm.data.coor.ILatLon;
 import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.tools.Logging;
 
+import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.LatLonLine;
@@ -35,7 +36,8 @@ import hhtznr.josm.plugins.elevation.util.IncrementalNumberedNameCreator;
  */
 public class TopographicIsolationFinder extends AbstractElevationTool {
 
-    private static final IncrementalNumberedNameCreator namer = new IncrementalNumberedNameCreator("Topographic isolation finder");
+    private static final IncrementalNumberedNameCreator namer = new IncrementalNumberedNameCreator(
+            "Topographic isolation finder");
 
     /**
      * Creates a new topographic isolation finder.
@@ -44,8 +46,12 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
      *                              for this topographic isolation finder.
      * @param searchBounds          The bounds within which to search for isolation
      *                              reference points.
+     * @throws AsyncOperationException if the {@code CompletableFuture} was
+     *                                 completed exceptionally or canceled or the
+     *                                 thread was interrupted.
      */
-    public TopographicIsolationFinder(ElevationDataProvider elevationDataProvider, Bounds searchBounds) {
+    public TopographicIsolationFinder(ElevationDataProvider elevationDataProvider, Bounds searchBounds)
+            throws AsyncOperationException {
         super(namer.nextName(), elevationDataProvider, searchBounds);
     }
 
@@ -79,10 +85,12 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
      *         the peak, i.e. the first point is the closest according to
      *         computation. An empty list is returned, if no (higher) reference
      *         point could be determined within the specified bounds.
-     * @throws InterruptedException Thrown if the executing thread was interrupted
+     * @throws AsyncOperationException if the {@code CompletableFuture} was
+     *                                 completed exceptionally or canceled or the
+     *                                 thread was interrupted.
      */
     public List<LatLonEle> determineReferencePoints(LatLonEle peak, double searchDistance, double distanceTolerance,
-            double deadZoneRadius) throws InterruptedException {
+            double deadZoneRadius) throws AsyncOperationException {
         Bounds searchBounds = getBounds();
         SRTMTileGridView tileGridView;
         try {
@@ -94,12 +102,13 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
 
         informListenersAboutStatus("Waiting for all needed SRTM tiles to be cached");
         // Wait for the tiles being cached
+        // May throw CancellationException or InterruptedException
         tileGridView.waitForTilesCached();
         if (Thread.currentThread().isInterrupted()) {
             String message = "Interrupted while waiting for tiles to be cached";
             informListenersAboutStatus(message);
             Logging.info("Elevation: Topographic isolation finder: " + message);
-            throw new InterruptedException("Topographic isolation finder: " + message);
+            throw new AsyncOperationException(new InterruptedException("Topographic isolation finder: " + message));
         }
         informListenersAboutStatus("All needed SRTM tiles cached");
 
@@ -133,7 +142,7 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
                 isolineSegments = null;
                 String message = "Interrupted while determining closest points from isoline segments";
                 Logging.info("Elevation: Topographic isolation finder: " + message);
-                throw new InterruptedException("Topographic isolation finder: " + message);
+                throw new AsyncOperationException(new InterruptedException("Topographic isolation finder: " + message));
             }
             LatLon closestPoint = isolineSegment.getClosestPointTo(peak);
             double distance = peak.greatCircleDistance((ILatLon) closestPoint);

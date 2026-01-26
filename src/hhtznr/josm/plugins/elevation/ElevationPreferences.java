@@ -455,6 +455,38 @@ public class ElevationPreferences {
         SRTM3_SERVER_BASE_URL = url;
     }
 
+    /**
+     * URL where SRTM1 files from NASA Earthdata can manually be downloaded.
+     */
+    public static final URL SRTM1_MANUAL_DOWNLOAD_URL;
+    static {
+        URL url = null;
+        try {
+            url = new URL("https://www.earthdata.nasa.gov/data/catalog/lpcloud-srtmgl1-003");
+        } catch (MalformedURLException e) {
+            throw new IllegalArgumentException("Internal error: hardcoded URL is malformed", e);
+        }
+        SRTM1_MANUAL_DOWNLOAD_URL = url;
+    }
+
+    /**
+     * URL where SRTM3 files from NASA Earthdata can manually be downloaded.
+     */
+    public static final URL SRTM3_MANUAL_DOWNLOAD_URL;
+    static {
+        URL url = null;
+        try {
+            url = new URL("https://www.earthdata.nasa.gov/data/catalog/lpcloud-srtmgl3n-003");
+        } catch (MalformedURLException e) {
+            throw new IllegalArgumentException("Internal error: hardcoded URL is malformed", e);
+        }
+        SRTM3_MANUAL_DOWNLOAD_URL = url;
+    }
+
+    /**
+     * URL where DTM1 files from Sonny's LiDAR Digital Terrain Models of Europe can
+     * manually be downloaded.
+     */
     public static final URL SONNY_LIDAR_DTM1_BASE_URL;
     static {
         URL url = null;
@@ -466,6 +498,10 @@ public class ElevationPreferences {
         SONNY_LIDAR_DTM1_BASE_URL = url;
     }
 
+    /**
+     * URL where DTM3 files from Sonny's LiDAR Digital Terrain Models of Europe can
+     * manually be downloaded.
+     */
     public static final URL SONNY_LIDAR_DTM3_BASE_URL;
     static {
         URL url = null;

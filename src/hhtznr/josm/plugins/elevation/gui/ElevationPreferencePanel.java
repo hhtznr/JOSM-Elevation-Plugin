@@ -170,11 +170,11 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         sb.append("<body style='width:700px;'>");
         sb.append(I18n.tr(
                 "SRTM1 files (elevation sampled at 1 arc seconds) of the whole Earth can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}<br><br>",
-                ElevationPreferences.SRTM1_SERVER_BASE_URL,
+                ElevationPreferences.SRTM1_MANUAL_DOWNLOAD_URL,
                 ElevationPreferences.DEFAULT_EARTHDATA_SRTM1_DIRECTORY.getAbsolutePath()));
         sb.append(I18n.tr(
                 "SRTM3 files (elevation sampled at 3 arc seconds) of the whole Earth can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}<br><br>",
-                ElevationPreferences.SRTM3_SERVER_BASE_URL,
+                ElevationPreferences.SRTM3_MANUAL_DOWNLOAD_URL,
                 ElevationPreferences.DEFAULT_EARTHDATA_SRTM3_DIRECTORY.getAbsolutePath()));
         sb.append(I18n.tr(
                 "High quality SRTM1 files (elevation sampled at 1 arc seconds) of Europe can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}<br><br>",

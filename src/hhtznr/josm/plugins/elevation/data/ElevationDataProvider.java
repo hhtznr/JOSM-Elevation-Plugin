@@ -550,15 +550,11 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
         // If so, inform listeners
         synchronized (activeTileGrids) {
             for (SRTMTileGrid tileGrid : activeTileGrids) {
-                try {
-                    if (!tileGrid.isDisposed() && tileGrid.contains(tile) && tileGrid.areAllTilesCached()) {
-                        synchronized (listeners) {
-                            for (ElevationDataProviderListener listener : listeners)
-                                listener.elevationDataAvailable(tileGrid);
-                        }
+                if (!tileGrid.isDisposed() && tileGrid.contains(tile) && tileGrid.areAllTilesCached()) {
+                    synchronized (listeners) {
+                        for (ElevationDataProviderListener listener : listeners)
+                            listener.elevationDataAvailable(tileGrid);
                     }
-                } catch (AsyncOperationException e) {
-                    continue;
                 }
             }
         }

@@ -168,16 +168,9 @@ public class SRTMTileCache {
         synchronized (cache) {
             for (Entry<String, SRTMTileCacheEntry> entry : cache.entrySet()) {
                 SRTMTileCacheEntry cacheEntry = entry.getValue();
-                if (cacheEntry.isLoadingCompleted()) {
-                    SRTMTile tile;
-                    try {
-                        tile = cacheEntry.getTileOrWait();
-                    } catch (AsyncOperationException e) {
-                        String info = "Status: " + cacheEntry.getStatus().toString();
-                        info += ", size: " + getSizeString(cacheEntry.getDataSize());
-                        tileInfo.put("SRTM tile " + cacheEntry.getID(), info);
-                        continue;
-                    }
+                Optional<SRTMTile> optionalTile = cacheEntry.getTileIfLoaded();
+                if (optionalTile.isPresent()) {
+                    SRTMTile tile = optionalTile.get();
                     synchronized (cacheEntry) {
                         String info = "Type: " + tile.getType().toString();
                         info += ", status: " + cacheEntry.getStatus().toString();
@@ -307,20 +300,8 @@ public class SRTMTileCache {
         }
 
         SRTMTileCacheEntry entry = cache.get(srtmTileID);
-        if (entry != null) {
-            if (entry.isLoadingCompleted() && !entry.isCompletedExceptionally()) {
-                try {
-                    // May throw CancellationException, ExecutionException or InterruptedException
-                    SRTMTile tile = entry.getTileOrWait();
-                    synchronized (previousTileLock) {
-                        previousTile = tile;
-                    }
-                    return Optional.of(tile);
-                } catch (Exception e) {
-                    return Optional.empty();
-                }
-            }
-        }
+        if (entry != null)
+            return entry.getTileIfLoaded();
 
         return Optional.empty();
     }

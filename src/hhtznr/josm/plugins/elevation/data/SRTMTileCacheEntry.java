@@ -32,6 +32,8 @@ public class SRTMTileCacheEntry {
     private static final Cleaner CLEANER = Cleaner.create();
 
     private final String srtmTileID;
+    // Direct reference to the tile, if it is loaded
+    private SRTMTile tile = null;
     private volatile Status status;
 
     private final CompletableFuture<SRTMTile> tileFuture = new CompletableFuture<>();
@@ -239,7 +241,10 @@ public class SRTMTileCacheEntry {
      *         completed.
      */
     private synchronized boolean complete(SRTMTile tile) {
-        return tileFuture.complete(tile);
+        boolean completed = tileFuture.complete(tile);
+        if (completed)
+            this.tile = tile;
+        return completed;
     }
 
     private synchronized boolean completeExceptionally(Throwable ex) {
@@ -294,19 +299,17 @@ public class SRTMTileCacheEntry {
         return optional.get().getDataSize();
     }
 
+    /**
+     * Returns the SRTM tile if it was already loaded.
+     *
+     * @return An {@code Optional} with the SRTM tile if it was already loaded or an
+     *         empty {@code Optional} otherwise.
+     */
     public Optional<SRTMTile> getTileIfLoaded() {
         synchronized (this) {
             this.accessTime = System.currentTimeMillis();
         }
-        if (tileFuture.isDone()) {
-            try {
-                SRTMTile tile = tileFuture.get();
-                return Optional.of(tile);
-            } catch (CancellationException | InterruptedException | ExecutionException e) {
-                return Optional.empty();
-            }
-        }
-        return Optional.empty();
+        return Optional.ofNullable(tile);
     }
 
     /**
@@ -486,8 +489,9 @@ public class SRTMTileCacheEntry {
     protected synchronized void disposeTile() {
         if (!tileFuture.isDone())
             cancelLoading();
-        Optional<SRTMTile> optional = getTileIfLoaded();
-        if (optional.isPresent())
-            optional.get().dispose();
+        if (tile != null) {
+            tile.dispose();
+            tile = null;
+        }
     }
 }

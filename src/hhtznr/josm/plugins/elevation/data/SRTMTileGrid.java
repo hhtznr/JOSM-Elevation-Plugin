@@ -1,6 +1,7 @@
 package hhtznr.josm.plugins.elevation.data;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.ILatLon;
@@ -567,7 +568,7 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
      *                                 completed exceptionally or canceled or the
      *                                 thread was interrupted.
      */
-    public boolean areAllTilesCached() throws AsyncOperationException {
+    public boolean areAllTilesCached() {
         if (isDisposed()) {
             Logging.info("Elevation: " + toString() + " is already disposed.");
             return true;
@@ -579,21 +580,18 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
                     SRTMTileCacheEntry entry = cacheEntries.get(gridLatIndex * gridWidth + gridLonIndex);
                     // Note: "Done" does not necessarily mean that the tiles hold valid data
                     // However, we can deal with no-data tiles by treating them like big data voids
-                    if (!entry.isLoadingCompleted()) {
+                    if (!entry.isLoadingCompleted())
                         return false;
-                    }
                 }
             }
-            // May throw AsyncOperationException
-            assembleGrid(cacheEntries);
+            return assembleGrid(cacheEntries);
         }
-        return true;
     }
 
-    private void assembleGrid(List<SRTMTileCacheEntry> cacheEntries) throws AsyncOperationException {
+    private synchronized boolean assembleGrid(List<SRTMTileCacheEntry> cacheEntries) {
         // We only assemble the grid once
         if (srtmTiles != null)
-            return;
+            return true;
         synchronized (cacheEntries) {
             int gridSize = gridHeight * gridWidth;
             SRTMTile[] tiles = new SRTMTile[gridSize];
@@ -607,9 +605,10 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
 
                         int linearIndex = gridLatIndex * gridWidth + gridLonIndex;
                         // The futures are stored in the same linear order as the tiles
-                        // May throw AsyncOperationException
-                        SRTMTile tile = cacheEntries.get(linearIndex).getTileOrWait();
-                        tiles[linearIndex] = tile;
+                        Optional<SRTMTile> optionalTile = cacheEntries.get(linearIndex).getTileIfLoaded();
+                        if (optionalTile.isEmpty())
+                            return false;
+                        tiles[linearIndex] = optionalTile.get();
                     }
                 }
             }
@@ -621,18 +620,11 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
                         int gridLonIndex = gridLon - gridIntLonWest;
 
                         int linearIndex = gridLatIndex * gridWidth + gridLonIndex;
-                        String tileID = SRTMTile.getTileID(gridLat, gridLon);
-                        SRTMTile tile;
-                        try {
-                            // The futures are stored in the same linear order as the tiles
-                            tile = cacheEntries.get(linearIndex).getTileOrWait();
-                        } catch (Exception e) {
-                            // Should never happen because we do not complete exceptionally
-                            Logging.info("Elevation: Could not assemble tile grid. Exception with tile " + tileID + ": "
-                                    + e.toString());
-                            throw e;
-                        }
-                        tiles[linearIndex] = tile;
+                        // The futures are stored in the same linear order as the tiles
+                        Optional<SRTMTile> optionalTile = cacheEntries.get(linearIndex).getTileIfLoaded();
+                        if (optionalTile.isEmpty())
+                            return false;
+                        tiles[linearIndex] = optionalTile.get();
                     }
                 }
                 for (int gridLat = gridIntLatSouth; gridLat < gridIntLatNorth; gridLat++) {
@@ -641,18 +633,11 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
                         int gridLonIndex = 180 - gridIntLonWest + gridLon - gridIntLonEast;
 
                         int linearIndex = gridLatIndex * gridWidth + gridLonIndex;
-                        String tileID = SRTMTile.getTileID(gridLat, gridLon);
-                        SRTMTile tile;
-                        try {
-                            // The futures are stored in the same linear order as the tiles
-                            tile = cacheEntries.get(linearIndex).getTileOrWait();
-                        } catch (Exception e) {
-                            // Should never happen because we do not complete exceptionally
-                            Logging.info("Elevation: Could not assemble tile grid. Exception with tile " + tileID + ": "
-                                    + e.toString());
-                            throw e;
-                        }
-                        tiles[linearIndex] = tile;
+                        // The futures are stored in the same linear order as the tiles
+                        Optional<SRTMTile> optionalTile = cacheEntries.get(linearIndex).getTileIfLoaded();
+                        if (optionalTile.isEmpty())
+                            return false;
+                        tiles[linearIndex] = optionalTile.get();
                     }
                 }
             }
@@ -660,6 +645,7 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
             elevationDataProvider.removeTileCacheListener(this);
             srtmTiles = tiles;
             Logging.info("Elevation: " + toString() + " assembled.");
+            return true;
         }
     }
 
@@ -687,10 +673,6 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
     @Override
     public void srtmTileCached(SRTMTile tile, SRTMTileCacheEntry.Status status) {
         if (contains(tile))
-            try {
-                areAllTilesCached();
-            } catch (AsyncOperationException e) {
-                return;
-            }
+            areAllTilesCached();
     }
 }

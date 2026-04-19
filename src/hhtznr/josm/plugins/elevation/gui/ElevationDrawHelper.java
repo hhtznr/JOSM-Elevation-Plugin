@@ -26,6 +26,7 @@ import org.openstreetmap.josm.gui.layer.MapViewPaintable.PaintableInvalidationEv
 import org.openstreetmap.josm.gui.layer.MapViewPaintable.PaintableInvalidationListener;
 import org.openstreetmap.josm.tools.Logging;
 
+import hhtznr.josm.plugins.elevation.ElevationPreferences;
 import hhtznr.josm.plugins.elevation.data.Coloring;
 import hhtznr.josm.plugins.elevation.data.CoordinateUtil;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
@@ -378,8 +379,10 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
 
         List<LatLonEle> lowestPoints = lowestAndHighestPoints.getLowestPoints();
         List<LatLonEle> highestPoints = lowestAndHighestPoints.getHighestPoints();
-        List<Point> lowestPixels = new ArrayList<>(lowestPoints.size());
-        for (LatLonEle latLonEle : lowestPoints) {
+        int maxLowestPoints = Math.min(lowestPoints.size(), ElevationPreferences.MAX_RENDERED_LOWEST_OR_HIGHEST_POINTS);
+        List<Point> lowestPixels = new ArrayList<>(maxLowestPoints);
+        for (int i = 0; i < maxLowestPoints; i++) {
+            LatLonEle latLonEle = lowestPoints.get(i);
             Point p = mv.getPoint(latLonEle);
             lowestPixels.add(p);
         }
@@ -387,8 +390,10 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         short lowestElevation = lowestAndHighestPoints.getLowestElevation();
         if (lowestElevation != SRTMTile.SRTM_DATA_VOID)
             textLowestElevation = Short.toString(lowestElevation);
-        List<Point> highestPixels = new ArrayList<>(highestPoints.size());
-        for (LatLonEle latLonEle : highestPoints) {
+        int maxHighestPoints = Math.min(highestPoints.size(), ElevationPreferences.MAX_RENDERED_LOWEST_OR_HIGHEST_POINTS);
+        List<Point> highestPixels = new ArrayList<>(maxHighestPoints);
+        for (int i = 0; i < maxHighestPoints; i++) {
+            LatLonEle latLonEle = highestPoints.get(i);
             Point p = mv.getPoint(latLonEle);
             highestPixels.add(p);
         }

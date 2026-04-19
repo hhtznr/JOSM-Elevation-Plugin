@@ -366,6 +366,11 @@ public class ElevationPreferences {
     private static final boolean DEFAULT_LOWEST_AND_HIGHEST_POINTS_ENABLED = false;
 
     /**
+     * The maximum number of lowest points and highest points, respectively, that is rendered in a map view.
+     */
+    public static final int MAX_RENDERED_LOWEST_OR_HIGHEST_POINTS = 10;
+
+    /**
      * Property key for enabling or disabling automatic download of elevation data.
      */
     public static final String ELEVATION_AUTO_DOWNLOAD_ENABLED = "elevation.autodownload";

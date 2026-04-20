@@ -564,9 +564,6 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
      *
      * @return {@code true} if all SRTM tiles required to form this grid are
      *         available and in memory.
-     * @throws AsyncOperationException if the {@code CompletableFuture} was
-     *                                 completed exceptionally or canceled or the
-     *                                 thread was interrupted.
      */
     public boolean areAllTilesCached() {
         if (isDisposed()) {

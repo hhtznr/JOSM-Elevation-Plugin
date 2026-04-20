@@ -443,10 +443,7 @@ public class SRTMTileCache {
      * @param listener The listener to add.
      */
     public void addSRTMTileCacheListener(SRTMTileCacheListener listener) {
-        synchronized (listeners) {
-            if (!listeners.contains(listener))
-                listeners.add(listener);
-        }
+        listeners.addIfAbsent(listener);
     }
 
     /**
@@ -455,9 +452,7 @@ public class SRTMTileCache {
      * @param listener The listener to be removed.
      */
     public void removeSRTMTileCacheListener(SRTMTileCacheListener listener) {
-        synchronized (listeners) {
-            listeners.remove(listener);
-        }
+        listeners.remove(listener);
     }
 
     /**
@@ -535,9 +530,7 @@ public class SRTMTileCache {
      */
     protected void srtmTileCached(SRTMTile srtmTile, SRTMTileCacheEntry.Status status) {
         updateCacheSize(srtmTile.getDataSize());
-        synchronized (listeners) {
-            for (SRTMTileCacheListener listener : listeners)
-                listener.srtmTileCached(srtmTile, status);
-        }
+        for (SRTMTileCacheListener listener : listeners)
+            listener.srtmTileCached(srtmTile, status);
     }
 }

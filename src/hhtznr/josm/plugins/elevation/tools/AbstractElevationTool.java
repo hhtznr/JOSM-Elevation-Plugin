@@ -37,6 +37,7 @@ public abstract class AbstractElevationTool extends ElevationDataConsumer {
     public AbstractElevationTool(String name, ElevationDataProvider elevationDataProvider, Bounds bounds)
             throws AsyncOperationException {
         super(name, elevationDataProvider.getGridMatching(bounds));
+        getTileGrid().release();
         this.elevationDataProvider = elevationDataProvider;
         this.bounds = bounds;
     }

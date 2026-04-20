@@ -55,6 +55,7 @@ public class MapViewElevationDataConsumer extends ElevationDataConsumer implemen
             double switchOffMapDimension) throws AsyncOperationException {
         super(namer.nextName(),
                 elevationDataProvider.getGridMatching(mapFrame.mapView.getLatLonBounds(mapFrame.mapView.getBounds())));
+        getTileGrid().release();
         this.elevationDataProvider = elevationDataProvider;
         this.switchOffMapDimension = switchOffMapDimension;
         addToMapFrame(mapFrame);

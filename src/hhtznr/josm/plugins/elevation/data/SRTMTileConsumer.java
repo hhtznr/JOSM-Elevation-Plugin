@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.openstreetmap.josm.tools.Logging;
 
@@ -24,7 +26,8 @@ public abstract class SRTMTileConsumer {
     private List<SRTMTileCacheEntry> cacheEntries = null;
     private final CopyOnWriteArrayList<ElevationDataConsumer> elevationDataConsumers = new CopyOnWriteArrayList<>();
 
-    private boolean isDisposed = false;
+    private AtomicBoolean isDisposed = new AtomicBoolean(false);
+    private final AtomicInteger activeUsers = new AtomicInteger(0);
 
     /**
      * Creates a new SRMT tile consumer.
@@ -87,9 +90,21 @@ public abstract class SRTMTileConsumer {
      * consumer.
      *
      * @param consumer The elevation data consumer to add.
+     * @return {@code true} if the consumer was added, {@code false} if
      */
-    public void addElevationDataConsumer(ElevationDataConsumer consumer) {
+    public boolean addElevationDataConsumer(ElevationDataConsumer consumer) {
+        if (isDisposed.get())
+            return false;
+
         elevationDataConsumers.addIfAbsent(consumer);
+
+        // Double-check in case disposal happened concurrently
+        if (isDisposed.get()) {
+            elevationDataConsumers.remove(consumer);
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -102,16 +117,56 @@ public abstract class SRTMTileConsumer {
      *         consumer.
      */
     public boolean removeElevationDataConsumer(ElevationDataConsumer consumer) {
-        synchronized (elevationDataConsumers) {
-            boolean removed = elevationDataConsumers.remove(consumer);
-            if (removed)
-                considerDispose();
-            return removed;
-        }
+        boolean removed = elevationDataConsumers.remove(consumer);
+        if (removed)
+            considerDispose();
+        return removed;
     }
 
+    /**
+     * Returns the number of elevation data consumers registered with this SRTM tile
+     * consumer.
+     *
+     * @return The number of registered elevation data consumers.
+     */
     public int getElevationDataConsumerCount() {
         return elevationDataConsumers.size();
+    }
+
+    /**
+     * Blocks disposal of this {@code SRTMTileConsumer} until {@link #release()} is
+     * called. Can be called multiple times, but {@link #release()} needs to be
+     * called the same number of times.
+     *
+     * @return {@code true} if disposal could be blocked; {@code false} if this
+     *         {@code SRTMTileConsumer} is already disposed.
+     */
+    public boolean acquire() {
+        if (isDisposed.get())
+            return false;
+
+        activeUsers.incrementAndGet();
+
+        // Double-check to avoid race with dispose
+        if (isDisposed.get()) {
+            release();
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Unblocks disposal of this {@code SRTMTileConsumer}. Needs to be called the
+     * number of times that {@link #acquire()} has been called.
+     */
+    public void release() {
+        int remaining = activeUsers.decrementAndGet();
+
+        if (remaining < 0)
+            throw new IllegalStateException("Release called more than acquire");
+
+        considerDispose();
     }
 
     /**
@@ -120,8 +175,8 @@ public abstract class SRTMTileConsumer {
      *
      * @return {@code true} if this SRTM tile consumer has been disposed.
      */
-    public synchronized boolean isDisposed() {
-        return isDisposed;
+    public boolean isDisposed() {
+        return isDisposed.get();
     }
 
     /**
@@ -129,23 +184,24 @@ public abstract class SRTMTileConsumer {
      * {@link ElevationDataConsumer} have been removed from it.
      */
     protected void considerDispose() {
-        synchronized (elevationDataConsumers) {
-            if (elevationDataConsumers.isEmpty()) {
+        if (elevationDataConsumers.isEmpty() && activeUsers.get() == 0) {
+            if (isDisposed.compareAndSet(false, true)) {
                 dispose();
                 Logging.info("Elevation: Disposed " + toString() + " which is no longer needed.");
-            } else {
-                String[] names = new String[elevationDataConsumers.size()];
-                for (int i = 0; i < elevationDataConsumers.size(); i++)
-                    names[i] = elevationDataConsumers.get(i).getName();
-                String consumers = String.join(", ", names);
-                Logging.info("Elevation: Not disposing " + toString() + ": " + elevationDataConsumers.size()
-                        + " elevation data consumers left: " + consumers);
             }
+        } else {
+            String[] names = new String[elevationDataConsumers.size()];
+            for (int i = 0; i < elevationDataConsumers.size(); i++)
+                names[i] = elevationDataConsumers.get(i).getName();
+            String consumers = String.join(", ", names);
+            Logging.info("Elevation: Not disposing " + toString() + ": " + elevationDataConsumers.size()
+                    + " elevation data consumers left: " + consumers);
         }
     }
 
     private void dispose() {
-        if (isDisposed) {
+        // Ensure only one thread performs disposal
+        if (!isDisposed.compareAndSet(false, true)) {
             Logging.info(
                     "Elevation: Attempted to dispose already disposed elevation data consumer " + toString() + ".");
             return;
@@ -153,7 +209,7 @@ public abstract class SRTMTileConsumer {
         elevationDataProvider.removeSRTMTileConsumer(this);
         // Note: removeSRTMTileConsumer() still accesses the cacheEntries
         cacheEntries = null;
-        isDisposed = true;
+
         Logging.info("Elevation: " + name + " disposed.");
     }
 }

@@ -252,7 +252,10 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
      * matching the bounds, which is already used by other consumers, is returned.
      * <br>
      * Note: An {@link ElevationDataConsumer} needs to register itself to the
-     * returned grid.
+     * returned grid. This method calls {@link SRTMTileGrid#acquire()} to protect
+     * the {@link SRTMTileGrid} from disposal. The code receiving the returned
+     * {@link SRTMTileGrid} needs to call {@link SRTMTileGrid#release()} after
+     * adding the {@link ElevationDataConsumer}.
      *
      * @param bounds The bounds.
      * @return An SRTM tile grid covering the bounds, but not bigger than needed.
@@ -267,12 +270,15 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
             Iterator<SRTMTileGrid> iterator = activeTileGrids.iterator();
             while (iterator.hasNext()) {
                 nextGrid = iterator.next();
-                if (nextGrid.matchesTileGridBounds(bounds))
+                // Successfully calling acquire() blocks grid disposal until release() is called
+                if (nextGrid.matchesTileGridBounds(bounds) && nextGrid.acquire())
                     tileGrid = nextGrid;
             }
             if (tileGrid == null) {
                 // May throw AsyncOperationException
                 tileGrid = new SRTMTileGrid(this, bounds);
+                // Successfully calling acquire() blocks grid disposal until release() is called
+                tileGrid.acquire();
                 activeTileGrids.add(tileGrid);
             }
             return tileGrid;
@@ -292,7 +298,9 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
     public LowestAndHighestPoints getLowestAndHighestPoints(Bounds bounds) {
         try {
             SRTMTileGrid tileGrid = getGridMatching(bounds);
-            return tileGrid.getView(bounds).getLowestAndHighestPoints();
+            LowestAndHighestPoints points = tileGrid.getView(bounds).getLowestAndHighestPoints();
+            tileGrid.release();
+            return points;
         } catch (AsyncOperationException | SRTMTileGridException e) {
             Logging.error("Elevation: Cannot create lowest and highest points: " + e.toString());
             return null;
@@ -312,7 +320,9 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
     public ElevationRaster getElevationRaster(Bounds bounds) {
         try {
             SRTMTileGrid tileGrid = getGridMatching(bounds);
-            return tileGrid.getView(bounds).getElevationRaster();
+            ElevationRaster raster = tileGrid.getView(bounds).getElevationRaster();
+            tileGrid.release();
+            return raster;
         } catch (AsyncOperationException | SRTMTileGridException e) {
             Logging.error("Elevation: Cannot create elevation raster: " + e.toString());
             return null;
@@ -344,8 +354,13 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
             Bounds renderingBounds = tileGrid.getRenderingBoundsScaledByRasterStep(bounds,
                     ContourLines.BOUNDS_SCALE_RASTER_STEP);
             tileGrid = getGridMatching(renderingBounds);
-            return tileGrid.getView(renderingBounds).getContourLines(isostep, lowerCutoffElevation,
+            // Release 1st acquire() called in getGridMatching()
+            tileGrid.release();
+            ContourLines contourLines = tileGrid.getView(renderingBounds).getContourLines(isostep, lowerCutoffElevation,
                     upperCutoffElevation);
+            // Release 2nd acquire() called in getGridMatching()
+            tileGrid.release();
+            return contourLines;
         } catch (AsyncOperationException | SRTMTileGridException e) {
             Logging.error("Elevation: Cannot create contour lines: " + e.toString());
             return null;
@@ -379,7 +394,13 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
             Bounds renderingBounds = tileGrid.getRenderingBoundsScaledByRasterStep(bounds,
                     ContourLines.BOUNDS_SCALE_RASTER_STEP);
             tileGrid = getGridMatching(renderingBounds);
-            return tileGrid.getView(renderingBounds).getHillshadeImageTile(altitudeDeg, azimuthDeg, withPerimeter);
+            // Release 1st acquire() called in getGridMatching()
+            tileGrid.release();
+            HillshadeImageTile hillshade = tileGrid.getView(renderingBounds).getHillshadeImageTile(altitudeDeg,
+                    azimuthDeg, withPerimeter);
+            // Release 2nd acquire() called in getGridMatching()
+            tileGrid.release();
+            return hillshade;
         } catch (AsyncOperationException | SRTMTileGridException e) {
             Logging.error("Elevation: Cannot create hillshade: " + e.toString());
             return null;

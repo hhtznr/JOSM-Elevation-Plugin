@@ -354,11 +354,9 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
             Bounds renderingBounds = tileGrid.getRenderingBoundsScaledByRasterStep(bounds,
                     ContourLines.BOUNDS_SCALE_RASTER_STEP);
             tileGrid = getGridMatching(renderingBounds);
-            // Release 1st acquire() called in getGridMatching()
-            tileGrid.release();
             ContourLines contourLines = tileGrid.getView(renderingBounds).getContourLines(isostep, lowerCutoffElevation,
                     upperCutoffElevation);
-            // Release 2nd acquire() called in getGridMatching()
+            // Release acquire() called in getGridMatching()
             tileGrid.release();
             return contourLines;
         } catch (AsyncOperationException | SRTMTileGridException e) {
@@ -394,11 +392,9 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
             Bounds renderingBounds = tileGrid.getRenderingBoundsScaledByRasterStep(bounds,
                     ContourLines.BOUNDS_SCALE_RASTER_STEP);
             tileGrid = getGridMatching(renderingBounds);
-            // Release 1st acquire() called in getGridMatching()
-            tileGrid.release();
             HillshadeImageTile hillshade = tileGrid.getView(renderingBounds).getHillshadeImageTile(altitudeDeg,
                     azimuthDeg, withPerimeter);
-            // Release 2nd acquire() called in getGridMatching()
+            // Release acquire() called in getGridMatching()
             tileGrid.release();
             return hillshade;
         } catch (AsyncOperationException | SRTMTileGridException e) {

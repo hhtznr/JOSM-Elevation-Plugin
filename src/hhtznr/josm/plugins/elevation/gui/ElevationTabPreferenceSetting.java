@@ -36,7 +36,7 @@ public final class ElevationTabPreferenceSetting extends DefaultTabPreferenceSet
     public void addGui(PreferenceTabbedPane gui) {
         pnlElevationPreferences = new ElevationPreferencePanel();
         pnlElevationPreferences.add(Box.createVerticalGlue(), GBC.eol().fill());
-        gui.createPreferenceTab(this).add(pnlElevationPreferences, GBC.eol().fill());
+        gui.createPreferenceTab(this, true).add(pnlElevationPreferences, GBC.eol().fill());
     }
 
     /**

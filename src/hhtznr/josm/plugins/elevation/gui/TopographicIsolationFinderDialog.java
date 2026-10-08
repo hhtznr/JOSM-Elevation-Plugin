@@ -43,11 +43,11 @@ import org.openstreetmap.josm.gui.MapView;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 import org.openstreetmap.josm.tools.GBC;
 
+import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
+import hhtznr.josm.plugins.elevation.data.CoordinateUtil;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.OsmPrimitiveUtil;
-import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
-import hhtznr.josm.plugins.elevation.data.CoordinateUtil;
 import hhtznr.josm.plugins.elevation.tools.ElevationToolListener;
 import hhtznr.josm.plugins.elevation.tools.TopographicIsolationFinder;
 
@@ -416,7 +416,11 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
         gc.weightx = 1.0;
         pnl.add(buttonAddToDataLayer, gc);
 
-        setContent(pnl);
+        JScrollPane scrollPane = new JScrollPane(pnl);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+
+        setContent(scrollPane);
     }
 
     private void setDialogState(DialogState state) {
@@ -491,8 +495,9 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
 
     private void setSearchDistanceLatLon() {
         Node peakNode = this.peakNode;
-        if (peakNode == null)
+        if (peakNode == null) {
             return;
+        }
         int distance = (Integer) spinnerSearchDistance.getValue();
         distance *= 1000; // convert from km to m
         LatLon peak = peakNode.getCoor();
@@ -579,8 +584,9 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
                 if (candidateRank == 1) {
                     String note = "Isolation reference point, which is closest to the peak";
                     String peakName = peakNode.get("name");
-                    if (peakName != null)
+                    if (peakName != null) {
                         note += " " + peakName;
+                    }
                     node.put("note", note);
                 }
                 node.put("ele", Integer.toString(ele));
@@ -611,8 +617,9 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
     @Override
     public void dispose() {
         Future<List<Node>> future = closestNodesFuture;
-        if (future != null && !future.isCancelled())
+        if (future != null && !future.isCancelled()) {
             future.cancel(true);
+        }
         if (isolationFinder != null) {
             isolationFinder.removeElevationToolListener(this);
             isolationFinder.dispose();
@@ -629,8 +636,9 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
     @Override
     protected void buttonAction(int buttonIndex, ActionEvent evt) {
         // Close button
-        if (buttonIndex == 0)
+        if (buttonIndex == 0) {
             dispose();
+        }
     }
 
     private class SelectPeakAction extends JosmAction {
@@ -669,8 +677,9 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
             // 4. Filter for Nodes
             List<Node> selectedNodes = new ArrayList<>();
             for (OsmPrimitive primitive : selection) {
-                if (primitive instanceof Node)
+                if (primitive instanceof Node) {
                     selectedNodes.add((Node) primitive);
+                }
             }
             if (selectedNodes.size() == 0) {
                 setDialogState(DialogState.INITIAL);
@@ -721,10 +730,11 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
             String text = textFieldPeakEle.getText();
             // Enable the isolation finder if the elevation value is a double and a
             // node providing the coordinates of the peak is selected
-            if (isDouble(text) && peakNode != null)
+            if (isDouble(text) && peakNode != null) {
                 setDialogState(DialogState.PEAK_DEFINED);
-            else
+            } else {
                 setDialogState(DialogState.PEAK_NODE_SELECTED);
+            }
         }
     }
 
@@ -753,8 +763,9 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
             String peakNodeID = textFieldPeakNodeID.getText();
             textAreaFeedback.append("Node ID: " + peakNodeID + System.lineSeparator());
             String peakName = textFieldPeakName.getText();
-            if (!peakName.isBlank())
+            if (!peakName.isBlank()) {
                 textAreaFeedback.append("Name: " + peakName + System.lineSeparator());
+            }
             String peakCoord = textFieldPeakCoord.getText();
             textAreaFeedback.append("Coordinates: " + peakCoord + System.lineSeparator());
             textAreaFeedback.append("Elevation: " + ele + " m" + System.lineSeparator());
@@ -807,14 +818,16 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
 
             DataSet ds = new DataSet();
             ds.addPrimitive(new Node(peakNode));
-            for (Node node : nodes)
+            for (Node node : nodes) {
                 ds.addPrimitive(new Node(node));
+            }
             // Add a rectangular way to indicate the search bounds
             OsmPrimitiveUtil.addBoundsToDataSet(ds, searchBounds, "Search bounds");
             String layerName = "Isolation reference points";
             String peakName = textFieldPeakName.getText();
-            if (peakName != null && !peakName.isBlank())
+            if (peakName != null && !peakName.isBlank()) {
                 layerName += " of " + peakName;
+            }
             OsmDataLayer dataLayer = new OsmDataLayer(ds, layerName, null);
             MainApplication.getLayerManager().addLayer(dataLayer);
             MainApplication.getLayerManager().setActiveLayer(dataLayer);

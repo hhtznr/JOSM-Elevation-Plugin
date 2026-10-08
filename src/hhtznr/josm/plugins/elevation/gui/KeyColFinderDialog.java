@@ -134,8 +134,9 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
     private void build() {
         JMultilineLabel labelDisclaimer = new JMultilineLabel(DISCLAIMER);
         labelDisclaimer.addHyperlinkListener(event -> {
-            if (event.getEventType() == HyperlinkEvent.EventType.ACTIVATED)
+            if (event.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
                 OpenBrowser.displayUrl(event.getURL().toString());
+            }
         });
 
         buttonSetPeakA = new JButton(new SelectPeakAction(SelectPeakAction.PEAK_A));
@@ -596,7 +597,11 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
         gc.weightx = 1.0;
         pnl.add(buttonAddToDataLayer, gc);
 
-        setContent(pnl);
+        JScrollPane scrollPane = new JScrollPane(pnl);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+
+        setContent(scrollPane);
     }
 
     private void setDialogState(DialogState state) {
@@ -688,8 +693,9 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
     private void setSearchAreaLatLon() {
         Node peakANode = this.peakANode;
         Node peakBNode = this.peakBNode;
-        if (peakANode == null || peakBNode == null)
+        if (peakANode == null || peakBNode == null) {
             return;
+        }
 
         double searchAreaExpansionLat = (Double) spinnerSearchAreaExpansionLat.getValue();
         double searchAreaExpansionLon = (Double) spinnerSearchAreaExpansionLon.getValue();
@@ -750,16 +756,18 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
                     note = "key col of " + peakName;
                 } else {
                     String peakAEle = peakANode.get("ele");
-                    if (peakAEle != null)
+                    if (peakAEle != null) {
                         try {
                             long eleA = Math.round(Double.parseDouble(peakAEle));
                             note = "key col of P." + eleA;
                         } catch (NumberFormatException e) {
                             note = null;
                         }
+                    }
                 }
-                if (note != null)
+                if (note != null) {
                     keyColNode.put("note", note);
+                }
                 textAreaFeedback.append("Key col determined:" + System.lineSeparator());
                 textAreaFeedback.append("Coordinates: " + keyCol.lat() + ", " + keyCol.lon() + System.lineSeparator());
                 textAreaFeedback.append("Elevation: " + ele + " m" + System.lineSeparator());
@@ -794,8 +802,9 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
     @Override
     public void dispose() {
         Future<LatLonEle> future = keyColFuture;
-        if (future != null && !future.isCancelled())
+        if (future != null && !future.isCancelled()) {
             future.cancel(true);
+        }
 
         if (keyColFinder != null) {
             keyColFinder.removeElevationToolListener(this);
@@ -815,8 +824,9 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
     @Override
     protected void buttonAction(int buttonIndex, ActionEvent evt) {
         // Close button
-        if (buttonIndex == 0)
+        if (buttonIndex == 0) {
             dispose();
+        }
     }
 
     private class SelectPeakAction extends JosmAction {
@@ -861,8 +871,9 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
             // 4. Filter for Nodes
             List<Node> selectedNodes = new ArrayList<>();
             for (OsmPrimitive primitive : selection) {
-                if (primitive instanceof Node)
+                if (primitive instanceof Node) {
                     selectedNodes.add((Node) primitive);
+                }
             }
             if (selectedNodes.size() == 0) {
                 setDialogState(DialogState.INITIAL);
@@ -892,10 +903,11 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
                 return;
             }
             String eleText;
-            if (ele != null)
+            if (ele != null) {
                 eleText = "Node: " + ele + ", elevation raster: " + rasterEle;
-            else
+            } else {
                 eleText = "Elevation raster: " + rasterEle;
+            }
 
             if (whichPeak.equals(PEAK_A)) {
                 peakANode = selectedNode;
@@ -904,8 +916,9 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
                 textFieldPeakAName.setText(name);
                 textFieldPeakAEle.setText(eleText);
                 setSearchAreaLatLon();
-                if (peakBNode != null)
+                if (peakBNode != null) {
                     setDialogState(DialogState.PEAKS_DEFINED);
+                }
             } else if (whichPeak.equals(PEAK_B)) {
                 peakBNode = selectedNode;
                 textFieldPeakBNodeID.setText(Long.toString(nodeID));
@@ -913,8 +926,9 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
                 textFieldPeakBName.setText(name);
                 textFieldPeakBEle.setText(eleText);
                 setSearchAreaLatLon();
-                if (peakANode != null)
+                if (peakANode != null) {
                     setDialogState(DialogState.PEAKS_DEFINED);
+                }
             }
         }
     }
@@ -980,8 +994,9 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
             String peakANodeID = textFieldPeakANodeID.getText();
             textAreaFeedback.append("Node ID: " + peakANodeID + System.lineSeparator());
             String peakAName = textFieldPeakAName.getText();
-            if (!peakAName.isBlank())
+            if (!peakAName.isBlank()) {
                 textAreaFeedback.append("Name: " + peakAName + System.lineSeparator());
+            }
             String peakACoord = textFieldPeakACoord.getText();
             textAreaFeedback.append("Coordinates: " + peakACoord + System.lineSeparator());
             textAreaFeedback
@@ -991,8 +1006,9 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
             String peakBNodeID = textFieldPeakBNodeID.getText();
             textAreaFeedback.append("Node ID: " + peakBNodeID + System.lineSeparator());
             String peakBName = textFieldPeakBName.getText();
-            if (!peakBName.isBlank())
+            if (!peakBName.isBlank()) {
                 textAreaFeedback.append("Name: " + peakBName + System.lineSeparator());
+            }
             String peakBCoord = textFieldPeakBCoord.getText();
             textAreaFeedback.append("Coordinates: " + peakBCoord + System.lineSeparator());
             textAreaFeedback
@@ -1048,11 +1064,13 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
             OsmPrimitiveUtil.addBoundsToDataSet(ds, searchBounds, "Search bounds");
             String layerName = "Key col";
             String peakAName = textFieldPeakAName.getText();
-            if (peakAName != null && !peakAName.isBlank())
+            if (peakAName != null && !peakAName.isBlank()) {
                 layerName += " of " + peakAName;
+            }
             String peakBName = textFieldPeakBName.getText();
-            if (peakBName != null && !peakBName.isBlank())
+            if (peakBName != null && !peakBName.isBlank()) {
                 layerName += " with " + peakBName;
+            }
             OsmDataLayer dataLayer = new OsmDataLayer(ds, layerName, null);
             MainApplication.getLayerManager().addLayer(dataLayer);
             MainApplication.getLayerManager().setActiveLayer(dataLayer);

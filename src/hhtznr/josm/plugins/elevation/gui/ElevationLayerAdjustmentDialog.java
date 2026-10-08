@@ -12,6 +12,7 @@ import java.awt.event.ActionEvent;
 import javax.swing.Box;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.JSpinner;
 import javax.swing.SwingConstants;
@@ -319,7 +320,11 @@ public class ElevationLayerAdjustmentDialog extends ExtendedDialog {
         // add an extra spacer, otherwise the layout is broken
         pnl.add(Box.createVerticalGlue(), GBC.eol().fill());
 
-        setContent(pnl);
+        JScrollPane scrollPane = new JScrollPane(pnl);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+
+        setContent(scrollPane);
     }
 
     @Override

@@ -565,6 +565,11 @@ public class ElevationPreferences {
     }
 
     /**
+     * Property key for persisting the last directory used for opening GeoTIFF files.
+     */
+    public static final String ELEVATION_GEOTIFF_LAST_DIRECTORY = "elevation.geotiff.last-directory";
+
+    /**
      * Removes the legacy 'elevation enabled' preference from the settings.
      *
      * @return {@code true} if the value has changed.

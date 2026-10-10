@@ -1,22 +1,5 @@
 package hhtznr.josm.plugins.elevation;
 
-import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
-import hhtznr.josm.plugins.elevation.data.Coloring;
-import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
-import hhtznr.josm.plugins.elevation.data.ElevationDataSource;
-import hhtznr.josm.plugins.elevation.data.SRTMTile;
-import hhtznr.josm.plugins.elevation.gui.AddElevationLayerAction;
-import hhtznr.josm.plugins.elevation.gui.ElevationLayer;
-import hhtznr.josm.plugins.elevation.gui.ElevationTabPreferenceSetting;
-import hhtznr.josm.plugins.elevation.gui.KeyColFinderAction;
-import hhtznr.josm.plugins.elevation.gui.LocalElevationLabel;
-import hhtznr.josm.plugins.elevation.gui.MapViewElevationDataConsumer;
-import hhtznr.josm.plugins.elevation.gui.SRTMFileDownloadErrorDialog;
-import hhtznr.josm.plugins.elevation.gui.SetNodeElevationAction;
-import hhtznr.josm.plugins.elevation.gui.SetPeakProminenceAction;
-import hhtznr.josm.plugins.elevation.gui.TopographicIsolationFinderAction;
-import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
-
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +17,24 @@ import org.openstreetmap.josm.plugins.Plugin;
 import org.openstreetmap.josm.plugins.PluginInformation;
 import org.openstreetmap.josm.tools.Logging;
 
+import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
+import hhtznr.josm.plugins.elevation.data.Coloring;
+import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
+import hhtznr.josm.plugins.elevation.data.ElevationDataSource;
+import hhtznr.josm.plugins.elevation.data.SRTMTile;
+import hhtznr.josm.plugins.elevation.gui.AddElevationLayerAction;
+import hhtznr.josm.plugins.elevation.gui.ElevationLayer;
+import hhtznr.josm.plugins.elevation.gui.ElevationTabPreferenceSetting;
+import hhtznr.josm.plugins.elevation.gui.KeyColFinderAction;
+import hhtznr.josm.plugins.elevation.gui.LocalElevationLabel;
+import hhtznr.josm.plugins.elevation.gui.MapViewElevationDataConsumer;
+import hhtznr.josm.plugins.elevation.gui.OpenGeoTiffAction;
+import hhtznr.josm.plugins.elevation.gui.SRTMFileDownloadErrorDialog;
+import hhtznr.josm.plugins.elevation.gui.SetNodeElevationAction;
+import hhtznr.josm.plugins.elevation.gui.SetPeakProminenceAction;
+import hhtznr.josm.plugins.elevation.gui.TopographicIsolationFinderAction;
+import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
+
 /**
  * Plugin class for displaying and visualizing elevation data.
  *
@@ -49,6 +50,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     private LocalElevationLabel localElevationLabel = null;
     private static MapViewElevationDataConsumer mapViewElevationDataConsumer = null;
 
+    private final OpenGeoTiffAction openGeoTiffAction;
     private final AddElevationLayerAction addElevationLayerAction;
     private final TopographicIsolationFinderAction isolationFinderAction;
     private final KeyColFinderAction keyColFinderAction;
@@ -71,6 +73,10 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
 
         elevationDataProvider = new ElevationDataProvider();
         reconfigureElevationDataProvider();
+
+        openGeoTiffAction = new OpenGeoTiffAction();
+        openGeoTiffAction.setEnabled(false);
+        MainMenu.add(MainApplication.getMenu().fileMenu, openGeoTiffAction, MainMenu.WINDOW_MENU_GROUP.ALWAYS);
 
         addElevationLayerAction = new AddElevationLayerAction(this);
         addElevationLayerAction.setEnabled(false);
@@ -104,9 +110,10 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
         elevationDataSources.addAll(ElevationPreferences.ELEVATION_DATA_SOURCES_SRTM1);
         elevationDataSources.addAll(ElevationPreferences.ELEVATION_DATA_SOURCES_SRTM3);
         for (ElevationDataSource elevationDataSource : elevationDataSources) {
-            if (!elevationDataSource.getDataDirectory().exists() && elevationDataSource.getDataDirectory().mkdirs())
+            if (!elevationDataSource.getDataDirectory().exists() && elevationDataSource.getDataDirectory().mkdirs()) {
                 Logging.info("Elevation: Created elevation data directory '"
                         + elevationDataSource.getDataDirectory().getAbsolutePath() + "'");
+            }
         }
     }
 
@@ -178,8 +185,9 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
 
         addLocalElevationLabel(newFrame);
         // newFrame is null if the map was active and the last layer is closed
-        if (newFrame != null)
+        if (newFrame != null) {
             setElevationLayerEnabled(ElevationPreferences.getElevationLayerEnabled());
+        }
     }
 
     /**
@@ -190,8 +198,9 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
      */
     @Override
     public PreferenceSetting getPreferenceSetting() {
-        if (tabPreferenceSetting == null)
+        if (tabPreferenceSetting == null) {
             tabPreferenceSetting = new ElevationTabPreferenceSetting(this);
+        }
         return tabPreferenceSetting;
     }
 
@@ -230,18 +239,21 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
         elevationDataProvider.setAutoDownloadEnabled(elevationAutoDownloadEnabled);
         if (elevationAutoDownloadEnabled) {
             SRTMFileDownloader.AuthType authType = ElevationPreferences.getElevationServerAuthType();
-            if (authType == SRTMFileDownloader.AuthType.BASIC)
+            if (authType == SRTMFileDownloader.AuthType.BASIC) {
                 elevationDataProvider.getSRTMFileDownloader().setPasswordAuthentication(
                         ElevationPreferences.lookupEarthdataCredentials(), ElevationPreferences.EARTHDATA_SSO_HOST);
-            else if (authType == SRTMFileDownloader.AuthType.BEARER_TOKEN)
+            } else if (authType == SRTMFileDownloader.AuthType.BEARER_TOKEN) {
                 elevationDataProvider.getSRTMFileDownloader()
                         .setOAuthToken(ElevationPreferences.lookupEarthdataOAuthToken());
-            if (srtmFileDownloadErrorDialog == null)
+            }
+            if (srtmFileDownloadErrorDialog == null) {
                 srtmFileDownloadErrorDialog = new SRTMFileDownloadErrorDialog(
                         elevationDataProvider.getSRTMFileDownloader());
+            }
         } else {
-            if (elevationDataProvider.getSRTMFileDownloader() != null)
+            if (elevationDataProvider.getSRTMFileDownloader() != null) {
                 elevationDataProvider.getSRTMFileDownloader().removeDownloadListener(srtmFileDownloadErrorDialog);
+            }
             srtmFileDownloadErrorDialog = null;
         }
     }
@@ -282,22 +294,27 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                             ElevationPreferences.getHillshadeAzimuth());
                 }
             }
-            if (mapFrame != null)
+            if (mapFrame != null) {
                 mapFrame.mapView.repaint();
+            }
+            openGeoTiffAction.setEnabled(true);
         } else {
             removeElevationLayer();
             // Allow re-adding the elevation layer if enabled in the preferences
             // i.e. the layer was (temporarily) removed by the user
-            if (ElevationPreferences.getElevationLayerEnabled())
+            if (ElevationPreferences.getElevationLayerEnabled()) {
                 addElevationLayerAction.setEnabled(true);
+                openGeoTiffAction.setEnabled(false);
+            }
         }
     }
 
     private void addLocalElevationLabel(MapFrame mapFrame) {
-        if (localElevationLabel == null)
+        if (localElevationLabel == null) {
             localElevationLabel = new LocalElevationLabel(mapFrame, elevationDataProvider);
-        else
+        } else {
             localElevationLabel.addToMapFrame(mapFrame);
+        }
     }
 
     public static MapViewElevationDataConsumer getMapViewElevationDataConsumer() {
@@ -307,8 +324,9 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     @Override
     public void layerAdded(LayerAddEvent e) {
         synchronized (elevationLayerLock) {
-            if (e.getAddedLayer().equals(elevationLayer))
+            if (e.getAddedLayer().equals(elevationLayer)) {
                 addElevationLayerAction.setEnabled(false);
+            }
         }
         boolean hasDataLayer = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class).size() > 0;
         if (hasDataLayer) {

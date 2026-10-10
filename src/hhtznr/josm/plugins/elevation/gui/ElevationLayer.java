@@ -8,7 +8,6 @@ import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +20,7 @@ import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 
 import org.openstreetmap.josm.actions.JosmAction;
@@ -372,20 +372,25 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         List<String[]> content = new ArrayList<>();
         // Active tile grid
         List<String[]> tileGridInfo = elevationDataProvider.getTileGridInfo();
-        for (String[] info : tileGridInfo)
+        for (String[] info : tileGridInfo) {
             content.add(info);
+        }
         // Cache size
         content.add(new String[] {tr("SRTM tile cache"), "" + elevationDataProvider.getTileCacheInfo()});
         // Info on tiles -> type, status, size, source
         Map<String, String> cachedTilesInfo = elevationDataProvider.getCachedTilesInfo();
-        for (Map.Entry<String, String> entry : cachedTilesInfo.entrySet())
+        for (Map.Entry<String, String> entry : cachedTilesInfo.entrySet()) {
             content.add(new String[] {entry.getKey(), entry.getValue()});
+        }
         for (String[] entry : content) {
             panel.add(new JLabel(entry[0] + ':'), GBC.std());
             panel.add(GBC.glue(5, 0), GBC.std());
             panel.add(createTextField(entry [1]), GBC.eol().fill(GridBagConstraints.HORIZONTAL));
         }
-        return panel;
+        JScrollPane scrollPane = new JScrollPane(panel);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        return scrollPane;
     }
 
     private static JComponent createTextField(String text) {
@@ -428,8 +433,9 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
     @Override
     public void elevationDataAvailable(SRTMTileGrid tileGrid) {
         invalidate();
-        if (isVisible())
+        if (isVisible()) {
             MainApplication.getMap().mapView.repaint();
+        }
     }
 
     @Override
@@ -449,11 +455,13 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
 
         @Override
         public boolean supportLayers(List<Layer> layers) {
-            if (layers.size() == 0)
+            if (layers.size() == 0) {
                 return false;
+            }
             for (Layer layer : layers) {
-                if (!(layer instanceof ElevationLayer))
+                if (!(layer instanceof ElevationLayer)) {
                     return false;
+                }
             }
             return true;
         }
@@ -472,13 +480,15 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
             ElevationLayer layer = ElevationLayer.this;
             layer.contourLinesEnabled = !layer.contourLinesEnabled;
             ElevationPreferences.setContourLinesEnabled(layer.contourLinesEnabled);
-            if (layer.contourLinesEnabled)
+            if (layer.contourLinesEnabled) {
                 Logging.info("Elevation: Contour lines enabled");
-            else
+            } else {
                 Logging.info("Elevation: Contour lines disabled");
+            }
             layer.invalidate();
-            if (layer.isVisible())
+            if (layer.isVisible()) {
                 MainApplication.getMap().mapView.repaint();
+            }
         }
 
         @Override
@@ -502,13 +512,15 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
             ElevationLayer layer = ElevationLayer.this;
             layer.hillshadeEnabled = !layer.hillshadeEnabled;
             ElevationPreferences.setHillshadeEnabled(layer.hillshadeEnabled);
-            if (layer.hillshadeEnabled)
+            if (layer.hillshadeEnabled) {
                 Logging.info("Elevation: Hillshade enabled");
-            else
+            } else {
                 Logging.info("Elevation: Hillshade disabled");
+            }
             layer.invalidate();
-            if (layer.isVisible())
+            if (layer.isVisible()) {
                 MainApplication.getMap().mapView.repaint();
+            }
         }
 
         @Override
@@ -532,13 +544,15 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
             ElevationLayer layer = ElevationLayer.this;
             layer.elevationRasterEnabled = !layer.elevationRasterEnabled;
             ElevationPreferences.setElevationRasterEnabled(layer.elevationRasterEnabled);
-            if (layer.elevationRasterEnabled)
+            if (layer.elevationRasterEnabled) {
                 Logging.info("Elevation: Elevation raster points enabled");
-            else
+            } else {
                 Logging.info("Elevation: Elevation raster points disabled");
+            }
             layer.invalidate();
-            if (layer.isVisible())
+            if (layer.isVisible()) {
                 MainApplication.getMap().mapView.repaint();
+            }
         }
 
         @Override
@@ -562,13 +576,15 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
             ElevationLayer layer = ElevationLayer.this;
             layer.lowestAndHighestPointsEnabled = !layer.lowestAndHighestPointsEnabled;
             ElevationPreferences.setLowestAndHighestPointsEnabled(layer.lowestAndHighestPointsEnabled);
-            if (layer.lowestAndHighestPointsEnabled)
+            if (layer.lowestAndHighestPointsEnabled) {
                 Logging.info("Elevation: Lowest and highest points enabled");
-            else
+            } else {
                 Logging.info("Elevation: Lowest and highest points disabled");
+            }
             layer.invalidate();
-            if (layer.isVisible())
+            if (layer.isVisible()) {
                 MainApplication.getMap().mapView.repaint();
+            }
         }
 
         @Override
@@ -591,9 +607,10 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            if (layerAdjustmentDialog == null)
+            if (layerAdjustmentDialog == null) {
                 layerAdjustmentDialog = new ElevationLayerAdjustmentDialog(MainApplication.getMainFrame(),
                         ElevationLayer.this);
+            }
             layerAdjustmentDialog.showDialog();
         }
     }

@@ -10,6 +10,7 @@ import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.ElevationDataConsumer;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
+import hhtznr.josm.plugins.elevation.data.SRTMTileGridLease;
 import hhtznr.josm.plugins.elevation.util.IncrementalNumberedNameCreator;
 
 /**
@@ -116,8 +117,8 @@ public class MapViewElevationDataConsumer extends ElevationDataConsumer implemen
                 && bounds.getWidth() <= switchOffMapDimension;
 
         if (elevationZoomLevelEnabled && !getTileGrid().matchesTileGridBounds(bounds)) {
-            try {
-                setTileGrid(elevationDataProvider.getGridMatching(bounds));
+            try (SRTMTileGridLease lease = elevationDataProvider.getGridMatchingLease(bounds)) {
+                setTileGrid(lease.getTileGrid());
             } catch (AsyncOperationException e) {
                 return;
             }

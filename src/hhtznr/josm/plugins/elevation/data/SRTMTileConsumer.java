@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.openstreetmap.josm.tools.Logging;
 
@@ -26,8 +24,13 @@ public abstract class SRTMTileConsumer {
     private List<SRTMTileCacheEntry> cacheEntries = null;
     private final CopyOnWriteArrayList<ElevationDataConsumer> elevationDataConsumers = new CopyOnWriteArrayList<>();
 
-    private AtomicBoolean isDisposed = new AtomicBoolean(false);
-    private final AtomicInteger activeUsers = new AtomicInteger(0);
+    private enum State {
+        ACTIVE, DISPOSING, DISPOSED
+    }
+
+    private final Object lifecycleLock = new Object();
+    private State state = State.ACTIVE;
+    private int activeUsers;
 
     /**
      * Creates a new SRMT tile consumer.
@@ -67,11 +70,13 @@ public abstract class SRTMTileConsumer {
      * @param entry The SRTM tile cache entry to add.
      */
     protected synchronized void addCacheEntry(SRTMTileCacheEntry entry) {
-        if (entry == null)
+        if (entry == null) {
             return;
+        }
         synchronized (entry) {
-            if (!cacheEntries.contains(entry))
+            if (!cacheEntries.contains(entry)) {
                 cacheEntries.add(entry);
+            }
         }
     }
 
@@ -93,18 +98,12 @@ public abstract class SRTMTileConsumer {
      * @return {@code true} if the consumer was added, {@code false} if
      */
     public boolean addElevationDataConsumer(ElevationDataConsumer consumer) {
-        if (isDisposed.get())
-            return false;
-
-        elevationDataConsumers.addIfAbsent(consumer);
-
-        // Double-check in case disposal happened concurrently
-        if (isDisposed.get()) {
-            elevationDataConsumers.remove(consumer);
-            return false;
+        synchronized (lifecycleLock) {
+            if (state != State.ACTIVE) {
+                return false;
+            }
+            return elevationDataConsumers.addIfAbsent(consumer);
         }
-
-        return true;
     }
 
     /**
@@ -117,10 +116,28 @@ public abstract class SRTMTileConsumer {
      *         consumer.
      */
     public boolean removeElevationDataConsumer(ElevationDataConsumer consumer) {
-        boolean removed = elevationDataConsumers.remove(consumer);
-        if (removed)
-            considerDispose();
+        boolean removed;
+        boolean shouldDispose;
+
+        synchronized (lifecycleLock) {
+            removed = elevationDataConsumers.remove(consumer);
+            shouldDispose = removed && beginDisposalIfUnused();
+        }
+
+        if (shouldDispose) {
+            disposeResources();
+        }
+
         return removed;
+    }
+
+    // Only call within synchronized block on lifecycleLock
+    private boolean beginDisposalIfUnused() {
+        if (state == State.ACTIVE && elevationDataConsumers.isEmpty() && activeUsers == 0) {
+            state = State.DISPOSING;
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -142,18 +159,13 @@ public abstract class SRTMTileConsumer {
      *         {@code SRTMTileConsumer} is already disposed.
      */
     public boolean acquire() {
-        if (isDisposed.get())
-            return false;
-
-        activeUsers.incrementAndGet();
-
-        // Double-check to avoid race with dispose
-        if (isDisposed.get()) {
-            release();
-            return false;
+        synchronized (lifecycleLock) {
+            if (state != State.ACTIVE) {
+                return false;
+            }
+            activeUsers++;
+            return true;
         }
-
-        return true;
     }
 
     /**
@@ -161,55 +173,76 @@ public abstract class SRTMTileConsumer {
      * number of times that {@link #acquire()} has been called.
      */
     public void release() {
-        int remaining = activeUsers.decrementAndGet();
+        boolean shouldDispose;
+        synchronized (lifecycleLock) {
+            if (activeUsers == 0) {
+                throw new IllegalStateException("Release called more than acquire");
+            }
 
-        if (remaining < 0)
-            throw new IllegalStateException("Release called more than acquire");
+            activeUsers--;
+            shouldDispose = beginDisposalIfUnused();
+        }
 
-        considerDispose();
+        if (shouldDispose) {
+            disposeResources();
+        }
     }
 
     /**
      * Returns whether this SRTM tile consumer is disposed. A disposed SRTM tile
      * consumer has released its resources and therefore can no longer be used.
      *
-     * @return {@code true} if this SRTM tile consumer has been disposed.
+     * @return {@code true} if this SRTM tile consumer is currently dispoing or
+     *         already disposed, {@code false} if it is still active and can be
+     *         used.
      */
     public boolean isDisposed() {
-        return isDisposed.get();
+        synchronized (lifecycleLock) {
+            return state != State.ACTIVE;
+        }
+    }
+
+    private void disposeResources() {
+        try {
+            elevationDataProvider.removeSRTMTileConsumer(this);
+            onDispose();
+            Logging.info("Elevation: Disposed " + name + " which is no longer needed.");
+        } finally {
+            synchronized (this) {
+                cacheEntries = null;
+            }
+            synchronized (lifecycleLock) {
+                state = State.DISPOSED;
+            }
+        }
+    }
+
+    /**
+     * Executed inside {@link #disposeResources()}. To be overwritten by subclasses
+     * for subclass-specific cleanup. Default behavior is to perform no
+     * subclass-specific cleanup.
+     */
+    protected void onDispose() {
     }
 
     /**
      * Disposes this SRTM tile consumer, if all instances of
-     * {@link ElevationDataConsumer} have been removed from it.
+     *
+     * If considerDispose() must remain because it is called from elsewhere, make it
+     * use this same transition helper; it should not set a flag and then call a
+     * second method that tries to set the flag again. ElevationDataProvider still
+     * calls this method, but it should not be called directly by any other code. It
+     * is called when all instances of {@link ElevationDataConsumer} have been
+     * removed from it.
      */
     protected void considerDispose() {
-        if (elevationDataConsumers.isEmpty() && activeUsers.get() == 0) {
-            if (isDisposed.compareAndSet(false, true)) {
-                dispose();
-                Logging.info("Elevation: Disposed " + toString() + " which is no longer needed.");
-            }
-        } else {
-            String[] names = new String[elevationDataConsumers.size()];
-            for (int i = 0; i < elevationDataConsumers.size(); i++)
-                names[i] = elevationDataConsumers.get(i).getName();
-            String consumers = String.join(", ", names);
-            Logging.info("Elevation: Not disposing " + toString() + ": " + elevationDataConsumers.size()
-                    + " elevation data consumers left: " + consumers);
+        boolean shouldDispose;
+        synchronized (lifecycleLock) {
+            shouldDispose = beginDisposalIfUnused();
         }
-    }
 
-    private void dispose() {
-        // Ensure only one thread performs disposal
-        if (!isDisposed.compareAndSet(false, true)) {
-            Logging.info(
-                    "Elevation: Attempted to dispose already disposed elevation data consumer " + toString() + ".");
-            return;
+        if (shouldDispose) {
+            disposeResources();
         }
-        elevationDataProvider.removeSRTMTileConsumer(this);
-        // Note: removeSRTMTileConsumer() still accesses the cacheEntries
-        cacheEntries = null;
-
-        Logging.info("Elevation: " + name + " disposed.");
     }
 }

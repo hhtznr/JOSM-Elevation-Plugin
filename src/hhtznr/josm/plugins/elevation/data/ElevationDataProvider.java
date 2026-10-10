@@ -170,8 +170,9 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
             if (tileCache.setSRTMType(type)) {
                 activeTileGrids.clear();
                 synchronized (listeners) {
-                    for (ElevationDataProviderListener listener : listeners)
+                    for (ElevationDataProviderListener listener : listeners) {
                         listener.srtmTileTypeChanged(oldType, type);
+                    }
                 }
                 return true;
             }
@@ -257,6 +258,10 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
      * {@link SRTMTileGrid} needs to call {@link SRTMTileGrid#release()} after
      * adding the {@link ElevationDataConsumer}.
      *
+     * This method should only be used if {@link #getGridMatching(Bounds)} cannot be
+     * used, e.g. when passing this method in a constructor to its superclass
+     * constructor.
+     *
      * @param bounds The bounds.
      * @return An SRTM tile grid covering the bounds, but not bigger than needed.
      * @throws AsyncOperationException if the {@code CompletableFuture} was
@@ -271,8 +276,9 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
             while (iterator.hasNext()) {
                 nextGrid = iterator.next();
                 // Successfully calling acquire() blocks grid disposal until release() is called
-                if (nextGrid.matchesTileGridBounds(bounds) && nextGrid.acquire())
-                    tileGrid = nextGrid;
+                if (nextGrid.matchesTileGridBounds(bounds) && nextGrid.acquire()) {
+                    return nextGrid;
+                }
             }
             if (tileGrid == null) {
                 // May throw AsyncOperationException
@@ -286,6 +292,20 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
     }
 
     /**
+     * Returns a temporary lease of an SRTM tile grid covering the specified bounds
+     * and which must be closed. Closing the temporary lease should prefe
+     *
+     * @param bounds The bounds.
+     * @return A temporary SRTM tile grid covering the specified bounds.
+     * @throws AsyncOperationException if the {@code CompletableFuture} was
+     *                                 completed exceptionally or canceled or the
+     *                                 thread was interrupted.
+     */
+    public SRTMTileGridLease getGridMatchingLease(Bounds bounds) throws AsyncOperationException {
+        return new SRTMTileGridLease(getGridMatching(bounds));
+    }
+
+    /**
      * Returns an object with two lists providing the coordinate points from the
      * elevation raster, which have the lowest and highest elevation within the
      * given map bounds, respectively.
@@ -296,10 +316,9 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
      *         returned if not all SRTM tiles are cached yet.
      */
     public LowestAndHighestPoints getLowestAndHighestPoints(Bounds bounds) {
-        try {
-            SRTMTileGrid tileGrid = getGridMatching(bounds);
+        try (SRTMTileGridLease lease = getGridMatchingLease(bounds)) {
+            SRTMTileGrid tileGrid = lease.getTileGrid();
             LowestAndHighestPoints points = tileGrid.getView(bounds).getLowestAndHighestPoints();
-            tileGrid.release();
             return points;
         } catch (AsyncOperationException | SRTMTileGridException e) {
             Logging.error("Elevation: Cannot create lowest and highest points: " + e.toString());
@@ -318,10 +337,9 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
      *         {@code null} if insufficient cached elevation data is available.
      */
     public ElevationRaster getElevationRaster(Bounds bounds) {
-        try {
-            SRTMTileGrid tileGrid = getGridMatching(bounds);
+        try (SRTMTileGridLease lease = getGridMatchingLease(bounds)) {
+            SRTMTileGrid tileGrid = lease.getTileGrid();
             ElevationRaster raster = tileGrid.getView(bounds).getElevationRaster();
-            tileGrid.release();
             return raster;
         } catch (AsyncOperationException | SRTMTileGridException e) {
             Logging.error("Elevation: Cannot create elevation raster: " + e.toString());
@@ -348,16 +366,12 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
      */
     public ContourLines getContourLines(Bounds bounds, int isostep, int lowerCutoffElevation,
             int upperCutoffElevation) {
-
-        try {
-            SRTMTileGrid tileGrid = getGridMatching(bounds);
-            Bounds renderingBounds = tileGrid.getRenderingBoundsScaledByRasterStep(bounds,
-                    ContourLines.BOUNDS_SCALE_RASTER_STEP);
-            tileGrid = getGridMatching(renderingBounds);
+        Bounds renderingBounds = SRTMTileGrid.getRenderingBoundsScaledByRasterStep(bounds,
+                ContourLines.BOUNDS_SCALE_RASTER_STEP, getSRTMType());
+        try (SRTMTileGridLease lease = getGridMatchingLease(renderingBounds)) {
+            SRTMTileGrid tileGrid = lease.getTileGrid();
             ContourLines contourLines = tileGrid.getView(renderingBounds).getContourLines(isostep, lowerCutoffElevation,
                     upperCutoffElevation);
-            // Release acquire() called in getGridMatching()
-            tileGrid.release();
             return contourLines;
         } catch (AsyncOperationException | SRTMTileGridException e) {
             Logging.error("Elevation: Cannot create contour lines: " + e.toString());
@@ -387,15 +401,12 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
      */
     public HillshadeImageTile getHillshadeImageTile(Bounds bounds, double altitudeDeg, double azimuthDeg,
             boolean withPerimeter) {
-        try {
-            SRTMTileGrid tileGrid = getGridMatching(bounds);
-            Bounds renderingBounds = tileGrid.getRenderingBoundsScaledByRasterStep(bounds,
-                    ContourLines.BOUNDS_SCALE_RASTER_STEP);
-            tileGrid = getGridMatching(renderingBounds);
+        Bounds renderingBounds = SRTMTileGrid.getRenderingBoundsScaledByRasterStep(bounds,
+                ContourLines.BOUNDS_SCALE_RASTER_STEP, getSRTMType());
+        try (SRTMTileGridLease lease = getGridMatchingLease(renderingBounds)) {
+            SRTMTileGrid tileGrid = lease.getTileGrid();
             HillshadeImageTile hillshade = tileGrid.getView(renderingBounds).getHillshadeImageTile(altitudeDeg,
                     azimuthDeg, withPerimeter);
-            // Release acquire() called in getGridMatching()
-            tileGrid.release();
             return hillshade;
         } catch (AsyncOperationException | SRTMTileGridException e) {
             Logging.error("Elevation: Cannot create hillshade: " + e.toString());
@@ -545,8 +556,9 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
      */
     public void addElevationDataProviderListener(ElevationDataProviderListener listener) {
         synchronized (listeners) {
-            if (!listeners.contains(listener))
+            if (!listeners.contains(listener)) {
                 listeners.add(listener);
+            }
         }
     }
 
@@ -569,8 +581,9 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
             for (SRTMTileGrid tileGrid : activeTileGrids) {
                 if (!tileGrid.isDisposed() && tileGrid.contains(tile) && tileGrid.areAllTilesCached()) {
                     synchronized (listeners) {
-                        for (ElevationDataProviderListener listener : listeners)
+                        for (ElevationDataProviderListener listener : listeners) {
                             listener.elevationDataAvailable(tileGrid);
+                        }
                     }
                 }
             }
@@ -579,18 +592,12 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
 
     /**
      * Removes the specified SRTM tile consumer from all SRTM tile cache entries
-     * from which it is consuming tiles. Does not execute if the consumer is already
-     * disposed.
+     * from which it is consuming tiles.
      *
      * @param consumer The SRTM tile consumer to remove.
      */
     protected void removeSRTMTileConsumer(SRTMTileConsumer consumer) {
         synchronized (consumer) {
-            if (consumer.isDisposed()) {
-                Logging.warn("Elevation: Attempted to remove SRTM tile consumer " + consumer.getName()
-                        + " which is already disposed.");
-                return;
-            }
             if (consumer instanceof SRTMTileGrid) {
                 SRTMTileGrid tileGrid = (SRTMTileGrid) consumer;
                 activeTileGrids.remove(tileGrid);
@@ -598,8 +605,9 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
             synchronized (tileCache) {
                 List<SRTMTileCacheEntry> cacheEntries = consumer.getCacheEntryList();
                 synchronized (cacheEntries) {
-                    for (SRTMTileCacheEntry entry : cacheEntries)
+                    for (SRTMTileCacheEntry entry : cacheEntries) {
                         tileCache.removeSRTMTileConsumer(entry, consumer);
+                    }
                 }
             }
         }

@@ -29,7 +29,9 @@ public abstract class ElevationDataConsumer {
      */
     public ElevationDataConsumer(String name, SRTMTileGrid tileGrid) {
         this.name = name;
-        tileGrid.addElevationDataConsumer(this);
+        if (!tileGrid.addElevationDataConsumer(this)) {
+            throw new IllegalStateException("Cannot register " + name + " with an inactive tile grid.");
+        }
         this.tileGrid = tileGrid;
     }
 
@@ -48,6 +50,9 @@ public abstract class ElevationDataConsumer {
      * @return The SRTM tile grid.
      */
     protected synchronized SRTMTileGrid getTileGrid() {
+        if (isDisposed || tileGrid == null) {
+            throw new IllegalStateException("Elevation data consumer " + name + " is disposed.");
+        }
         return tileGrid;
     }
 
@@ -61,18 +66,28 @@ public abstract class ElevationDataConsumer {
      *                    consumer.
      */
     protected synchronized void setTileGrid(SRTMTileGrid newTileGrid) {
-        synchronized (newTileGrid) {
-            SRTMTileGrid oldTileGrid = this.tileGrid;
-            synchronized (oldTileGrid) {
-                if (newTileGrid.equals(oldTileGrid))
-                    return;
-                newTileGrid.addElevationDataConsumer(this);
-                Logging.info("Elevation: Set new tile grid for " + name + ": Replace " + oldTileGrid.toString() + " by "
-                        + newTileGrid.toString());
-                this.tileGrid = newTileGrid;
-                oldTileGrid.removeElevationDataConsumer(this);
-            }
+        if (isDisposed || tileGrid == null) {
+            throw new IllegalStateException("Cannot change the tile grid of disposed consumer " + name + ".");
         }
+        if (newTileGrid == null) {
+            throw new IllegalArgumentException("newTileGrid must not be null.");
+        }
+        if (newTileGrid == tileGrid) {
+            return;
+        }
+
+        if (!newTileGrid.addElevationDataConsumer(this)) {
+            throw new IllegalStateException("Cannot register " + name + " with an inactive tile grid.");
+        }
+
+        SRTMTileGrid oldTileGrid = tileGrid;
+        tileGrid = newTileGrid;
+
+        if (!oldTileGrid.removeElevationDataConsumer(this)) {
+            Logging.warn("Elevation: " + name + " was not registered with its previous tile grid " + oldTileGrid + ".");
+        }
+
+        Logging.info("Elevation: Set new tile grid for " + name + ": Replace " + oldTileGrid + " by " + newTileGrid);
     }
 
     /**
@@ -80,9 +95,22 @@ public abstract class ElevationDataConsumer {
      * This, in turn, may result in disposal of the SRTM tile grid if it does not
      * have any other consumers left.
      */
-    public synchronized void dispose() {
-        tileGrid.removeElevationDataConsumer(this);
-        isDisposed = true;
+    public void dispose() {
+        SRTMTileGrid gridToRelease;
+        synchronized (this) {
+            if (isDisposed) {
+                return;
+            }
+
+            isDisposed = true;
+            gridToRelease = tileGrid;
+            tileGrid = null;
+        }
+
+        if (gridToRelease != null && !gridToRelease.removeElevationDataConsumer(this)) {
+            Logging.warn("Elevation: " + name + " was not registered with its tile grid during disposal.");
+        }
+
         Logging.info("Elevation: " + name + " disposed.");
     }
 

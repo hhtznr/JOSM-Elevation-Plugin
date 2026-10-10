@@ -226,11 +226,13 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
         int intLatSouth = (int) minLatFloor;
         int intLonWest = (int) minLonFloor;
         int intLatNorth = (int) maxLatFloor;
-        if (maxLatFloor == maxLat)
+        if (maxLatFloor == maxLat) {
             intLatNorth -= 1;
+        }
         int intLonEast = (int) maxLonFloor;
-        if (maxLonFloor == maxLon)
+        if (maxLonFloor == maxLon) {
             intLonEast -= 1;
+        }
 
         int gridIndexSouth = intLatSouth - gridIntLatSouth;
         int gridIndexNorth = intLatNorth - gridIntLatSouth;
@@ -272,12 +274,12 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
     private Bounds getBounds(int latIndexSouth, int latIndexNorth, int lonIndexWest, int lonIndexEast) {
         double latRange = gridBounds.getHeight();
         double lonRange = gridBounds.getWidth();
-        double latScale = latRange / (double) (rasterHeight - 1);
-        double lonScale = lonRange / (double) (rasterWidth - 1);
-        double minLat = gridIntLatSouth + latScale * (double) latIndexSouth;
-        double maxLat = gridIntLatSouth + latScale * (double) latIndexNorth;
-        double minLon = gridIntLonWest + lonScale * (double) lonIndexWest;
-        double maxLon = gridIntLonWest + lonScale * (double) lonIndexEast;
+        double latScale = latRange / (rasterHeight - 1);
+        double lonScale = lonRange / (rasterWidth - 1);
+        double minLat = gridIntLatSouth + latScale * latIndexSouth;
+        double maxLat = gridIntLatSouth + latScale * latIndexNorth;
+        double minLon = gridIntLonWest + lonScale * lonIndexWest;
+        double maxLon = gridIntLonWest + lonScale * lonIndexEast;
         return new Bounds(minLat, minLon, maxLat, maxLon);
     }
 
@@ -294,16 +296,18 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
         // Determine the array index at which to retrieve the elevation at the given
         // location
         double lat = latLon.lat();
-        if (lat < gridIntLatSouth || lat > gridIntLatNorth)
+        if (lat < gridIntLatSouth || lat > gridIntLatNorth) {
             throw new IllegalArgumentException(
                     "Given latitude " + lat + " is not within latitude range of SRTM tile grid from " + gridIntLatSouth
                             + " to " + gridIntLatNorth);
+        }
 
         double lon = latLon.lon();
-        if (lon < gridIntLonWest || lon > gridIntLonEast)
+        if (lon < gridIntLonWest || lon > gridIntLonEast) {
             throw new IllegalArgumentException(
                     "Given longitude " + lon + " is not within longitude range of SRTM tile grid from " + gridIntLonWest
                             + " to " + gridIntLonEast);
+        }
 
         // gridHeight = gridIntLatNorth - gridIntLatSouth
         int latIndex = (int) Math.round((lat - gridIntLatSouth) / gridHeight * (rasterHeight - 1));
@@ -341,18 +345,23 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
      *         {@link SRTMTile#SRTM_DATA_VOID} if no elevation data is cached yet.
      */
     public short getElevation(int latIndex, int lonIndex) {
-        if (srtmTiles == null)
+        if (srtmTiles == null) {
             return SRTMTile.SRTM_DATA_VOID;
-        if (latIndex < 0)
+        }
+        if (latIndex < 0) {
             throw new IllegalArgumentException("Latitude index " + latIndex + " < min.index = 0");
-        if (lonIndex < 0)
+        }
+        if (lonIndex < 0) {
             throw new IllegalArgumentException("Longitude index " + lonIndex + " < min. index = 0");
+        }
         int maxLatIndex = rasterHeight - 1;
-        if (latIndex > maxLatIndex)
+        if (latIndex > maxLatIndex) {
             throw new IllegalArgumentException("Latitude index " + latIndex + " > max. index = " + maxLatIndex);
+        }
         int maxLonIndex = rasterWidth - 1;
-        if (lonIndex > maxLonIndex)
+        if (lonIndex > maxLonIndex) {
             throw new IllegalArgumentException("Longitude index " + lonIndex + " > max. index = " + maxLonIndex);
+        }
 
         return getElevationNoCheck(latIndex, lonIndex);
     }
@@ -386,8 +395,9 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
             tileLonIndex = lonIndex % effectiveTileLength;
         }
 
-        if (srtmTiles == null)
+        if (srtmTiles == null) {
             return SRTMTile.SRTM_DATA_VOID;
+        }
 
         SRTMTile tile = srtmTiles[gridLatIndex * gridWidth + gridLonIndex];
         return tile.getElevation(tileLatIndex, tileLonIndex);
@@ -494,13 +504,17 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
      *                            derived.
      * @param rasterStepDecrement The number of raster steps by which to decrease
      *                            the size of the bounds.
+     * @param srtmType            The SRTM type (SRTM1 or SRTM3) for which to
+     *                            perform the scaling.
      * @return Bounds, which are smaller than the given bounds by the given number
      *         of raster steps.
      */
-    public Bounds getViewBoundsScaledByRasterStep(Bounds bounds, int rasterStepDecrement) {
-        if (rasterStepDecrement < 0)
+    public static Bounds getViewBoundsScaledByRasterStep(Bounds bounds, int rasterStepDecrement,
+            SRTMTile.Type srtmType) {
+        if (rasterStepDecrement < 0) {
             throw new IllegalArgumentException("Raster decrement must be >= 0. Given: " + rasterStepDecrement);
-        return scaleBoundsByRasterStep(bounds, -rasterStepDecrement);
+        }
+        return scaleBoundsByRasterStep(bounds, -rasterStepDecrement, srtmType);
     }
 
     /**
@@ -510,16 +524,26 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
      *                            derived.
      * @param rasterStepIncrement The number of raster steps by which to increase
      *                            the size of the bounds.
+     * @param srtmType            The SRTM type (SRTM1 or SRTM3) for which to
+     *                            perform the scaling.
      * @return Bounds, which are bigger than the given bounds by the given number of
      *         raster steps.
      */
-    public Bounds getRenderingBoundsScaledByRasterStep(Bounds bounds, int rasterStepIncrement) {
-        if (rasterStepIncrement < 0)
+    public static Bounds getRenderingBoundsScaledByRasterStep(Bounds bounds, int rasterStepIncrement,
+            SRTMTile.Type srtmType) {
+        if (rasterStepIncrement < 0) {
             throw new IllegalArgumentException("Raster increment must be >= 0. Given: " + rasterStepIncrement);
-        return scaleBoundsByRasterStep(bounds, rasterStepIncrement);
+        }
+        return scaleBoundsByRasterStep(bounds, rasterStepIncrement, srtmType);
     }
 
-    private Bounds scaleBoundsByRasterStep(Bounds bounds, int rasterStep) {
+    private static Bounds scaleBoundsByRasterStep(Bounds bounds, int rasterStep, SRTMTile.Type srtmType) {
+        double latLonStep;
+        if (srtmType == SRTMTile.Type.SRTM1) {
+            latLonStep = SRTMTile.SRTM1_ANGULAR_STEP;
+        } else {
+            latLonStep = SRTMTile.SRTM3_ANGULAR_STEP;
+        }
         // Increase or decreases the bounds by the amount of raster steps. But in case
         // of increase not more as the maximum
         // possible coordinate range (-90 <= lat <= 90, -180 <= lon <= 180)
@@ -546,8 +570,9 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
      */
     public void waitForTilesCached() throws AsyncOperationException {
         List<SRTMTileCacheEntry> cacheEntries = getCacheEntryList();
-        if (cacheEntries == null)
+        if (cacheEntries == null) {
             return;
+        }
         for (int gridLatIndex = 0; gridLatIndex < gridHeight; gridLatIndex++) {
             for (int gridLonIndex = 0; gridLonIndex < gridWidth; gridLonIndex++) {
                 SRTMTileCacheEntry entry = cacheEntries.get(gridLatIndex * gridWidth + gridLonIndex);
@@ -577,8 +602,9 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
                     SRTMTileCacheEntry entry = cacheEntries.get(gridLatIndex * gridWidth + gridLonIndex);
                     // Note: "Done" does not necessarily mean that the tiles hold valid data
                     // However, we can deal with no-data tiles by treating them like big data voids
-                    if (!entry.isLoadingCompleted())
+                    if (!entry.isLoadingCompleted()) {
                         return false;
+                    }
                 }
             }
             return assembleGrid(cacheEntries);
@@ -587,8 +613,9 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
 
     private synchronized boolean assembleGrid(List<SRTMTileCacheEntry> cacheEntries) {
         // We only assemble the grid once
-        if (srtmTiles != null)
+        if (srtmTiles != null) {
             return true;
+        }
         synchronized (cacheEntries) {
             int gridSize = gridHeight * gridWidth;
             SRTMTile[] tiles = new SRTMTile[gridSize];
@@ -603,8 +630,9 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
                         int linearIndex = gridLatIndex * gridWidth + gridLonIndex;
                         // The futures are stored in the same linear order as the tiles
                         Optional<SRTMTile> optionalTile = cacheEntries.get(linearIndex).getTileIfLoaded();
-                        if (optionalTile.isEmpty())
+                        if (optionalTile.isEmpty()) {
                             return false;
+                        }
                         tiles[linearIndex] = optionalTile.get();
                     }
                 }
@@ -619,8 +647,9 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
                         int linearIndex = gridLatIndex * gridWidth + gridLonIndex;
                         // The futures are stored in the same linear order as the tiles
                         Optional<SRTMTile> optionalTile = cacheEntries.get(linearIndex).getTileIfLoaded();
-                        if (optionalTile.isEmpty())
+                        if (optionalTile.isEmpty()) {
                             return false;
+                        }
                         tiles[linearIndex] = optionalTile.get();
                     }
                 }
@@ -632,8 +661,9 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
                         int linearIndex = gridLatIndex * gridWidth + gridLonIndex;
                         // The futures are stored in the same linear order as the tiles
                         Optional<SRTMTile> optionalTile = cacheEntries.get(linearIndex).getTileIfLoaded();
-                        if (optionalTile.isEmpty())
+                        if (optionalTile.isEmpty()) {
                             return false;
+                        }
                         tiles[linearIndex] = optionalTile.get();
                     }
                 }
@@ -669,7 +699,13 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
 
     @Override
     public void srtmTileCached(SRTMTile tile, SRTMTileCacheEntry.Status status) {
-        if (contains(tile))
+        if (contains(tile)) {
             areAllTilesCached();
+        }
+    }
+
+    @Override
+    protected void onDispose() {
+        elevationDataProvider.removeTileCacheListener(this);
     }
 }

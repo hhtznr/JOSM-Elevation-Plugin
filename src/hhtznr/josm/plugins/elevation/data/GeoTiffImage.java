@@ -9,6 +9,7 @@ import org.geotools.api.referencing.operation.TransformException;
 import org.geotools.coverage.grid.GridCoverage2D;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.referencing.CRS;
+import org.openstreetmap.josm.data.Bounds;
 
 /**
  * This class implements a wrapper around the GeoTools objects and methods
@@ -41,6 +42,7 @@ public class GeoTiffImage {
             throw new GeoTiffImageException(message);
         }
         try {
+            // For practical JOSM mapping, EPSG:4326 is equivalent to WGS84 used by JOSM
             CoordinateReferenceSystem geographicCrs = CRS.decode("EPSG:4326", true);
             this.referencedEnvelope = referencedEnvelope.transform(geographicCrs, true, 20);
         } catch (FactoryException | TransformException e) {
@@ -78,13 +80,24 @@ public class GeoTiffImage {
     }
 
     /**
-     * Returns the geographic bounds of the GeoTIFF image in their GeoTools
+     * Returns the geographic bounds of the GeoTIFF image in GeoTool's
      * representation {@code ReferencedEnvelope).
      *
      * @return The geographic bounds of the GeoTIFF image.
      */
     public ReferencedEnvelope getReferencedEnvelope() {
         return referencedEnvelope;
+    }
+
+    /**
+     * Returns the geographic bounds of the GeoTIFF image in JOSM's representation
+     * {@code Bounds}.
+     *
+     * @return The geographic bounds of the GeoTIFF image.
+     */
+    public Bounds getBounds() {
+        return new Bounds(referencedEnvelope.getMinY(), referencedEnvelope.getMinX(), referencedEnvelope.getMaxY(),
+                referencedEnvelope.getMaxX());
     }
 
     /**

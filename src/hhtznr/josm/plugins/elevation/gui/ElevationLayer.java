@@ -195,6 +195,18 @@ public abstract class ElevationLayer extends Layer {
         upperCutoffElevation = value;
     }
 
+    /**
+     * Initiates a repaint of the layer by invalidating it and requesting a repaint
+     * of the map view if the layer is currently visible. If it is not visible, it
+     * will be painted in its current configuration as soon as it becomes visible.
+     */
+    public void triggerRepaint() {
+        invalidate();
+        if (isVisible()) {
+            MainApplication.getMap().mapView.repaint();
+        }
+    }
+
     @Override
     public Action[] getMenuEntries() {
         ArrayList<Action> actions = new ArrayList<>();
@@ -264,10 +276,7 @@ public abstract class ElevationLayer extends Layer {
             } else {
                 Logging.info("Elevation: Contour lines disabled");
             }
-            layer.invalidate();
-            if (layer.isVisible()) {
-                MainApplication.getMap().mapView.repaint();
-            }
+            layer.triggerRepaint();
         }
 
         @Override

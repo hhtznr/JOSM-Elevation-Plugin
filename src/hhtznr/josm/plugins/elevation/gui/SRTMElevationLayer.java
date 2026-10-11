@@ -264,10 +264,7 @@ public class SRTMElevationLayer extends ElevationLayer implements ElevationDataP
 
     @Override
     public void elevationDataAvailable(SRTMTileGrid tileGrid) {
-        invalidate();
-        if (isVisible()) {
-            MainApplication.getMap().mapView.repaint();
-        }
+        triggerRepaint();
     }
 
     @Override
@@ -294,10 +291,7 @@ public class SRTMElevationLayer extends ElevationLayer implements ElevationDataP
             } else {
                 Logging.info("Elevation: Hillshade disabled");
             }
-            layer.invalidate();
-            if (layer.isVisible()) {
-                MainApplication.getMap().mapView.repaint();
-            }
+            layer.triggerRepaint();
         }
 
         @Override
@@ -326,10 +320,7 @@ public class SRTMElevationLayer extends ElevationLayer implements ElevationDataP
             } else {
                 Logging.info("Elevation: Elevation raster points disabled");
             }
-            layer.invalidate();
-            if (layer.isVisible()) {
-                MainApplication.getMap().mapView.repaint();
-            }
+            layer.triggerRepaint();
         }
 
         @Override
@@ -358,10 +349,7 @@ public class SRTMElevationLayer extends ElevationLayer implements ElevationDataP
             } else {
                 Logging.info("Elevation: Lowest and highest points disabled");
             }
-            layer.invalidate();
-            if (layer.isVisible()) {
-                MainApplication.getMap().mapView.repaint();
-            }
+            layer.triggerRepaint();
         }
 
         @Override

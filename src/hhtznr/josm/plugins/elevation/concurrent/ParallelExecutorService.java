@@ -27,7 +27,7 @@ public class ParallelExecutorService {
     }
 
     /**
-     * Submits a task to the executor service.
+     * Submits a task, which returns a result, to the executor service.
      *
      * @param <T>  The type of the task result.
      * @param task The task.
@@ -41,8 +41,9 @@ public class ParallelExecutorService {
     }
 
     /**
-     * Submits a list of tasks to the executor service. If one of the tasks should
-     * be rejected, the already submitted tasks will be cancelled.
+     * Submits a list of tasks, which each return a result, to the executor service.
+     * If one of the tasks should be rejected, the already submitted tasks will be
+     * cancelled.
      *
      * @param <T>   The type of the task result.
      * @param tasks The list of tasks.
@@ -66,5 +67,18 @@ public class ParallelExecutorService {
             throw e;
         }
         return futures;
+    }
+
+    /**
+     * Submits a task, which does not return a result, to the executor service.
+     *
+     * @param task The task.
+     * @return A future that can be used to determine when the task has finished or
+     *         to cancel the task.
+     * @throws RejectedExecutionException If the underlying fixed thread pool
+     *                                    rejects execution of the task.
+     */
+    public Future<?> submit(Runnable task) throws RejectedExecutionException {
+        return executorService.submit(task);
     }
 }

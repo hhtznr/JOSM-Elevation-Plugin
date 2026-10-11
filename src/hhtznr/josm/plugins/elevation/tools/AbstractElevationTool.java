@@ -8,6 +8,8 @@ import org.openstreetmap.josm.data.Bounds;
 import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.ElevationDataConsumer;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
+import hhtznr.josm.plugins.elevation.data.ElevationGrid;
+import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
 
 /**
  * This is the abstract super class of elevation tools that use an elevation
@@ -37,7 +39,12 @@ public abstract class AbstractElevationTool extends ElevationDataConsumer {
     public AbstractElevationTool(String name, ElevationDataProvider elevationDataProvider, Bounds bounds)
             throws AsyncOperationException {
         super(name, elevationDataProvider.getGridMatching(bounds));
-        getTileGrid().release();
+        // TODO: Resolve this temporary compatibility workaround
+        ElevationGrid elevationGrid = getElevationGrid();
+        if (elevationGrid instanceof SRTMTileGrid) {
+            SRTMTileGrid srtmTileGrid = (SRTMTileGrid) elevationGrid;
+            srtmTileGrid.release();
+        }
         this.elevationDataProvider = elevationDataProvider;
         this.bounds = bounds;
     }
@@ -58,8 +65,9 @@ public abstract class AbstractElevationTool extends ElevationDataConsumer {
      */
     public void addElevationToolListener(ElevationToolListener listener) {
         synchronized (listeners) {
-            if (!listeners.contains(listener))
+            if (!listeners.contains(listener)) {
                 listeners.add(listener);
+            }
         }
     }
 
@@ -81,8 +89,9 @@ public abstract class AbstractElevationTool extends ElevationDataConsumer {
      */
     protected void informListenersAboutStatus(String message) {
         synchronized (listeners) {
-            for (ElevationToolListener listener : listeners)
+            for (ElevationToolListener listener : listeners) {
                 listener.status(message);
+            }
         }
     }
 }

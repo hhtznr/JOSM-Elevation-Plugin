@@ -473,7 +473,7 @@ public class SRTMTileGrid extends SRTMTileConsumer implements ElevationGrid, SRT
      * @return {@code true} if this SRTM tile grid is neither too small nor too
      *         large for covering the provided bounds with SRTM tiles.
      */
-    public boolean matchesTileGridBounds(Bounds bounds) {
+    public boolean matchesGridBounds(Bounds bounds) {
         int[] intBounds = getGridIntBounds(bounds);
         int boundsIntLatSouth = intBounds[0];
         int boundsIntLonWest = intBounds[1];

@@ -9,7 +9,9 @@ import org.openstreetmap.josm.tools.Logging;
 import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.ElevationDataConsumer;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
+import hhtznr.josm.plugins.elevation.data.ElevationGrid;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
+import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
 import hhtznr.josm.plugins.elevation.data.SRTMTileGridLease;
 import hhtznr.josm.plugins.elevation.util.IncrementalNumberedNameCreator;
 
@@ -56,7 +58,12 @@ public class MapViewElevationDataConsumer extends ElevationDataConsumer implemen
             double switchOffMapDimension) throws AsyncOperationException {
         super(namer.nextName(),
                 elevationDataProvider.getGridMatching(mapFrame.mapView.getLatLonBounds(mapFrame.mapView.getBounds())));
-        getTileGrid().release();
+        // TODO: Resolve this temporary compatibility workaround
+        ElevationGrid elevationGrid = getElevationGrid();
+        if (elevationGrid instanceof SRTMTileGrid) {
+            SRTMTileGrid srtmTileGrid = (SRTMTileGrid) elevationGrid;
+            srtmTileGrid.release();
+        }
         this.elevationDataProvider = elevationDataProvider;
         this.switchOffMapDimension = switchOffMapDimension;
         addToMapFrame(mapFrame);
@@ -112,13 +119,20 @@ public class MapViewElevationDataConsumer extends ElevationDataConsumer implemen
 
     @Override
     public void zoomChanged() {
+        // TODO: Resolve this temporary compatibility workaround
+        ElevationGrid elevationGrid = getElevationGrid();
+        if (!(elevationGrid instanceof SRTMTileGrid)) {
+            return;
+        }
+        SRTMTileGrid srtmTileGrid = (SRTMTileGrid) elevationGrid;
+
         final Bounds bounds = mapFrame.mapView.getLatLonBounds(mapFrame.mapView.getBounds());
         boolean elevationZoomLevelEnabled = bounds.getHeight() <= switchOffMapDimension
                 && bounds.getWidth() <= switchOffMapDimension;
 
-        if (elevationZoomLevelEnabled && !getTileGrid().matchesTileGridBounds(bounds)) {
+        if (elevationZoomLevelEnabled && !srtmTileGrid.matchesGridBounds(bounds)) {
             try (SRTMTileGridLease lease = elevationDataProvider.getGridMatchingLease(bounds)) {
-                setTileGrid(lease.getTileGrid());
+                setElevationGrid(lease.getTileGrid());
             } catch (AsyncOperationException e) {
                 return;
             }

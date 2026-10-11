@@ -16,23 +16,27 @@ import org.openstreetmap.josm.tools.Logging;
 public abstract class ElevationDataConsumer {
 
     private final String name;
-    private SRTMTileGrid tileGrid;
+    private ElevationGrid elevationGrid;
 
     private boolean isDisposed = false;
 
     /**
      * Creates a new elevation data consumer.
      *
-     * @param name     The name of this elevation data consumer, which can be used
-     *                 for logging.
-     * @param tileGrid The SRTM tile grid used by this consumer.
+     * @param name          The name of this elevation data consumer, which can be
+     *                      used for logging.
+     * @param elevationGrid The elevation grid used by this consumer.
      */
-    public ElevationDataConsumer(String name, SRTMTileGrid tileGrid) {
+    public ElevationDataConsumer(String name, ElevationGrid elevationGrid) {
         this.name = name;
-        if (!tileGrid.addElevationDataConsumer(this)) {
-            throw new IllegalStateException("Cannot register " + name + " with an inactive tile grid.");
+        // TODO: Resolve this temporary compatibility workaround
+        if (elevationGrid instanceof SRTMTileConsumer) {
+            SRTMTileConsumer srtmTileConsumer = (SRTMTileConsumer) elevationGrid;
+            if (!srtmTileConsumer.addElevationDataConsumer(this)) {
+                throw new IllegalStateException("Cannot register " + name + " with an inactive tile grid.");
+            }
         }
-        this.tileGrid = tileGrid;
+        this.elevationGrid = elevationGrid;
     }
 
     /**
@@ -45,49 +49,60 @@ public abstract class ElevationDataConsumer {
     }
 
     /**
-     * Returns the SRTM tile grid used by this elevation data consumer.
+     * Returns the elevation grid used by this elevation data consumer.
      *
-     * @return The SRTM tile grid.
+     * @return The elevation grid.
      */
-    protected synchronized SRTMTileGrid getTileGrid() {
-        if (isDisposed || tileGrid == null) {
+    protected synchronized ElevationGrid getElevationGrid() {
+        if (isDisposed || elevationGrid == null) {
             throw new IllegalStateException("Elevation data consumer " + name + " is disposed.");
         }
-        return tileGrid;
+        return elevationGrid;
     }
 
     /**
-     * Sets the provided SRTM tile grid as the tile grid of this elevation data
-     * consumer. <br>
-     * Registers this consumer with the provided tile grid and unregisters it with
-     * the tile grid that was previously used.
+     * Sets the provided elevation grid as the new elevation grid of this elevation
+     * data consumer. <br>
+     * Registers this consumer with the provided tile elevation grid if is is an
+     * {@code SRTMTileGrid} and unregisters it with the elevation grid that was
+     * previously used if the latter is an {@code SRTMTileGrid}.
      *
-     * @param newTileGrid The new SRTM tile grid to be used by this elevation data
-     *                    consumer.
+     * @param newElevationGrid The new elevation grid to be used by this elevation
+     *                         data consumer.
      */
-    protected synchronized void setTileGrid(SRTMTileGrid newTileGrid) {
-        if (isDisposed || tileGrid == null) {
+    protected synchronized void setElevationGrid(ElevationGrid newElevationGrid) {
+        if (isDisposed || elevationGrid == null) {
             throw new IllegalStateException("Cannot change the tile grid of disposed consumer " + name + ".");
         }
-        if (newTileGrid == null) {
+        if (newElevationGrid == null) {
             throw new IllegalArgumentException("newTileGrid must not be null.");
         }
-        if (newTileGrid == tileGrid) {
+        if (newElevationGrid == elevationGrid) {
             return;
         }
 
-        if (!newTileGrid.addElevationDataConsumer(this)) {
-            throw new IllegalStateException("Cannot register " + name + " with an inactive tile grid.");
+        // TODO: Resolve this temporary compatibility workaround
+        if (newElevationGrid instanceof SRTMTileConsumer) {
+            SRTMTileConsumer newSrtmTileConsumer = (SRTMTileConsumer) newElevationGrid;
+            if (!newSrtmTileConsumer.addElevationDataConsumer(this)) {
+                throw new IllegalStateException("Cannot register " + name + " with an inactive tile grid.");
+            }
         }
 
-        SRTMTileGrid oldTileGrid = tileGrid;
-        tileGrid = newTileGrid;
+        ElevationGrid oldElevationGrid = elevationGrid;
+        elevationGrid = newElevationGrid;
 
-        if (!oldTileGrid.removeElevationDataConsumer(this)) {
-            Logging.warn("Elevation: " + name + " was not registered with its previous tile grid " + oldTileGrid + ".");
+        // TODO: Resolve this temporary compatibility workaround
+        if (oldElevationGrid instanceof SRTMTileConsumer) {
+            SRTMTileConsumer oldSrtmTileConsumer = (SRTMTileConsumer) oldElevationGrid;
+            if (!oldSrtmTileConsumer.removeElevationDataConsumer(this)) {
+                Logging.warn("Elevation: " + name + " was not registered with its previous elevation grid "
+                        + oldSrtmTileConsumer + ".");
+            }
         }
 
-        Logging.info("Elevation: Set new tile grid for " + name + ": Replace " + oldTileGrid + " by " + newTileGrid);
+        Logging.info("Elevation: Set new elevation grid for " + name + ": Replace " + oldElevationGrid + " by "
+                + oldElevationGrid);
     }
 
     /**
@@ -96,19 +111,23 @@ public abstract class ElevationDataConsumer {
      * have any other consumers left.
      */
     public void dispose() {
-        SRTMTileGrid gridToRelease;
+        ElevationGrid gridToRelease;
         synchronized (this) {
             if (isDisposed) {
                 return;
             }
 
             isDisposed = true;
-            gridToRelease = tileGrid;
-            tileGrid = null;
+            gridToRelease = elevationGrid;
+            elevationGrid = null;
         }
 
-        if (gridToRelease != null && !gridToRelease.removeElevationDataConsumer(this)) {
-            Logging.warn("Elevation: " + name + " was not registered with its tile grid during disposal.");
+        // TODO: Resolve this temporary compatibility workaround
+        if (gridToRelease != null && gridToRelease instanceof SRTMTileConsumer) {
+            SRTMTileConsumer srtmTileConsumerToRelease = (SRTMTileConsumer) gridToRelease;
+            if (!srtmTileConsumerToRelease.removeElevationDataConsumer(this)) {
+                Logging.warn("Elevation: " + name + " was not registered with its tile grid during disposal.");
+            }
         }
 
         Logging.info("Elevation: " + name + " disposed.");

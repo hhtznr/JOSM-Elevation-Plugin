@@ -14,8 +14,10 @@ import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
+import hhtznr.josm.plugins.elevation.data.ElevationGrid;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.LatLonLine;
+import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
 import hhtznr.josm.plugins.elevation.data.SRTMTileGridException;
 import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
 import hhtznr.josm.plugins.elevation.gui.ContourLines;
@@ -92,9 +94,18 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
     public List<LatLonEle> determineReferencePoints(LatLonEle peak, double searchDistance, double distanceTolerance,
             double deadZoneRadius) throws AsyncOperationException {
         Bounds searchBounds = getBounds();
+        // TODO: Resolve this temporary compatibility workaround
+        ElevationGrid elevationGrid = getElevationGrid();
+        if (!(elevationGrid instanceof SRTMTileGrid)) {
+            Logging.error(
+                    "Elevation: Cannot establish topographic prominence search: Topographic prominence finder currently only works with SRTMTileGrid, not with "
+                            + elevationGrid.getClass().toString());
+            return null;
+        }
+        SRTMTileGrid srtmTileGrid = (SRTMTileGrid) elevationGrid;
         SRTMTileGridView tileGridView;
         try {
-            tileGridView = getTileGrid().getView(searchBounds);
+            tileGridView = srtmTileGrid.getView(searchBounds);
         } catch (SRTMTileGridException e) {
             Logging.error("Elevation: Cannot establish topographic prominence search: " + e.toString());
             return null;
@@ -155,8 +166,9 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
                     Iterator<LatLonEleDist> iterator = closestPoints.iterator();
                     while (iterator.hasNext()) {
                         LatLonEleDist pointDist = iterator.next();
-                        if (pointDist.distance > maxClosestDistance)
+                        if (pointDist.distance > maxClosestDistance) {
                             iterator.remove();
+                        }
                     }
                 }
                 LatLonEle point = new LatLonEle(closestPoint, isolationReferenceElevation);
@@ -179,8 +191,9 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
         ArrayList<LatLonEleDist> closestPointsSorted = new ArrayList<>(closestPoints);
         closestPointsSorted.sort((a, b) -> Double.compare(a.distance, b.distance));
         ArrayList<LatLonEle> resultList = new ArrayList<>(closestPoints.size());
-        for (LatLonEleDist closestPoint : closestPointsSorted)
+        for (LatLonEleDist closestPoint : closestPointsSorted) {
             resultList.add(closestPoint.point);
+        }
         return resultList;
     }
 
@@ -196,10 +209,12 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
 
         @Override
         public boolean equals(Object obj) {
-            if (this == obj)
+            if (this == obj) {
                 return true;
-            if (obj == null || !(obj instanceof LatLonEleDist))
+            }
+            if (obj == null || !(obj instanceof LatLonEleDist)) {
                 return false;
+            }
             LatLonEleDist that = (LatLonEleDist) obj;
             return Double.compare(that.point.lat(), point.lat()) == 0
                     && Double.compare(that.point.lon(), point.lon()) == 0;

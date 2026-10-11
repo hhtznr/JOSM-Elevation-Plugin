@@ -276,7 +276,7 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
             while (iterator.hasNext()) {
                 nextGrid = iterator.next();
                 // Successfully calling acquire() blocks grid disposal until release() is called
-                if (nextGrid.matchesTileGridBounds(bounds) && nextGrid.acquire()) {
+                if (nextGrid.matchesGridBounds(bounds) && nextGrid.acquire()) {
                     return nextGrid;
                 }
             }

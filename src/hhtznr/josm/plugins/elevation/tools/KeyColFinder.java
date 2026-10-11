@@ -8,8 +8,10 @@ import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
+import hhtznr.josm.plugins.elevation.data.ElevationGrid;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
+import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
 import hhtznr.josm.plugins.elevation.data.SRTMTileGridException;
 import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
 import hhtznr.josm.plugins.elevation.util.IncrementalNumberedNameCreator;
@@ -210,9 +212,18 @@ public class KeyColFinder extends AbstractElevationTool {
     public LatLonEle findKeyCol(UnionFindNeighbors nNeighbors) throws AsyncOperationException {
         informListenersAboutStatus("Key col finder running");
 
+        // TODO: Resolve this temporary compatibility workaround
+        ElevationGrid elevationGrid = getElevationGrid();
+        if (!(elevationGrid instanceof SRTMTileGrid)) {
+            Logging.error(
+                    "Elevation: Cannot establish key col search: Key col finder currently only works with SRTMTileGrid, not with "
+                            + elevationGrid.getClass().toString());
+            return null;
+        }
+        SRTMTileGrid srtmTileGrid = (SRTMTileGrid) elevationGrid;
         SRTMTileGridView tileGridView;
         try {
-            tileGridView = getTileGrid().getView(getBounds());
+            tileGridView = srtmTileGrid.getView(getBounds());
         } catch (SRTMTileGridException e) {
             Logging.error("Elevation: Cannot establish key col search: " + e.toString());
             return null;
@@ -447,7 +458,8 @@ public class KeyColFinder extends AbstractElevationTool {
                 int candidateLonIndex = lonIndex + deltaLonAbs;
                 if (candidateLatIndex >= 0 && candidateLonIndex >= 0 && candidateLatIndex < height
                         && candidateLonIndex < width) {
-                    if (tileGridView.getElevationAsShort(candidateLatIndex, candidateLonIndex) != SRTMTile.SRTM_DATA_VOID) {
+                    if (tileGridView.getElevationAsShort(candidateLatIndex,
+                            candidateLonIndex) != SRTMTile.SRTM_DATA_VOID) {
                         return candidateLatIndex * width + candidateLonIndex;
                     }
                 }
@@ -458,7 +470,8 @@ public class KeyColFinder extends AbstractElevationTool {
                     candidateLonIndex = lonIndex - deltaLonAbs;
                     if (candidateLatIndex >= 0 && candidateLonIndex >= 0 && candidateLatIndex < height
                             && candidateLonIndex < width) {
-                        if (tileGridView.getElevationAsShort(candidateLatIndex, candidateLonIndex) != SRTMTile.SRTM_DATA_VOID) {
+                        if (tileGridView.getElevationAsShort(candidateLatIndex,
+                                candidateLonIndex) != SRTMTile.SRTM_DATA_VOID) {
                             return candidateLatIndex * width + candidateLonIndex;
                         }
                     }

@@ -17,7 +17,7 @@ import org.openstreetmap.josm.data.Bounds;
  *
  * @author Harald Hetzner
  */
-public class GeoTiffImage {
+public class GeoTiffImage implements ElevationGrid {
     private final File file;
     private final GridCoverage2D coverage;
     private final ReferencedEnvelope referencedEnvelope;
@@ -95,6 +95,7 @@ public class GeoTiffImage {
      *
      * @return The geographic bounds of the GeoTIFF image.
      */
+    @Override
     public Bounds getBounds() {
         return new Bounds(referencedEnvelope.getMinY(), referencedEnvelope.getMinX(), referencedEnvelope.getMaxY(),
                 referencedEnvelope.getMaxX());

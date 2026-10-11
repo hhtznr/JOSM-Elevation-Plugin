@@ -18,7 +18,7 @@ import hhtznr.josm.plugins.elevation.util.IncrementalNumberedNameCreator;
  *
  * @author Harald Hetzner
  */
-public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListener {
+public class SRTMTileGrid extends SRTMTileConsumer implements ElevationGrid, SRTMTileCacheListener {
 
     private static final IncrementalNumberedNameCreator namer = new IncrementalNumberedNameCreator("SRTM tile grid");
 
@@ -321,6 +321,7 @@ public class SRTMTileGrid extends SRTMTileConsumer implements SRTMTileCacheListe
      *
      * @return The bounds of this SRTM tile grid.
      */
+    @Override
     public Bounds getBounds() {
         return gridBounds;
     }

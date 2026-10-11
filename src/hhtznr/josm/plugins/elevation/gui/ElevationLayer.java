@@ -39,6 +39,7 @@ public abstract class ElevationLayer extends Layer {
     private short upperCutoffElevation;
 
     private boolean contourLinesEnabled;
+    private boolean lowestAndHighestPointsEnabled;
 
     /**
      * Creates a new abstract elevation layer for visualizing elevation data.
@@ -72,6 +73,7 @@ public abstract class ElevationLayer extends Layer {
         this.upperCutoffElevation = upperCutoffElevation;
 
         contourLinesEnabled = ElevationPreferences.getContourLinesEnabled();
+        lowestAndHighestPointsEnabled = ElevationPreferences.getLowestAndHighestPointsEnabled();
     }
 
     /**
@@ -81,6 +83,17 @@ public abstract class ElevationLayer extends Layer {
      */
     public boolean isContourLinesEnabled() {
         return contourLinesEnabled;
+    }
+
+    /**
+     * Returns whether displaying of the lowest and highest points within the map
+     * view is enabled.
+     *
+     * @return {@code true} if displaying of the lowest and highest points within
+     *         the map view is enabled.
+     */
+    public boolean isLowestAndHighestPointsEnabled() {
+        return lowestAndHighestPointsEnabled;
     }
 
     /**
@@ -213,6 +226,7 @@ public abstract class ElevationLayer extends Layer {
         actions.add(LayerListDialog.getInstance().createShowHideLayerAction());
         actions.add(SeparatorLayerAction.INSTANCE);
         actions.add(new ShowContourLinesAction());
+        actions.add(new ShowLowestAndHighestPointsAction());
         return actions.toArray(new Action[0]);
     }
 
@@ -283,6 +297,35 @@ public abstract class ElevationLayer extends Layer {
         public Component createMenuComponent() {
             JCheckBoxMenuItem item = new JCheckBoxMenuItem(this);
             item.setSelected(ElevationLayer.this.contourLinesEnabled);
+            return item;
+        }
+    }
+
+    private class ShowLowestAndHighestPointsAction extends AbstractElevationLayerAction {
+
+        private static final long serialVersionUID = 1L;
+
+        public ShowLowestAndHighestPointsAction() {
+            super("Enable/disable lowest and highest points", "lowest_highest_points");
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            ElevationLayer layer = ElevationLayer.this;
+            layer.lowestAndHighestPointsEnabled = !layer.lowestAndHighestPointsEnabled;
+            ElevationPreferences.setLowestAndHighestPointsEnabled(layer.lowestAndHighestPointsEnabled);
+            if (layer.lowestAndHighestPointsEnabled) {
+                Logging.info("Elevation: Lowest and highest points enabled");
+            } else {
+                Logging.info("Elevation: Lowest and highest points disabled");
+            }
+            layer.triggerRepaint();
+        }
+
+        @Override
+        public Component createMenuComponent() {
+            JCheckBoxMenuItem item = new JCheckBoxMenuItem(this);
+            item.setSelected(ElevationLayer.this.lowestAndHighestPointsEnabled);
             return item;
         }
     }

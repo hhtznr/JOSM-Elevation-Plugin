@@ -54,7 +54,6 @@ public class SRTMElevationLayer extends ElevationLayer implements ElevationDataP
 
     private boolean hillshadeEnabled;
     private boolean elevationRasterEnabled;
-    private boolean lowestAndHighestPointsEnabled;
 
     private ElevationLayerAdjustmentDialog layerAdjustmentDialog = null;
 
@@ -97,7 +96,6 @@ public class SRTMElevationLayer extends ElevationLayer implements ElevationDataP
         elevationDataProvider.addElevationDataProviderListener(this);
         hillshadeEnabled = ElevationPreferences.getHillshadeEnabled();
         elevationRasterEnabled = ElevationPreferences.getElevationRasterEnabled();
-        lowestAndHighestPointsEnabled = ElevationPreferences.getLowestAndHighestPointsEnabled();
     }
 
     /**
@@ -148,17 +146,6 @@ public class SRTMElevationLayer extends ElevationLayer implements ElevationDataP
      */
     public boolean isElevationRasterEnabled() {
         return elevationRasterEnabled;
-    }
-
-    /**
-     * Returns whether displaying of the lowest and highest points within the map
-     * view is enabled.
-     *
-     * @return {@code true} if displaying of the lowest and highest points within
-     *         the map view is enabled.
-     */
-    public boolean isLowestAndHighestPointsEnabled() {
-        return lowestAndHighestPointsEnabled;
     }
 
     /**
@@ -242,7 +229,6 @@ public class SRTMElevationLayer extends ElevationLayer implements ElevationDataP
             actions.add(action);
         }
         actions.add(new ShowHillshadeAction());
-        actions.add(new ShowLowestAndHighestPointsAction());
         actions.add(new ShowElevationRasterAction());
         actions.add(SeparatorLayerAction.INSTANCE);
         actions.add(new ShowElevationLayerDialogAction());
@@ -327,35 +313,6 @@ public class SRTMElevationLayer extends ElevationLayer implements ElevationDataP
         public Component createMenuComponent() {
             JCheckBoxMenuItem item = new JCheckBoxMenuItem(this);
             item.setSelected(SRTMElevationLayer.this.elevationRasterEnabled);
-            return item;
-        }
-    }
-
-    private class ShowLowestAndHighestPointsAction extends AbstractElevationLayerAction {
-
-        private static final long serialVersionUID = 1L;
-
-        public ShowLowestAndHighestPointsAction() {
-            super("Enable/disable lowest and highest points", "lowest_highest_points");
-        }
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            SRTMElevationLayer layer = SRTMElevationLayer.this;
-            layer.lowestAndHighestPointsEnabled = !layer.lowestAndHighestPointsEnabled;
-            ElevationPreferences.setLowestAndHighestPointsEnabled(layer.lowestAndHighestPointsEnabled);
-            if (layer.lowestAndHighestPointsEnabled) {
-                Logging.info("Elevation: Lowest and highest points enabled");
-            } else {
-                Logging.info("Elevation: Lowest and highest points disabled");
-            }
-            layer.triggerRepaint();
-        }
-
-        @Override
-        public Component createMenuComponent() {
-            JCheckBoxMenuItem item = new JCheckBoxMenuItem(this);
-            item.setSelected(SRTMElevationLayer.this.lowestAndHighestPointsEnabled);
             return item;
         }
     }

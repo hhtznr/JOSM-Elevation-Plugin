@@ -67,24 +67,6 @@ public interface ElevationGridView {
     public boolean isNoDataValue(double ele);
 
     /**
-     * Returns the latitude for the provided index of the grid view in latitude
-     * direction.
-     *
-     * @param latIndex The grid view index in latitude direction.
-     * @return The latitude corresponding to the provided grid view index.
-     */
-    // public double toLat(int latIndex);
-
-    /**
-     * Returns the longitude for the provided index of the grid view in longitude
-     * direction.
-     *
-     * @param lonIndex The grid view index in longitude direction.
-     * @return The longitude corresponding to the provided grid view index.
-     */
-    // public double toLon(int lonIndex);
-
-    /**
      * Returns the coordinate for the provided indices of the grid view in latitude
      * and longitude direction.
      *
@@ -93,6 +75,18 @@ public interface ElevationGridView {
      * @return The coordinate corresponding to the provided grid view indices.
      */
     public LatLon toLatLon(int latIndex, int lonIndex);
+
+    /**
+     * Returns the coordinate for the provided indices of the grid view in latitude
+     * and longitude direction along with the elevation. Combines
+     * {@link #toLatLon(int, int)} with {@link #getElevation(int, int)}.
+     *
+     * @param latIndex The grid view index in latitude direction.
+     * @param lonIndex The grid view index in longitude direction.
+     * @return The coordinate corresponding to the provided grid view indices along
+     *         with the elevation in this location.
+     */
+    public LatLonEle toLatLonEle(int latIndex, int lonIndex);
 
     /**
      * Returns the coordinate bounds of this view on an elevation grid.

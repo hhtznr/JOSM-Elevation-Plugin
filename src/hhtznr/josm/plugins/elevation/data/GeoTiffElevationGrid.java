@@ -84,6 +84,7 @@ public class GeoTiffElevationGrid implements ElevationGridView {
                     + geoTiffImage.getFile().getAbsolutePath() + "'", e);
         }
         this.elevations = new double[sampleCount];
+        // TODO: Consider if this could be combined with LowestAndHighestPoints
         double minElevation = Double.POSITIVE_INFINITY;
         double maxElevation = Double.NEGATIVE_INFINITY;
         Rectangle imageBounds = new Rectangle(minX, minY, width, height);
@@ -189,6 +190,13 @@ public class GeoTiffElevationGrid implements ElevationGridView {
             throw new IllegalStateException("Cannot transform GeoTIFF grid coordinate to latitude/longitude", e);
         }
         return new LatLon(geographicPoint[1], geographicPoint[0]);
+    }
+
+    @Override
+    public LatLonEle toLatLonEle(int latIndex, int lonIndex) {
+        LatLon latLon = toLatLon(latIndex, lonIndex);
+        double ele = getElevation(latIndex, lonIndex);
+        return new LatLonEle(latLon.lat(), latLon.lon(), ele);
     }
 
     @Override

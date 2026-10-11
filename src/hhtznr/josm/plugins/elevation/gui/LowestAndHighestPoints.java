@@ -1,13 +1,15 @@
 package hhtznr.josm.plugins.elevation.gui;
 
+import java.awt.Point;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.openstreetmap.josm.data.Bounds;
+import org.openstreetmap.josm.data.coor.LatLon;
 
+import hhtznr.josm.plugins.elevation.data.ElevationGridView;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
-import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
 import hhtznr.josm.plugins.elevation.util.IncrementalNumberedNameCreator;
 
 /**
@@ -18,74 +20,82 @@ import hhtznr.josm.plugins.elevation.util.IncrementalNumberedNameCreator;
  */
 public class LowestAndHighestPoints extends AbstractSRTMTileGridPaintable {
 
-    private static final IncrementalNumberedNameCreator namer = new IncrementalNumberedNameCreator("Lowest and highest points");
+    private static final IncrementalNumberedNameCreator namer = new IncrementalNumberedNameCreator(
+            "Lowest and highest points");
 
     private final List<LatLonEle> lowestPoints;
     private final List<LatLonEle> highestPoints;
-    private final short lowestElevation;
-    private final short highestElevation;
+    private final double lowestElevation;
+    private final double highestElevation;
 
     /**
      * Creates a new lowest and highest points object.
      *
-     * @param tileGridView The SRTM tile grid view from which elevation data should
-     *                     be obtained.
+     * @param elevationGridView The elevation grid view from which elevation data
+     *                          should be obtained.
      */
-    public LowestAndHighestPoints(SRTMTileGridView tileGridView) {
-        super(namer.nextName(), tileGridView);
+    public LowestAndHighestPoints(ElevationGridView elevationGridView) {
+        super(namer.nextName(), elevationGridView);
 
-        lowestPoints = new LinkedList<>();
-        highestPoints = new LinkedList<>();
+        int height = elevationGridView.getHeight();
+        int width = elevationGridView.getWidth();
 
-        Bounds bounds = tileGridView.getBounds();
-        int height = tileGridView.getHeight();
-        int width = tileGridView.getWidth();
+        double previousMinEle = Double.POSITIVE_INFINITY;
+        double previousMaxEle = Double.NEGATIVE_INFINITY;
 
-        double boundsMinLat = bounds.getMinLat();
-        double boundsMinLon = bounds.getMinLon();
-        double latScale = bounds.getHeight() / (height - 1);
-        double lonScale = bounds.getWidth() / (width - 1);
-
-        short previousMinEle = Short.MAX_VALUE;
-        short previousMaxEle = Short.MIN_VALUE;
-
+        List<Point> lowestPointIndices = new LinkedList<>();
+        List<Point> highestPointIndices = new LinkedList<>();
         for (int latIndex = 0; latIndex < height; latIndex++) {
-            double lat = boundsMinLat + latScale * latIndex;
 
             for (int lonIndex = 0; lonIndex < width; lonIndex++) {
-                double lon = boundsMinLon + lonScale * lonIndex;
 
-                short ele = tileGridView.getElevationAsShort(latIndex, lonIndex);
-                if (ele == SRTMTile.SRTM_DATA_VOID) {
+                double ele = elevationGridView.getElevation(latIndex, lonIndex);
+                if (elevationGridView.isNoDataValue(ele)) {
                     continue;
                 }
 
                 if (ele < previousMinEle) {
-                    lowestPoints.clear();
-                    lowestPoints.add(new LatLonEle(lat, lon, ele));
+                    lowestPointIndices.clear();
+                    lowestPointIndices.add(new Point(lonIndex, latIndex));
                     previousMinEle = ele;
                 } else if (ele == previousMinEle) {
-                    lowestPoints.add(new LatLonEle(lat, lon, ele));
+                    lowestPointIndices.add(new Point(lonIndex, latIndex));
                 }
 
                 if (ele > previousMaxEle) {
-                    highestPoints.clear();
-                    highestPoints.add(new LatLonEle(lat, lon, ele));
+                    highestPointIndices.clear();
+                    highestPointIndices.add(new Point(lonIndex, latIndex));
                     previousMaxEle = ele;
                 } else if (ele == previousMaxEle) {
-                    highestPoints.add(new LatLonEle(lat, lon, ele));
+                    highestPointIndices.add(new Point(lonIndex, latIndex));
                 }
             }
         }
-        if (previousMinEle == Short.MAX_VALUE) {
-            lowestElevation = SRTMTile.SRTM_DATA_VOID;
+        if (previousMinEle == Double.POSITIVE_INFINITY) {
+            lowestElevation = Double.NaN;
         } else {
             lowestElevation = previousMinEle;
         }
-        if (previousMaxEle == Short.MIN_VALUE) {
-            highestElevation = SRTMTile.SRTM_DATA_VOID;
+        if (previousMaxEle == Double.NEGATIVE_INFINITY) {
+            highestElevation = Double.NaN;
         } else {
             highestElevation = previousMaxEle;
+        }
+
+        lowestPoints = new ArrayList<>(lowestPointIndices.size());
+        for (Point point : lowestPointIndices) {
+            int latIndex = point.y;
+            int lonIndex = point.x;
+            LatLon latLon = elevationGridView.toLatLon(latIndex, lonIndex);
+            lowestPoints.add(new LatLonEle(latLon.lat(), latLon.lon(), lowestElevation));
+        }
+
+        highestPoints = new ArrayList<>(highestPointIndices.size());
+        for (Point point : highestPointIndices) {
+            int latIndex = point.y;
+            int lonIndex = point.x;
+            LatLon latLon = elevationGridView.toLatLon(latIndex, lonIndex);
+            highestPoints.add(new LatLonEle(latLon.lat(), latLon.lon(), highestElevation));
         }
     }
 
@@ -116,7 +126,7 @@ public class LowestAndHighestPoints extends AbstractSRTMTileGridPaintable {
      *
      * @return The lowest elevation value.
      */
-    public short getLowestElevation() {
+    public double getLowestElevation() {
         return lowestElevation;
     }
 
@@ -127,7 +137,7 @@ public class LowestAndHighestPoints extends AbstractSRTMTileGridPaintable {
      *
      * @return The highest elevation value.
      */
-    public short getHighestElevation() {
+    public double getHighestElevation() {
         return highestElevation;
     }
 }

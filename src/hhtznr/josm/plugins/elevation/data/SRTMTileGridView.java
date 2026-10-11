@@ -119,13 +119,22 @@ public class SRTMTileGridView implements ElevationGridView {
     @Override
     public boolean isNoDataValue(double ele) {
         // SRTM_DATA_VOID is -32768. This value is properly represented as double.
-        return ele == SRTMTile.SRTM_DATA_VOID;
+        return ele == SRTMTile.SRTM_DATA_VOID || Double.isNaN(ele);
     }
 
     @Override
     public LatLon toLatLon(int latIndex, int lonIndex) {
-        return new LatLon(bounds.getMinLat() + latIndex * bounds.getHeight() / (height - 1),
-                bounds.getMinLon() + lonIndex * bounds.getWidth() / (width - 1));
+        double lat = bounds.getMinLat() + latIndex * bounds.getHeight() / (height - 1);
+        double lon = bounds.getMinLon() + lonIndex * bounds.getWidth() / (width - 1);
+        return new LatLon(lat, lon);
+    }
+
+    @Override
+    public LatLonEle toLatLonEle(int latIndex, int lonIndex) {
+        double lat = bounds.getMinLat() + latIndex * bounds.getHeight() / (height - 1);
+        double lon = bounds.getMinLon() + lonIndex * bounds.getWidth() / (width - 1);
+        short ele = getElevationAsShort(latIndex, lonIndex);
+        return new LatLonEle(lat, lon, ele);
     }
 
     /**

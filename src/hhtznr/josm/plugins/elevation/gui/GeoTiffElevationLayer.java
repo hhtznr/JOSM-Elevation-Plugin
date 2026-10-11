@@ -5,6 +5,7 @@ import static org.openstreetmap.josm.tools.I18n.tr;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -44,9 +45,11 @@ import hhtznr.josm.plugins.elevation.data.Coloring;
 import hhtznr.josm.plugins.elevation.data.GeoTiffElevationGrid;
 import hhtznr.josm.plugins.elevation.data.GeoTiffImage;
 import hhtznr.josm.plugins.elevation.data.GeoTiffImageException;
+import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.LatLonLine;
-import hhtznr.josm.plugins.elevation.data.SRTMTile;
 import hhtznr.josm.plugins.elevation.gui.ContourLines.IsolineSegments;
+import hhtznr.josm.plugins.elevation.util.DrawUtils;
+import hhtznr.josm.plugins.elevation.util.DrawUtils.NonOverlappingTextRenderer;
 
 /**
  * This class implements a JOSM layer for displaying GeoTIFF images. It converts
@@ -61,6 +64,7 @@ public class GeoTiffElevationLayer extends ElevationLayer {
     private GeoTiffElevationGrid elevationGrid = null;
     private BufferedImage grayscaleImage = null;
     private GeoTiffContourLines contourLines = null;
+    private LowestAndHighestPoints lowestAndHighestPoints = null;
     private double[] lowestAndHighestElevation = null;
 
     private int contourLineIsostep = ElevationPreferences.getContourLineIsostep();
@@ -68,8 +72,10 @@ public class GeoTiffElevationLayer extends ElevationLayer {
     private short upperCutoffElevation = ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION;
 
     private boolean grayscaleImageEnabled = true;
+    private Future<?> elevationGridFuture = null;
     private Future<?> grayscaleImageFuture = null;
     private Future<?> contourLinesFuture = null;
+    private Future<?> lowestAndHighestPointsFuture = null;
 
     /**
      * Creates a new map layer for visualization of the elevation data provided by a
@@ -95,6 +101,24 @@ public class GeoTiffElevationLayer extends ElevationLayer {
                 contourLineColoringScheme, contourLineConstantColor, lowerCutoffElevation, upperCutoffElevation);
 
         this.geoTiffImage = geoTiffImage;
+
+        elevationGridFuture = ElevationPlugin.getParallelExecutor().submit(() -> {
+            if (Thread.currentThread().isInterrupted()) {
+                elevationGridFuture = null;
+                return;
+            }
+            try {
+                elevationGrid = new GeoTiffElevationGrid(geoTiffImage);
+                if (!Thread.currentThread().isInterrupted()) {
+                    triggerRepaint();
+                }
+            } catch (GeoTiffImageException e) {
+                Logging.error("Elevation: Cannot create contour lines for GeoTIFF file '"
+                        + geoTiffImage.getFile().getAbsolutePath() + "': " + e.toString());
+            } finally {
+                elevationGridFuture = null;
+            }
+        });
     }
 
     private void convertGeoTiffToGrayscale() {
@@ -176,6 +200,10 @@ public class GeoTiffElevationLayer extends ElevationLayer {
 
     @Override
     public void paint(Graphics2D g, MapView mapView, Bounds mapBounds) {
+        if (elevationGrid == null) {
+            return;
+        }
+
         if (grayscaleImageEnabled) {
             drawGrayscaleImage(g, mapView);
         }
@@ -183,16 +211,26 @@ public class GeoTiffElevationLayer extends ElevationLayer {
         if (isContourLinesEnabled()) {
             drawContourLines(g, mapView, mapBounds);
         }
+
+        if (isLowestAndHighestPointsEnabled()) {
+            drawLowestAndHighestPoints(g, mapView);
+        }
     }
 
     private void drawGrayscaleImage(Graphics2D g, MapView mapView) {
         if (grayscaleImageEnabled && grayscaleImage == null && grayscaleImageFuture == null) {
             grayscaleImageFuture = ElevationPlugin.getParallelExecutor().submit(() -> {
-                convertGeoTiffToGrayscale();
-                if (!Thread.currentThread().isInterrupted()) {
-                    triggerRepaint();
+                try {
+                    if (Thread.currentThread().isInterrupted()) {
+                        return;
+                    }
+                    convertGeoTiffToGrayscale();
+                    if (!Thread.currentThread().isInterrupted()) {
+                        triggerRepaint();
+                    }
+                } finally {
+                    grayscaleImageFuture = null;
                 }
-                grayscaleImageFuture = null;
             });
         }
         ReferencedEnvelope geoBounds = geoTiffImage.getReferencedEnvelope();
@@ -229,26 +267,21 @@ public class GeoTiffElevationLayer extends ElevationLayer {
 
             if (isContourLinesEnabled() && contourLines == null && contourLinesFuture == null) {
                 contourLinesFuture = ElevationPlugin.getParallelExecutor().submit(() -> {
-                    if (elevationGrid == null) {
-                        try {
-                            elevationGrid = new GeoTiffElevationGrid(geoTiffImage);
-                        } catch (GeoTiffImageException e) {
-                            Logging.error("Elevation: Cannot create contour lines for GeoTIFF file '"
-                                    + geoTiffImage.getFile().getAbsolutePath() + "': " + e.toString());
-                        }
-                    }
-
                     try {
+                        if (Thread.currentThread().isInterrupted()) {
+                            return;
+                        }
                         contourLines = new GeoTiffContourLines(elevationGrid, contourLineIsostep, lowerCutoffElevation,
                                 upperCutoffElevation);
+                        if (!Thread.currentThread().isInterrupted()) {
+                            triggerRepaint();
+                        }
                     } catch (AsyncOperationException e) {
                         Logging.error("Elevation: Cannot create contour lines for GeoTIFF "
                                 + geoTiffImage.getFile().getName());
+                    } finally {
+                        contourLinesFuture = null;
                     }
-                    if (!Thread.currentThread().isInterrupted()) {
-                        triggerRepaint();
-                    }
-                    contourLinesFuture = null;
                 });
             }
         }
@@ -268,23 +301,22 @@ public class GeoTiffElevationLayer extends ElevationLayer {
         g.setColor(layerContourLineConstantColor);
         g.setStroke(contourLineStroke);
 
-        short minEle = lowerCutoffElevation;
-        short maxEle = upperCutoffElevation;
+        double minEle = lowerCutoffElevation;
+        double maxEle = upperCutoffElevation;
         boolean useFalseColor = false;
         if (layerContourLineColoringScheme == Coloring.Scheme.FALSE_COLOR) {
+            // TODO: We could also use lowestAndHighestPoints
             if (lowestAndHighestElevation == null) {
                 lowestAndHighestElevation = elevationGrid.getLowestAndHighestElevation();
             }
 
             double lowestElevation = lowestAndHighestElevation[0];
             double highestElevation = lowestAndHighestElevation[1];
-            if (!Double.isNaN(lowestElevation) && !Double.isNaN(highestElevation)) {
-                if (lowestElevation != SRTMTile.SRTM_DATA_VOID && highestElevation != SRTMTile.SRTM_DATA_VOID
-                        && lowestElevation != highestElevation) {
-                    minEle = (short) Math.max(minEle, lowestElevation);
-                    maxEle = (short) Math.min(maxEle, highestElevation);
-                    useFalseColor = true;
-                }
+            if (!elevationGrid.isNoDataValue(lowestElevation) && !elevationGrid.isNoDataValue(highestElevation)
+                    && lowestElevation != highestElevation) {
+                minEle = Math.max(minEle, lowestElevation);
+                maxEle = Math.min(maxEle, highestElevation);
+                useFalseColor = true;
             }
         }
         for (ContourLines.IsolineSegments isolineSegment : isolineSegments) {
@@ -300,6 +332,81 @@ public class GeoTiffElevationLayer extends ElevationLayer {
                     g.drawLine(p1.x, p1.y, p2.x, p2.y);
                 }
             }
+        }
+    }
+
+    private void drawLowestAndHighestPoints(Graphics2D g, MapView mapView) {
+        if (lowestAndHighestPoints == null && lowestAndHighestPointsFuture == null) {
+            lowestAndHighestPointsFuture = ElevationPlugin.getParallelExecutor().submit(() -> {
+                try {
+                    if (Thread.currentThread().isInterrupted()) {
+                        return;
+                    }
+                    lowestAndHighestPoints = new LowestAndHighestPoints(elevationGrid);
+                    if (!Thread.currentThread().isInterrupted()) {
+                        triggerRepaint();
+                    }
+                } finally {
+                    lowestAndHighestPointsFuture = null;
+                }
+            });
+        }
+        LowestAndHighestPoints lowestAndHighestPointsRef = lowestAndHighestPoints;
+        if (lowestAndHighestPointsRef == null) {
+            return;
+        }
+
+        List<LatLonEle> lowestPoints = lowestAndHighestPointsRef.getLowestPoints();
+        List<LatLonEle> highestPoints = lowestAndHighestPointsRef.getHighestPoints();
+        int maxLowestPoints = Math.min(lowestPoints.size(), ElevationPreferences.MAX_RENDERED_LOWEST_OR_HIGHEST_POINTS);
+        List<Point> lowestPixels = new ArrayList<>(maxLowestPoints);
+        for (int i = 0; i < maxLowestPoints; i++) {
+            LatLonEle latLonEle = lowestPoints.get(i);
+            Point p = mapView.getPoint(latLonEle);
+            lowestPixels.add(p);
+        }
+        String textLowestElevation = "";
+        double lowestElevation = lowestAndHighestPointsRef.getLowestElevation();
+        if (!elevationGrid.isNoDataValue(lowestElevation)) {
+            textLowestElevation = String.format("%.3f", lowestElevation);
+        }
+        int maxHighestPoints = Math.min(highestPoints.size(),
+                ElevationPreferences.MAX_RENDERED_LOWEST_OR_HIGHEST_POINTS);
+        List<Point> highestPixels = new ArrayList<>(maxHighestPoints);
+        for (int i = 0; i < maxHighestPoints; i++) {
+            LatLonEle latLonEle = highestPoints.get(i);
+            Point p = mapView.getPoint(latLonEle);
+            highestPixels.add(p);
+        }
+        String textHighestElevation = "";
+        double highestElevation = lowestAndHighestPointsRef.getHighestElevation();
+        if (!elevationGrid.isNoDataValue(highestElevation)) {
+            textHighestElevation = String.format("%.3f", highestElevation);
+        }
+
+        // The size of the marker of an elevation data point in display coordinates
+        final int markerSize = 8;
+        final int textOffsetX = markerSize / 2 + 3;
+
+        // Draw the symbols for the lowest and highest points
+        for (Point p : lowestPixels) {
+            DrawUtils.drawEquilateralTriangle(g, p.x, p.y, markerSize, false, Color.GREEN, Color.BLACK);
+        }
+        for (Point p : highestPixels) {
+            DrawUtils.drawEquilateralTriangle(g, p.x, p.y, markerSize, true, Color.RED, Color.BLACK);
+        }
+
+        // Set the font for elevation value strings
+        Font font = g.getFont().deriveFont(Font.BOLD, 12);
+        g.setFont(font);
+        // Draw non-overlapping labels for the highest and lowest points
+        // Draw non-overlapping labels for the highest and lowest points
+        NonOverlappingTextRenderer textRenderer = new NonOverlappingTextRenderer();
+        for (Point p : lowestPixels) {
+            textRenderer.drawTextSafely(g, p.x + textOffsetX, p.y, Color.BLUE, Color.WHITE, textLowestElevation);
+        }
+        for (Point p : highestPixels) {
+            textRenderer.drawTextSafely(g, p.x + textOffsetX, p.y, Color.BLUE, Color.WHITE, textHighestElevation);
         }
     }
 
@@ -342,7 +449,8 @@ public class GeoTiffElevationLayer extends ElevationLayer {
     @Override
     public synchronized void destroy() {
         // Cancel any running background tasks of this layer
-        for (Future<?> future : new Future<?>[] { grayscaleImageFuture, contourLinesFuture }) {
+        for (Future<?> future : new Future<?>[] { elevationGridFuture, grayscaleImageFuture, contourLinesFuture,
+                lowestAndHighestPointsFuture }) {
             if (future != null && !future.isDone()) {
                 future.cancel(true);
             }

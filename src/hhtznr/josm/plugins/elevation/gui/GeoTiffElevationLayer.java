@@ -29,9 +29,11 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 
 import org.geotools.geometry.jts.ReferencedEnvelope;
+import org.openstreetmap.josm.actions.JosmAction;
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.visitor.BoundingXYVisitor;
+import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.MapView;
 import org.openstreetmap.josm.gui.dialogs.LayerListPopup;
 import org.openstreetmap.josm.tools.GBC;
@@ -67,15 +69,33 @@ public class GeoTiffElevationLayer extends ElevationLayer {
     private LowestAndHighestPoints lowestAndHighestPoints = null;
     private double[] lowestAndHighestElevation = null;
 
-    private int contourLineIsostep = ElevationPreferences.getContourLineIsostep();
-    private short lowerCutoffElevation = ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION;
-    private short upperCutoffElevation = ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION;
+    // For storing of previous values
+    private int contourLineIsostep;
+    private short lowerCutoffElevation;
+    private short upperCutoffElevation;
 
     private boolean grayscaleImageEnabled = true;
     private Future<?> elevationGridFuture = null;
     private Future<?> grayscaleImageFuture = null;
     private Future<?> contourLinesFuture = null;
     private Future<?> lowestAndHighestPointsFuture = null;
+
+    private GeoTiffElevationLayerAdjustmentDialog layerAdjustmentDialog = null;
+
+    /**
+     * Creates a new map layer for visualization of the elevation data provided by a
+     * GeoTIFF image using default values from preferences.
+     *
+     * @param name         The name of the layer.
+     * @param geoTiffImage The GeoTIFF image providing the elevation data for this
+     *                     layer.
+     */
+    public GeoTiffElevationLayer(String name, GeoTiffImage geoTiffImage) {
+        this(name, geoTiffImage, ElevationPreferences.getContourLineIsostep(),
+                ElevationPreferences.getContourLineStrokeWidth(), ElevationPreferences.getContourLineColoringScheme(),
+                ElevationPreferences.getContourLineColor(), ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION,
+                ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION);
+    }
 
     /**
      * Creates a new map layer for visualization of the elevation data provided by a
@@ -101,6 +121,9 @@ public class GeoTiffElevationLayer extends ElevationLayer {
                 contourLineColoringScheme, contourLineConstantColor, lowerCutoffElevation, upperCutoffElevation);
 
         this.geoTiffImage = geoTiffImage;
+        this.contourLineIsostep = contourLineIsostep;
+        this.lowerCutoffElevation = lowerCutoffElevation;
+        this.upperCutoffElevation = upperCutoffElevation;
 
         elevationGridFuture = ElevationPlugin.getParallelExecutor().submit(() -> {
             if (Thread.currentThread().isInterrupted()) {
@@ -265,35 +288,22 @@ public class GeoTiffElevationLayer extends ElevationLayer {
         Coloring.Scheme layerContourLineColoringScheme = getContourLineColoringScheme();
         Color layerContourLineConstantColor = getContourLineConstantColor();
 
-        int layerContourLineIsostep = getContourLineIsostep();
-        short layerLowerCutoffElevation = getLowerCutoffElevation();
-        short layerUpperCutoffElevation = getUpperCutoffElevation();
-        if (contourLines == null || contourLineIsostep != layerContourLineIsostep
-                || lowerCutoffElevation != layerLowerCutoffElevation
-                || upperCutoffElevation != layerUpperCutoffElevation) {
-            contourLineIsostep = layerContourLineIsostep;
-            lowerCutoffElevation = layerLowerCutoffElevation;
-            upperCutoffElevation = layerUpperCutoffElevation;
+        GeoTiffContourLines currentContourLines = contourLines;
 
-            if (isContourLinesEnabled() && contourLines == null && contourLinesFuture == null) {
-                contourLinesFuture = ElevationPlugin.getParallelExecutor().submit(() -> {
-                    try {
-                        if (Thread.currentThread().isInterrupted()) {
-                            return;
-                        }
-                        contourLines = new GeoTiffContourLines(elevationGrid, contourLineIsostep, lowerCutoffElevation,
-                                upperCutoffElevation);
-                        if (!Thread.currentThread().isInterrupted()) {
-                            triggerRepaint();
-                        }
-                    } catch (AsyncOperationException e) {
-                        Logging.error("Elevation: Cannot create contour lines for GeoTIFF "
-                                + geoTiffImage.getFile().getName());
-                    } finally {
-                        contourLinesFuture = null;
-                    }
-                });
+        int newContourLineIsostep = getContourLineIsostep();
+        short newLowerCutoffElevation = getLowerCutoffElevation();
+        short newUpperCutoffElevation = getUpperCutoffElevation();
+        if (currentContourLines == null || contourLineIsostep != newContourLineIsostep
+                || lowerCutoffElevation != newLowerCutoffElevation || upperCutoffElevation != newUpperCutoffElevation) {
+            Future<?> future = contourLinesFuture;
+            if (future != null && !future.isDone()) {
+                future.cancel(true);
             }
+            contourLineIsostep = newContourLineIsostep;
+            lowerCutoffElevation = newLowerCutoffElevation;
+            upperCutoffElevation = newUpperCutoffElevation;
+
+            triggerContourLineComputation(newContourLineIsostep, newLowerCutoffElevation, newUpperCutoffElevation);
         }
 
         GeoTiffContourLines contourLinesRef = contourLines;
@@ -343,6 +353,29 @@ public class GeoTiffElevationLayer extends ElevationLayer {
                 }
             }
         }
+    }
+
+    private void triggerContourLineComputation(int contourLineIsostep, short lowerCutoffElevation,
+            short upperCutoffElevation) {
+        if (elevationGrid == null) {
+            return;
+        }
+        contourLinesFuture = ElevationPlugin.getParallelExecutor().submit(() -> {
+            try {
+                if (Thread.currentThread().isInterrupted()) {
+                    return;
+                }
+                contourLines = new GeoTiffContourLines(elevationGrid, contourLineIsostep, lowerCutoffElevation,
+                        upperCutoffElevation);
+                if (!Thread.currentThread().isInterrupted()) {
+                    triggerRepaint();
+                }
+            } catch (AsyncOperationException e) {
+                Logging.error("Elevation: Cannot create contour lines for GeoTIFF " + geoTiffImage.getFile().getName());
+            } finally {
+                contourLinesFuture = null;
+            }
+        });
     }
 
     private void drawLowestAndHighestPoints(Graphics2D g, MapView mapView) {
@@ -452,6 +485,8 @@ public class GeoTiffElevationLayer extends ElevationLayer {
         }
         actions.add(new ShowGrayscaleImageAction());
         actions.add(SeparatorLayerAction.INSTANCE);
+        actions.add(new ShowLayerAdjustmentDialogAction());
+        actions.add(SeparatorLayerAction.INSTANCE);
         actions.add(new LayerListPopup.InfoAction(this));
         return actions.toArray(new Action[0]);
     }
@@ -480,8 +515,6 @@ public class GeoTiffElevationLayer extends ElevationLayer {
         public void actionPerformed(ActionEvent e) {
             GeoTiffElevationLayer layer = GeoTiffElevationLayer.this;
             layer.grayscaleImageEnabled = !layer.grayscaleImageEnabled;
-            // TODO: Handle via preferences?
-            // ElevationPreferences.setContourLinesEnabled(layer.contourLinesEnabled);
             if (layer.grayscaleImageEnabled) {
                 Logging.info("Elevation: GeoTIFF grayscale image enabled for layer " + getName());
             } else {
@@ -495,6 +528,26 @@ public class GeoTiffElevationLayer extends ElevationLayer {
             JCheckBoxMenuItem item = new JCheckBoxMenuItem(this);
             item.setSelected(GeoTiffElevationLayer.this.grayscaleImageEnabled);
             return item;
+        }
+    }
+
+    private class ShowLayerAdjustmentDialogAction extends JosmAction {
+
+        private static final long serialVersionUID = 1L;
+
+        public ShowLayerAdjustmentDialogAction() {
+            super("Dynamic elevation layer adjustment", new ImageProvider("elevation.svg"),
+                    "Dynamic, non-presistent adjustment of elevation rendering", null, true, "elevation-layer-settings",
+                    false);
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            if (layerAdjustmentDialog == null) {
+                layerAdjustmentDialog = new GeoTiffElevationLayerAdjustmentDialog(MainApplication.getMainFrame(),
+                        GeoTiffElevationLayer.this);
+            }
+            layerAdjustmentDialog.showDialog();
         }
     }
 }

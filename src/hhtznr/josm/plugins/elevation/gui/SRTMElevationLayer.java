@@ -55,7 +55,7 @@ public class SRTMElevationLayer extends ElevationLayer implements ElevationDataP
     private boolean hillshadeEnabled;
     private boolean elevationRasterEnabled;
 
-    private ElevationLayerAdjustmentDialog layerAdjustmentDialog = null;
+    private SRTMElevationLayerAdjustmentDialog layerAdjustmentDialog = null;
 
     /**
      * Creates a new elevation layer using SRTM data.
@@ -231,7 +231,7 @@ public class SRTMElevationLayer extends ElevationLayer implements ElevationDataP
         actions.add(new ShowHillshadeAction());
         actions.add(new ShowElevationRasterAction());
         actions.add(SeparatorLayerAction.INSTANCE);
-        actions.add(new ShowElevationLayerDialogAction());
+        actions.add(new ShowLayerAdjustmentDialogAction());
         actions.add(SeparatorLayerAction.INSTANCE);
         actions.add(new LayerListPopup.InfoAction(this));
         return actions.toArray(new Action[0]);
@@ -317,11 +317,11 @@ public class SRTMElevationLayer extends ElevationLayer implements ElevationDataP
         }
     }
 
-    private class ShowElevationLayerDialogAction extends JosmAction {
+    private class ShowLayerAdjustmentDialogAction extends JosmAction {
 
         private static final long serialVersionUID = 1L;
 
-        public ShowElevationLayerDialogAction() {
+        public ShowLayerAdjustmentDialogAction() {
             super("Dynamic elevation layer adjustment", new ImageProvider("elevation.svg"),
                     "Dynamic, non-presistent adjustment of elevation rendering", null, true, "elevation-layer-settings",
                     false);
@@ -330,7 +330,7 @@ public class SRTMElevationLayer extends ElevationLayer implements ElevationDataP
         @Override
         public void actionPerformed(ActionEvent e) {
             if (layerAdjustmentDialog == null) {
-                layerAdjustmentDialog = new ElevationLayerAdjustmentDialog(MainApplication.getMainFrame(),
+                layerAdjustmentDialog = new SRTMElevationLayerAdjustmentDialog(MainApplication.getMainFrame(),
                         SRTMElevationLayer.this);
             }
             layerAdjustmentDialog.showDialog();

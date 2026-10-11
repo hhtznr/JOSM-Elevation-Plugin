@@ -2,7 +2,6 @@ package hhtznr.josm.plugins.elevation.gui;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 
-import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.IOException;
@@ -21,7 +20,6 @@ import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
-import hhtznr.josm.plugins.elevation.data.Coloring;
 import hhtznr.josm.plugins.elevation.data.GeoTiffImage;
 import hhtznr.josm.plugins.elevation.data.GeoTiffImageException;
 
@@ -140,14 +138,8 @@ public class OpenGeoTiffAction extends DiskAccessAction {
                 return;
             }
         }
-        // TODO: Set the values for contour lines based on preferences
-        int isostep = 10;
-        float strokeWidth = ElevationPreferences.getContourLineStrokeWidth();
-        short lowerCutoffElevation = ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION;
-        short upperCutoffElevation = ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION;
 
-        GeoTiffElevationLayer geoTiffLayer = new GeoTiffElevationLayer(layerName, geoTiffImage, isostep, strokeWidth,
-                Coloring.Scheme.FALSE_COLOR, Color.BLACK, lowerCutoffElevation, upperCutoffElevation);
+        GeoTiffElevationLayer geoTiffLayer = new GeoTiffElevationLayer(layerName, geoTiffImage);
         layerManager.addLayer(geoTiffLayer);
     }
 }

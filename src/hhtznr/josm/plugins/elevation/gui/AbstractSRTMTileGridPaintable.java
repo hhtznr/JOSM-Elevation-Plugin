@@ -17,6 +17,8 @@ public abstract class AbstractSRTMTileGridPaintable extends ElevationDataConsume
 
     protected final ElevationGridView elevationGridView;
 
+    private boolean invalidated = false;
+
     /**
      * Abstract constructor of a paintable object obtained from an SRTM tile grid
      * view.
@@ -49,5 +51,22 @@ public abstract class AbstractSRTMTileGridPaintable extends ElevationDataConsume
      */
     public Bounds getBounds() {
         return elevationGridView.getBounds();
+    }
+
+    /**
+     * Invalidates this abstract tile grid paintable.
+     */
+    public void invalidate() {
+        invalidated = true;
+    }
+
+    /**
+     * Returns whether this abstract tile grid paintable has been invalidated.
+     *
+     * @return {@code true} if this abstract tile grid paintable has been
+     *         invalidated, {@code false} otherwise.
+     */
+    public boolean isInvalidated() {
+        return invalidated;
     }
 }

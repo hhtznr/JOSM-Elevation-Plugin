@@ -13,40 +13,26 @@ import javax.swing.Box;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JSeparator;
 import javax.swing.JSpinner;
-import javax.swing.SwingConstants;
 
 import org.openstreetmap.josm.gui.ExtendedDialog;
-import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.widgets.JosmComboBox;
 import org.openstreetmap.josm.tools.GBC;
 
-import hhtznr.josm.plugins.elevation.ElevationPlugin;
 import hhtznr.josm.plugins.elevation.ElevationPluginTexts;
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
 import hhtznr.josm.plugins.elevation.data.Coloring;
-import hhtznr.josm.plugins.elevation.data.SRTMTile;
 
 /**
- * Dialog to dynamically adjust rendering options of the elevation layer.
+ * Dialog to dynamically adjust rendering options of a GeoTIFF elevation layer.
  *
  * @author Harald Hetzner
  */
-public class ElevationLayerAdjustmentDialog extends ExtendedDialog {
+public class GeoTiffElevationLayerAdjustmentDialog extends ExtendedDialog {
 
-    private static final long serialVersionUID = 2722645568569947314L;
+    private static final long serialVersionUID = -1L;
 
-    private final SRTMElevationLayer elevationLayer;
-
-    // General
-    private final JosmComboBox<SRTMTile.Type> comboBoxSRTMType = new JosmComboBox<>(
-            new SRTMTile.Type[] { SRTMTile.Type.SRTM1, SRTMTile.Type.SRTM3 });
-    private final JSpinner spRenderingLimit = UIFactory.createSpinner(
-            ElevationPreferences.getElevationLayerRenderingLimit(),
-            ElevationPreferences.MIN_ELEVATION_LAYER_RENDERING_LIMIT,
-            ElevationPreferences.MAX_ELEVATION_LAYER_RENDERING_LIMIT,
-            ElevationPreferences.INCR_ELEVATION_LAYER_RENDERING_LIMIT);
+    private final GeoTiffElevationLayer elevationLayer;
 
     // Contour lines
     private final JSpinner spIsostep = UIFactory.createSpinner(ElevationPreferences.getContourLineIsostep(), 1,
@@ -69,41 +55,26 @@ public class ElevationLayerAdjustmentDialog extends ExtendedDialog {
 
     private final ColorChooserButton btnStrokeColor;
 
-    // Hillshade
-    private final JSpinner spHillshadeAltitude = UIFactory.createSpinner(ElevationPreferences.getHillshadeAltitude(),
-            ElevationPreferences.MIN_HILLSHADE_ALTITUDE, ElevationPreferences.MAX_HILLSHADE_ALTITUDE,
-            ElevationPreferences.INCR_HILLSHADE_ALTITUDE);
-
-    private final JSpinner spHillshadeAzimuth = UIFactory.createSpinner(ElevationPreferences.getHillshadeAzimuth(),
-            ElevationPreferences.MIN_HILLSHADE_AZIMUTH, ElevationPreferences.MAX_HILLSHADE_AZIMUTH,
-            ElevationPreferences.INCR_HILLSHADE_AZIMUTH);
-
     /**
      * Constructs a dialog that allows to dynamically adjust rendering parameters of
-     * an elevation layer. Adjustment is non-peristent.
+     * a GeoTIFF elevation layer. Adjustment is non-peristent.
      *
      * @param parent The parent component of the dialog.
      * @param layer  The elevation layer.
      */
-    public ElevationLayerAdjustmentDialog(Component parent, SRTMElevationLayer layer) {
-        super(parent, "SRTM Elevation Layer Adjustment", new String[] { tr("Refresh"), tr("Close") }, false, false);
+    public GeoTiffElevationLayerAdjustmentDialog(Component parent, GeoTiffElevationLayer layer) {
+        super(parent, layer.getName() + " Adjustment", new String[] { tr("Refresh"), tr("Close") }, false, false);
         // Set the icon of the close button via the superclass method
         setButtonIcons("dialogs/refresh.svg", "misc/close.svg");
 
         elevationLayer = layer;
 
-        comboBoxSRTMType.setSelectedItem(ElevationPreferences.getSRTMType());
-
-        spRenderingLimit.setToolTipText(ElevationPluginTexts.TOOL_TIP_LAYER_RENDERING_LIMIT);
         spUpperCutoffValue.setToolTipText(ElevationPluginTexts.TOOL_TIP_HILLSHADE_ALTITUDE);
         spLowerCutoffValue.setToolTipText(ElevationPluginTexts.TOOL_TIP_LOWER_CUTOFF_ELEVATION);
 
         comboBoxColoring.setSelectedItem(ElevationPreferences.getContourLineColoringScheme());
         btnStrokeColor = new ColorChooserButton(this, "Choose Color of Contour Lines",
                 ElevationPreferences.getContourLineColor());
-
-        spHillshadeAltitude.setToolTipText(ElevationPluginTexts.TOOL_TIP_HILLSHADE_ALTITUDE);
-        spHillshadeAzimuth.setToolTipText(ElevationPluginTexts.TOOL_TIP_HILLSHADE_AZIMUTH);
 
         JLabel labelSectionGeneral = new JLabel("General Layer Settings");
         labelSectionGeneral.setFont(labelSectionGeneral.getFont().deriveFont(Font.BOLD));
@@ -121,57 +92,7 @@ public class ElevationLayerAdjustmentDialog extends ExtendedDialog {
         gc.fill = GBC.HORIZONTAL;
         gc.insets = new Insets(5, 5, 0, 0);
 
-        // Row "Section General"
-        gc.fill = GBC.HORIZONTAL;
-        gc.gridwidth = GBC.REMAINDER;
-        gc.weightx = 1.0;
-        pnl.add(labelSectionGeneral, gc);
-
-        // Row "SRTM Type"
-        gc.gridy++;
-        gc.gridx = 0;
-        gc.fill = GBC.NONE;
-        gc.gridwidth = 1;
-        gc.weightx = 0.0;
-        pnl.add(new JLabel("SRTM Type:"), gc);
-
-        gc.gridx++;
-        gc.fill = GBC.HORIZONTAL;
-        pnl.add(comboBoxSRTMType, gc);
-
-        gc.gridx++;
-        gc.gridwidth = GBC.REMAINDER;
-        gc.weightx = 1.0;
-        pnl.add(new JPanel(), gc);
-
-        // Row "Layer rendering limit"
-        gc.gridy++;
-        gc.gridx = 0;
-        gc.fill = GBC.NONE;
-        gc.gridwidth = 1;
-        gc.weightx = 0.0;
-        pnl.add(new JLabel("Layer Rendering Map Size Limit:"), gc);
-
-        gc.gridx++;
-        gc.fill = GBC.HORIZONTAL;
-        pnl.add(spRenderingLimit, gc);
-
-        gc.gridx++;
-        gc.gridwidth = GBC.REMAINDER;
-        gc.weightx = 1.0;
-        pnl.add(new JLabel("°"), gc);
-
-        // Separator before next section
-        gc.gridy++;
-        gc.gridx = 0;
-        gc.fill = GBC.HORIZONTAL;
-        gc.gridwidth = GBC.REMAINDER;
-        gc.weightx = 1.0;
-        pnl.add(new JSeparator(SwingConstants.HORIZONTAL), gc);
-
         // Row "Section Contour lines"
-        gc.gridy++;
-        gc.gridx = 0;
         gc.fill = GBC.HORIZONTAL;
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
@@ -269,54 +190,6 @@ public class ElevationLayerAdjustmentDialog extends ExtendedDialog {
         gc.weightx = 1.0;
         pnl.add(new JPanel(), gc);
 
-        // Separator before next section
-        gc.gridy++;
-        gc.gridx = 0;
-        gc.fill = GBC.HORIZONTAL;
-        gc.gridwidth = GBC.REMAINDER;
-        gc.weightx = 1.0;
-        pnl.add(new JSeparator(SwingConstants.HORIZONTAL), gc);
-
-        // Row "Section Hillshade"
-        gc.gridy++;
-        gc.gridx = 0;
-        gc.fill = GBC.HORIZONTAL;
-        gc.gridwidth = GBC.REMAINDER;
-        gc.weightx = 1.0;
-        pnl.add(labelSectionHillshade, gc);
-
-        // Row "Hillshade altitude"
-        gc.gridy++;
-        gc.gridx = 0;
-        gc.gridwidth = 1;
-        gc.weightx = 0.0;
-        pnl.add(new JLabel("Illumination Source Altitude:"), gc);
-
-        gc.gridx++;
-        pnl.add(spHillshadeAltitude, gc);
-
-        gc.gridx++;
-        gc.fill = GBC.HORIZONTAL;
-        gc.gridwidth = GBC.REMAINDER;
-        gc.weightx = 1.0;
-        pnl.add(new JLabel("°"), gc);
-
-        // Row "Hillshade azimuth"
-        gc.gridy++;
-        gc.gridx = 0;
-        gc.gridwidth = 1;
-        gc.weightx = 0.0;
-        pnl.add(new JLabel("Illumination Source Azimuth:"), gc);
-
-        gc.gridx++;
-        pnl.add(spHillshadeAzimuth, gc);
-
-        gc.gridx++;
-        gc.fill = GBC.HORIZONTAL;
-        gc.gridwidth = GBC.REMAINDER;
-        gc.weightx = 1.0;
-        pnl.add(new JLabel("°"), gc);
-
         // add an extra spacer, otherwise the layout is broken
         pnl.add(Box.createVerticalGlue(), GBC.eol().fill());
 
@@ -340,8 +213,6 @@ public class ElevationLayerAdjustmentDialog extends ExtendedDialog {
     }
 
     private void refreshLayer() {
-        SRTMTile.Type srtmType = (SRTMTile.Type) comboBoxSRTMType.getSelectedItem();
-        double renderingLimit = (Double) spRenderingLimit.getValue();
         int isostep = (Integer) spIsostep.getValue();
         short upperCutoff = ((Integer) spUpperCutoffValue.getValue()).shortValue();
         short lowerCutoff = ((Integer) spLowerCutoffValue.getValue()).shortValue();
@@ -356,24 +227,12 @@ public class ElevationLayerAdjustmentDialog extends ExtendedDialog {
         float strokeWidth = ((Double) spStrokeWidth.getValue()).floatValue();
         Coloring.Scheme scheme = (Coloring.Scheme) comboBoxColoring.getSelectedItem();
         Color color = btnStrokeColor.getSelectedColor();
-        int hillshadeAltitude = (Integer) spHillshadeAltitude.getValue();
-        int hillshadeAzimuth = (Integer) spHillshadeAzimuth.getValue();
-        elevationLayer.getElevationDataProvider().setSRTMType(srtmType);
-        elevationLayer.setRenderingLimit(renderingLimit);
         elevationLayer.setContourLineIsostep(isostep);
         elevationLayer.setLowerCutoffElevation(lowerCutoff);
         elevationLayer.setUpperCutoffElevation(upperCutoff);
         elevationLayer.setContourLineStrokeWidth(strokeWidth);
         elevationLayer.setContourLineColoringScheme(scheme);
         elevationLayer.setContourLineConstantColor(color);
-        elevationLayer.setHillshadeIllumination(hillshadeAltitude, hillshadeAzimuth);
-        elevationLayer.invalidate();
-        MainApplication.getMap().mapView.repaint();
-        // Also update the maximum map dimensions of the map view elevation data consumer
-        MapViewElevationDataConsumer mapViewElevationDataConsumer = ElevationPlugin.getMapViewElevationDataConsumer();
-        // Generally, it should not be null if the ElevationLayer is not null
-        if (mapViewElevationDataConsumer != null) {
-            mapViewElevationDataConsumer.setSwitchOffDimension(renderingLimit);
-        }
+        elevationLayer.triggerRepaint();
     }
 }

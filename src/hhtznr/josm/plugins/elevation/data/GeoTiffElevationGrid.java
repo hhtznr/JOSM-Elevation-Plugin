@@ -33,15 +33,21 @@ public class GeoTiffElevationGrid implements ElevationGridView {
     private final int width;
     private final int height;
     private final double[] noDataValues;
+    private final double[] elevations;
+    private final double lowestElevation;
+    private final double highestElevation;
     private final MathTransform gridToCrs;
     private final MathTransform crsToGeographic;
 
     /**
-     * Creates an elevation grid from a GeoTIFF image.
+     * Creates an in-memory elevation grid from a GeoTIFF image, caching its samples
+     * and valid elevation range for repeated access.
      *
      * @param geoTiffImage source GeoTIFF image
-     * @throws GeoTiffImageException if the coverage has no CRS or its coordinate
-     *                               transforms cannot be created
+     * @throws GeoTiffImageException if the coverage has no coordinate reference
+     *                               system (CRS), its coordinate transforms cannot
+     *                               be created, or its samples cannot be
+     *                               represented by a Java array
      */
     public GeoTiffElevationGrid(GeoTiffImage geoTiffImage) throws GeoTiffImageException {
         this.geoTiffImage = geoTiffImage;
@@ -69,6 +75,40 @@ public class GeoTiffElevationGrid implements ElevationGridView {
             throw new GeoTiffImageException("Cannot create coordinate transforms for GeoTIFF file '"
                     + geoTiffImage.getFile().getAbsolutePath() + "'", e);
         }
+
+        int sampleCount;
+        try {
+            sampleCount = Math.multiplyExact(width, height);
+        } catch (ArithmeticException e) {
+            throw new GeoTiffImageException("GeoTIFF raster is too large to cache in memory: '"
+                    + geoTiffImage.getFile().getAbsolutePath() + "'", e);
+        }
+        this.elevations = new double[sampleCount];
+        double minElevation = Double.POSITIVE_INFINITY;
+        double maxElevation = Double.NEGATIVE_INFINITY;
+        Rectangle imageBounds = new Rectangle(minX, minY, width, height);
+        int minTileX = image.getMinTileX();
+        int minTileY = image.getMinTileY();
+        for (int tileY = minTileY; tileY < minTileY + image.getNumYTiles(); tileY++) {
+            for (int tileX = minTileX; tileX < minTileX + image.getNumXTiles(); tileX++) {
+                Raster tile = image.getTile(tileX, tileY);
+                Rectangle tileBounds = tile.getBounds().intersection(imageBounds);
+                for (int y = tileBounds.y; y < tileBounds.y + tileBounds.height; y++) {
+                    int latIndex = height - 1 - (y - minY);
+                    for (int x = tileBounds.x; x < tileBounds.x + tileBounds.width; x++) {
+                        int lonIndex = x - minX;
+                        double elevation = tile.getSampleDouble(x, y, 0);
+                        elevations[latIndex * width + lonIndex] = elevation;
+                        if (isValidElevation(elevation)) {
+                            minElevation = Math.min(minElevation, elevation);
+                            maxElevation = Math.max(maxElevation, elevation);
+                        }
+                    }
+                }
+            }
+        }
+        this.lowestElevation = minElevation;
+        this.highestElevation = maxElevation;
     }
 
     public GeoTiffImage getGeoTiffImage() {
@@ -87,14 +127,12 @@ public class GeoTiffElevationGrid implements ElevationGridView {
 
     @Override
     public double getElevation(int latIndex, int lonIndex) {
-        Raster tile = getTile(latIndex, lonIndex);
-        return tile.getSampleDouble(imageX(lonIndex), imageY(latIndex), 0);
+        return elevations[linearIndex(latIndex, lonIndex)];
     }
 
     @Override
-    public boolean isNoDataValue(int x, int y) {
-        double ele = getElevation(x, y);
-        return isNoDataValue(ele);
+    public boolean isNoDataValue(int latIndex, int lonIndex) {
+        return isNoDataValue(elevations[linearIndex(latIndex, lonIndex)]);
     }
 
     @Override
@@ -157,33 +195,18 @@ public class GeoTiffElevationGrid implements ElevationGridView {
 
     @Override
     public short[] getIsovalues(int isostep, int lowerCutoffElevation, int upperCutoffElevation) {
-        double minEle = Double.POSITIVE_INFINITY;
-        double maxEle = Double.NEGATIVE_INFINITY;
-        for (int latIndex = 0; latIndex < height; latIndex++) {
-            for (int lonIndex = 0; lonIndex < width; lonIndex++) {
-                double ele = getElevation(latIndex, lonIndex);
-
-                // Ignore data voids in the assessment of minimum elevation
-                if (isNoDataValue(ele)) {
-                    continue;
-                }
-
-                minEle = Math.min(minEle, ele);
-                maxEle = Math.max(maxEle, ele);
-            }
-        }
         // If the area consists of data voids only,
         // minEle will still have its initial value
-        if (minEle == Double.POSITIVE_INFINITY) {
+        if (lowestElevation == Double.POSITIVE_INFINITY) {
             return new short[] {};
         }
 
         // Apply the lower cutoff elevation value, if it is greater than the minimum
         // elevation within the grid
-        minEle = Math.max(minEle, lowerCutoffElevation);
+        double minEle = Math.max(lowestElevation, lowerCutoffElevation);
         // Apply the upper cutoff elevation value, if it is smaller than the maximum
         // elevation within the grid
-        maxEle = Math.min(maxEle, upperCutoffElevation);
+        double maxEle = Math.min(highestElevation, upperCutoffElevation);
 
         // Determine the list of isovalues, i.e. the elevation levels for which contour
         // lines should be computed
@@ -219,50 +242,15 @@ public class GeoTiffElevationGrid implements ElevationGridView {
      *         contains no valid samples
      */
     public double[] getLowestAndHighestElevation() {
-        Rectangle imageBounds = new Rectangle(image.getMinX(), image.getMinY(), image.getWidth(), image.getHeight());
-        double lowestElevation = Double.POSITIVE_INFINITY;
-        double highestElevation = Double.NEGATIVE_INFINITY;
-
-        int minTileX = image.getMinTileX();
-        int minTileY = image.getMinTileY();
-        for (int tileY = minTileY; tileY < minTileY + image.getNumYTiles(); tileY++) {
-            for (int tileX = minTileX; tileX < minTileX + image.getNumXTiles(); tileX++) {
-                Raster tile = image.getTile(tileX, tileY);
-                Rectangle tileBounds = tile.getBounds().intersection(imageBounds);
-                for (int y = tileBounds.y; y < tileBounds.y + tileBounds.height; y++) {
-                    for (int x = tileBounds.x; x < tileBounds.x + tileBounds.width; x++) {
-                        double value = tile.getSampleDouble(x, y, 0);
-                        if (!isValidElevation(value)) {
-                            continue;
-                        }
-                        lowestElevation = Math.min(lowestElevation, value);
-                        highestElevation = Math.max(highestElevation, value);
-                    }
-                }
-            }
-        }
-
         if (lowestElevation == Double.POSITIVE_INFINITY) {
             return new double[] { Double.NaN, Double.NaN };
         }
         return new double[] { lowestElevation, highestElevation };
     }
 
-    private Raster getTile(int latIndex, int lonIndex) {
+    private int linearIndex(int latIndex, int lonIndex) {
         checkGridCoordinate(latIndex, lonIndex);
-        int imageX = imageX(lonIndex);
-        int imageY = imageY(latIndex);
-        int tileX = Math.floorDiv(imageX - image.getTileGridXOffset(), image.getTileWidth());
-        int tileY = Math.floorDiv(imageY - image.getTileGridYOffset(), image.getTileHeight());
-        return image.getTile(tileX, tileY);
-    }
-
-    private int imageX(int lonIndex) {
-        return minX + lonIndex;
-    }
-
-    private int imageY(int latIndex) {
-        return minY + height - 1 - latIndex;
+        return latIndex * width + lonIndex;
     }
 
     private void checkGridCoordinate(int latIndex, int lonIndex) {

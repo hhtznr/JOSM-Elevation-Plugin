@@ -195,7 +195,7 @@ public class GeoTiffElevationLayer extends ElevationLayer {
                 grayscaleImageFuture = null;
             });
         }
-        ReferencedEnvelope geoBounds = geoTiffImage.getBounds();
+        ReferencedEnvelope geoBounds = geoTiffImage.getReferencedEnvelope();
         LatLon northWest = new LatLon(geoBounds.getMaxY(), geoBounds.getMinX());
         LatLon southEast = new LatLon(geoBounds.getMinY(), geoBounds.getMaxX());
 
@@ -323,7 +323,7 @@ public class GeoTiffElevationLayer extends ElevationLayer {
 
     @Override
     public void visitBoundingBox(BoundingXYVisitor v) {
-        ReferencedEnvelope geoBounds = geoTiffImage.getBounds();
+        ReferencedEnvelope geoBounds = geoTiffImage.getReferencedEnvelope();
         v.visit(new Bounds(geoBounds.getMinY(), geoBounds.getMinX(), geoBounds.getMaxY(), geoBounds.getMaxX()));
     }
 

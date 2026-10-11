@@ -19,7 +19,7 @@ import org.geotools.referencing.CRS;
 public class GeoTiffImage {
     private final File file;
     private final GridCoverage2D coverage;
-    private final ReferencedEnvelope bounds;
+    private final ReferencedEnvelope referencedEnvelope;
 
     /**
      * Creates a new GeoTIFF image.
@@ -33,8 +33,8 @@ public class GeoTiffImage {
     public GeoTiffImage(File file, GridCoverage2D coverage) throws GeoTiffImageException {
         this.file = file;
         this.coverage = coverage;
-        ReferencedEnvelope bounds = new ReferencedEnvelope(coverage.getEnvelope2D());
-        CoordinateReferenceSystem sourceCrs = bounds.getCoordinateReferenceSystem();
+        ReferencedEnvelope referencedEnvelope = new ReferencedEnvelope(coverage.getEnvelope2D());
+        CoordinateReferenceSystem sourceCrs = referencedEnvelope.getCoordinateReferenceSystem();
         if (sourceCrs == null) {
             String message = "GeoTIFF file '" + file.getAbsolutePath()
                     + "' cannot be displayed because it has no coordinate reference system";
@@ -42,7 +42,7 @@ public class GeoTiffImage {
         }
         try {
             CoordinateReferenceSystem geographicCrs = CRS.decode("EPSG:4326", true);
-            this.bounds = bounds.transform(geographicCrs, true, 20);
+            this.referencedEnvelope = referencedEnvelope.transform(geographicCrs, true, 20);
         } catch (FactoryException | TransformException e) {
             String message = "Cannot transform GeoTIFF bounds to latitude/longitude for '" + file.getAbsolutePath()
                     + "' due to " + e;
@@ -78,12 +78,13 @@ public class GeoTiffImage {
     }
 
     /**
-     * Returns the geographic bounds of the GeoTIFF image.
+     * Returns the geographic bounds of the GeoTIFF image in their GeoTools
+     * representation {@code ReferencedEnvelope).
      *
      * @return The geographic bounds of the GeoTIFF image.
      */
-    public ReferencedEnvelope getBounds() {
-        return bounds;
+    public ReferencedEnvelope getReferencedEnvelope() {
+        return referencedEnvelope;
     }
 
     /**

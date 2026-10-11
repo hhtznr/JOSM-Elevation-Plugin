@@ -198,6 +198,16 @@ public class GeoTiffElevationLayer extends ElevationLayer {
         return true;
     }
 
+    /**
+     * Returns the GeoTIFF elevation grid used by this layer.
+     *
+     * @return The GeoTiff elevation grid or {@code null} if the grid has not been
+     *         initialized yet.
+     */
+    public GeoTiffElevationGrid getGeoTiffElevationGrid() {
+        return elevationGrid;
+    }
+
     @Override
     public void paint(Graphics2D g, MapView mapView, Bounds mapBounds) {
         if (elevationGrid == null) {

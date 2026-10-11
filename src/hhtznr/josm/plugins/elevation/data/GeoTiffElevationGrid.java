@@ -3,6 +3,7 @@ package hhtznr.josm.plugins.elevation.data;
 import java.awt.Rectangle;
 import java.awt.image.Raster;
 import java.awt.image.RenderedImage;
+import java.util.OptionalDouble;
 
 import org.geotools.api.metadata.spatial.PixelOrientation;
 import org.geotools.api.referencing.FactoryException;
@@ -14,6 +15,7 @@ import org.geotools.coverage.grid.InvalidGridGeometryException;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.referencing.CRS;
 import org.openstreetmap.josm.data.Bounds;
+import org.openstreetmap.josm.data.coor.ILatLon;
 import org.openstreetmap.josm.data.coor.LatLon;
 
 /**
@@ -38,6 +40,8 @@ public class GeoTiffElevationGrid implements ElevationGridView {
     private final double highestElevation;
     private final MathTransform gridToCrs;
     private final MathTransform crsToGeographic;
+    private final MathTransform geographicToCrs;
+    private final MathTransform crsToGrid;
 
     /**
      * Creates an in-memory elevation grid from a GeoTIFF image, caching its samples
@@ -69,9 +73,11 @@ public class GeoTiffElevationGrid implements ElevationGridView {
 
         try {
             this.gridToCrs = coverage.getGridGeometry().getGridToCRS2D(PixelOrientation.CENTER);
+            this.crsToGrid = gridToCrs.inverse();
             CoordinateReferenceSystem geographicCrs = CRS.decode("EPSG:4326", true);
             this.crsToGeographic = CRS.findMathTransform(sourceCrs, geographicCrs, true);
-        } catch (FactoryException | InvalidGridGeometryException e) {
+            this.geographicToCrs = CRS.findMathTransform(geographicCrs, sourceCrs, true);
+        } catch (FactoryException | InvalidGridGeometryException | TransformException e) {
             throw new GeoTiffImageException("Cannot create coordinate transforms for GeoTIFF file '"
                     + geoTiffImage.getFile().getAbsolutePath() + "'", e);
         }
@@ -154,6 +160,18 @@ public class GeoTiffElevationGrid implements ElevationGridView {
             }
         }
         return false;
+    }
+
+    private int linearIndex(int latIndex, int lonIndex) {
+        checkGridCoordinate(latIndex, lonIndex);
+        return latIndex * width + lonIndex;
+    }
+
+    private void checkGridCoordinate(int latIndex, int lonIndex) {
+        if (lonIndex < 0 || lonIndex >= width || latIndex < 0 || latIndex >= height) {
+            throw new IndexOutOfBoundsException("Grid coordinate (latIndex, lonIndex) = (" + latIndex + ", " + lonIndex
+                    + ") is outside " + height + " x " + width + " raster");
+        }
     }
 
     /**
@@ -261,15 +279,45 @@ public class GeoTiffElevationGrid implements ElevationGridView {
         return new double[] { lowestElevation, highestElevation };
     }
 
-    private int linearIndex(int latIndex, int lonIndex) {
-        checkGridCoordinate(latIndex, lonIndex);
-        return latIndex * width + lonIndex;
-    }
+    /**
+     * Returns the elevation value at the grid point which is the closest to the
+     * provided coordinate. An empty optional double is returned if the grid has no
+     * valid elevation value at the coordinate or the coordinate is outside of the
+     * grid bounds.
+     *
+     * @param coordinate The location for which to determine the elevation.
+     * @return The optional double with the elevation value at the grid point
+     *         closest to the coordinate or an empty optional double if no valid
+     *         elevation could be determined.
+     * @throws TransformException if the transformation of the coordinate to the
+     *                            grid fails, e.g. because its format is invalid.
+     */
+    public OptionalDouble getElevationAt(ILatLon coordinate) throws TransformException {
+        // EPSG:4326 was decoded with longitude-first axis order.
+        double[] geographic = { coordinate.lon(), coordinate.lat() };
+        double[] source = new double[2];
+        double[] grid = new double[2];
 
-    private void checkGridCoordinate(int latIndex, int lonIndex) {
-        if (lonIndex < 0 || lonIndex >= width || latIndex < 0 || latIndex >= height) {
-            throw new IndexOutOfBoundsException("Grid coordinate (latIndex, lonIndex) = (" + latIndex + ", " + lonIndex
-                    + ") is outside " + height + " x " + width + " raster");
+        geographicToCrs.transform(geographic, 0, source, 0, 1);
+        crsToGrid.transform(source, 0, grid, 0, 1);
+
+        if (!Double.isFinite(grid[0]) || !Double.isFinite(grid[1])) {
+            return OptionalDouble.empty();
         }
+
+        // gridToCrs uses PixelOrientation.CENTER, so integer coordinates identify
+        // pixel centers. Choose the nearest pixel center.
+        long imageX = Math.round(grid[0]);
+        long imageY = Math.round(grid[1]);
+        long lonIndex = imageX - minX;
+        long imageRow = imageY - minY;
+
+        if (lonIndex < 0 || lonIndex >= width || imageRow < 0 || imageRow >= height) {
+            return OptionalDouble.empty();
+        }
+
+        int latIndex = height - 1 - (int) imageRow;
+        double elevation = getElevation(latIndex, (int) lonIndex);
+        return isNoDataValue(elevation) ? OptionalDouble.empty() : OptionalDouble.of(elevation);
     }
 }

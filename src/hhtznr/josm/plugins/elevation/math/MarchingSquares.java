@@ -1,10 +1,17 @@
 package hhtznr.josm.plugins.elevation.math;
 
 import java.util.ArrayList;
-import java.util.stream.IntStream;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 import org.openstreetmap.josm.data.coor.LatLon;
 
+import hhtznr.josm.plugins.elevation.ElevationPlugin;
+import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
+import hhtznr.josm.plugins.elevation.concurrent.ParallelExecutorService;
 import hhtznr.josm.plugins.elevation.data.ElevationGridView;
 import hhtznr.josm.plugins.elevation.data.LatLonLine;
 import hhtznr.josm.plugins.elevation.gui.ContourLines;
@@ -44,14 +51,31 @@ public class MarchingSquares {
      * Returns the array of isoline segments for the isovalues.
      *
      * @return The isoline segments.
+     * @throws AsyncOperationException If the computation of the isoline segments is
+     *                                 interrupted or fails for any reason.
      */
-    public ContourLines.IsolineSegments[] getIsolineSegments() {
-        ContourLines.IsolineSegments[] isolineSegments = new ContourLines.IsolineSegments[isovalues.length];
+    public ContourLines.IsolineSegments[] getIsolineSegments() throws AsyncOperationException {
+        List<Callable<ContourLines.IsolineSegments>> tasks = new ArrayList<>(isovalues.length);
+        for (short isovalue : isovalues) {
+            tasks.add(() -> getIsolineSegments(isovalue));
+        }
 
-        IntStream.range(0, isovalues.length).parallel().forEach(i -> {
-            short isovalue = isovalues[i];
-            isolineSegments[i] = getIsolineSegments(isovalue);
-        });
+        ParallelExecutorService executor = ElevationPlugin.getParallelExecutor();
+        List<Future<ContourLines.IsolineSegments>> futures = executor.submit(tasks);
+        ContourLines.IsolineSegments[] isolineSegments = new ContourLines.IsolineSegments[futures.size()];
+
+        try {
+            for (int i = 0; i < futures.size(); i++) {
+                isolineSegments[i] = futures.get(i).get();
+            }
+        } catch (InterruptedException e) {
+            futures.forEach(future -> future.cancel(true));
+            Thread.currentThread().interrupt();
+            throw new AsyncOperationException(e);
+        } catch (ExecutionException | CancellationException e) {
+            futures.forEach(future -> future.cancel(true));
+            throw new AsyncOperationException(e instanceof ExecutionException ? e.getCause() : e);
+        }
 
         return isolineSegments;
     }
@@ -65,8 +89,13 @@ public class MarchingSquares {
      * @return A list containing all computed isoline segments. The segments are
      *         ordered as computed. They are not sorted in a way that they could
      *         easily be joined.
+     * @throws InterruptedException If the computation is interrupted by another thread.
      */
-    private ContourLines.IsolineSegments getIsolineSegments(short isovalue) {
+    private ContourLines.IsolineSegments getIsolineSegments(short isovalue) throws InterruptedException{
+        if (Thread.currentThread().isInterrupted()) {
+           throw new InterruptedException("Isoline computation interrupted");
+        }
+
         ArrayList<LatLonLine> isolineSegments = new ArrayList<>();
 
         int rasterWidth = elevationGridView.getWidth();

@@ -38,6 +38,7 @@ import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
+import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.Coloring;
 import hhtznr.josm.plugins.elevation.data.GeoTiffElevationGrid;
 import hhtznr.josm.plugins.elevation.data.GeoTiffImage;
@@ -217,8 +218,12 @@ public class GeoTiffElevationLayer extends ElevationLayer {
                 }
             }
 
-            contourLines = new GeoTiffContourLines(elevationGrid, contourLineIsostep, lowerCutoffElevation,
-                    upperCutoffElevation);
+            try {
+                contourLines = new GeoTiffContourLines(elevationGrid, contourLineIsostep, lowerCutoffElevation,
+                        upperCutoffElevation);
+            } catch (AsyncOperationException e) {
+                Logging.error("Elevation: Cannot create contour lines for GeoTIFF " + geoTiffImage.getFile().getName());
+            }
 
             if (contourLines == null) {
                 return;

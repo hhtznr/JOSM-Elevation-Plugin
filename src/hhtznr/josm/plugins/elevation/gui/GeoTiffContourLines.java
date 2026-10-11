@@ -1,5 +1,6 @@
 package hhtznr.josm.plugins.elevation.gui;
 
+import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.ElevationGridView;
 import hhtznr.josm.plugins.elevation.math.MarchingSquares;
 
@@ -32,9 +33,11 @@ public class GeoTiffContourLines {
      *                             will not be generated.
      * @param upperCutoffElevation The elevation value above which contour lines
      *                             will not be generated.
+     * @throws AsyncOperationException Thrown if asynchronous computation of the
+     *                                 contour lines is rejected or interrupted.
      */
     public GeoTiffContourLines(ElevationGridView elevationGridView, int isostep, short lowerCutoffElevation,
-            short upperCutoffElevation) {
+            short upperCutoffElevation) throws AsyncOperationException {
         this(elevationGridView, elevationGridView.getIsovalues(isostep, lowerCutoffElevation, upperCutoffElevation),
                 isostep);
     }
@@ -46,12 +49,15 @@ public class GeoTiffContourLines {
      * @param elevationGridView The view on an elevation grid for which the contour
      *                          lines should be computed.
      * @param isovalues         The isovalues for which to create contour lines.
+     * @throws AsyncOperationException Thrown if asynchronous computation of the
+     *                                 contour lines is rejected or interrupted.
      */
-    public GeoTiffContourLines(ElevationGridView elevationGridView, short[] isovalues) {
+    public GeoTiffContourLines(ElevationGridView elevationGridView, short[] isovalues) throws AsyncOperationException {
         this(elevationGridView, isovalues, UNDEFINED_ISOSTEP);
     }
 
-    private GeoTiffContourLines(ElevationGridView elevationGridView, short[] isovalues, int isostep) {
+    private GeoTiffContourLines(ElevationGridView elevationGridView, short[] isovalues, int isostep)
+            throws AsyncOperationException {
         this.elevationGridView = elevationGridView;
         if (isostep == UNDEFINED_ISOSTEP) {
             if (isovalues.length < 2) {

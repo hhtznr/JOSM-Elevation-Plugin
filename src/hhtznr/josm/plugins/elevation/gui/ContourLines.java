@@ -2,6 +2,7 @@ package hhtznr.josm.plugins.elevation.gui;
 
 import java.util.List;
 
+import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.LatLonLine;
 import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
 import hhtznr.josm.plugins.elevation.math.MarchingSquares;
@@ -35,9 +36,11 @@ public class ContourLines extends AbstractSRTMTileGridPaintable {
      *                             will not be generated.
      * @param upperCutoffElevation The elevation value above which contour lines
      *                             will not be generated.
+     * @throws AsyncOperationException Thrown if asynchronous computation of the
+     *                                 contour lines is rejected or interrupted.
      */
-    public ContourLines(SRTMTileGridView tileGridView, int isostep, int lowerCutoffElevation,
-            int upperCutoffElevation) {
+    public ContourLines(SRTMTileGridView tileGridView, int isostep, int lowerCutoffElevation, int upperCutoffElevation)
+            throws AsyncOperationException {
         this(tileGridView, tileGridView.getIsovalues(isostep, lowerCutoffElevation, upperCutoffElevation), isostep);
     }
 
@@ -45,21 +48,24 @@ public class ContourLines extends AbstractSRTMTileGridPaintable {
      * Creates a new set of contour lines for the specified isovalues only covering
      * the bounds of the specified view.
      *
-     * @param tileGridView    The SRTM tile grid view from which elevation data
-     *                        should be obtained.
-     * @param isovalues       The isovalues for which to create contour lines.
+     * @param tileGridView The SRTM tile grid view from which elevation data should
+     *                     be obtained.
+     * @param isovalues    The isovalues for which to create contour lines.
+     * @throws AsyncOperationException Thrown if asynchronous computation of the
+     *                                 contour lines is rejected or interrupted.
      */
-    public ContourLines(SRTMTileGridView tileGridView, short[] isovalues) {
+    public ContourLines(SRTMTileGridView tileGridView, short[] isovalues) throws AsyncOperationException {
         this(tileGridView, isovalues, UNDEFINED_ISOSTEP);
     }
 
-    private ContourLines(SRTMTileGridView tileGridView, short[] isovalues, int isostep) {
+    private ContourLines(SRTMTileGridView tileGridView, short[] isovalues, int isostep) throws AsyncOperationException {
         super(namer.nextName(), tileGridView);
         if (isostep == UNDEFINED_ISOSTEP) {
-            if (isovalues.length < 2)
+            if (isovalues.length < 2) {
                 this.isostep = 1;
-            else
+            } else {
                 this.isostep = isovalues[1] - isovalues[0];
+            }
         } else {
             this.isostep = isostep;
         }

@@ -18,17 +18,18 @@ import org.openstreetmap.josm.plugins.PluginInformation;
 import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
+import hhtznr.josm.plugins.elevation.concurrent.ParallelExecutorService;
 import hhtznr.josm.plugins.elevation.data.Coloring;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.ElevationDataSource;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
 import hhtznr.josm.plugins.elevation.gui.AddElevationLayerAction;
-import hhtznr.josm.plugins.elevation.gui.SRTMElevationLayer;
 import hhtznr.josm.plugins.elevation.gui.ElevationTabPreferenceSetting;
 import hhtznr.josm.plugins.elevation.gui.KeyColFinderAction;
 import hhtznr.josm.plugins.elevation.gui.LocalElevationLabel;
 import hhtznr.josm.plugins.elevation.gui.MapViewElevationDataConsumer;
 import hhtznr.josm.plugins.elevation.gui.OpenGeoTiffAction;
+import hhtznr.josm.plugins.elevation.gui.SRTMElevationLayer;
 import hhtznr.josm.plugins.elevation.gui.SRTMFileDownloadErrorDialog;
 import hhtznr.josm.plugins.elevation.gui.SetNodeElevationAction;
 import hhtznr.josm.plugins.elevation.gui.SetPeakProminenceAction;
@@ -58,6 +59,8 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     private SRTMElevationLayer elevationLayer = null;
     private final SetNodeElevationAction setNodeElevationAction;
     private final SetPeakProminenceAction setPeakProminenceAction;
+
+    private static final ParallelExecutorService PARALLEL_EXECUTOR_SERVICE = new ParallelExecutorService();
 
     /**
      * Initializes the plugin.
@@ -115,6 +118,16 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                         + elevationDataSource.getDataDirectory().getAbsolutePath() + "'");
             }
         }
+    }
+
+    /**
+     * Returns the common parallel executor service of this plugin.
+     *
+     * @return The parallel executor service for execution of tasks in parallel
+     *         threads.
+     */
+    public static ParallelExecutorService getParallelExecutor() {
+        return PARALLEL_EXECUTOR_SERVICE;
     }
 
     /**

@@ -177,15 +177,18 @@ public class KeyColFinder extends AbstractElevationTool {
     private void union(int a, int b) {
         int rootA = findParent(a);
         int rootB = findParent(b);
-        if (rootA == rootB)
+        if (rootA == rootB) {
             return;
+        }
 
         // Merge components
         parent[rootB] = rootA;
-        if (hasPeakA.get(rootB))
+        if (hasPeakA.get(rootB)) {
             hasPeakA.set(rootA);
-        if (hasPeakB.get(rootB))
+        }
+        if (hasPeakB.get(rootB)) {
             hasPeakB.set(rootA);
+        }
     }
 
     /**
@@ -245,15 +248,18 @@ public class KeyColFinder extends AbstractElevationTool {
                 throw new AsyncOperationException(new InterruptedException("Key col finder: " + message));
             }
             for (int lonIndex = 0; lonIndex < width; lonIndex++) {
-                short elevation = tileGridView.getElevation(latIndex, lonIndex);
+                short elevation = tileGridView.getElevationAsShort(latIndex, lonIndex);
                 // Skip SRTM data voids
-                if (elevation == SRTMTile.SRTM_DATA_VOID)
+                if (elevation == SRTMTile.SRTM_DATA_VOID) {
                     continue;
+                }
                 validCount++;
-                if (elevation < minElevation)
+                if (elevation < minElevation) {
                     minElevation = elevation;
-                if (elevation > maxElevation)
+                }
+                if (elevation > maxElevation) {
                     maxElevation = elevation;
+                }
             }
         }
 
@@ -266,7 +272,7 @@ public class KeyColFinder extends AbstractElevationTool {
 
         // Compute range. After the earlier 'validCount == 0' check, maxE >= minE is
         // guaranteed so elevationRange must be >= 1.
-        int elevationRange = (int) maxElevation - (int) minElevation + 1;
+        int elevationRange = maxElevation - minElevation + 1;
 
         // 2. Build histogram counts, skipping voids
         int[] histogramCounts = new int[elevationRange];
@@ -278,9 +284,10 @@ public class KeyColFinder extends AbstractElevationTool {
                 throw new AsyncOperationException(new InterruptedException("Key col finder: " + message));
             }
             for (int lonIndex = 0; lonIndex < width; lonIndex++) {
-                short elevation = tileGridView.getElevation(latIndex, lonIndex);
-                if (elevation == SRTMTile.SRTM_DATA_VOID)
+                short elevation = tileGridView.getElevationAsShort(latIndex, lonIndex);
+                if (elevation == SRTMTile.SRTM_DATA_VOID) {
                     continue;
+                }
                 histogramCounts[elevation - minElevation]++;
             }
         }
@@ -303,9 +310,10 @@ public class KeyColFinder extends AbstractElevationTool {
         for (int latIndex = 0; latIndex < height; latIndex++) {
             int latOffset = latIndex * width;
             for (int lonIndex = 0; lonIndex < width; lonIndex++) {
-                short elevation = tileGridView.getElevation(latIndex, lonIndex);
-                if (elevation == SRTMTile.SRTM_DATA_VOID)
+                short elevation = tileGridView.getElevationAsShort(latIndex, lonIndex);
+                if (elevation == SRTMTile.SRTM_DATA_VOID) {
                     continue;
+                }
                 // Determine the bucket
                 int bucket = elevation - minElevation;
                 // Read current write pointer
@@ -343,23 +351,28 @@ public class KeyColFinder extends AbstractElevationTool {
         // If peaks land on void cells, find nearest non-void cell as a fallback.
         int peakAIndexLinear = peakAIndices[0] * width + peakAIndices[1];
         int peakBIndexLinear = peakBIndices[0] * width + peakBIndices[1];
-        if (tileGridView.getElevation(peakAIndices[0], peakAIndices[1]) == SRTMTile.SRTM_DATA_VOID)
+        if (tileGridView.getElevationAsShort(peakAIndices[0], peakAIndices[1]) == SRTMTile.SRTM_DATA_VOID) {
             peakAIndexLinear = findNearestNonVoidIndex(tileGridView, peakAIndices[0], peakAIndices[1]);
+        }
 
-        if (tileGridView.getElevation(peakBIndices[0], peakBIndices[1]) == SRTMTile.SRTM_DATA_VOID)
+        if (tileGridView.getElevationAsShort(peakBIndices[0], peakBIndices[1]) == SRTMTile.SRTM_DATA_VOID) {
             peakBIndexLinear = findNearestNonVoidIndex(tileGridView, peakBIndices[0], peakBIndices[1]);
+        }
 
-        if (peakAIndexLinear >= 0)
+        if (peakAIndexLinear >= 0) {
             hasPeakA.set(peakAIndexLinear);
-        if (peakBIndexLinear >= 0)
+        }
+        if (peakBIndexLinear >= 0) {
             hasPeakB.set(peakBIndexLinear);
+        }
 
         // Number of union-find neighbors (4 or 8)
         int[][] directions;
-        if (nNeighbors == UnionFindNeighbors.FOUR)
+        if (nNeighbors == UnionFindNeighbors.FOUR) {
             directions = FOUR_DIRECTIONS;
-        else
+        } else {
             directions = EIGHT_DIRECTIONS;
+        }
 
         // 7. Iterate over cells from high to low using sortedIndices (linear indexes)
         informListenersAboutStatus("Iterate over elevation cells to find key col");
@@ -381,8 +394,9 @@ public class KeyColFinder extends AbstractElevationTool {
                 int neighborLonIndex = lonIndex + direction[1];
                 if (inBounds(neighborLatIndex, neighborLonIndex)) {
                     int neighborIndex = neighborLatIndex * width + neighborLonIndex;
-                    if (active.get(neighborIndex))
+                    if (active.get(neighborIndex)) {
                         union(cellIndex, neighborIndex);
+                    }
                 }
             }
 
@@ -416,10 +430,12 @@ public class KeyColFinder extends AbstractElevationTool {
      * non-void cell is found within the raster.
      */
     private int findNearestNonVoidIndex(SRTMTileGridView tileGridView, int latIndex, int lonIndex) {
-        if (latIndex < 0 || lonIndex < 0 || latIndex >= height || lonIndex >= width)
+        if (latIndex < 0 || lonIndex < 0 || latIndex >= height || lonIndex >= width) {
             return -1;
-        if (tileGridView.getElevation(latIndex, lonIndex) != SRTMTile.SRTM_DATA_VOID)
+        }
+        if (tileGridView.getElevationAsShort(latIndex, lonIndex) != SRTMTile.SRTM_DATA_VOID) {
             return latIndex * width + lonIndex;
+        }
 
         int maxRadius = Math.max(width, height);
         for (int radius = 1; radius <= maxRadius; radius++) {
@@ -431,8 +447,9 @@ public class KeyColFinder extends AbstractElevationTool {
                 int candidateLonIndex = lonIndex + deltaLonAbs;
                 if (candidateLatIndex >= 0 && candidateLonIndex >= 0 && candidateLatIndex < height
                         && candidateLonIndex < width) {
-                    if (tileGridView.getElevation(candidateLatIndex, candidateLonIndex) != SRTMTile.SRTM_DATA_VOID)
+                    if (tileGridView.getElevationAsShort(candidateLatIndex, candidateLonIndex) != SRTMTile.SRTM_DATA_VOID) {
                         return candidateLatIndex * width + candidateLonIndex;
+                    }
                 }
 
                 // if deltaLonAbs == 0 the opposite side is the same cell; only check when
@@ -441,8 +458,9 @@ public class KeyColFinder extends AbstractElevationTool {
                     candidateLonIndex = lonIndex - deltaLonAbs;
                     if (candidateLatIndex >= 0 && candidateLonIndex >= 0 && candidateLatIndex < height
                             && candidateLonIndex < width) {
-                        if (tileGridView.getElevation(candidateLatIndex, candidateLonIndex) != SRTMTile.SRTM_DATA_VOID)
+                        if (tileGridView.getElevationAsShort(candidateLatIndex, candidateLonIndex) != SRTMTile.SRTM_DATA_VOID) {
                             return candidateLatIndex * width + candidateLonIndex;
+                        }
                     }
                 }
             }

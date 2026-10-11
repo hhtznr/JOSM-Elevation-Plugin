@@ -60,6 +60,15 @@ public class GeoTiffImage {
     }
 
     /**
+     * Returns the GeoTools coverage backing this image.
+     *
+     * @return the grid coverage
+     */
+    public GridCoverage2D getCoverage() {
+        return coverage;
+    }
+
+    /**
      * Returns the raw image data of the GeoTIFF.
      *
      * @return The raw image data of the GeoTIFF.

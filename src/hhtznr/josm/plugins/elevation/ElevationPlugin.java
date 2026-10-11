@@ -23,7 +23,7 @@ import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.ElevationDataSource;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
 import hhtznr.josm.plugins.elevation.gui.AddElevationLayerAction;
-import hhtznr.josm.plugins.elevation.gui.ElevationLayer;
+import hhtznr.josm.plugins.elevation.gui.SRTMElevationLayer;
 import hhtznr.josm.plugins.elevation.gui.ElevationTabPreferenceSetting;
 import hhtznr.josm.plugins.elevation.gui.KeyColFinderAction;
 import hhtznr.josm.plugins.elevation.gui.LocalElevationLabel;
@@ -55,7 +55,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     private final TopographicIsolationFinderAction isolationFinderAction;
     private final KeyColFinderAction keyColFinderAction;
     private final Object elevationLayerLock = new Object();
-    private ElevationLayer elevationLayer = null;
+    private SRTMElevationLayer elevationLayer = null;
     private final SetNodeElevationAction setNodeElevationAction;
     private final SetPeakProminenceAction setPeakProminenceAction;
 
@@ -122,7 +122,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
      *
      * @return The elevation layer which displays contour lines and hillshade.
      */
-    public ElevationLayer getElevationLayer() {
+    public SRTMElevationLayer getElevationLayer() {
         return elevationLayer;
     }
 
@@ -281,7 +281,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                     int azimuth = ElevationPreferences.getHillshadeAzimuth();
                     short lowerCutoff = ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION;
                     short upperCutoff = ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION;
-                    elevationLayer = new ElevationLayer(elevationDataProvider, renderingLimit, isostep, strokeWidth,
+                    elevationLayer = new SRTMElevationLayer(elevationDataProvider, renderingLimit, isostep, strokeWidth,
                             coloringScheme, color, altitude, azimuth, lowerCutoff, upperCutoff);
                     MainApplication.getLayerManager().addLayer(elevationLayer);
                 } else {

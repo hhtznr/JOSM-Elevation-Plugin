@@ -3,11 +3,10 @@ package hhtznr.josm.plugins.elevation.math;
 import java.util.ArrayList;
 import java.util.stream.IntStream;
 
-import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
 
+import hhtznr.josm.plugins.elevation.data.ElevationGridView;
 import hhtznr.josm.plugins.elevation.data.LatLonLine;
-import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
 import hhtznr.josm.plugins.elevation.gui.ContourLines;
 
 /**
@@ -18,25 +17,26 @@ import hhtznr.josm.plugins.elevation.gui.ContourLines;
  */
 public class MarchingSquares {
 
-    private final SRTMTileGridView tileGridView;
+    private final ElevationGridView elevationGridView;
     private final short[] isovalues;
 
     /**
      * Creates a new instance of the Marching Squares algorithm dedicated to
      * computing contour lines from elevation raster data.
      *
-     * @param tileGridView The SRTM tile grid view from which elevation data should
-     *                     be obtained.
-     * @param isovalues    An array of elevation values defining the isolevels, i.e.
-     *                     the elevation values for which contour lines should be
-     *                     generated, e.g. {@code { 650, 660, 670, 680 }}. The
-     *                     isovalues should be greater or equal to the minimum value
-     *                     of the elevation raster and less or equal to the maximum
-     *                     value of the elevation raster. Otherwise, computation
-     *                     effort will be wasted.
+     * @param elevationGridView The view on an elevation grid from which elevation
+     *                          data should be obtained.
+     * @param isovalues         An array of elevation values defining the isolevels,
+     *                          i.e. the elevation values for which contour lines
+     *                          should be generated, e.g.
+     *                          {@code { 650, 660, 670, 680 }}. The isovalues should
+     *                          be greater or equal to the minimum value of the
+     *                          elevation raster and less or equal to the maximum
+     *                          value of the elevation raster. Otherwise,
+     *                          computation effort will be wasted.
      */
-    public MarchingSquares(SRTMTileGridView tileGridView, short[] isovalues) {
-        this.tileGridView = tileGridView;
+    public MarchingSquares(ElevationGridView elevationGridView, short[] isovalues) {
+        this.elevationGridView = elevationGridView;
         this.isovalues = isovalues;
     }
 
@@ -69,17 +69,8 @@ public class MarchingSquares {
     private ContourLines.IsolineSegments getIsolineSegments(short isovalue) {
         ArrayList<LatLonLine> isolineSegments = new ArrayList<>();
 
-        Bounds bounds = tileGridView.getBounds();
-        double latRange = bounds.getHeight();
-        double lonRange = bounds.getWidth();
-        double minLatSouth = bounds.getMinLat();
-        double minLonWest = bounds.getMinLon();
-
-        int rasterWidth = tileGridView.getWidth();
-        int rasterHeight = tileGridView.getHeight();
-
-        double latScale = latRange / (double) (rasterHeight - 1);
-        double lonScale = lonRange / (double) (rasterWidth - 1);
+        int rasterWidth = elevationGridView.getWidth();
+        int rasterHeight = elevationGridView.getHeight();
 
         // Stores the currently processed row of cells so the northern edges can be
         // reused in the next iteration
@@ -87,35 +78,35 @@ public class MarchingSquares {
         // Iterate through the grid, accessing the data as "square" 2 x 2 cells
         // Therefore, we stop to iterate at index "length - 2" in both dimensions
         for (int latIndex = 0; latIndex < rasterHeight - 1; latIndex++) {
-            double latNorth = minLatSouth + latScale * (double) (latIndex + 1);
-            double latSouth = minLatSouth + latScale * (double) latIndex;
-
             // The cell to the west of the currently processed cell
             Cell cellToWest = null;
             for (int lonIndex = 0; lonIndex < rasterWidth - 1; lonIndex++) {
                 // The cell to the south of the currently processed cell
                 Cell cellToSouth = previousCellRowToSouth[lonIndex];
-                // Get the elevation values and the edge longitudes
-                short eleNorthWest;
-                short eleNorthEast;
-                short eleSouthEast;
-                short eleSouthWest;
-                double lonWest;
-                double lonEast;
+                // Get the elevation values and the edge coordinates
+                double eleNorthWest;
+                double eleNorthEast;
+                double eleSouthEast;
+                double eleSouthWest;
+
+                LatLon northWest = elevationGridView.toLatLon(latIndex + 1, lonIndex);
+                LatLon southEast = elevationGridView.toLatLon(latIndex, lonIndex + 1);
+                double latNorth = northWest.lat();
+                double lonWest = northWest.lon();
+                double latSouth = southEast.lat();
+                double lonEast = southEast.lon();
 
                 // If there is no previous cell to the west,
                 // compute these values from the elevation raster
                 if (cellToWest == null) {
-                    eleNorthWest = tileGridView.getElevation(latIndex + 1, lonIndex);
-                    eleSouthWest = tileGridView.getElevation(latIndex, lonIndex);
-                    lonWest = minLonWest + lonScale * (double) lonIndex;
+                    eleNorthWest = elevationGridView.getElevation(latIndex + 1, lonIndex);
+                    eleSouthWest = elevationGridView.getElevation(latIndex, lonIndex);
                 }
                 // If there is a previous cell to the west,
                 // copy values of shared edge and vertices instead
                 else {
                     eleNorthWest = cellToWest.eleNorthEast;
                     eleSouthWest = cellToWest.eleSouthEast;
-                    lonWest = cellToWest.lonEast;
                 }
 
                 /**
@@ -130,15 +121,22 @@ public class MarchingSquares {
                  *                           +---+---+---+---+---+---+---+---+---+
                  * </pre>
                  */
-                eleNorthEast = tileGridView.getElevation(latIndex + 1, lonIndex + 1);
+                eleNorthEast = elevationGridView.getElevation(latIndex + 1, lonIndex + 1);
 
                 // Same under consideration of a previous cell to the south
                 if (cellToSouth == null) {
-                    eleSouthEast = tileGridView.getElevation(latIndex, lonIndex + 1);
-                    lonEast = minLonWest + lonRange * (double) (lonIndex + 1) / (double) (rasterWidth - 1);
+                    eleSouthEast = elevationGridView.getElevation(latIndex, lonIndex + 1);
                 } else {
                     eleSouthEast = cellToSouth.eleNorthEast;
-                    lonEast = cellToSouth.lonEast;
+                }
+
+                if (elevationGridView.isNoDataValue(latIndex, lonIndex)
+                        || elevationGridView.isNoDataValue(latIndex, lonIndex + 1)
+                        || elevationGridView.isNoDataValue(latIndex + 1, lonIndex)
+                        || elevationGridView.isNoDataValue(latIndex + 1, lonIndex + 1)) {
+                    previousCellRowToSouth[lonIndex] = null;
+                    cellToWest = null;
+                    continue;
                 }
 
                 Cell currentCell = new Cell(latSouth, lonWest, latNorth, lonEast, eleNorthWest, eleNorthEast,
@@ -179,14 +177,16 @@ public class MarchingSquares {
                      *
                      * Isoline intersects from western to southern edge
                      */
-                    if (cellToWest == null)
+                    if (cellToWest == null) {
                         currentCell.setIntersectionWest(isovalue);
-                    else
+                    } else {
                         currentCell.edgeWest = cellToWest.edgeEast;
-                    if (cellToSouth == null)
+                    }
+                    if (cellToSouth == null) {
                         currentCell.setIntersectionSouth(isovalue);
-                    else
+                    } else {
                         currentCell.edgeSouth = cellToSouth.edgeNorth;
+                    }
                     isolineSegments
                             .add(new LatLonLine(currentCell.getIntersectionWest(), currentCell.getIntersectionSouth()));
                     break;
@@ -205,10 +205,11 @@ public class MarchingSquares {
                      *
                      * Isoline intersects from southern to eastern edge
                      */
-                    if (cellToSouth == null)
+                    if (cellToSouth == null) {
                         currentCell.setIntersectionSouth(isovalue);
-                    else
+                    } else {
                         currentCell.edgeSouth = cellToSouth.edgeNorth;
+                    }
                     currentCell.setIntersectionEast(isovalue);
                     isolineSegments
                             .add(new LatLonLine(currentCell.getIntersectionSouth(), currentCell.getIntersectionEast()));
@@ -228,10 +229,11 @@ public class MarchingSquares {
                      *
                      * Isoline intersects from western to eastern edge
                      */
-                    if (cellToWest == null)
+                    if (cellToWest == null) {
                         currentCell.setIntersectionWest(isovalue);
-                    else
+                    } else {
                         currentCell.edgeWest = cellToWest.edgeEast;
+                    }
                     currentCell.setIntersectionEast(isovalue);
                     isolineSegments
                             .add(new LatLonLine(currentCell.getIntersectionWest(), currentCell.getIntersectionEast()));
@@ -279,14 +281,16 @@ public class MarchingSquares {
                      * intersects from northern to eastern edge if average cell elevation is below
                      * isovalue
                      */
-                    if (cellToWest == null)
+                    if (cellToWest == null) {
                         currentCell.setIntersectionWest(isovalue);
-                    else
+                    } else {
                         currentCell.edgeWest = cellToWest.edgeEast;
-                    if (cellToSouth == null)
+                    }
+                    if (cellToSouth == null) {
                         currentCell.setIntersectionSouth(isovalue);
-                    else
+                    } else {
                         currentCell.edgeSouth = cellToSouth.edgeNorth;
+                    }
                     currentCell.setIntersectionEast(isovalue);
                     currentCell.setIntersectionNorth(isovalue);
                     if (currentCell.isAverageElevationEqualOrAbove(isovalue)) {
@@ -316,10 +320,11 @@ public class MarchingSquares {
                      *
                      * Isoline intersects from southern to northern edge
                      */
-                    if (cellToSouth == null)
+                    if (cellToSouth == null) {
                         currentCell.setIntersectionSouth(isovalue);
-                    else
+                    } else {
                         currentCell.edgeSouth = cellToSouth.edgeNorth;
+                    }
                     currentCell.setIntersectionNorth(isovalue);
                     isolineSegments.add(
                             new LatLonLine(currentCell.getIntersectionSouth(), currentCell.getIntersectionNorth()));
@@ -339,10 +344,11 @@ public class MarchingSquares {
                      *
                      * Isoline intersects from western to northern edge
                      */
-                    if (cellToWest == null)
+                    if (cellToWest == null) {
                         currentCell.setIntersectionWest(isovalue);
-                    else
+                    } else {
                         currentCell.edgeWest = cellToWest.edgeEast;
+                    }
                     currentCell.setIntersectionNorth(isovalue);
                     isolineSegments
                             .add(new LatLonLine(currentCell.getIntersectionWest(), currentCell.getIntersectionNorth()));
@@ -363,10 +369,11 @@ public class MarchingSquares {
                      * Isoline intersects from northern to western edge
                      */
                     currentCell.setIntersectionNorth(isovalue);
-                    if (cellToWest == null)
+                    if (cellToWest == null) {
                         currentCell.setIntersectionWest(isovalue);
-                    else
+                    } else {
                         currentCell.edgeWest = cellToWest.edgeEast;
+                    }
                     isolineSegments
                             .add(new LatLonLine(currentCell.getIntersectionNorth(), currentCell.getIntersectionWest()));
                     break;
@@ -386,10 +393,11 @@ public class MarchingSquares {
                      * Isoline intersects from northern to southern edge
                      */
                     currentCell.setIntersectionNorth(isovalue);
-                    if (cellToSouth == null)
+                    if (cellToSouth == null) {
                         currentCell.setIntersectionSouth(isovalue);
-                    else
+                    } else {
                         currentCell.edgeSouth = cellToSouth.edgeNorth;
+                    }
                     isolineSegments.add(
                             new LatLonLine(currentCell.getIntersectionNorth(), currentCell.getIntersectionSouth()));
                     break;
@@ -418,14 +426,16 @@ public class MarchingSquares {
                      */
                     currentCell.setIntersectionNorth(isovalue);
                     currentCell.setIntersectionEast(isovalue);
-                    if (cellToSouth == null)
+                    if (cellToSouth == null) {
                         currentCell.setIntersectionSouth(isovalue);
-                    else
+                    } else {
                         currentCell.edgeSouth = cellToSouth.edgeNorth;
-                    if (cellToWest == null)
+                    }
+                    if (cellToWest == null) {
                         currentCell.setIntersectionWest(isovalue);
-                    else
+                    } else {
                         currentCell.edgeWest = cellToWest.edgeEast;
+                    }
                     if (currentCell.isAverageElevationEqualOrAbove(isovalue)) {
                         isolineSegments.add(
                                 new LatLonLine(currentCell.getIntersectionSouth(), currentCell.getIntersectionWest()));
@@ -474,10 +484,11 @@ public class MarchingSquares {
                      * Isoline intersects from eastern to western edge
                      */
                     currentCell.setIntersectionEast(isovalue);
-                    if (cellToWest == null)
+                    if (cellToWest == null) {
                         currentCell.setIntersectionWest(isovalue);
-                    else
+                    } else {
                         currentCell.edgeWest = cellToWest.edgeEast;
+                    }
                     isolineSegments
                             .add(new LatLonLine(currentCell.getIntersectionEast(), currentCell.getIntersectionWest()));
                     break;
@@ -497,10 +508,11 @@ public class MarchingSquares {
                      * Isoline intersects from eastern to southern edge
                      */
                     currentCell.setIntersectionEast(isovalue);
-                    if (cellToSouth == null)
+                    if (cellToSouth == null) {
                         currentCell.setIntersectionSouth(isovalue);
-                    else
+                    } else {
                         currentCell.edgeSouth = cellToSouth.edgeNorth;
+                    }
                     isolineSegments
                             .add(new LatLonLine(currentCell.getIntersectionEast(), currentCell.getIntersectionSouth()));
                     break;
@@ -519,14 +531,16 @@ public class MarchingSquares {
                      *
                      * Isoline intersects from southern to western edge
                      */
-                    if (cellToSouth == null)
+                    if (cellToSouth == null) {
                         currentCell.setIntersectionSouth(isovalue);
-                    else
+                    } else {
                         currentCell.edgeSouth = cellToSouth.edgeNorth;
-                    if (cellToWest == null)
+                    }
+                    if (cellToWest == null) {
                         currentCell.setIntersectionWest(isovalue);
-                    else
+                    } else {
                         currentCell.edgeWest = cellToWest.edgeEast;
+                    }
                     isolineSegments
                             .add(new LatLonLine(currentCell.getIntersectionSouth(), currentCell.getIntersectionWest()));
                     break;
@@ -581,18 +595,18 @@ public class MarchingSquares {
         public final double lonWest;
         public final double latNorth;
         public final double lonEast;
-        public final short eleNorthWest;
-        public final short eleNorthEast;
-        public final short eleSouthEast;
-        public final short eleSouthWest;
+        public final double eleNorthWest;
+        public final double eleNorthEast;
+        public final double eleSouthEast;
+        public final double eleSouthWest;
 
         public IntersectedEdge edgeNorth = null;
         public IntersectedEdge edgeEast = null;
         public IntersectedEdge edgeSouth = null;
         public IntersectedEdge edgeWest = null;
 
-        public Cell(double latSouth, double lonWest, double latNorth, double lonEast, short eleNorthWest,
-                short eleNorthEast, short eleSouthEast, short eleSouthWest) {
+        public Cell(double latSouth, double lonWest, double latNorth, double lonEast, double eleNorthWest,
+                double eleNorthEast, double eleSouthEast, double eleSouthWest) {
             this.latSouth = latSouth;
             this.lonWest = lonWest;
             this.latNorth = latNorth;
@@ -615,8 +629,9 @@ public class MarchingSquares {
         public int getCase(short isovalue) {
             byte[] binaryVertexStates = getBinaryVertexStates(isovalue);
             int caseCode = 0;
-            for (int i = 0; i < binaryVertexStates.length; i++)
+            for (int i = 0; i < binaryVertexStates.length; i++) {
                 caseCode = (caseCode << 1) | binaryVertexStates[i];
+            }
             return caseCode;
         }
 
@@ -683,7 +698,7 @@ public class MarchingSquares {
          * @return {@link ABOVE} if the value is equal to or above the isovalue.
          *         {@link BELOW} if the value is below the isovalue.
          */
-        private static byte getVertexState(short value, short isovalue) {
+        private static byte getVertexState(double value, short isovalue) {
             return value >= isovalue ? ABOVE : BELOW;
         }
 
@@ -735,8 +750,9 @@ public class MarchingSquares {
          *         is not intersected by an isoline.
          */
         public LatLon getIntersectionNorth() {
-            if (edgeNorth == null)
+            if (edgeNorth == null) {
                 return null;
+            }
             return new LatLon(latNorth, edgeNorth.intersection);
         }
 
@@ -748,8 +764,9 @@ public class MarchingSquares {
          *         is not intersected by an isoline.
          */
         public LatLon getIntersectionEast() {
-            if (edgeEast == null)
+            if (edgeEast == null) {
                 return null;
+            }
             return new LatLon(edgeEast.intersection, lonEast);
         }
 
@@ -761,8 +778,9 @@ public class MarchingSquares {
          *         is not intersected by an isoline.
          */
         public LatLon getIntersectionSouth() {
-            if (edgeSouth == null)
+            if (edgeSouth == null) {
                 return null;
+            }
             return new LatLon(latSouth, edgeSouth.intersection);
         }
 
@@ -774,14 +792,16 @@ public class MarchingSquares {
          *         is not intersected by an isoline.
          */
         public LatLon getIntersectionWest() {
-            if (edgeWest == null)
+            if (edgeWest == null) {
                 return null;
+            }
             return new LatLon(edgeWest.intersection, lonWest);
         }
 
-        private static double interpolateCoord(double coord1, double coord2, short ele1, short ele2, short ele) {
-            if (ele1 < ele2)
+        private static double interpolateCoord(double coord1, double coord2, double ele1, double ele2, double ele) {
+            if (ele1 < ele2) {
                 return LinearInterpolation.interpolate(ele1, ele2, coord1, coord2, ele);
+            }
             return LinearInterpolation.interpolate(ele2, ele1, coord2, coord1, ele);
         }
     }

@@ -37,7 +37,7 @@ public class ElevationLayerAdjustmentDialog extends ExtendedDialog {
 
     private static final long serialVersionUID = 2722645568569947314L;
 
-    private final ElevationLayer elevationLayer;
+    private final SRTMElevationLayer elevationLayer;
 
     // General
     private final JosmComboBox<SRTMTile.Type> comboBoxSRTMType = new JosmComboBox<>(
@@ -85,8 +85,8 @@ public class ElevationLayerAdjustmentDialog extends ExtendedDialog {
      * @param parent The parent component of the dialog.
      * @param layer  The elevation layer.
      */
-    public ElevationLayerAdjustmentDialog(Component parent, ElevationLayer layer) {
-        super(parent, "Elevation Layer Adjustment", new String[] { tr("Refresh"), tr("Close") }, false, false);
+    public ElevationLayerAdjustmentDialog(Component parent, SRTMElevationLayer layer) {
+        super(parent, "SRTM Elevation Layer Adjustment", new String[] { tr("Refresh"), tr("Close") }, false, false);
         // Set the icon of the close button via the superclass method
         setButtonIcons("dialogs/refresh.svg", "misc/close.svg");
 
@@ -372,7 +372,8 @@ public class ElevationLayerAdjustmentDialog extends ExtendedDialog {
         // Also update the maximum map dimensions of the map view elevation data consumer
         MapViewElevationDataConsumer mapViewElevationDataConsumer = ElevationPlugin.getMapViewElevationDataConsumer();
         // Generally, it should not be null if the ElevationLayer is not null
-        if (mapViewElevationDataConsumer != null)
+        if (mapViewElevationDataConsumer != null) {
             mapViewElevationDataConsumer.setSwitchOffDimension(renderingLimit);
+        }
     }
 }

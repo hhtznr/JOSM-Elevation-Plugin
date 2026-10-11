@@ -55,7 +55,7 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
      */
     private static final double SCALE_DISCARD_FACTOR = 1.5;
 
-    private final ElevationLayer layer;
+    private final SRTMElevationLayer layer;
 
     private int contourLineIsostep;
     private BasicStroke contourLineStroke;
@@ -81,7 +81,7 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
      * @param layer The elevation layer for which this draw helper performs
      *              rendering.
      */
-    public ElevationDrawHelper(ElevationLayer layer) {
+    public ElevationDrawHelper(SRTMElevationLayer layer) {
         this.layer = layer;
         this.layer.addInvalidationListener(this);
         contourLineIsostep = layer.getContourLineIsostep();
@@ -116,8 +116,9 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         }
 
         if (!isHillshadeEnabled && !isContourLinesEnabled && !isElevationRasterEnabled
-                && !isLowestAndHighestPointsEnabled)
+                && !isLowestAndHighestPointsEnabled) {
             return;
+        }
 
         Bounds clipBounds = graphics.getClipBounds().getLatLonBoundsBox();
 
@@ -131,20 +132,25 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         } else {
             if (previousClipBounds != null
                     && (previousClipBounds.getWidth() > SCALE_DISCARD_FACTOR * clipBounds.getWidth()
-                            || previousClipBounds.getHeight() > SCALE_DISCARD_FACTOR * clipBounds.getHeight()))
+                            || previousClipBounds.getHeight() > SCALE_DISCARD_FACTOR * clipBounds.getHeight())) {
                 invalidate();
+            }
 
-            if (isHillshadeEnabled)
+            if (isHillshadeEnabled) {
                 drawHillshade(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
+            }
 
-            if (isContourLinesEnabled)
+            if (isContourLinesEnabled) {
                 drawContourLines(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
+            }
 
-            if (isElevationRasterEnabled)
+            if (isElevationRasterEnabled) {
                 drawElevationRaster(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
+            }
 
-            if (isLowestAndHighestPointsEnabled)
+            if (isLowestAndHighestPointsEnabled) {
                 drawLowestAndHighestPoints(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
+            }
 
             previousClipBounds = clipBounds;
         }
@@ -194,12 +200,14 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         if (clipBoundsNotCoveredByHillshade || hillshadeParametersChanged) {
             Bounds scaledBounds = CoordinateUtil.getScaledBounds(clipBounds, BOUNDS_SCALE_FACTOR);
             refreshHillshadeImageTile(scaledBounds, layerHillshadeAltitude, layerHillshadeAzimuth);
-            if (hillshadeImageTile == null)
+            if (hillshadeImageTile == null) {
                 return;
+            }
         }
 
-        if (hillshadeImageTile.getUnscaledImage() == null)
+        if (hillshadeImageTile.getUnscaledImage() == null) {
             return;
+        }
 
         Point upperLeft = null;
         if (scaledHillshadeImage == null || clipBoundsNotCoveredByHillshade || hillshadeParametersChanged) {
@@ -226,8 +234,9 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
             }
             // Scale the hillshade image to screen dimensions
             scaledHillshadeImage = hillshadeImageTile.getScaledImage(onScreenWidth, onScreenHeight);
-            if (scaledHillshadeImage == null)
+            if (scaledHillshadeImage == null) {
                 return;
+            }
         } else {
             upperLeft = mv.getPoint(hillshadeNorthWest);
         }
@@ -241,8 +250,9 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
 
     private synchronized void drawContourLines(Graphics2D g, MapView mv, Bounds clipBounds) {
         float layerContourLineStrokeWidth = layer.getContourLineStrokeWidth();
-        if (contourLineStroke.getLineWidth() != layerContourLineStrokeWidth)
+        if (contourLineStroke.getLineWidth() != layerContourLineStrokeWidth) {
             setContourLineStroke(layerContourLineStrokeWidth);
+        }
         Coloring.Scheme layerContourLineColoringScheme = layer.getContourLineColoringScheme();
         Color layerContourLineConstantColor = layer.getContourLineConstantColor();
 
@@ -260,12 +270,14 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
 
             Bounds scaledBounds = CoordinateUtil.getScaledBounds(clipBounds, BOUNDS_SCALE_FACTOR);
             refreshContourLines(scaledBounds);
-            if (contourLines == null)
+            if (contourLines == null) {
                 return;
+            }
         }
         IsolineSegments[] isolineSegments = contourLines.getIsolineSegments();
-        if (isolineSegments.length < 1)
+        if (isolineSegments.length < 1) {
             return;
+        }
 
         Rectangle screenClip = g.getClipBounds();
 
@@ -276,8 +288,9 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         short maxEle = upperCutoffElevation;
         boolean useFalseColor = false;
         if (layerContourLineColoringScheme == Coloring.Scheme.FALSE_COLOR) {
-            if (lowestAndHighestPoints == null || !lowestAndHighestPoints.getBounds().equals(clipBounds))
+            if (lowestAndHighestPoints == null || !lowestAndHighestPoints.getBounds().equals(clipBounds)) {
                 refreshLowestAndHighestPoints(clipBounds);
+            }
             if (lowestAndHighestPoints != null) {
                 short lowestElevation = lowestAndHighestPoints.getLowestElevation();
                 short highestElevation = lowestAndHighestPoints.getHighestElevation();
@@ -298,8 +311,9 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
                 Point p1 = mv.getPoint(segment.getLatLon1());
                 Point p2 = mv.getPoint(segment.getLatLon2());
                 // Only draw if the line's bounding box intersects the map's bounding box
-                if (screenClip.intersectsLine(p1.x, p1.y, p2.x, p2.y))
+                if (screenClip.intersectsLine(p1.x, p1.y, p2.x, p2.y)) {
                     g.drawLine(p1.x, p1.y, p2.x, p2.y);
+                }
             }
         }
     }
@@ -313,8 +327,9 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
                 clipBounds, elevationRaster.getLatLonStep())) {
             Bounds scaledBounds = CoordinateUtil.getScaledBounds(clipBounds, BOUNDS_SCALE_FACTOR);
             refreshElevationRaster(scaledBounds);
-            if (elevationRaster == null)
+            if (elevationRaster == null) {
                 return;
+            }
         }
 
         // Set the font for elevation value strings
@@ -362,20 +377,24 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
                     g.drawString(eleText, p.x + markerSize, p.y + eleStringDisplayHeight / 2);
                 }
                 lonDist += lonStep;
-                if (lonDist > eleStringWidth)
+                if (lonDist > eleStringWidth) {
                     lonDist = 0.0;
+                }
             }
             latDist += latStep;
-            if (latDist > eleStringHeight)
+            if (latDist > eleStringHeight) {
                 latDist = 0.0;
+            }
         }
     }
 
     private synchronized void drawLowestAndHighestPoints(Graphics2D g, MapView mv, Bounds clipBounds) {
-        if (lowestAndHighestPoints == null || !lowestAndHighestPoints.getBounds().equals(clipBounds))
+        if (lowestAndHighestPoints == null || !lowestAndHighestPoints.getBounds().equals(clipBounds)) {
             refreshLowestAndHighestPoints(clipBounds);
-        if (lowestAndHighestPoints == null)
+        }
+        if (lowestAndHighestPoints == null) {
             return;
+        }
 
         List<LatLonEle> lowestPoints = lowestAndHighestPoints.getLowestPoints();
         List<LatLonEle> highestPoints = lowestAndHighestPoints.getHighestPoints();
@@ -388,8 +407,9 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         }
         String textLowestElevation = "";
         short lowestElevation = lowestAndHighestPoints.getLowestElevation();
-        if (lowestElevation != SRTMTile.SRTM_DATA_VOID)
+        if (lowestElevation != SRTMTile.SRTM_DATA_VOID) {
             textLowestElevation = Short.toString(lowestElevation);
+        }
         int maxHighestPoints = Math.min(highestPoints.size(), ElevationPreferences.MAX_RENDERED_LOWEST_OR_HIGHEST_POINTS);
         List<Point> highestPixels = new ArrayList<>(maxHighestPoints);
         for (int i = 0; i < maxHighestPoints; i++) {
@@ -399,28 +419,33 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
         }
         String textHighestElevation = "";
         short highestElevation = lowestAndHighestPoints.getHighestElevation();
-        if (highestElevation != SRTMTile.SRTM_DATA_VOID)
+        if (highestElevation != SRTMTile.SRTM_DATA_VOID) {
             textHighestElevation = Short.toString(highestElevation);
+        }
 
         // The size of the marker of an elevation data point in display coordinates
         final int markerSize = 8;
         final int textOffsetX = markerSize / 2 + 3;
 
         // Draw the symbols for the lowest and highest points
-        for (Point p : lowestPixels)
+        for (Point p : lowestPixels) {
             drawEquilateralTriangle(g, p.x, p.y, markerSize, false, Color.GREEN, Color.BLACK);
-        for (Point p : highestPixels)
+        }
+        for (Point p : highestPixels) {
             drawEquilateralTriangle(g, p.x, p.y, markerSize, true, Color.RED, Color.BLACK);
+        }
 
         // Set the font for elevation value strings
         Font font = g.getFont().deriveFont(Font.BOLD, 12);
         g.setFont(font);
         // Draw non-overlapping labels for the highest and lowest points
         NonOverlappingTextRenderer textRenderer = new NonOverlappingTextRenderer();
-        for (Point p : lowestPixels)
+        for (Point p : lowestPixels) {
             textRenderer.drawTextSafely(g, p, textLowestElevation, textOffsetX, Color.BLUE, Color.WHITE);
-        for (Point p : highestPixels)
+        }
+        for (Point p : highestPixels) {
             textRenderer.drawTextSafely(g, p, textHighestElevation, textOffsetX, Color.BLUE, Color.WHITE);
+        }
     }
 
     private void refreshHillshadeImageTile(Bounds bounds, double altitude, double azimuth) {

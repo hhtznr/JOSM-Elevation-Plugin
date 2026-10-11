@@ -105,8 +105,9 @@ public class Hillshade {
     private static double getAzimuthRad(double azimuthDeg) {
         // https://pro.arcgis.com/en/pro-app/latest/tool-reference/3d-analyst/how-hillshade-works.htm
         double azimuthMath = 360.0 - azimuthDeg + 90.0;
-        if (azimuthMath >= 360.0)
+        if (azimuthMath >= 360.0) {
             azimuthMath -= 360.0;
+        }
         return Math.toRadians(azimuthMath);
     }
 
@@ -157,20 +158,22 @@ public class Hillshade {
         // dz/dx != 0
         if (changeRateInX != 0.0) {
             double aspectRad = Math.atan2(changeRateInY, -changeRateInX);
-            if (aspectRad < 0.0)
+            if (aspectRad < 0.0) {
                 return 2 * Math.PI + aspectRad;
+            }
             return aspectRad;
         }
         // dz/dx == 0
         else {
-            if (changeRateInY > 0.0)
+            if (changeRateInY > 0.0) {
                 return Math.PI / 2.0;
-            else if (changeRateInY < 0.0)
+            } else if (changeRateInY < 0.0) {
                 return 2 * Math.PI - Math.PI / 2;
             // We cannot compute the direction of the steepest downhill descent
             // if the slope in x direction and the slope in y direction are both zero
-            else
+            } else {
                 return azimuthRad;
+            }
         }
     }
 
@@ -216,9 +219,9 @@ public class Hillshade {
         short h = ele3x3[2 * 3 + 1]; // ~ ele3x3[2][1];
 
         // [dz/dx] = ((c + 2f + i) - (a + 2d + g)) / (8 * cellsize)
-        double dz_dx = (double) ((c + 2 * f + i) - (a + 2 * d + g)) / (double) (8 * cellSize);
+        double dz_dx = ((c + 2 * f + i) - (a + 2 * d + g)) / (8 * cellSize);
         // [dz/dy] = ((g + 2h + i) - (a + 2b + c)) / (8 * cellsize)
-        double dz_dy = (double) ((g + 2 * h + i) - (a + 2 * b + c)) / (double) (8 * cellSize);
+        double dz_dy = ((g + 2 * h + i) - (a + 2 * b + c)) / (8 * cellSize);
         return new double[] { dz_dx, dz_dy };
     }
 
@@ -235,18 +238,20 @@ public class Hillshade {
         double latNorth = bounds.getMaxLat();
         double lonWest = bounds.getMinLon();
         double lonEast = bounds.getMaxLon();
-        if (lonWest == lonEast)
+        if (lonWest == lonEast) {
             throw new IllegalArgumentException(
                     "The z-factor cannot be computed if both longitude values are the same as this would result in a division by zero (longitudes: "
                             + lonWest + "°)");
+        }
 
         double meanLat = (latNorth + latSouth) / 2;
         double lonDistanceInDegrees;
-        if (lonWest < lonEast)
+        if (lonWest < lonEast) {
             lonDistanceInDegrees = lonEast - lonWest;
         // Across 180th meridian
-        else
+        } else {
             lonDistanceInDegrees = 180.0 - lonEast + lonWest + 180.0;
+        }
 
         ILatLon latLon1 = new LatLon(meanLat, lonWest);
         ILatLon latLon2 = new LatLon(meanLat, lonEast);
@@ -285,12 +290,13 @@ public class Hillshade {
 
         int latHeight = tileGridView.getHeight();
         int lonWidth = tileGridView.getWidth();
-        if (latHeight < 3 || lonWidth < 3)
+        if (latHeight < 3 || lonWidth < 3) {
             return null;
+        }
 
         // Determine the z-factor and the cell size
         final double zFactor = getZFactor(bounds);
-        final double cellSize = bounds.getHeight() / (double) (latHeight - 1);
+        final double cellSize = bounds.getHeight() / (latHeight - 1);
 
         final int perimeterOffset = withPerimeter ? 1 : 0;
 
@@ -324,7 +330,7 @@ public class Hillshade {
                         for (int deltaLon = 0; deltaLon < 3; deltaLon++) {
                             int viewLonIndex = lonIndex + deltaLon;
                             int ele3x3LinearIndex = latOffset + deltaLon;
-                            ele3x3[ele3x3LinearIndex] = tileGridView.getElevation(viewLatIndex, viewLonIndex);
+                            ele3x3[ele3x3LinearIndex] = tileGridView.getElevationAsShort(viewLatIndex, viewLonIndex);
                         }
                     }
                     // Compute the hillshade value
@@ -385,14 +391,18 @@ public class Hillshade {
             west = bounds.getMinLon() - halfCellSize;
             east = bounds.getMaxLon() + halfCellSize;
             // Correct coordinates if outside of world map
-            if (north > 90.0)
+            if (north > 90.0) {
                 north = 90.0;
-            if (south < -90.0)
+            }
+            if (south < -90.0) {
                 south = -90.0;
-            if (west < -180.0)
+            }
+            if (west < -180.0) {
                 west = west + 360.0;
-            if (east > 180.0)
+            }
+            if (east > 180.0) {
                 east = east - 360.0;
+            }
         } else {
             // As above, but accommodate for the perimeter having been skipped
             north = bounds.getMaxLat() - halfCellSize;
@@ -439,8 +449,9 @@ public class Hillshade {
         double hillshade = cosZenithRad * Math.cos(slopeRad)
                 + sinZenithRad * Math.sin(slopeRad) * Math.cos(azimuthRad - aspectRad);
 
-        if (hillshade < 0.0)
+        if (hillshade < 0.0) {
             return MAX_HILLSHADE;
+        }
 
         return (int) Math.round(NO_HILLSHADE * hillshade);
     }

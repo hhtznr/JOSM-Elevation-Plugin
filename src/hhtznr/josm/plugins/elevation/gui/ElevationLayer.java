@@ -1,153 +1,77 @@
 package hhtznr.josm.plugins.elevation.gui;
 
-import static org.openstreetmap.josm.tools.I18n.tr;
-
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Graphics2D;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
-import javax.swing.BorderFactory;
 import javax.swing.Icon;
 import javax.swing.JCheckBoxMenuItem;
-import javax.swing.JComponent;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextField;
 
-import org.openstreetmap.josm.actions.JosmAction;
-import org.openstreetmap.josm.data.Bounds;
-import org.openstreetmap.josm.data.osm.visitor.BoundingXYVisitor;
 import org.openstreetmap.josm.gui.MainApplication;
-import org.openstreetmap.josm.gui.MapView;
 import org.openstreetmap.josm.gui.dialogs.LayerListDialog;
-import org.openstreetmap.josm.gui.dialogs.LayerListPopup;
 import org.openstreetmap.josm.gui.layer.Layer;
-import org.openstreetmap.josm.gui.widgets.UrlLabel;
-import org.openstreetmap.josm.tools.GBC;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
 import hhtznr.josm.plugins.elevation.data.Coloring;
-import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
-import hhtznr.josm.plugins.elevation.data.ElevationDataProviderListener;
-import hhtznr.josm.plugins.elevation.data.SRTMTile;
-import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
 
 /**
- * Class implementing a map layer for displaying elevation contour lines and
- * hillshade.
+ * This is the abstract super class of JOSM layers for visualizing elevation
+ * data.
+ *
+ * @author Harald Hetzner
  */
-public class ElevationLayer extends Layer implements ElevationDataProviderListener {
+public abstract class ElevationLayer extends Layer {
 
     private final Icon icon;
-    private final ElevationDrawHelper layerPainter;
-    private final ElevationDataProvider elevationDataProvider;
-    private double renderingLimitArcDegrees;
+
     private int contourLineIsostep;
     private float contourLineStrokeWidth;
     private Coloring.Scheme contourLineColoringScheme;
     private Color contourLineConstantColor;
 
-    private int hillshadeAltitude;
-    private int hillshadeAzimuth;
-
     private short lowerCutoffElevation;
     private short upperCutoffElevation;
 
     private boolean contourLinesEnabled;
-    private boolean hillshadeEnabled;
-    private boolean elevationRasterEnabled;
-    private boolean lowestAndHighestPointsEnabled;
-
-    private ElevationLayerAdjustmentDialog layerAdjustmentDialog = null;
 
     /**
-     * Creates a new elevation layer.
+     * Creates a new abstract elevation layer for visualizing elevation data.
      *
-     * @param elevationDataProvider     The elevation data provider providing the
-     *                                  data for this layer.
-     * @param renderingLimitArcDegrees  The maximum size of the displayed map
-     *                                  (latitude or longitude) where, if exceeded,
-     *                                  rendering of the layer is switched off to
-     *                                  avoid excessive CPU and memory usage.
+     * @param name                      The name of the layer. This name will be
+     *                                  displayed to the JOSM user in the layer
+     *                                  list.
+     * @param icon                      The image icon of the layer. This icon will
+     *                                  be displayed to the JOSM user in the layer
+     *                                  list.
      * @param contourLineIsostep        Step between neighboring elevation contour
      *                                  lines.
      * @param contourLineStrokeWidth    Width of the contour line stroke in px.
      * @param contourLineColoringScheme The coloring scheme of the contour lines.
      * @param contourLineConstantColor  Constant color of the contour lines.
-     * @param hillshadeAltitude         The altitude (degrees) of the illumination
-     *                                  source in hillshade computation.
-     * @param hillshadeAzimuth          The azimuth (degrees) of the illumination
-     *                                  source in hillshade computation.
      * @param lowerCutoffElevation      The elevation value below which elevation
      *                                  should not be visualized.
      * @param upperCutoffElevation      The elevation value above which elevation
      *                                  should not be visualized.
      */
-    public ElevationLayer(ElevationDataProvider elevationDataProvider, double renderingLimitArcDegrees,
-            int contourLineIsostep, float contourLineStrokeWidth, Coloring.Scheme contourLineColoringScheme,
-            Color contourLineConstantColor, int hillshadeAltitude, int hillshadeAzimuth, short lowerCutoffElevation,
+    public ElevationLayer(String name, Icon icon, int contourLineIsostep, float contourLineStrokeWidth,
+            Coloring.Scheme contourLineColoringScheme, Color contourLineConstantColor, short lowerCutoffElevation,
             short upperCutoffElevation) {
-        super("Elevation Layer");
-        this.icon = ImageProvider.get("", "elevation.svg");
-        this.layerPainter = new ElevationDrawHelper(this);
-        this.renderingLimitArcDegrees = renderingLimitArcDegrees;
+        super(name);
+        this.icon = icon;
         this.contourLineIsostep = contourLineIsostep;
         this.contourLineStrokeWidth = contourLineStrokeWidth;
         this.contourLineColoringScheme = contourLineColoringScheme;
         this.contourLineConstantColor = contourLineConstantColor;
-        this.hillshadeAltitude = hillshadeAltitude;
-        this.hillshadeAzimuth = hillshadeAzimuth;
         this.lowerCutoffElevation = lowerCutoffElevation;
         this.upperCutoffElevation = upperCutoffElevation;
-        this.elevationDataProvider = elevationDataProvider;
-        elevationDataProvider.addElevationDataProviderListener(this);
+
         contourLinesEnabled = ElevationPreferences.getContourLinesEnabled();
-        hillshadeEnabled = ElevationPreferences.getHillshadeEnabled();
-        elevationRasterEnabled = ElevationPreferences.getElevationRasterEnabled();
-        lowestAndHighestPointsEnabled = ElevationPreferences.getLowestAndHighestPointsEnabled();
-    }
-
-    /**
-     * Returns the elevation data provider of this elevation layer.
-     *
-     * @return The elevation data provider.
-     */
-    public ElevationDataProvider getElevationDataProvider() {
-        return elevationDataProvider;
-    }
-
-    /**
-     * Returns the rendering limit.
-     *
-     * @return The maximum size of the displayed map (latitude or longitude) where,
-     *         if exceeded, rendering of the layer is switched off to avoid
-     *         excessive CPU and memory usage.
-     */
-    public double getRenderingLimit() {
-        return renderingLimitArcDegrees;
-    }
-
-    /**
-     * Sets a new rendering limit.
-     *
-     * @param renderingLimitArcDegrees The maximum size of the displayed map
-     *                                 (latitude or longitude) where, if exceeded,
-     *                                 rendering of the layer is switched off to
-     *                                 avoid excessive CPU and memory usage.
-     */
-    public void setRenderingLimit(double renderingLimitArcDegrees) {
-        this.renderingLimitArcDegrees = renderingLimitArcDegrees;
     }
 
     /**
@@ -157,35 +81,6 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
      */
     public boolean isContourLinesEnabled() {
         return contourLinesEnabled;
-    }
-
-    /**
-     * Returns whether hillshade is enabled.
-     *
-     * @return {@code true} if displaying hillshade is enabled.
-     */
-    public boolean isHillshadeEnabled() {
-        return hillshadeEnabled;
-    }
-
-    /**
-     * Returns whether the elevation data raster is enabled.
-     *
-     * @return {@code true} if displaying of the elevation data raster is enabled.
-     */
-    public boolean isElevationRasterEnabled() {
-        return elevationRasterEnabled;
-    }
-
-    /**
-     * Returns whether displaying of the lowest and highest points within the map
-     * view is enabled.
-     *
-     * @return {@code true} if displaying of the lowest and highest points within
-     *         the map view is enabled.
-     */
-    public boolean isLowestAndHighestPointsEnabled() {
-        return lowestAndHighestPointsEnabled;
     }
 
     /**
@@ -261,38 +156,6 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
     }
 
     /**
-     * Returns the hillshade altitude.
-     *
-     * @return The altitude of the hillshade illumination source.
-     */
-    public int getHillshadeAltitude() {
-        return hillshadeAltitude;
-    }
-
-    /**
-     * Returns the hillshade azimuth.
-     *
-     * @return The azimuth of the hillshade illumination source.
-     */
-    public int getHillshadeAzimuth() {
-        return hillshadeAzimuth;
-    }
-
-    /**
-     * Set a new altitude and azimuth of the illumination source in hillshade
-     * computation.
-     *
-     * @param altitude The altitude (degrees) of the illumination source in
-     *                 hillshade computation.
-     * @param azimuth  The azimuth (degrees) of the illumination source in hillshade
-     *                 computation.
-     */
-    public void setHillshadeIllumination(int altitude, int azimuth) {
-        hillshadeAltitude = altitude;
-        hillshadeAzimuth = azimuth;
-    }
-
-    /**
      * Returns the elevation below which elevation data should not be visualized.
      *
      * @return The elevation value below which elevation data should not be
@@ -333,13 +196,12 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
     }
 
     @Override
-    public void paint(Graphics2D g, MapView mv, Bounds bbox) {
-        // LayerPainter created by createMapViewPainter() is used instead
-    }
-
-    @Override
-    protected LayerPainter createMapViewPainter(MapViewEvent event) {
-        return layerPainter;
+    public Action[] getMenuEntries() {
+        ArrayList<Action> actions = new ArrayList<>();
+        actions.add(LayerListDialog.getInstance().createShowHideLayerAction());
+        actions.add(SeparatorLayerAction.INSTANCE);
+        actions.add(new ShowContourLinesAction());
+        return actions.toArray(new Action[0]);
     }
 
     @Override
@@ -361,90 +223,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
         return false;
     }
 
-    @Override
-    public void visitBoundingBox(BoundingXYVisitor v) {
-    }
-
-    @Override
-    public Object getInfoComponent() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.add(new JLabel("Elevation Layer"), GBC.eol());
-        List<String[]> content = new ArrayList<>();
-        // Active tile grid
-        List<String[]> tileGridInfo = elevationDataProvider.getTileGridInfo();
-        for (String[] info : tileGridInfo) {
-            content.add(info);
-        }
-        // Cache size
-        content.add(new String[] {tr("SRTM tile cache"), "" + elevationDataProvider.getTileCacheInfo()});
-        // Info on tiles -> type, status, size, source
-        Map<String, String> cachedTilesInfo = elevationDataProvider.getCachedTilesInfo();
-        for (Map.Entry<String, String> entry : cachedTilesInfo.entrySet()) {
-            content.add(new String[] {entry.getKey(), entry.getValue()});
-        }
-        for (String[] entry : content) {
-            panel.add(new JLabel(entry[0] + ':'), GBC.std());
-            panel.add(GBC.glue(5, 0), GBC.std());
-            panel.add(createTextField(entry [1]), GBC.eol().fill(GridBagConstraints.HORIZONTAL));
-        }
-        JScrollPane scrollPane = new JScrollPane(panel);
-        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        return scrollPane;
-    }
-
-    private static JComponent createTextField(String text) {
-        if (text != null && text.matches("https?://.*")) {
-            return new UrlLabel(text);
-        }
-        JTextField ret = new JTextField(text);
-        ret.setEditable(false);
-        ret.setBorder(BorderFactory.createEmptyBorder());
-        return ret;
-    }
-
-    @Override
-    public Action[] getMenuEntries() {
-        ArrayList<Action> actions = new ArrayList<>();
-        actions.add(LayerListDialog.getInstance().createShowHideLayerAction());
-        actions.add(SeparatorLayerAction.INSTANCE);
-        actions.add(new ShowContourLinesAction());
-        actions.add(new ShowHillshadeAction());
-        actions.add(new ShowLowestAndHighestPointsAction());
-        actions.add(new ShowElevationRasterAction());
-        actions.add(SeparatorLayerAction.INSTANCE);
-        actions.add(new ShowElevationLayerDialogAction());
-        actions.add(SeparatorLayerAction.INSTANCE);
-        actions.add(new LayerListPopup.InfoAction(this));
-        return actions.toArray(new Action[0]);
-    }
-
-    @Override
-    public synchronized void destroy() {
-        elevationDataProvider.removeElevationDataProviderListener(this);
-        if (layerAdjustmentDialog != null) {
-            layerAdjustmentDialog.setVisible(false);
-            layerAdjustmentDialog.dispose();
-            layerAdjustmentDialog = null;
-        }
-        super.destroy();
-    }
-
-    @Override
-    public void elevationDataAvailable(SRTMTileGrid tileGrid) {
-        invalidate();
-        if (isVisible()) {
-            MainApplication.getMap().mapView.repaint();
-        }
-    }
-
-    @Override
-    public void srtmTileTypeChanged(SRTMTile.Type oldType, SRTMTile.Type newType) {
-        layerPainter.invalidate();
-        invalidate();
-    }
-
-    private static abstract class AbstractElevationLayerAction extends AbstractAction implements LayerAction {
+    protected static abstract class AbstractElevationLayerAction extends AbstractAction implements LayerAction {
 
         private static final long serialVersionUID = 1L;
 
@@ -459,7 +238,7 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
                 return false;
             }
             for (Layer layer : layers) {
-                if (!(layer instanceof ElevationLayer)) {
+                if (!(layer instanceof SRTMElevationLayer)) {
                     return false;
                 }
             }
@@ -496,122 +275,6 @@ public class ElevationLayer extends Layer implements ElevationDataProviderListen
             JCheckBoxMenuItem item = new JCheckBoxMenuItem(this);
             item.setSelected(ElevationLayer.this.contourLinesEnabled);
             return item;
-        }
-    }
-
-    private class ShowHillshadeAction extends AbstractElevationLayerAction {
-
-        private static final long serialVersionUID = 1L;
-
-        public ShowHillshadeAction() {
-            super("Enable/disable hillshade", "hillshade");
-        }
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            ElevationLayer layer = ElevationLayer.this;
-            layer.hillshadeEnabled = !layer.hillshadeEnabled;
-            ElevationPreferences.setHillshadeEnabled(layer.hillshadeEnabled);
-            if (layer.hillshadeEnabled) {
-                Logging.info("Elevation: Hillshade enabled");
-            } else {
-                Logging.info("Elevation: Hillshade disabled");
-            }
-            layer.invalidate();
-            if (layer.isVisible()) {
-                MainApplication.getMap().mapView.repaint();
-            }
-        }
-
-        @Override
-        public Component createMenuComponent() {
-            JCheckBoxMenuItem item = new JCheckBoxMenuItem(this);
-            item.setSelected(ElevationLayer.this.hillshadeEnabled);
-            return item;
-        }
-    }
-
-    private class ShowElevationRasterAction extends AbstractElevationLayerAction {
-
-        private static final long serialVersionUID = 1L;
-
-        public ShowElevationRasterAction() {
-            super("Enable/disable elevation raster", "elevation_raster");
-        }
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            ElevationLayer layer = ElevationLayer.this;
-            layer.elevationRasterEnabled = !layer.elevationRasterEnabled;
-            ElevationPreferences.setElevationRasterEnabled(layer.elevationRasterEnabled);
-            if (layer.elevationRasterEnabled) {
-                Logging.info("Elevation: Elevation raster points enabled");
-            } else {
-                Logging.info("Elevation: Elevation raster points disabled");
-            }
-            layer.invalidate();
-            if (layer.isVisible()) {
-                MainApplication.getMap().mapView.repaint();
-            }
-        }
-
-        @Override
-        public Component createMenuComponent() {
-            JCheckBoxMenuItem item = new JCheckBoxMenuItem(this);
-            item.setSelected(ElevationLayer.this.elevationRasterEnabled);
-            return item;
-        }
-    }
-
-    private class ShowLowestAndHighestPointsAction extends AbstractElevationLayerAction {
-
-        private static final long serialVersionUID = 1L;
-
-        public ShowLowestAndHighestPointsAction() {
-            super("Enable/disable lowest and highest points", "lowest_highest_points");
-        }
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            ElevationLayer layer = ElevationLayer.this;
-            layer.lowestAndHighestPointsEnabled = !layer.lowestAndHighestPointsEnabled;
-            ElevationPreferences.setLowestAndHighestPointsEnabled(layer.lowestAndHighestPointsEnabled);
-            if (layer.lowestAndHighestPointsEnabled) {
-                Logging.info("Elevation: Lowest and highest points enabled");
-            } else {
-                Logging.info("Elevation: Lowest and highest points disabled");
-            }
-            layer.invalidate();
-            if (layer.isVisible()) {
-                MainApplication.getMap().mapView.repaint();
-            }
-        }
-
-        @Override
-        public Component createMenuComponent() {
-            JCheckBoxMenuItem item = new JCheckBoxMenuItem(this);
-            item.setSelected(ElevationLayer.this.lowestAndHighestPointsEnabled);
-            return item;
-        }
-    }
-
-    private class ShowElevationLayerDialogAction extends JosmAction {
-
-        private static final long serialVersionUID = 1L;
-
-        public ShowElevationLayerDialogAction() {
-            super("Dynamic elevation layer adjustment", new ImageProvider("elevation.svg"),
-                    "Dynamic, non-presistent adjustment of elevation rendering", null, true, "elevation-layer-settings",
-                    false);
-        }
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            if (layerAdjustmentDialog == null) {
-                layerAdjustmentDialog = new ElevationLayerAdjustmentDialog(MainApplication.getMainFrame(),
-                        ElevationLayer.this);
-            }
-            layerAdjustmentDialog.showDialog();
         }
     }
 }

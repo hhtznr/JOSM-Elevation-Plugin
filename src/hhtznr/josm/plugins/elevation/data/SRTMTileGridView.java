@@ -2,6 +2,7 @@ package hhtznr.josm.plugins.elevation.data;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.ILatLon;
+import org.openstreetmap.josm.data.coor.LatLon;
 
 import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.gui.ContourLines;
@@ -15,7 +16,7 @@ import hhtznr.josm.plugins.elevation.gui.LowestAndHighestPoints;
  *
  * @author Harald Hetzner
  */
-public class SRTMTileGridView {
+public class SRTMTileGridView implements ElevationGridView {
 
     private final SRTMTileGrid tileGrid;
 
@@ -30,12 +31,12 @@ public class SRTMTileGridView {
     private final int gridRasterLonIndexWest;
 
     /**
-     * Raster height of this view.
+     * Raster height of this view (height = latitude direction).
      */
     private final int height;
 
     /**
-     * Raster width of this view.
+     * Raster width of this view (width = longitude direction).
      */
     private final int width;
 
@@ -70,14 +71,14 @@ public class SRTMTileGridView {
     }
 
     /**
-     * Returns elevation based on view raster indices.
+     * Returns elevation based on view raster indices as {@code short}.
      *
      * @param latIndex The view raster index in latitude direction.
      * @param lonIndex The view raster index in longitude direction.
      * @return The elevation at the provided view raster indices or
      *         {@link SRTMTile#SRTM_DATA_VOID} if no elevation data is cached yet.
      */
-    public short getElevation(int latIndex, int lonIndex) {
+    public short getElevationAsShort(int latIndex, int lonIndex) {
         int gridRasterLatIndex = gridRasterLatIndexSouth + latIndex;
         int gridRasterLonIndex = gridRasterLonIndexWest + lonIndex;
         return tileGrid.getElevation(gridRasterLatIndex, gridRasterLonIndex);
@@ -89,6 +90,7 @@ public class SRTMTileGridView {
      * @return The raster height, i.e. the difference between northernmost and
      *         southernmost index {@code +1}.
      */
+    @Override
     public int getHeight() {
         return height;
     }
@@ -99,8 +101,25 @@ public class SRTMTileGridView {
      * @return The raster width, i.e. the difference between easternmost and
      *         westernmost index {@code +1}.
      */
+    @Override
     public int getWidth() {
         return width;
+    }
+
+    @Override
+    public double getElevation(int latIndex, int lonIndex) {
+        return getElevationAsShort(latIndex, lonIndex);
+    }
+
+    @Override
+    public boolean isNoDataValue(int latIndex, int lonIndex) {
+        return getElevationAsShort(latIndex, lonIndex) == SRTMTile.SRTM_DATA_VOID;
+    }
+
+    @Override
+    public LatLon toLatLon(int latIndex, int lonIndex) {
+        return new LatLon(bounds.getMinLat() + latIndex * bounds.getHeight() / (height - 1),
+                bounds.getMinLon() + lonIndex * bounds.getWidth() / (width - 1));
     }
 
     /**
@@ -108,6 +127,7 @@ public class SRTMTileGridView {
      *
      * @return The coordinate bounds.
      */
+    @Override
     public Bounds getBounds() {
         return bounds;
     }
@@ -140,9 +160,10 @@ public class SRTMTileGridView {
      *         given point.
      */
     public int[] getClosestViewRasterIndices(ILatLon latLon) {
-        if (!bounds.contains(latLon))
+        if (!bounds.contains(latLon)) {
             throw new IllegalArgumentException("Given coordinate " + latLon.toString() + " is not within the bounds "
                     + bounds.toString() + " of this tile grid view");
+        }
         int[] tileGridIndices = tileGrid.getClosestGridRasterIndices(latLon);
         int latIndex = tileGridIndices[0] - gridRasterLatIndexSouth;
         int lonIndex = tileGridIndices[1] - gridRasterLonIndexWest;
@@ -171,23 +192,26 @@ public class SRTMTileGridView {
      * @return An array of the isovaluesconsidering the given isostep and the given
      *         cutoff values.
      */
+    @Override
     public short[] getIsovalues(int isostep, int lowerCutoffElevation, int upperCutoffElevation) {
         short minEle = Short.MAX_VALUE;
         short maxEle = SRTMTile.SRTM_DATA_VOID;
         for (int latIndex = 0; latIndex < height; latIndex++) {
             for (int lonIndex = 0; lonIndex < width; lonIndex++) {
-                short ele = getElevation(latIndex, lonIndex);
+                short ele = getElevationAsShort(latIndex, lonIndex);
                 // Ignore data voids in the assessment of minimum elevation
-                if (ele == SRTMTile.SRTM_DATA_VOID)
+                if (ele == SRTMTile.SRTM_DATA_VOID) {
                     continue;
+                }
                 minEle = (short) Math.min(minEle, ele);
                 maxEle = (short) Math.max(maxEle, ele);
             }
         }
         // If the area consists of data voids only,
         // minEle will still have its initial value
-        if (minEle == Short.MAX_VALUE)
+        if (minEle == Short.MAX_VALUE) {
             minEle = SRTMTile.SRTM_DATA_VOID;
+        }
 
         // Apply the lower cutoff elevation value, if it is greater than the minimum
         // elevation within the grid
@@ -200,20 +224,24 @@ public class SRTMTileGridView {
         // lines should be computed
         short minIsovalue;
         short maxIsovalue;
-        if (minEle % isostep == 0)
+        if (minEle % isostep == 0) {
             minIsovalue = minEle;
-        else
+        } else {
             minIsovalue = (short) ((minEle / isostep) * isostep);
-        if (maxEle % isostep == 0)
+        }
+        if (maxEle % isostep == 0) {
             maxIsovalue = maxEle;
-        else
+        } else {
             maxIsovalue = (short) ((maxEle / isostep) * isostep);
-        if (maxIsovalue < minIsovalue)
+        }
+        if (maxIsovalue < minIsovalue) {
             return new short[] {};
+        }
         int nSteps = (maxIsovalue - minIsovalue) / isostep + 1;
         short[] isovalues = new short[nSteps];
-        for (int i = 0; i < nSteps; i++)
+        for (int i = 0; i < nSteps; i++) {
             isovalues[i] = (short) (minIsovalue + i * isostep);
+        }
 
         return isovalues;
     }
@@ -237,8 +265,9 @@ public class SRTMTileGridView {
      *         available at all).
      */
     public ContourLines getContourLines(int isostep, int lowerCutoffElevation, int upperCutoffElevation) {
-        if (!tileGrid.areAllTilesCached() || tileGrid.isDisposed())
+        if (!tileGrid.areAllTilesCached() || tileGrid.isDisposed()) {
             return null;
+        }
         return new ContourLines(this, isostep, lowerCutoffElevation, upperCutoffElevation);
     }
 
@@ -252,8 +281,9 @@ public class SRTMTileGridView {
      *         returned if not all SRTM tiles are cached yet.
      */
     public LowestAndHighestPoints getLowestAndHighestPoints() {
-        if (!tileGrid.areAllTilesCached() || tileGrid.isDisposed())
+        if (!tileGrid.areAllTilesCached() || tileGrid.isDisposed()) {
             return null;
+        }
         return new LowestAndHighestPoints(this);
     }
 
@@ -276,8 +306,9 @@ public class SRTMTileGridView {
      *         3 elevation values in one of the two dimensions.
      */
     public HillshadeImageTile getHillshadeImageTile(double altitudeDeg, double azimuthDeg, boolean withPerimeter) {
-        if (!tileGrid.areAllTilesCached() || tileGrid.isDisposed())
+        if (!tileGrid.areAllTilesCached() || tileGrid.isDisposed()) {
             return null;
+        }
         return new HillshadeImageTile(this, altitudeDeg, azimuthDeg, withPerimeter);
     }
 
@@ -292,8 +323,9 @@ public class SRTMTileGridView {
      *         available at all).
      */
     public ElevationRaster getElevationRaster() {
-        if (!tileGrid.areAllTilesCached() || tileGrid.isDisposed())
+        if (!tileGrid.areAllTilesCached() || tileGrid.isDisposed()) {
             return null;
+        }
         return new ElevationRaster(this);
     }
 

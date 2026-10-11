@@ -2,6 +2,7 @@ package hhtznr.josm.plugins.elevation.gui;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 
+import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.IOException;
@@ -20,6 +21,7 @@ import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
+import hhtznr.josm.plugins.elevation.data.Coloring;
 import hhtznr.josm.plugins.elevation.data.GeoTiffImage;
 import hhtznr.josm.plugins.elevation.data.GeoTiffImageException;
 
@@ -33,7 +35,9 @@ public class OpenGeoTiffAction extends DiskAccessAction {
     private static final long serialVersionUID = 1L;
 
     /**
-     * Creates a new {@code OpenGeoTiffAction} instance. The action is registered with the name "Open GeoTIFF" and is associated with the "open" icon. It provides a tooltip description and is enabled by default.
+     * Creates a new {@code OpenGeoTiffAction} instance. The action is registered
+     * with the name "Open GeoTIFF" and is associated with the "open" icon. It
+     * provides a tooltip description and is enabled by default.
      */
     public OpenGeoTiffAction() {
         super("Open GeoTIFF", "open", "Open a GeoTIFF file.", null, true, "open-geotiff", false);
@@ -74,7 +78,8 @@ public class OpenGeoTiffAction extends DiskAccessAction {
         // Save the newly navigated directory path back into JOSM's system preferences
         File currentDirectory = fileChooser.getCurrentDirectory();
         if (currentDirectory != null) {
-            Config.getPref().put(ElevationPreferences.ELEVATION_GEOTIFF_LAST_DIRECTORY, currentDirectory.getAbsolutePath());
+            Config.getPref().put(ElevationPreferences.ELEVATION_GEOTIFF_LAST_DIRECTORY,
+                    currentDirectory.getAbsolutePath());
         }
 
         File[] files;
@@ -93,8 +98,7 @@ public class OpenGeoTiffAction extends DiskAccessAction {
                 Logging.error("Elevation: Failed to read GeoTIFF file '" + file.getAbsolutePath() + "'");
                 continue;
             }
-            String layerName = "GeoTIFF " + file.getName();
-            addGeoTiffLayer(layerName, geoTiffImage);
+            addGeoTiffLayer(geoTiffImage);
         }
     }
 
@@ -117,21 +121,33 @@ public class OpenGeoTiffAction extends DiskAccessAction {
         try {
             return new GeoTiffImage(file, coverage);
         } catch (GeoTiffImageException e) {
-            Logging.error("Elevation: Cannot create GeoTiffImage for file '" + file.getAbsolutePath() + " due to " + e.toString() + " with cause: " + e.getCause());
+            Logging.error("Elevation: Cannot create GeoTiffImage for file '" + file.getAbsolutePath() + " due to "
+                    + e.toString() + " with cause: " + e.getCause());
             return null;
         }
     }
 
-    private void addGeoTiffLayer(String layerName, GeoTiffImage geoTiffImage) {
-        GeoTiffLayer geoTiffLayer = new GeoTiffLayer(layerName, geoTiffImage);
+    private void addGeoTiffLayer(GeoTiffImage geoTiffImage) {
+        String layerName = "GeoTIFF " + geoTiffImage.getFile().getName();
+
         MainLayerManager layerManager = MainApplication.getLayerManager();
-        List<GeoTiffLayer> existingGeoTiffLayers = layerManager.getLayersOfType(GeoTiffLayer.class);
-        for (GeoTiffLayer existingLayer : existingGeoTiffLayers) {
+        List<GeoTiffElevationLayer> existingGeoTiffLayers = layerManager.getLayersOfType(GeoTiffElevationLayer.class);
+
+        for (GeoTiffElevationLayer existingLayer : existingGeoTiffLayers) {
             if (existingLayer.getName().equals(layerName)) {
-                Logging.info("Elevation: Not adding GeoTIFF layer for '" + geoTiffImage.getFile().getAbsolutePath() + "' because a GeoTiFFLayer with the same name already exists");
+                Logging.info("Elevation: Not adding GeoTIFF layer for '" + geoTiffImage.getFile().getAbsolutePath()
+                        + "' because a GeoTiFFLayer with the same name already exists");
                 return;
             }
         }
+        // TODO: Set the values for contour lines based on preferences
+        int isostep = 10;
+        float strokeWidth = ElevationPreferences.getContourLineStrokeWidth();
+        short lowerCutoffElevation = ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION;
+        short upperCutoffElevation = ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION;
+
+        GeoTiffElevationLayer geoTiffLayer = new GeoTiffElevationLayer(layerName, geoTiffImage, isostep, strokeWidth,
+                Coloring.Scheme.FALSE_COLOR, Color.BLACK, lowerCutoffElevation, upperCutoffElevation);
         layerManager.addLayer(geoTiffLayer);
     }
 }

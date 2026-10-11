@@ -43,8 +43,8 @@ public class LowestAndHighestPoints extends AbstractSRTMTileGridPaintable {
 
         double boundsMinLat = bounds.getMinLat();
         double boundsMinLon = bounds.getMinLon();
-        double latScale = bounds.getHeight() / (double) (height - 1);
-        double lonScale = bounds.getWidth() / (double) (width - 1);
+        double latScale = bounds.getHeight() / (height - 1);
+        double lonScale = bounds.getWidth() / (width - 1);
 
         short previousMinEle = Short.MAX_VALUE;
         short previousMaxEle = Short.MIN_VALUE;
@@ -55,9 +55,10 @@ public class LowestAndHighestPoints extends AbstractSRTMTileGridPaintable {
             for (int lonIndex = 0; lonIndex < width; lonIndex++) {
                 double lon = boundsMinLon + lonScale * lonIndex;
 
-                short ele = tileGridView.getElevation(latIndex, lonIndex);
-                if (ele == SRTMTile.SRTM_DATA_VOID)
+                short ele = tileGridView.getElevationAsShort(latIndex, lonIndex);
+                if (ele == SRTMTile.SRTM_DATA_VOID) {
                     continue;
+                }
 
                 if (ele < previousMinEle) {
                     lowestPoints.clear();
@@ -76,14 +77,16 @@ public class LowestAndHighestPoints extends AbstractSRTMTileGridPaintable {
                 }
             }
         }
-        if (previousMinEle == Short.MAX_VALUE)
+        if (previousMinEle == Short.MAX_VALUE) {
             lowestElevation = SRTMTile.SRTM_DATA_VOID;
-        else
+        } else {
             lowestElevation = previousMinEle;
-        if (previousMaxEle == Short.MIN_VALUE)
+        }
+        if (previousMaxEle == Short.MIN_VALUE) {
             highestElevation = SRTMTile.SRTM_DATA_VOID;
-        else
+        } else {
             highestElevation = previousMaxEle;
+        }
     }
 
     /**

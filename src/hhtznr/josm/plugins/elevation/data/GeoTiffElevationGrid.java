@@ -97,13 +97,14 @@ public class GeoTiffElevationGrid implements ElevationGridView {
         return isNoDataValue(ele);
     }
 
-    private boolean isNoDataValue(double value) {
-        if (!Double.isFinite(value)) {
+    @Override
+    public boolean isNoDataValue(double ele) {
+        if (!Double.isFinite(ele)) {
             return true;
         }
         if (noDataValues != null) {
             for (double noDataValue : noDataValues) {
-                if (Double.isNaN(noDataValue) ? Double.isNaN(value) : value == noDataValue) {
+                if (Double.isNaN(noDataValue) ? Double.isNaN(ele) : ele == noDataValue) {
                     return true;
                 }
             }

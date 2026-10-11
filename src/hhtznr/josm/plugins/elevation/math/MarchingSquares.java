@@ -138,6 +138,12 @@ public class MarchingSquares {
                     eleSouthWest = cellToWest.eleSouthEast;
                 }
 
+                if (elevationGridView.isNoDataValue(eleNorthWest) || elevationGridView.isNoDataValue(eleSouthWest)) {
+                    previousCellRowToSouth[lonIndex] = null;
+                    cellToWest = null;
+                    continue;
+                }
+
                 /**
                  * The elevation value at the northeast corner can never be obtained from a
                  * previous cell.
@@ -151,6 +157,11 @@ public class MarchingSquares {
                  * </pre>
                  */
                 eleNorthEast = elevationGridView.getElevation(latIndex + 1, lonIndex + 1);
+                if (elevationGridView.isNoDataValue(eleNorthEast)) {
+                    previousCellRowToSouth[lonIndex] = null;
+                    cellToWest = null;
+                    continue;
+                }
 
                 // Same under consideration of a previous cell to the south
                 if (cellToSouth == null) {
@@ -159,10 +170,7 @@ public class MarchingSquares {
                     eleSouthEast = cellToSouth.eleNorthEast;
                 }
 
-                if (elevationGridView.isNoDataValue(latIndex, lonIndex)
-                        || elevationGridView.isNoDataValue(latIndex, lonIndex + 1)
-                        || elevationGridView.isNoDataValue(latIndex + 1, lonIndex)
-                        || elevationGridView.isNoDataValue(latIndex + 1, lonIndex + 1)) {
+                if (elevationGridView.isNoDataValue(eleSouthEast)) {
                     previousCellRowToSouth[lonIndex] = null;
                     cellToWest = null;
                     continue;

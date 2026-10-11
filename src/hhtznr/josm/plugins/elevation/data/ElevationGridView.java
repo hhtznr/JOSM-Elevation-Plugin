@@ -51,6 +51,15 @@ public interface ElevationGridView {
     public boolean isNoDataValue(int latIndex, int lonIndex);
 
     /**
+     * Returns whether the provided elevation value is not a valid data value.
+     *
+     * @param ele The elevation value.
+     * @return {@code true} if the elevation value is not a valid data value,
+     *         {@code false} otherwise.
+     */
+    public boolean isNoDataValue(double ele);
+
+    /**
      * Returns the latitude for the provided index of the grid view in latitude
      * direction.
      *

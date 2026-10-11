@@ -26,6 +26,8 @@ public class MarchingSquares {
 
     private final ElevationGridView elevationGridView;
     private final short[] isovalues;
+    private final double[] edgeLatitudes;
+    private final double[] edgeLongitudes;
 
     /**
      * Creates a new instance of the Marching Squares algorithm dedicated to
@@ -45,6 +47,27 @@ public class MarchingSquares {
     public MarchingSquares(ElevationGridView elevationGridView, short[] isovalues) {
         this.elevationGridView = elevationGridView;
         this.isovalues = isovalues;
+        int gridWidth = elevationGridView.getWidth();
+        int gridHeight = elevationGridView.getHeight();
+        int gridSize = Math.multiplyExact(gridWidth, gridHeight);
+        edgeLatitudes = new double[gridSize];
+        edgeLongitudes = new double[gridSize];
+        for (int latIndex = 0; latIndex < gridHeight; latIndex++) {
+            for (int lonIndex = 0; lonIndex < gridWidth; lonIndex++) {
+                int linearIndex = latIndex * gridWidth + lonIndex;
+                LatLon latLon = elevationGridView.toLatLon(latIndex, lonIndex);
+                edgeLatitudes[linearIndex] = latLon.lat();
+                edgeLongitudes[linearIndex] = latLon.lon();
+            }
+        }
+    }
+
+    private LatLon getLatLon(int latIndex, int lonIndex) {
+        int gridWidth = elevationGridView.getWidth();
+        int linearIndex = latIndex * gridWidth + lonIndex;
+        double lat = edgeLatitudes[linearIndex];
+        double lon = edgeLongitudes[linearIndex];
+        return new LatLon(lat, lon);
     }
 
     /**
@@ -118,8 +141,8 @@ public class MarchingSquares {
                 double eleSouthEast;
                 double eleSouthWest;
 
-                LatLon northWest = elevationGridView.toLatLon(latIndex + 1, lonIndex);
-                LatLon southEast = elevationGridView.toLatLon(latIndex, lonIndex + 1);
+                LatLon northWest = getLatLon(latIndex + 1, lonIndex);
+                LatLon southEast = getLatLon(latIndex, lonIndex + 1);
                 double latNorth = northWest.lat();
                 double lonWest = northWest.lon();
                 double latSouth = southEast.lat();

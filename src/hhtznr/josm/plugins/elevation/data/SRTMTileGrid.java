@@ -185,7 +185,8 @@ public class SRTMTileGrid extends SRTMTileConsumer implements ElevationGrid, SRT
      * @return The width of the elevation data raster of this SRTM tile grid across
      *         all SRTM tiles covered by this grid.
      */
-    public int getRasterWidth() {
+    @Override
+    public int getWidth() {
         return rasterWidth;
     }
 
@@ -195,7 +196,8 @@ public class SRTMTileGrid extends SRTMTileConsumer implements ElevationGrid, SRT
      * @return The height of the elevation data raster of this SRTM tile grid across
      *         all SRTM tiles covered by this grid.
      */
-    public int getRasterHeight() {
+    @Override
+    public int getHeight() {
         return rasterHeight;
     }
 

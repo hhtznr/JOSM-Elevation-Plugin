@@ -7,6 +7,7 @@ import org.geotools.api.referencing.FactoryException;
 import org.geotools.api.referencing.crs.CoordinateReferenceSystem;
 import org.geotools.api.referencing.operation.TransformException;
 import org.geotools.coverage.grid.GridCoverage2D;
+import org.geotools.coverage.grid.GridEnvelope2D;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.referencing.CRS;
 import org.openstreetmap.josm.data.Bounds;
@@ -21,6 +22,8 @@ public class GeoTiffImage implements ElevationGrid {
     private final File file;
     private final GridCoverage2D coverage;
     private final ReferencedEnvelope referencedEnvelope;
+    private final int width;
+    private final int height;
 
     /**
      * Creates a new GeoTIFF image.
@@ -50,6 +53,9 @@ public class GeoTiffImage implements ElevationGrid {
                     + "' due to " + e;
             throw new GeoTiffImageException(message, e);
         }
+        GridEnvelope2D range = coverage.getGridGeometry().getGridRange2D();
+        width = range.width;
+        height = range.height;
     }
 
     /**
@@ -87,6 +93,16 @@ public class GeoTiffImage implements ElevationGrid {
      */
     public ReferencedEnvelope getReferencedEnvelope() {
         return referencedEnvelope;
+    }
+
+    @Override
+    public int getWidth() {
+        return width;
+    }
+
+    @Override
+    public int getHeight() {
+        return height;
     }
 
     /**

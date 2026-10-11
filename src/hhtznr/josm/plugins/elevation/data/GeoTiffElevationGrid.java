@@ -116,6 +116,11 @@ public class GeoTiffElevationGrid implements ElevationGridView {
     }
 
     @Override
+    public ElevationGrid getElevationGrid() {
+        return geoTiffImage;
+    }
+
+    @Override
     public int getWidth() {
         return width;
     }

@@ -3,7 +3,7 @@ package hhtznr.josm.plugins.elevation.gui;
 import org.openstreetmap.josm.data.Bounds;
 
 import hhtznr.josm.plugins.elevation.data.ElevationDataConsumer;
-import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
+import hhtznr.josm.plugins.elevation.data.ElevationGridView;
 
 /**
  * Abstract superclass of paintable objects obtained from an
@@ -15,18 +15,18 @@ import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
  */
 public abstract class AbstractSRTMTileGridPaintable extends ElevationDataConsumer {
 
-    protected final SRTMTileGridView tileGridView;
+    protected final ElevationGridView elevationGridView;
 
     /**
      * Abstract constructor of a paintable object obtained from an SRTM tile grid
      * view.
      *
-     * @param tileGridView The SRTM tile grid view, where this paintable should
-     *                     obtain elevation values from its raster.
+     * @param elevationGridView The elevation grid view, where this paintable should
+     *                          obtain elevation values from its raster.
      */
-    public AbstractSRTMTileGridPaintable(String name, SRTMTileGridView tileGridView) {
-        super(name, tileGridView.getTileGrid());
-        this.tileGridView = tileGridView;
+    public AbstractSRTMTileGridPaintable(String name, ElevationGridView elevationGridView) {
+        super(name, elevationGridView.getElevationGrid());
+        this.elevationGridView = elevationGridView;
     }
 
     /**
@@ -39,7 +39,7 @@ public abstract class AbstractSRTMTileGridPaintable extends ElevationDataConsume
      *         {@code false} otherwise.
      */
     public boolean covers(Bounds bounds) {
-        return tileGridView.getBounds().contains(bounds);
+        return elevationGridView.getBounds().contains(bounds);
     }
 
     /**
@@ -48,17 +48,6 @@ public abstract class AbstractSRTMTileGridPaintable extends ElevationDataConsume
      * @return The coordinate bounds.
      */
     public Bounds getBounds() {
-        return tileGridView.getBounds();
-    }
-
-    /**
-     * Returns the step between two adjacent raster points in latitude or longitude
-     * direction.
-     *
-     * @return The step in arc-seconds between two adjacent raster points in
-     *         latitude or longitude direction.
-     */
-    public double getLatLonStep() {
-        return tileGridView.getLatLonStep();
+        return elevationGridView.getBounds();
     }
 }

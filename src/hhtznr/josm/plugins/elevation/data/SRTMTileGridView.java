@@ -370,4 +370,9 @@ public class SRTMTileGridView implements ElevationGridView {
     public SRTMTileGrid getTileGrid() {
         return tileGrid;
     }
+
+    @Override
+    public ElevationGrid getElevationGrid() {
+        return tileGrid;
+    }
 }

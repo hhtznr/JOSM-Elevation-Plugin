@@ -72,8 +72,9 @@ public class HillshadeImageTile extends AbstractSRTMTileGridPaintable {
      *         bilinear interpolation.
      */
     public BufferedImage getScaledImage(int width, int height) {
-        if (image == null)
+        if (image == null) {
             return null;
+        }
         // Scale the hillshade image to screen dimensions
         // https://stackoverflow.com/questions/4216123/how-to-scale-a-bufferedimage
         double sx = (double) width / (double) image.getWidth();
@@ -86,5 +87,18 @@ public class HillshadeImageTile extends AbstractSRTMTileGridPaintable {
     @Override
     public Bounds getBounds() {
         return bounds;
+    }
+
+    /**
+     * Returns the step between two adjacent raster points in latitude or longitude
+     * direction.
+     *
+     * @return The step in arc-seconds between two adjacent raster points in
+     *         latitude or longitude direction.
+     */
+    public double getLatLonStep() {
+        // TODO: Resolve this temporary compatibility workaround
+        // This is safe as long as the constructor requires SRTMTileGridView
+        return ((SRTMTileGridView) elevationGridView).getLatLonStep();
     }
 }

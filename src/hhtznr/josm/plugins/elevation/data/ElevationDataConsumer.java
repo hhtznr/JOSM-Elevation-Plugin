@@ -65,12 +65,16 @@ public abstract class ElevationDataConsumer {
      * data consumer. <br>
      * Registers this consumer with the provided tile elevation grid if is is an
      * {@code SRTMTileGrid} and unregisters it with the elevation grid that was
-     * previously used if the latter is an {@code SRTMTileGrid}.
+     * previously used if the latter is an {@code SRTMTileGrid}. <br>
+     * Note: Using this method can be dangerous because it will not update a grid
+     * view, which was previously obtained by an implementing subclass.
      *
      * @param newElevationGrid The new elevation grid to be used by this elevation
      *                         data consumer.
      */
     protected synchronized void setElevationGrid(ElevationGrid newElevationGrid) {
+        // TODO: Omit use of this method
+
         if (isDisposed || elevationGrid == null) {
             throw new IllegalStateException("Cannot change the tile grid of disposed consumer " + name + ".");
         }

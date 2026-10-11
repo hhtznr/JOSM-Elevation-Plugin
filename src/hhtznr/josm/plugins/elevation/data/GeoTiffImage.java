@@ -87,7 +87,7 @@ public class GeoTiffImage implements ElevationGrid {
 
     /**
      * Returns the geographic bounds of the GeoTIFF image in GeoTool's
-     * representation {@code ReferencedEnvelope).
+     * representation {@code ReferencedEnvelope}.
      *
      * @return The geographic bounds of the GeoTIFF image.
      */

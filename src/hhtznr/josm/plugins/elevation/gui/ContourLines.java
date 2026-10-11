@@ -69,7 +69,7 @@ public class ContourLines extends AbstractSRTMTileGridPaintable {
         } else {
             this.isostep = isostep;
         }
-        MarchingSquares marchingSquares = new MarchingSquares(this.tileGridView, isovalues);
+        MarchingSquares marchingSquares = new MarchingSquares(this.elevationGridView, isovalues);
         this.isolineSegments = marchingSquares.getIsolineSegments();
     }
 
@@ -90,6 +90,19 @@ public class ContourLines extends AbstractSRTMTileGridPaintable {
      */
     public IsolineSegments[] getIsolineSegments() {
         return isolineSegments;
+    }
+
+    /**
+     * Returns the step between two adjacent raster points in latitude or longitude
+     * direction.
+     *
+     * @return The step in arc-seconds between two adjacent raster points in
+     *         latitude or longitude direction.
+     */
+    public double getLatLonStep() {
+        // TODO: Resolve this temporary compatibility workaround
+        // This is safe as long as the constructor requires SRTMTileGridView
+        return ((SRTMTileGridView) elevationGridView).getLatLonStep();
     }
 
     /**

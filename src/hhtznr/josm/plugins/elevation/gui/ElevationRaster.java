@@ -34,9 +34,13 @@ public class ElevationRaster extends AbstractSRTMTileGridPaintable {
      *         dimension.
      */
     public int getHeight() {
-        if (!tileGridView.areAllTilesCached() || tileGridView.getTileGrid().isDisposed())
+        // TODO: Resolve this temporary compatibility workaround
+        // This is safe as long as the constructor requires SRTMTileGridView
+        SRTMTileGridView srtmTileGridView = (SRTMTileGridView) elevationGridView;
+        if (!srtmTileGridView.areAllTilesCached() || srtmTileGridView.getTileGrid().isDisposed()) {
             return 0;
-        return tileGridView.getHeight();
+        }
+        return elevationGridView.getHeight();
     }
 
     /**
@@ -46,9 +50,13 @@ public class ElevationRaster extends AbstractSRTMTileGridPaintable {
      *         dimension.
      */
     public int getWidth() {
-        if (!tileGridView.areAllTilesCached() || tileGridView.getTileGrid().isDisposed())
+        // TODO: Resolve this temporary compatibility workaround
+        // This is safe as long as the constructor requires SRTMTileGridView
+        SRTMTileGridView srtmTileGridView = (SRTMTileGridView) elevationGridView;
+        if (!srtmTileGridView.areAllTilesCached() || srtmTileGridView.getTileGrid().isDisposed()) {
             return 0;
-        return tileGridView.getWidth();
+        }
+        return elevationGridView.getWidth();
     }
 
     /**
@@ -59,9 +67,13 @@ public class ElevationRaster extends AbstractSRTMTileGridPaintable {
      *         in arc degrees.
      */
     public double getLatStep() {
-        if (getHeight() < 2 || getWidth() < 1)
+        if (getHeight() < 2 || getWidth() < 1) {
             return Double.POSITIVE_INFINITY;
-        return tileGridView.getLatLonStep();
+        }
+        // TODO: Resolve this temporary compatibility workaround
+        // This is safe as long as the constructor requires SRTMTileGridView
+        SRTMTileGridView srtmTileGridView = (SRTMTileGridView) elevationGridView;
+        return srtmTileGridView.getLatLonStep();
     }
 
     /**
@@ -72,9 +84,13 @@ public class ElevationRaster extends AbstractSRTMTileGridPaintable {
      *         in arc degrees.
      */
     public double getLonStep() {
-        if (getWidth() < 2 || getHeight() < 1)
+        if (getWidth() < 2 || getHeight() < 1) {
             return Double.POSITIVE_INFINITY;
-        return tileGridView.getLatLonStep();
+        }
+        // TODO: Resolve this temporary compatibility workaround
+        // This is safe as long as the constructor requires SRTMTileGridView
+        SRTMTileGridView srtmTileGridView = (SRTMTileGridView) elevationGridView;
+        return srtmTileGridView.getLatLonStep();
     }
 
     /**
@@ -85,6 +101,23 @@ public class ElevationRaster extends AbstractSRTMTileGridPaintable {
      * @return The latitude-longitude-elevation point of interest.
      */
     public LatLonEle getLatLonEle(int latIndex, int lonIndex) {
-        return tileGridView.getLatLonEle(latIndex, lonIndex);
+        // TODO: Resolve this temporary compatibility workaround
+        // This is safe as long as the constructor requires SRTMTileGridView
+        SRTMTileGridView srtmTileGridView = (SRTMTileGridView) elevationGridView;
+        return srtmTileGridView.getLatLonEle(latIndex, lonIndex);
+    }
+
+    /**
+     * Returns the step between two adjacent raster points in latitude or longitude
+     * direction.
+     *
+     * @return The step in arc-seconds between two adjacent raster points in
+     *         latitude or longitude direction.
+     */
+    public double getLatLonStep() {
+        // TODO: Resolve this temporary compatibility workaround
+        // This is safe as long as the constructor requires SRTMTileGridView
+        SRTMTileGridView srtmTileGridView = (SRTMTileGridView) elevationGridView;
+        return srtmTileGridView.getLatLonStep();
     }
 }

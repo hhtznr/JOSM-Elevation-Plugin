@@ -15,6 +15,13 @@ import org.openstreetmap.josm.data.coor.LatLon;
 public interface ElevationGridView {
 
     /**
+     * Returns a reference to the underlying elevation grid.
+     *
+     * @return The underlying elevation grid, this view is based on.
+     */
+    public ElevationGrid getElevationGrid();
+
+    /**
      * Returns the width of this grid view. The width is the number of grid raster
      * points in longitude direction.
      *

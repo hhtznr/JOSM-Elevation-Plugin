@@ -81,7 +81,7 @@ public class SRTMTileGridView implements ElevationGridView {
     public short getElevationAsShort(int latIndex, int lonIndex) {
         int gridRasterLatIndex = gridRasterLatIndexSouth + latIndex;
         int gridRasterLonIndex = gridRasterLonIndexWest + lonIndex;
-        return tileGrid.getElevation(gridRasterLatIndex, gridRasterLonIndex);
+        return tileGrid.getElevationAsShort(gridRasterLatIndex, gridRasterLonIndex);
     }
 
     /**
@@ -162,7 +162,7 @@ public class SRTMTileGridView implements ElevationGridView {
     public LatLonEle getLatLonEle(int latIndex, int lonIndex) {
         int gridRasterLatIndex = gridRasterLatIndexSouth + latIndex;
         int gridRasterLonIndex = gridRasterLonIndexWest + lonIndex;
-        return tileGrid.getLatLonEle(gridRasterLatIndex, gridRasterLonIndex);
+        return tileGrid.toLatLonEle(gridRasterLatIndex, gridRasterLonIndex);
     }
 
     /**
@@ -298,6 +298,7 @@ public class SRTMTileGridView implements ElevationGridView {
      *         lowest and highest elevation within the given bounds. {@code null} is
      *         returned if not all SRTM tiles are cached yet.
      */
+    @Override
     public LowestAndHighestPoints getLowestAndHighestPoints() {
         if (!tileGrid.areAllTilesCached() || tileGrid.isDisposed()) {
             return null;

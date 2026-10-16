@@ -29,7 +29,7 @@ public class LowestAndHighestPoints extends AbstractSRTMTileGridPaintable {
     private final double highestElevation;
 
     /**
-     * Creates a new lowest and highest points object.
+     * Creates a new lowest and highest points object for an elevation grid view.
      *
      * @param elevationGridView The elevation grid view from which elevation data
      *                          should be obtained.
@@ -96,6 +96,35 @@ public class LowestAndHighestPoints extends AbstractSRTMTileGridPaintable {
             int lonIndex = point.x;
             LatLon latLon = elevationGridView.toLatLon(latIndex, lonIndex);
             highestPoints.add(new LatLonEle(latLon.lat(), latLon.lon(), highestElevation));
+        }
+    }
+
+    /**
+     * Creates a new lowest and highest points object where the lowest and highest
+     * points are not derived from the view, but provided explicitly as pre-computed
+     * values.
+     *
+     * @param elevationGridView The elevation grid view to which these lowest and
+     *                          highest points belong.
+     * @param lowestPoints      The list of the lowest coordinate points along with
+     *                          their elevation.
+     * @param highestPoints     The list of the highest coordinate points along with
+     *                          their elevation.
+     */
+    public LowestAndHighestPoints(ElevationGridView elevationGridView, List<LatLonEle> lowestPoints,
+            List<LatLonEle> highestPoints) {
+        super(namer.nextName(), elevationGridView);
+        this.lowestPoints = lowestPoints;
+        this.highestPoints = highestPoints;
+        if (lowestPoints.size() > 0) {
+            this.lowestElevation = lowestPoints.get(0).ele();
+        } else {
+            this.lowestElevation = Double.NaN;
+        }
+        if (highestPoints.size() > 0) {
+            this.highestElevation = highestPoints.get(0).ele();
+        } else {
+            this.highestElevation = Double.NaN;
         }
     }
 

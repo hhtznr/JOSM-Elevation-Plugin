@@ -3,6 +3,8 @@ package hhtznr.josm.plugins.elevation.data;
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
 
+import hhtznr.josm.plugins.elevation.gui.LowestAndHighestPoints;
+
 /**
  * Interface for views on different types of elevation grids, where the
  * underlying grids use different types of elevation data and therefore
@@ -108,4 +110,12 @@ public interface ElevationGridView {
      * @return An array holding the isovalues.
      */
     public short[] getIsovalues(int isostep, int lowerCutoffElevation, int upperCutoffElevation);
+
+    /**
+     * Returns the lowest and highest points in this grid view.
+     *
+     * @return An object with two lists holding the coordinates and elevations of
+     *         the lowest and highest points respectively.
+     */
+    public LowestAndHighestPoints getLowestAndHighestPoints();
 }

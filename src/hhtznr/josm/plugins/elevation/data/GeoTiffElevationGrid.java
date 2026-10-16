@@ -1,5 +1,6 @@
 package hhtznr.josm.plugins.elevation.data;
 
+import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.image.Raster;
 import java.awt.image.RenderedImage;
@@ -26,7 +27,7 @@ import org.openstreetmap.josm.data.coor.LatLon;
  *
  * @author Harald Hetzner
  */
-public class GeoTiffElevationGrid implements ElevationGridView {
+public class GeoTiffElevationGrid implements ElevationGrid {
 
     private final GeoTiffImage geoTiffImage;
     private final RenderedImage image;
@@ -123,11 +124,6 @@ public class GeoTiffElevationGrid implements ElevationGridView {
     }
 
     @Override
-    public ElevationGrid getElevationGrid() {
-        return geoTiffImage;
-    }
-
-    @Override
     public int getWidth() {
         return width;
     }
@@ -198,6 +194,24 @@ public class GeoTiffElevationGrid implements ElevationGridView {
 
     @Override
     public LatLon toLatLon(int latIndex, int lonIndex) {
+        return toLatLon((double) latIndex, (double) lonIndex);
+    }
+
+    /**
+     * Returns the geographic coordinate corresponding to the grid location
+     * designated by the specified indices. <br>
+     * Note: GeoTIFF raster indices designate pixel centers. For pixel edges, we
+     * have to use <code>pixelIndex + 0.5</code> and <code>pixelIndex - 0.5</code>.
+     *
+     * @param latIndex The latitude index as a {@code double}. It does not need to
+     *                 correspond to an integer, but may also be a value between two
+     *                 integer indices.
+     * @param lonIndex The longitude index as a {@code double}. It does not need to
+     *                 correspond to an integer, but may also be a value between two
+     *                 integer indices.
+     * @return The latitude and longitude corresponding to the specified indices.
+     */
+    public LatLon toLatLon(double latIndex, double lonIndex) {
         double[] gridPoint = { minX + lonIndex, minY + height - 1 - latIndex };
         double[] crsPoint = new double[2];
         double[] geographicPoint = new double[2];
@@ -219,17 +233,46 @@ public class GeoTiffElevationGrid implements ElevationGridView {
 
     @Override
     public Bounds getBounds() {
-        LatLon minLatLon = toLatLon(0, 0);
-        LatLon maxLatLon = toLatLon(height - 1, width - 1);
-        return new Bounds(minLatLon, maxLatLon);
+        // Determine enclosing bounds
+        // Outline of a GeoTIFF envelope is not necessarily a rectangle
+        // Edges are not necessarily straight
+        // GeoTIFF raster can rotated or skewed relative to latitude and longitude
+        LatLon southWest = toLatLon(0, 0);
+        LatLon southEast = toLatLon(0, width - 1);
+        LatLon northEast = toLatLon(height - 1, width - 1);
+        LatLon northWest = toLatLon(height - 1, 0);
+        double minLat = Math.min(Math.min(southWest.lat(), southEast.lat()),
+                Math.min(northEast.lat(), northWest.lat()));
+        double maxLat = Math.max(Math.max(southWest.lat(), southEast.lat()),
+                Math.max(northEast.lat(), northWest.lat()));
+        double minLon = Math.min(Math.min(southWest.lon(), southEast.lon()),
+                Math.min(northEast.lon(), northWest.lon()));
+        double maxLon = Math.max(Math.max(southWest.lon(), southEast.lon()),
+                Math.max(northEast.lon(), northWest.lon()));
+        return new Bounds(minLat, minLon, maxLat, maxLon);
     }
 
-    @Override
-    public short[] getIsovalues(int isostep, int lowerCutoffElevation, int upperCutoffElevation) {
+    /**
+     * Returns isovalues between the provided lowest and highest elevation value
+     * based on the provided isostep. Isovalues returned are multiples of the
+     * isostep.
+     *
+     * @param lowestElevation      The lowest elevation value.
+     * @param highestElevation     The highest elevation value.
+     * @param isostep              The isostep.
+     * @param lowerCutoffElevation Elevation values below this value shall not be
+     *                             considered when determining the isovalues.
+     * @param upperCutoffElevation Elevation values above this value shall not be
+     *                             considered then determining the isovalues.
+     * @return An array with the isovalues. The array may be empty.
+     */
+    public static short[] getIsovalues(double lowestElevation, double highestElevation, int isostep,
+            int lowerCutoffElevation, int upperCutoffElevation) {
+        // TODO: Move to GeoTiffElevationGridView
         // If the area consists of data voids only,
         // minEle will still have its initial value
         if (lowestElevation == Double.POSITIVE_INFINITY) {
-            return new short[] {};
+            return new short[0];
         }
 
         // Apply the lower cutoff elevation value, if it is greater than the minimum
@@ -238,6 +281,10 @@ public class GeoTiffElevationGrid implements ElevationGridView {
         // Apply the upper cutoff elevation value, if it is smaller than the maximum
         // elevation within the grid
         double maxEle = Math.min(highestElevation, upperCutoffElevation);
+
+        if (minEle > maxEle) {
+            return new short[0]; // The cutoffs exclude the view's elevation range.
+        }
 
         // Determine the list of isovalues, i.e. the elevation levels for which contour
         // lines should be computed
@@ -254,7 +301,7 @@ public class GeoTiffElevationGrid implements ElevationGridView {
             maxIsovalue = (short) (((short) maxEle / isostep) * isostep);
         }
         if (maxIsovalue < minIsovalue) {
-            return new short[] {};
+            return new short[0];
         }
         int nSteps = (maxIsovalue - minIsovalue) / isostep + 1;
         short[] isovalues = new short[nSteps];
@@ -293,6 +340,17 @@ public class GeoTiffElevationGrid implements ElevationGridView {
      *                            grid fails, e.g. because its format is invalid.
      */
     public OptionalDouble getElevationAt(ILatLon coordinate) throws TransformException {
+        Point indices = getGridIndices(coordinate);
+        if (indices == null) {
+            return OptionalDouble.empty();
+        }
+        int latIndex = indices.y;
+        int lonIndex = indices.x;
+        double elevation = getElevation(latIndex, lonIndex);
+        return isNoDataValue(elevation) ? OptionalDouble.empty() : OptionalDouble.of(elevation);
+    }
+
+    private Point getGridIndices(ILatLon coordinate) throws TransformException {
         // EPSG:4326 was decoded with longitude-first axis order.
         double[] geographic = { coordinate.lon(), coordinate.lat() };
         double[] source = new double[2];
@@ -302,7 +360,7 @@ public class GeoTiffElevationGrid implements ElevationGridView {
         crsToGrid.transform(source, 0, grid, 0, 1);
 
         if (!Double.isFinite(grid[0]) || !Double.isFinite(grid[1])) {
-            return OptionalDouble.empty();
+            return null;
         }
 
         // gridToCrs uses PixelOrientation.CENTER, so integer coordinates identify
@@ -313,11 +371,157 @@ public class GeoTiffElevationGrid implements ElevationGridView {
         long imageRow = imageY - minY;
 
         if (lonIndex < 0 || lonIndex >= width || imageRow < 0 || imageRow >= height) {
-            return OptionalDouble.empty();
+            return null;
         }
 
         int latIndex = height - 1 - (int) imageRow;
-        double elevation = getElevation(latIndex, (int) lonIndex);
-        return isNoDataValue(elevation) ? OptionalDouble.empty() : OptionalDouble.of(elevation);
+        return new Point((int) lonIndex, latIndex);
+    }
+
+    /**
+     * The number of segments to use for each edge of the JOSM bounds when
+     * determining the transformed envelope in pixel-center coordinates. A higher
+     * number of segments increases the accuracy of the envelope but also increases
+     * the computational cost. The default value of 64 provides a good balance
+     * between accuracy and performance for most use cases.
+     */
+    private static final int MAP_EDGE_SEGMENTS = 64;
+
+    /**
+     * The number of pixels to expand the intersection envelope when determining the
+     * raster cells that may intersect the map bounds. This margin is used to ensure
+     * that all relevant raster cells are included in the view, even if they are
+     * only partially covered by the map bounds. The default value of 1 pixel is
+     * sufficient for most use cases.
+     */
+    private static final int INTERSECTION_MARGIN_PIXELS = 1;
+
+    /**
+     * Returns a view covering the raster cells that may intersect the map bounds.
+     *
+     * The transformed map-boundary envelope is conservative: the returned view may
+     * include cells outside the exact map bounds. Clip rendered contours to the map
+     * view, and filter points against the map bounds if they must be strictly
+     * within the view.
+     *
+     * @param bounds The bounds, e.g. the bounds of the map view.
+     * @return a candidate raster view, or {@code null} if there is no intersection
+     *         or the bounds cross the 180th meridian
+     * @throws
+     */
+    @Override
+    public GeoTiffElevationGridView getView(Bounds bounds) throws ElevationGridException {
+        if (bounds.crosses180thMeridian()) {
+            return null;
+        }
+
+        // Envelope of the transformed map boundary in pixel-center coordinates:
+        // [minX, maxX, minY, maxY].
+        double[] gridEnvelope = { Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY,
+                Double.NEGATIVE_INFINITY };
+        // For repeated transformations, reuse temporary arrays to avoid repeated
+        // allocation.
+        double[] source = new double[2];
+        double[] grid = new double[2];
+
+        double minLon = bounds.getMinLon();
+        double maxLon = bounds.getMaxLon();
+        double minLat = bounds.getMinLat();
+        double maxLat = bounds.getMaxLat();
+
+        for (int i = 0; i <= MAP_EDGE_SEGMENTS; i++) {
+            double t = (double) i / MAP_EDGE_SEGMENTS;
+            double lon = minLon + t * (maxLon - minLon);
+            double lat = minLat + t * (maxLat - minLat);
+
+            // Temporary array to store current coordinate in case that exception handling
+            // is needed
+            double[] latLon = new double[2];
+            try {
+                // South and north edges.
+                latLon[0] = minLat;
+                latLon[1] = lon;
+                includeGridCoordinateInEnvelope(latLon[1], latLon[0], source, grid, gridEnvelope);
+                latLon[0] = maxLat;
+                latLon[1] = lon;
+                includeGridCoordinateInEnvelope(latLon[1], latLon[0], source, grid, gridEnvelope);
+
+                // West and east edges.
+                latLon[0] = lat;
+                latLon[1] = minLon;
+                includeGridCoordinateInEnvelope(latLon[1], latLon[0], source, grid, gridEnvelope);
+                latLon[0] = lat;
+                latLon[1] = maxLon;
+                includeGridCoordinateInEnvelope(latLon[1], latLon[0], source, grid, gridEnvelope);
+            } catch (TransformException e) {
+                // thrown if a map-bound coordinate cannot be transformed
+                throw new ElevationGridException(
+                        "Could not transform coordinate " + new LatLon(latLon[0], latLon[1]) + " to GeoTIFF envelope",
+                        e);
+            }
+
+        }
+
+        // Pixel centers are integer grid coordinates, so the raster's outer edges
+        // are half a pixel beyond its first and last centers.
+        double rasterMinX = minX - 0.5;
+        double rasterMaxX = minX + width - 0.5;
+        double rasterMinY = minY - 0.5;
+        double rasterMaxY = minY + height - 0.5;
+
+        if (gridEnvelope[1] < rasterMinX || gridEnvelope[0] > rasterMaxX || gridEnvelope[3] < rasterMinY
+                || gridEnvelope[2] > rasterMaxY) {
+            return null;
+        }
+
+        // Find pixel cells overlapping the transformed envelope. Expand by a
+        // pixel for contour calculations that need neighboring samples.
+        int colWest = (int) Math.max(0,
+                Math.min(width - 1, Math.ceil(gridEnvelope[0] - minX - 0.5) - INTERSECTION_MARGIN_PIXELS));
+        int colEast = (int) Math.max(0,
+                Math.min(width - 1, Math.floor(gridEnvelope[1] - minX + 0.5) + INTERSECTION_MARGIN_PIXELS));
+        int rowNorth = (int) Math.max(0,
+                Math.min(height - 1, Math.ceil(gridEnvelope[2] - minY - 0.5) - INTERSECTION_MARGIN_PIXELS));
+        int rowSouth = (int) Math.max(0,
+                Math.min(height - 1, Math.floor(gridEnvelope[3] - minY + 0.5) + INTERSECTION_MARGIN_PIXELS));
+
+        int latIndexSouth = height - 1 - rowSouth;
+        int latIndexNorth = height - 1 - rowNorth;
+
+        return new GeoTiffElevationGridView(this, latIndexSouth, latIndexNorth, colWest, colEast, bounds);
+    }
+
+    /**
+     * Includes the grid coordinate of the provided geographic coordinate in the
+     * provided grid envelope if the coordinate is within the grid bounds and it
+     * expands the envelope. The grid envelope is updated in place.
+     *
+     * @param lon          The longitude of the geographic coordinate.
+     * @param lat          The latitude of the geographic coordinate.
+     * @param source       An array of length 2 to be used for the grid coordinate.
+     *                     Provided to avoid repeated allocation of temporary
+     *                     arrays.
+     * @param grid         An array of length 2 to be used for the grid coordinate.
+     *                     Provided to avoid repeated allocation of temporary
+     *                     arrays.
+     * @param gridEnvelope The grid envelope to update.
+     * @throws TransformException if the transformation of the coordinate to the
+     *                            grid fails, e.g. because its format is invalid.
+     */
+    private void includeGridCoordinateInEnvelope(double lon, double lat, double[] source, double[] grid,
+            double[] gridEnvelope) throws TransformException {
+        // EPSG:4326 was decoded longitude-first.
+        double[] geographic = { lon, lat };
+        geographicToCrs.transform(geographic, 0, source, 0, 1);
+        crsToGrid.transform(source, 0, grid, 0, 1);
+
+        if (!Double.isFinite(grid[0]) || !Double.isFinite(grid[1])) {
+            throw new TransformException("Map bounds produced a non-finite GeoTIFF grid coordinate");
+        }
+
+        gridEnvelope[0] = Math.min(gridEnvelope[0], grid[0]);
+        gridEnvelope[1] = Math.max(gridEnvelope[1], grid[0]);
+        gridEnvelope[2] = Math.min(gridEnvelope[2], grid[1]);
+        gridEnvelope[3] = Math.max(gridEnvelope[3], grid[1]);
     }
 }

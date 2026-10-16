@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.ILatLon;
+import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
@@ -207,12 +208,16 @@ public class SRTMTileGrid extends SRTMTileConsumer implements ElevationGrid, SRT
      *
      * @param bounds The coordinate bounds of the subarea.
      * @return The tile grid view corresponding to the specified subarea.
+     * @throws
      */
-    public SRTMTileGridView getView(Bounds bounds) throws SRTMTileGridException {
+    @Override
+    public SRTMTileGridView getView(Bounds bounds) throws ElevationGridException {
+        // TODO: Update method to provide a view for the intersection of provided bounds
+        // and grid bounds
         if (!gridBounds.contains(bounds)) {
             String message = "Bounds " + gridBounds.toString()
                     + " of this SRTM tile grid do not contain the request view bounds " + bounds.toString();
-            throw new SRTMTileGridException(message);
+            throw new ElevationGridException(message);
         }
 
         double minLat = bounds.getMinLat();
@@ -339,6 +344,11 @@ public class SRTMTileGrid extends SRTMTileConsumer implements ElevationGrid, SRT
         return latLonStep;
     }
 
+    @Override
+    public double getElevation(int latIndex, int lonIndex) {
+        return getElevationAsShort(latIndex, lonIndex);
+    }
+
     /**
      * Returns elevation based on global raster indices.
      *
@@ -347,7 +357,7 @@ public class SRTMTileGrid extends SRTMTileConsumer implements ElevationGrid, SRT
      * @return The elevation at the provided global raster indices or
      *         {@link SRTMTile#SRTM_DATA_VOID} if no elevation data is cached yet.
      */
-    public short getElevation(int latIndex, int lonIndex) {
+    public short getElevationAsShort(int latIndex, int lonIndex) {
         if (srtmTiles == null) {
             return SRTMTile.SRTM_DATA_VOID;
         }
@@ -406,6 +416,26 @@ public class SRTMTileGrid extends SRTMTileConsumer implements ElevationGrid, SRT
         return tile.getElevation(tileLatIndex, tileLonIndex);
     }
 
+    @Override
+    public boolean isNoDataValue(int latIndex, int lonIndex) {
+        short ele = getElevationAsShort(latIndex, lonIndex);
+        return ele == SRTMTile.SRTM_DATA_VOID;
+    }
+
+    @Override
+    public boolean isNoDataValue(double ele) {
+        return !LatLonEle.isValidEle(ele);
+    }
+
+    @Override
+    public LatLon toLatLon(int latIndex, int lonIndex) {
+        int maxLatIndex = rasterHeight - 1;
+        int maxLonIndex = rasterWidth - 1;
+        double lat = gridBounds.getMinLat() + ((double) latIndex / (double) maxLatIndex) * gridBounds.getHeight();
+        double lon = gridBounds.getMinLon() + ((double) lonIndex / (double) maxLonIndex) * gridBounds.getWidth();
+        return new LatLon(lat, lon);
+    }
+
     /**
      * Returns the coordinates, which correspond to the point at the given raster
      * indices, and its elevation value.
@@ -418,13 +448,11 @@ public class SRTMTileGrid extends SRTMTileConsumer implements ElevationGrid, SRT
      *                 SRTM tiles.
      * @return The coordinates of the raster point and its elevation.
      */
-    public LatLonEle getLatLonEle(int latIndex, int lonIndex) {
-        int maxLatIndex = rasterHeight - 1;
-        int maxLonIndex = rasterWidth - 1;
-        double lat = gridBounds.getMinLat() + ((double) latIndex / (double) maxLatIndex) * gridBounds.getHeight();
-        double lon = gridBounds.getMinLon() + ((double) lonIndex / (double) maxLonIndex) * gridBounds.getWidth();
+    @Override
+    public LatLonEle toLatLonEle(int latIndex, int lonIndex) {
+        LatLon latLon = toLatLon(latIndex, lonIndex);
         short ele = getElevationNoCheck(latIndex, lonIndex);
-        return new LatLonEle(lat, lon, ele);
+        return new LatLonEle(latLon.lat(), latLon.lon(), ele);
     }
 
     /**

@@ -320,7 +320,7 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
             SRTMTileGrid tileGrid = lease.getTileGrid();
             LowestAndHighestPoints points = tileGrid.getView(bounds).getLowestAndHighestPoints();
             return points;
-        } catch (AsyncOperationException | SRTMTileGridException e) {
+        } catch (AsyncOperationException | ElevationGridException e) {
             Logging.error("Elevation: Cannot create lowest and highest points: " + e.toString());
             return null;
         }
@@ -341,7 +341,7 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
             SRTMTileGrid tileGrid = lease.getTileGrid();
             ElevationRaster raster = tileGrid.getView(bounds).getElevationRaster();
             return raster;
-        } catch (AsyncOperationException | SRTMTileGridException e) {
+        } catch (AsyncOperationException | ElevationGridException e) {
             Logging.error("Elevation: Cannot create elevation raster: " + e.toString());
             return null;
         }
@@ -373,7 +373,7 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
             ContourLines contourLines = tileGrid.getView(renderingBounds).getContourLines(isostep, lowerCutoffElevation,
                     upperCutoffElevation);
             return contourLines;
-        } catch (AsyncOperationException | SRTMTileGridException e) {
+        } catch (AsyncOperationException | ElevationGridException e) {
             Logging.error("Elevation: Cannot create contour lines: " + e.toString());
             return null;
         }
@@ -408,7 +408,7 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
             HillshadeImageTile hillshade = tileGrid.getView(renderingBounds).getHillshadeImageTile(altitudeDeg,
                     azimuthDeg, withPerimeter);
             return hillshade;
-        } catch (AsyncOperationException | SRTMTileGridException e) {
+        } catch (AsyncOperationException | ElevationGridException e) {
             Logging.error("Elevation: Cannot create hillshade: " + e.toString());
             return null;
         }

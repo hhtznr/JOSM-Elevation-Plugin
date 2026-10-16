@@ -15,10 +15,10 @@ import org.openstreetmap.josm.tools.Logging;
 import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.ElevationGrid;
+import hhtznr.josm.plugins.elevation.data.ElevationGridException;
 import hhtznr.josm.plugins.elevation.data.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.LatLonLine;
 import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
-import hhtznr.josm.plugins.elevation.data.SRTMTileGridException;
 import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
 import hhtznr.josm.plugins.elevation.gui.ContourLines;
 import hhtznr.josm.plugins.elevation.util.IncrementalNumberedNameCreator;
@@ -106,7 +106,7 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
         SRTMTileGridView tileGridView;
         try {
             tileGridView = srtmTileGrid.getView(searchBounds);
-        } catch (SRTMTileGridException e) {
+        } catch (ElevationGridException e) {
             Logging.error("Elevation: Cannot establish topographic prominence search: " + e.toString());
             return null;
         }

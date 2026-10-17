@@ -202,16 +202,17 @@ public class GeoTiffImage {
             throw new IllegalArgumentException("GeoTIFF raster contains no valid single-band samples");
         }
 
-        BufferedImage gray = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_GRAY);
+        BufferedImage gray = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         for (int y = minY; y < minY + height; y++) {
             for (int x = minX; x < minX + width; x++) {
                 double value = raster.getSampleDouble(x, y, 0);
-                int intensity = 0;
+                int argb = 0;
                 if (isValidSample(value, noDataValues)) {
-                    intensity = (min == max) ? 127
+                    int intensity = (min == max) ? 127
                             : (int) Math.max(0, Math.min(255, Math.round((value - min) * 255 / (max - min))));
+                    argb = 0xff000000 | (intensity << 16) | (intensity << 8) | intensity;
                 }
-                gray.getRaster().setSample(x - minX, y - minY, 0, intensity);
+                gray.setRGB(x - minX, y - minY, argb);
             }
         }
         return gray;

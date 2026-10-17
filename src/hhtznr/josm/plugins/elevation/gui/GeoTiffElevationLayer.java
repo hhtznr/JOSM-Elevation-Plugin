@@ -441,6 +441,12 @@ public class GeoTiffElevationLayer extends ElevationLayer {
                 future.cancel(true);
             }
         }
+
+        if (layerAdjustmentDialog != null) {
+            layerAdjustmentDialog.dispose();
+            layerAdjustmentDialog = null;
+        }
+
         grayscaleImage = null;
         elevationGridView = null;
         elevationGrid = null;

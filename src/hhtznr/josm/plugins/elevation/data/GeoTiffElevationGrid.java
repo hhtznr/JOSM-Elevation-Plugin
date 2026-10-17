@@ -91,7 +91,6 @@ public class GeoTiffElevationGrid implements ElevationGrid {
                     + geoTiffImage.getFile().getAbsolutePath() + "'", e);
         }
         this.elevations = new double[sampleCount];
-        // TODO: Consider if this could be combined with LowestAndHighestPoints
         double minElevation = Double.POSITIVE_INFINITY;
         double maxElevation = Double.NEGATIVE_INFINITY;
         Rectangle imageBounds = new Rectangle(minX, minY, width, height);
@@ -178,7 +177,7 @@ public class GeoTiffElevationGrid implements ElevationGrid {
      * @return {@code true} if the value is finite and the underlying GeoTIFF image
      *         does not list it as no-data value, {@code false} otherwise.
      */
-    private boolean isValidElevation(double value) {
+    public boolean isValidElevation(double value) {
         if (!Double.isFinite(value)) {
             return false;
         }
@@ -250,66 +249,6 @@ public class GeoTiffElevationGrid implements ElevationGrid {
         double maxLon = Math.max(Math.max(southWest.lon(), southEast.lon()),
                 Math.max(northEast.lon(), northWest.lon()));
         return new Bounds(minLat, minLon, maxLat, maxLon);
-    }
-
-    /**
-     * Returns isovalues between the provided lowest and highest elevation value
-     * based on the provided isostep. Isovalues returned are multiples of the
-     * isostep.
-     *
-     * @param lowestElevation      The lowest elevation value.
-     * @param highestElevation     The highest elevation value.
-     * @param isostep              The isostep.
-     * @param lowerCutoffElevation Elevation values below this value shall not be
-     *                             considered when determining the isovalues.
-     * @param upperCutoffElevation Elevation values above this value shall not be
-     *                             considered then determining the isovalues.
-     * @return An array with the isovalues. The array may be empty.
-     */
-    public static short[] getIsovalues(double lowestElevation, double highestElevation, int isostep,
-            int lowerCutoffElevation, int upperCutoffElevation) {
-        // TODO: Move to GeoTiffElevationGridView
-        // If the area consists of data voids only,
-        // minEle will still have its initial value
-        if (lowestElevation == Double.POSITIVE_INFINITY) {
-            return new short[0];
-        }
-
-        // Apply the lower cutoff elevation value, if it is greater than the minimum
-        // elevation within the grid
-        double minEle = Math.max(lowestElevation, lowerCutoffElevation);
-        // Apply the upper cutoff elevation value, if it is smaller than the maximum
-        // elevation within the grid
-        double maxEle = Math.min(highestElevation, upperCutoffElevation);
-
-        if (minEle > maxEle) {
-            return new short[0]; // The cutoffs exclude the view's elevation range.
-        }
-
-        // Determine the list of isovalues, i.e. the elevation levels for which contour
-        // lines should be computed
-        short minIsovalue;
-        short maxIsovalue;
-        if ((short) minEle % isostep == 0) {
-            minIsovalue = (short) minEle;
-        } else {
-            minIsovalue = (short) (((short) minEle / isostep) * isostep);
-        }
-        if ((short) maxEle % isostep == 0) {
-            maxIsovalue = (short) maxEle;
-        } else {
-            maxIsovalue = (short) (((short) maxEle / isostep) * isostep);
-        }
-        if (maxIsovalue < minIsovalue) {
-            return new short[0];
-        }
-        int nSteps = (maxIsovalue - minIsovalue) / isostep + 1;
-        short[] isovalues = new short[nSteps];
-        for (int i = 0; i < nSteps; i++) {
-            isovalues[i] = (short) (minIsovalue + i * isostep);
-        }
-
-        return isovalues;
     }
 
     /**

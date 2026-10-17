@@ -59,13 +59,13 @@ public class UIFactory {
     }
 
     /**
-     * Creates a text component for use with the info dialog of map layers.
+     * Creates a read-only text field or URL label for use with the info dialogs.
      *
      * @param text The text to put on the component.
      * @return An URL label if the text represents a web URL, otherwise a
      *         non-editable text field with the text.
      */
-    public static JComponent createLayerInfoTextField(String text) {
+    public static JComponent createInfoTextField(String text) {
         if (text != null && text.matches("https?://.*")) {
             return new UrlLabel(text);
         }

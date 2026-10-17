@@ -1,14 +1,10 @@
 package hhtznr.josm.plugins.elevation.gui;
 
-import static org.openstreetmap.josm.tools.I18n.tr;
-
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Font;
 import java.awt.Graphics2D;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.color.ColorSpace;
@@ -24,9 +20,6 @@ import java.util.concurrent.Future;
 
 import javax.swing.Action;
 import javax.swing.JCheckBoxMenuItem;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.openstreetmap.josm.actions.JosmAction;
@@ -35,8 +28,6 @@ import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.visitor.BoundingXYVisitor;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.MapView;
-import org.openstreetmap.josm.gui.dialogs.LayerListPopup;
-import org.openstreetmap.josm.tools.GBC;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Logging;
 
@@ -474,20 +465,7 @@ public class GeoTiffElevationLayer extends ElevationLayer {
 
     @Override
     public Object getInfoComponent() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.add(new JLabel(getName()), GBC.eol());
-        List<String[]> content = new ArrayList<>();
-        // Absolute path of the GeoTIFF file
-        content.add(new String[] { tr("File path"), "" + geoTiffImage.getFile().getAbsolutePath() });
-        for (String[] entry : content) {
-            panel.add(new JLabel(entry[0] + ':'), GBC.std());
-            panel.add(GBC.glue(5, 0), GBC.std());
-            panel.add(UIFactory.createLayerInfoTextField(entry[1]), GBC.eol().fill(GridBagConstraints.HORIZONTAL));
-        }
-        JScrollPane scrollPane = new JScrollPane(panel);
-        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        return scrollPane;
+        return null;
     }
 
     @Override
@@ -506,7 +484,7 @@ public class GeoTiffElevationLayer extends ElevationLayer {
         actions.add(SeparatorLayerAction.INSTANCE);
         actions.add(new ShowLayerAdjustmentDialogAction());
         actions.add(SeparatorLayerAction.INSTANCE);
-        actions.add(new LayerListPopup.InfoAction(this));
+        actions.add(new ShowInfoDialogAction());
         return actions.toArray(new Action[0]);
     }
 
@@ -555,13 +533,30 @@ public class GeoTiffElevationLayer extends ElevationLayer {
         }
     }
 
+    private class ShowInfoDialogAction extends JosmAction {
+
+        private static final long serialVersionUID = 1L;
+
+        public ShowInfoDialogAction() {
+            super("GeoTIFF information", new ImageProvider("info"),
+                    "Information on the GeoTIFF file used for the layer and its metadata", null, true,
+                    "geotiff-layer-info", false);
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            GeoTiffInfoDialog dialog = new GeoTiffInfoDialog(MainApplication.getMainFrame(), GeoTiffElevationLayer.this.geoTiffImage);
+            dialog.showDialog();
+        }
+    }
+
     private class ShowLayerAdjustmentDialogAction extends JosmAction {
 
         private static final long serialVersionUID = 1L;
 
         public ShowLayerAdjustmentDialogAction() {
             super("Dynamic elevation layer adjustment", new ImageProvider("elevation.svg"),
-                    "Dynamic, non-presistent adjustment of elevation rendering", null, true, "elevation-layer-settings",
+                    "Dynamic, non-presistent adjustment of elevation rendering", null, true, "geotiff-layer-settings",
                     false);
         }
 

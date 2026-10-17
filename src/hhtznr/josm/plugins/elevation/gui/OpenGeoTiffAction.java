@@ -12,6 +12,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 
 import org.geotools.api.data.DataSourceException;
 import org.geotools.coverage.grid.GridCoverage2D;
+import org.geotools.coverage.grid.io.imageio.geotiff.GeoTiffIIOMetadataDecoder;
 import org.geotools.gce.geotiff.GeoTiffReader;
 import org.openstreetmap.josm.actions.DiskAccessAction;
 import org.openstreetmap.josm.gui.MainApplication;
@@ -108,20 +109,25 @@ public class OpenGeoTiffAction extends DiskAccessAction {
             Logging.error("Elevation: Cannot read GeoTIFF file '" + file.getAbsolutePath() + " due to " + e.toString());
             return null;
         }
-
-        GridCoverage2D coverage;
         try {
-            coverage = reader.read(null);
-        } catch (IOException e) {
-            Logging.error("Elevation: Cannot read GeoTIFF file '" + file.getAbsolutePath() + " due to " + e.toString());
-            return null;
-        }
-        try {
-            return new GeoTiffImage(file, coverage);
-        } catch (GeoTiffImageException e) {
-            Logging.error("Elevation: Cannot create GeoTiffImage for file '" + file.getAbsolutePath() + " due to "
-                    + e.toString() + " with cause: " + e.getCause());
-            return null;
+            GeoTiffIIOMetadataDecoder metadata;
+            GridCoverage2D coverage;
+            try {
+                metadata = reader.getMetadata();
+                coverage = reader.read(null);
+            } catch (IOException e) {
+                Logging.error("Elevation: Cannot read GeoTIFF file '" + file.getAbsolutePath() + " due to " + e.toString());
+                return null;
+            }
+            try {
+                return new GeoTiffImage(file, metadata, coverage);
+            } catch (GeoTiffImageException e) {
+                Logging.error("Elevation: Cannot create GeoTiffImage for file '" + file.getAbsolutePath() + " due to "
+                        + e.toString() + " with cause: " + e.getCause());
+                return null;
+            }
+        } finally {
+            reader.dispose();
         }
     }
 

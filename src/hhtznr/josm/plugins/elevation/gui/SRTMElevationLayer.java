@@ -214,7 +214,7 @@ public class SRTMElevationLayer extends ElevationLayer implements ElevationDataP
         for (String[] entry : content) {
             panel.add(new JLabel(entry[0] + ':'), GBC.std());
             panel.add(GBC.glue(5, 0), GBC.std());
-            panel.add(UIFactory.createLayerInfoTextField(entry[1]), GBC.eol().fill(GridBagConstraints.HORIZONTAL));
+            panel.add(UIFactory.createInfoTextField(entry[1]), GBC.eol().fill(GridBagConstraints.HORIZONTAL));
         }
         JScrollPane scrollPane = new JScrollPane(panel);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);

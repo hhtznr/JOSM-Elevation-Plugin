@@ -8,6 +8,7 @@ import org.geotools.api.referencing.crs.CoordinateReferenceSystem;
 import org.geotools.api.referencing.operation.TransformException;
 import org.geotools.coverage.grid.GridCoverage2D;
 import org.geotools.coverage.grid.GridEnvelope2D;
+import org.geotools.coverage.grid.io.imageio.geotiff.GeoTiffIIOMetadataDecoder;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.referencing.CRS;
 import org.openstreetmap.josm.data.Bounds;
@@ -20,6 +21,7 @@ import org.openstreetmap.josm.data.Bounds;
  */
 public class GeoTiffImage {
     private final File file;
+    private final GeoTiffIIOMetadataDecoder metadata;
     private final GridCoverage2D coverage;
     private final ReferencedEnvelope referencedEnvelope;
     private final int width;
@@ -29,13 +31,16 @@ public class GeoTiffImage {
      * Creates a new GeoTIFF image.
      *
      * @param file     A reference to the GeoTIFF file.
+     * @param metadata The metadata of the GeoTIFF image.
      * @param coverage The grid coverage of the GeoTIFF.
      * @throws GeoTiffImageException If the GeoTIFF file cannot be displayed due to
      *                               missing coordinate reference system or
      *                               transformation issues.
      */
-    public GeoTiffImage(File file, GridCoverage2D coverage) throws GeoTiffImageException {
+    public GeoTiffImage(File file, GeoTiffIIOMetadataDecoder metadata, GridCoverage2D coverage)
+            throws GeoTiffImageException {
         this.file = file;
+        this.metadata = metadata;
         this.coverage = coverage;
         ReferencedEnvelope referencedEnvelope = new ReferencedEnvelope(coverage.getEnvelope2D());
         CoordinateReferenceSystem sourceCrs = referencedEnvelope.getCoordinateReferenceSystem();
@@ -65,6 +70,16 @@ public class GeoTiffImage {
      */
     public File getFile() {
         return file;
+    }
+
+    /**
+     * Returns the GeoTIFF metadata exposed by GeoTools. This does not include every
+     * TIFF metadata field that might be present on the file.
+     *
+     * @return The GeoTIFF metadata.
+     */
+    public GeoTiffIIOMetadataDecoder getMetadata() {
+        return metadata;
     }
 
     /**

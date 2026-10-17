@@ -1,5 +1,11 @@
 package hhtznr.josm.plugins.elevation.data;
 
+import java.awt.Graphics2D;
+import java.awt.color.ColorSpace;
+import java.awt.geom.AffineTransform;
+import java.awt.image.BufferedImage;
+import java.awt.image.ColorConvertOp;
+import java.awt.image.Raster;
 import java.awt.image.RenderedImage;
 import java.io.File;
 
@@ -136,5 +142,92 @@ public class GeoTiffImage {
      */
     public double[] getNoDataValues() {
         return coverage.getSampleDimensions()[0].getNoDataValues();
+    }
+
+    /**
+     * Returns a grayscale image representing this GeoTIFF image.
+     *
+     * @return A grayscale representation of this GeoTIFF image.
+     */
+    public BufferedImage getGrayScaleImage() {
+        RenderedImage image = getRawImage();
+
+        double[] noDataValues = getNoDataValues();
+        if (image.getSampleModel().getNumBands() == 1) {
+            try {
+                return convertSingleBandToGrayscale(image, noDataValues);
+            } catch (IllegalArgumentException e) {
+                String message = "Error for GeoTIFF file " + file.getAbsolutePath() + ": " + e.toString();
+                throw new IllegalArgumentException(message, e);
+            }
+        }
+
+        BufferedImage bi;
+        if (image instanceof BufferedImage) {
+            bi = (BufferedImage) image;
+        } else {
+            bi = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g = bi.createGraphics();
+            g.drawRenderedImage(image, new AffineTransform());
+            g.dispose();
+        }
+
+        // Apply a grayscale filter matrix operation
+        BufferedImage grayscaleImage = new BufferedImage(bi.getWidth(), bi.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
+        ColorConvertOp op = new ColorConvertOp(ColorSpace.getInstance(ColorSpace.CS_GRAY), null);
+        op.filter(bi, grayscaleImage);
+        return grayscaleImage;
+    }
+
+    private static BufferedImage convertSingleBandToGrayscale(RenderedImage image, double[] noDataValues) {
+        Raster raster = image.getData();
+        int minX = image.getMinX();
+        int minY = image.getMinY();
+        int width = image.getWidth();
+        int height = image.getHeight();
+        double min = Double.POSITIVE_INFINITY;
+        double max = Double.NEGATIVE_INFINITY;
+
+        for (int y = minY; y < minY + height; y++) {
+            for (int x = minX; x < minX + width; x++) {
+                double value = raster.getSampleDouble(x, y, 0);
+                if (isValidSample(value, noDataValues)) {
+                    min = Math.min(min, value);
+                    max = Math.max(max, value);
+                }
+            }
+        }
+
+        if (min == Double.POSITIVE_INFINITY) {
+            throw new IllegalArgumentException("GeoTIFF raster contains no valid single-band samples");
+        }
+
+        BufferedImage gray = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_GRAY);
+        for (int y = minY; y < minY + height; y++) {
+            for (int x = minX; x < minX + width; x++) {
+                double value = raster.getSampleDouble(x, y, 0);
+                int intensity = 0;
+                if (isValidSample(value, noDataValues)) {
+                    intensity = (min == max) ? 127
+                            : (int) Math.max(0, Math.min(255, Math.round((value - min) * 255 / (max - min))));
+                }
+                gray.getRaster().setSample(x - minX, y - minY, 0, intensity);
+            }
+        }
+        return gray;
+    }
+
+    private static boolean isValidSample(double value, double[] noDataValues) {
+        if (!Double.isFinite(value)) {
+            return false;
+        }
+        if (noDataValues != null) {
+            for (double noDataValue : noDataValues) {
+                if (Double.isNaN(noDataValue) ? Double.isNaN(value) : value == noDataValue) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 }

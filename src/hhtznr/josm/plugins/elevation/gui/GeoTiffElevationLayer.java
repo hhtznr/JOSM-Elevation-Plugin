@@ -7,13 +7,8 @@ import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
-import java.awt.color.ColorSpace;
 import java.awt.event.ActionEvent;
-import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
-import java.awt.image.ColorConvertOp;
-import java.awt.image.Raster;
-import java.awt.image.RenderedImage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Future;
@@ -135,83 +130,6 @@ public class GeoTiffElevationLayer extends ElevationLayer {
         });
     }
 
-    private void convertGeoTiffToGrayscale() {
-        RenderedImage img = geoTiffImage.getRawImage();
-        double[] noDataValues = geoTiffImage.getNoDataValues();
-        if (img.getSampleModel().getNumBands() == 1) {
-            grayscaleImage = convertSingleBandToGrayscale(img, noDataValues);
-        }
-
-        BufferedImage bi;
-        if (img instanceof BufferedImage) {
-            bi = (BufferedImage) img;
-        } else {
-            bi = new BufferedImage(img.getWidth(), img.getHeight(), BufferedImage.TYPE_INT_ARGB);
-            Graphics2D g = bi.createGraphics();
-            g.drawRenderedImage(img, new AffineTransform());
-            g.dispose();
-        }
-
-        // Apply a grayscale filter matrix operation
-        BufferedImage gray = new BufferedImage(bi.getWidth(), bi.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
-        ColorConvertOp op = new ColorConvertOp(ColorSpace.getInstance(ColorSpace.CS_GRAY), null);
-        op.filter(bi, gray);
-        grayscaleImage = gray;
-    }
-
-    private BufferedImage convertSingleBandToGrayscale(RenderedImage image, double[] noDataValues) {
-        Raster raster = image.getData();
-        int minX = image.getMinX();
-        int minY = image.getMinY();
-        int width = image.getWidth();
-        int height = image.getHeight();
-        double min = Double.POSITIVE_INFINITY;
-        double max = Double.NEGATIVE_INFINITY;
-
-        for (int y = minY; y < minY + height; y++) {
-            for (int x = minX; x < minX + width; x++) {
-                double value = raster.getSampleDouble(x, y, 0);
-                if (isValidSample(value, noDataValues)) {
-                    min = Math.min(min, value);
-                    max = Math.max(max, value);
-                }
-            }
-        }
-
-        if (min == Double.POSITIVE_INFINITY) {
-            throw new IllegalArgumentException("Elevation: GeoTIFF raster of file '"
-                    + geoTiffImage.getFile().getAbsolutePath() + "' contains no valid single-band samples");
-        }
-
-        BufferedImage gray = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_GRAY);
-        for (int y = minY; y < minY + height; y++) {
-            for (int x = minX; x < minX + width; x++) {
-                double value = raster.getSampleDouble(x, y, 0);
-                int intensity = 0;
-                if (isValidSample(value, noDataValues)) {
-                    intensity = (min == max) ? 127
-                            : (int) Math.max(0, Math.min(255, Math.round((value - min) * 255 / (max - min))));
-                }
-                gray.getRaster().setSample(x - minX, y - minY, 0, intensity);
-            }
-        }
-        return gray;
-    }
-
-    private boolean isValidSample(double value, double[] noDataValues) {
-        if (!Double.isFinite(value)) {
-            return false;
-        }
-        if (noDataValues != null) {
-            for (double noDataValue : noDataValues) {
-                if (Double.isNaN(noDataValue) ? Double.isNaN(value) : value == noDataValue) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
     /**
      * Returns the GeoTIFF elevation grid used by this layer.
      *
@@ -270,7 +188,7 @@ public class GeoTiffElevationLayer extends ElevationLayer {
                     if (Thread.currentThread().isInterrupted()) {
                         return;
                     }
-                    convertGeoTiffToGrayscale();
+                    grayscaleImage = geoTiffImage.getGrayScaleImage();
                 } finally {
                     grayscaleImageFuture = null;
                     triggerRepaint();
@@ -398,7 +316,8 @@ public class GeoTiffElevationLayer extends ElevationLayer {
                 contourLines = new GeoTiffContourLines(elevationGridView, contourLineIsostep, lowerCutoffElevation,
                         upperCutoffElevation);
             } catch (AsyncOperationException e) {
-                Logging.error("Elevation: Cannot create contour lines for GeoTIFF " + geoTiffImage.getFile().getName());
+                Logging.error("Elevation: Cannot create contour lines for GeoTIFF " + geoTiffImage.getFile().getName()
+                        + ": " + e.toString());
             } finally {
                 contourLinesFuture = null;
                 triggerRepaint();
@@ -545,7 +464,8 @@ public class GeoTiffElevationLayer extends ElevationLayer {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            GeoTiffInfoDialog dialog = new GeoTiffInfoDialog(MainApplication.getMainFrame(), GeoTiffElevationLayer.this.geoTiffImage);
+            GeoTiffInfoDialog dialog = new GeoTiffInfoDialog(MainApplication.getMainFrame(),
+                    GeoTiffElevationLayer.this.geoTiffImage);
             dialog.showDialog();
         }
     }

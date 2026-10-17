@@ -84,7 +84,7 @@ public class SRTMElevationLayer extends ElevationLayer implements ElevationDataP
             int contourLineIsostep, float contourLineStrokeWidth, Coloring.Scheme contourLineColoringScheme,
             Color contourLineConstantColor, int hillshadeAltitude, int hillshadeAzimuth, short lowerCutoffElevation,
             short upperCutoffElevation) {
-        super("SRTM Elevation Layer", ImageProvider.get("", "elevation.svg"), contourLineIsostep,
+        super("SRTM Elevation Layer", ImageProvider.get("layers", "elevation_srtm.svg"), contourLineIsostep,
                 contourLineStrokeWidth, contourLineColoringScheme, contourLineConstantColor, lowerCutoffElevation,
                 upperCutoffElevation);
         this.layerPainter = new ElevationDrawHelper(this);

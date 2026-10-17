@@ -39,7 +39,7 @@ public class OpenGeoTiffAction extends DiskAccessAction {
      * provides a tooltip description and is enabled by default.
      */
     public OpenGeoTiffAction() {
-        super("Open GeoTIFF", "open", "Open a GeoTIFF file.", null, true, "open-geotiff", false);
+        super("Open GeoTIFF", "dialogs/open_geotiff.svg", "Open a GeoTIFF file.", null, true, "open-geotiff", false);
     }
 
     @Override

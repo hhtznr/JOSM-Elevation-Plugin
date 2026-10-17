@@ -110,7 +110,7 @@ public class GeoTiffElevationLayer extends ElevationLayer {
     public GeoTiffElevationLayer(String name, GeoTiffImage geoTiffImage, int contourLineIsostep,
             float contourLineStrokeWidth, Coloring.Scheme contourLineColoringScheme, Color contourLineConstantColor,
             short lowerCutoffElevation, short upperCutoffElevation) {
-        super(name, ImageProvider.get("", "elevation.svg"), contourLineIsostep, contourLineStrokeWidth,
+        super(name, ImageProvider.get("layers", "elevation_geotiff.svg"), contourLineIsostep, contourLineStrokeWidth,
                 contourLineColoringScheme, contourLineConstantColor, lowerCutoffElevation, upperCutoffElevation);
 
         this.geoTiffImage = geoTiffImage;

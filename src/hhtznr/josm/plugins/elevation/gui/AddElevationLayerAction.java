@@ -24,7 +24,7 @@ public class AddElevationLayerAction extends JosmAction {
      * @param plugin The elevation plugin.
      */
     public AddElevationLayerAction(ElevationPlugin plugin) {
-        super("Add elevation layer", "elevation.svg",
+        super("Add SRTM elevation layer", "layers/elevation_srtm.svg",
                 "(Re-)add the elevation layer which displays contour lines and hillshade", null, true,
                 "elevation-add-layer", false);
         this.plugin = plugin;

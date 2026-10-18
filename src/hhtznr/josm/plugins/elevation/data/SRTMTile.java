@@ -158,8 +158,9 @@ public class SRTMTile {
          */
         public static Type fromString(String name) {
             for (Type type : Type.values()) {
-                if (type.toString().equals(name))
+                if (type.toString().equals(name)) {
                     return type;
+                }
             }
             return SRTM1;
         }
@@ -204,8 +205,9 @@ public class SRTMTile {
          */
         public static Interpolation fromString(String name) {
             for (Interpolation type : Interpolation.values()) {
-                if (type.toString().equals(name))
+                if (type.toString().equals(name)) {
                     return type;
+                }
             }
             return NONE;
         }
@@ -223,22 +225,24 @@ public class SRTMTile {
     public SRTMTile(String id, Type type, short[] elevationData, ElevationDataSource dataSource) {
         this.id = id;
         this.type = type;
-        if (type == Type.SRTM1)
+        if (type == Type.SRTM1) {
             tileLength = SRTM1_TILE_LENGTH;
-        else
+        } else {
             tileLength = SRTM3_TILE_LENGTH;
+        }
         int[] latLon = parseLatLonFromTileID(id);
         idLat = latLon[0];
         idLon = latLon[1];
         this.elevationData = elevationData;
         this.dataSource = dataSource;
 
-        if (elevationData == null)
+        if (elevationData == null) {
             valid = false;
-        else if (type == Type.SRTM1)
+        } else if (type == Type.SRTM1) {
             valid = elevationData.length == SRTM1_TILE_LENGTH * SRTM1_TILE_LENGTH;
-        else
+        } else {
             valid = elevationData.length == SRTM3_TILE_LENGTH * SRTM3_TILE_LENGTH;
+        }
     }
 
     /**
@@ -313,7 +317,7 @@ public class SRTMTile {
      * Returns the elevation at the provided raster indices in latitude and
      * longitude coordinate direction. The indices are translated into the
      * corresponding index of the elevation value array provided by
-     * {@link hhtznr.josm.plugins.elevation.io.SRTMFileReader#readSRTMFile(File, ElevationDataSource)}
+     * {@link hhtznr.josm.plugins.elevation.io.SRTMFileReader#readSRTMFile(Path, ElevationDataSource)}
      *
      * @param latIndex The index in latitude direction. Range <code>0</code> to
      *                 <code>tileLength - 1</code>.
@@ -324,8 +328,9 @@ public class SRTMTile {
      *         (yet).
      */
     public short getElevation(int latIndex, int lonIndex) {
-        if (elevationData == null)
+        if (elevationData == null) {
             return SRTM_DATA_VOID;
+        }
         return elevationData[latIndex * tileLength + lonIndex];
     }
 
@@ -335,8 +340,9 @@ public class SRTMTile {
      * @return Size of the elevation data in bytes.
      */
     public int getDataSize() {
-        if (elevationData == null)
+        if (elevationData == null) {
             return 0;
+        }
         // Data size in bytes
         return elevationData.length * Short.BYTES;
     }
@@ -360,7 +366,7 @@ public class SRTMTile {
      * the elevation value was obtained.
      *
      * see
-     * {@link hhtznr.josm.plugins.elevation.io.SRTMFileReader#readSRTMFile(File, ElevationDataSource)}
+     * {@link hhtznr.josm.plugins.elevation.io.SRTMFileReader#readSRTMFile(Path, ElevationDataSource)}
      *
      * <b>Data order of an uncompressed SRTM file</b>
      *
@@ -411,12 +417,13 @@ public class SRTMTile {
      *         data is available.
      */
     public LatLonEle getLatLonEle(ILatLon latLon, Interpolation interpolation) {
-        if (!valid)
+        if (!valid) {
             // Return a LatLonEle without valid elevation
             return new LatLonEle(latLon);
+        }
 
-        double idLat = (double) this.idLat;
-        double idLon = (double) this.idLon;
+        double idLat = this.idLat;
+        double idLon = this.idLon;
 
         // Determine the array index at which to retrieve the elevation at the given
         // location
@@ -424,14 +431,16 @@ public class SRTMTile {
         double lon = latLon.lon();
         // Accept idLat <= lat < idLat + 1
         // For idLat + 1 next tile to the north is used
-        if (lat < idLat || lat > idLat + SRTM_TILE_ARC_DEGREES)
+        if (lat < idLat || lat > idLat + SRTM_TILE_ARC_DEGREES) {
             throw new IllegalArgumentException("Given latitude " + lat
                     + " is not within latitude range of SRTM tile from " + idLat + " to " + (idLat + 1));
+        }
         // Accept idLon <= lon < idLon + 1
         // For idLon + 1 next tile to the east is used
-        if (lon < idLon || lon > idLon + SRTM_TILE_ARC_DEGREES)
+        if (lon < idLon || lon > idLon + SRTM_TILE_ARC_DEGREES) {
             throw new IllegalArgumentException("Given longitude " + lon
                     + " is not within longitude range of SRTM tile from " + idLon + " to " + (idLon + 1));
+        }
 
         int maxLatLonIndex = tileLength - 1;
         double latEleIndexD = (lat - idLat) * maxLatLonIndex;
@@ -553,14 +562,16 @@ public class SRTMTile {
         // location
         // Accept idLat <= lat <= idLat + 1
         // For idLat + 1 next tile to the north is used
-        if (lat < idLat || lat > idLat + 1)
+        if (lat < idLat || lat > idLat + 1) {
             throw new IllegalArgumentException("Given latitude " + lat
                     + " is not within latitude range of SRTM tile from " + idLat + " to " + (idLat + 1));
+        }
         // Accept idLon <= lon <= idLon + 1
         // For idLon + 1 next tile to the east is used
-        if (lon < idLon || lon > idLon + 1)
+        if (lon < idLon || lon > idLon + 1) {
             throw new IllegalArgumentException("Given longitude " + lon
                     + " is not within longitude range of SRTM tile from " + idLon + " to " + (idLon + 1));
+        }
 
         // Map lat and lon decimal parts = [0, 1] to lat and lon indices = [0,
         // tileLength - 1]
@@ -600,12 +611,13 @@ public class SRTMTile {
      */
     protected static int[] getClosestIndices(double lat, double lon, SRTMTile.Type type) {
         int tileLength;
-        if (type == SRTMTile.Type.SRTM1)
+        if (type == SRTMTile.Type.SRTM1) {
             tileLength = SRTM1_TILE_LENGTH;
-        else if (type == SRTMTile.Type.SRTM3)
+        } else if (type == SRTMTile.Type.SRTM3) {
             tileLength = SRTM3_TILE_LENGTH;
-        else
+        } else {
             throw new IllegalArgumentException("Unhandled SRTM type: " + type.toString());
+        }
         int idLat = (int) Math.floor(lat);
         int idLon = (int) Math.floor(lon);
         // Map lat and lon decimal parts = [0, 1] to lat and lon indices = [0,
@@ -670,19 +682,23 @@ public class SRTMTile {
      */
     public static int[] parseLatLonFromTileID(String tileID) {
         Matcher matcher = SRTM_TILE_ID_PATTERN.matcher(tileID);
-        if (!matcher.matches())
+        if (!matcher.matches()) {
             throw new IllegalArgumentException("SRTM tile ID '" + tileID + "' is malformed");
+        }
         String latPrefix = matcher.group(2);
         int lat = Integer.parseInt(matcher.group(3));
         String lonPrefix = matcher.group(4);
         int lon = Integer.parseInt(matcher.group(5));
-        if (latPrefix.equals("S"))
+        if (latPrefix.equals("S")) {
             lat = -lat;
-        if (lonPrefix.equals("W"))
+        }
+        if (lonPrefix.equals("W")) {
             lon = -lon;
-        if (lat >= 90 || lat < -90 || lon >= 180 || lon < -180)
+        }
+        if (lat >= 90 || lat < -90 || lon >= 180 || lon < -180) {
             throw new IllegalArgumentException("Latitude or longitude of SRTM tile ID '" + tileID
                     + "' are outside bounds -90 <= lat < 90, -180 <= lon < 180.");
+        }
         return new int[] { lat, lon };
     }
 
@@ -710,12 +726,15 @@ public class SRTMTile {
      *         {@code false} otherwise or if {@code null} is provided as input.
      */
     public static boolean isTypeMatchingDataSize(Type type, short[] data) {
-        if (data == null)
+        if (data == null) {
             return false;
-        if (type == Type.SRTM1)
+        }
+        if (type == Type.SRTM1) {
             return data.length == SRTM1_TILE_LENGTH * SRTM1_TILE_LENGTH;
-        if (type == Type.SRTM3)
+        }
+        if (type == Type.SRTM3) {
             return data.length == SRTM3_TILE_LENGTH * SRTM3_TILE_LENGTH;
+        }
         return false;
     }
 

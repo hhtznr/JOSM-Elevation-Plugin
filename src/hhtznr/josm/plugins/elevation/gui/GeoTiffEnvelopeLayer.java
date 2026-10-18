@@ -46,7 +46,7 @@ import hhtznr.josm.plugins.elevation.util.FileUtils;
  * activated, the layer recognizes and highlights a GeoTIFF envelope if the
  * mouse moves over it. By performing a double-click within the highlighted
  * envelope, the corresponding GeoTIFF data is immediately loaded to a new
- * {@link GeoTIFFElevationLayer}. If the layer already exists, but is currently
+ * {@link GeoTiffElevationLayer}. If the layer already exists, but is currently
  * hidden, it is set visible.
  *
  * @author Harald Hetzner

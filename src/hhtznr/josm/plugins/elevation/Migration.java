@@ -57,10 +57,7 @@ public class Migration {
         }
 
         if (migrateSRTM1) {
-            DirectoryStream<Path> stream = null;
-            try {
-                stream = Files.newDirectoryStream(ElevationPreferences.LEGACY_SRTM_DIRECTORY);
-
+            try (DirectoryStream<Path>stream = Files.newDirectoryStream(ElevationPreferences.LEGACY_SRTM_DIRECTORY)) {
                 for (Path file : stream) {
                     if (Files.isRegularFile(file) && SRTMFiles.getSRTMTileTypeFromEarthdataFileName(
                             file.getFileName().toString()) == SRTMTile.Type.SRTM1) {
@@ -74,23 +71,11 @@ public class Migration {
 
             } catch (IOException e) {
                 Logging.error("Elevation: IOException during SRTM1 file migration: " + e.toString());
-            } finally {
-                if (stream != null) {
-                    try {
-                        stream.close();
-                    } catch (IOException e) {
-                        Logging.error("Elevation: IOException during SRTM1 file migration: " + e.toString());
-                    }
-                }
             }
         }
 
         if (migrateSRTM3) {
-            DirectoryStream<Path> stream = null;
-            try {
-
-                stream = Files.newDirectoryStream(ElevationPreferences.LEGACY_SRTM_DIRECTORY);
-
+            try (DirectoryStream<Path>stream = Files.newDirectoryStream(ElevationPreferences.LEGACY_SRTM_DIRECTORY)) {
                 for (Path file : stream) {
                     if (Files.isRegularFile(file) && SRTMFiles.getSRTMTileTypeFromEarthdataFileName(
                             file.getFileName().toString()) == SRTMTile.Type.SRTM3) {
@@ -103,19 +88,10 @@ public class Migration {
                 }
             } catch (IOException e) {
                 Logging.error("Elevation: IOException during SRTM3 file migration: " + e.toString());
-            } finally {
-                try {
-                    stream.close();
-                } catch (IOException e) {
-                    Logging.error("Elevation: IOException during SRTM3 file migration: " + e.toString());
-                }
             }
         }
 
-        DirectoryStream<Path> stream = null;
-        try {
-            stream = Files.newDirectoryStream(ElevationPreferences.LEGACY_SRTM_DIRECTORY);
-
+        try (DirectoryStream<Path>stream = Files.newDirectoryStream(ElevationPreferences.LEGACY_SRTM_DIRECTORY)) {
             if (!stream.iterator().hasNext()) {
                 Files.delete(ElevationPreferences.LEGACY_SRTM_DIRECTORY);
                 Logging.info("Elevation: Deleted empty legacy SRTM directory '"
@@ -128,12 +104,6 @@ public class Migration {
 
         } catch (IOException e) {
             Logging.error("Elevation: IOException trying to delete legacy SRTM directory: " + e.toString());
-        } finally {
-            try {
-                stream.close();
-            } catch (IOException e) {
-                Logging.error("Elevation: IOException trying to delete legacy SRTM directory: " + e.toString());
-            }
         }
     }
 

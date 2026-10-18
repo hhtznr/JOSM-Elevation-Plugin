@@ -294,7 +294,7 @@ public class GeoTiffImage {
         GeoTiffReader reader = null;
         try {
             reader = new GeoTiffReader(path.toFile());
-        } catch (DataSourceException e) {
+        } catch (DataSourceException | NullPointerException e) {
             Logging.error("Elevation: Cannot read GeoTIFF file '" + path.toAbsolutePath().toString() + " due to "
                     + e.toString());
             return null;

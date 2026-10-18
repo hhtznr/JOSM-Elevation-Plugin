@@ -444,8 +444,8 @@ public class ElevationPreferences {
     }
 
     /**
-     * URL of <a
-     * href=""https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/SRTMGL3.003/">NASA's
+     * URL of <a href=
+     * "https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/SRTMGL3.003/">NASA's
      * Land Processes Distributed Active Archive Center (LP DAAC)</a> where SRTM3
      * files can be downloaded.
      *

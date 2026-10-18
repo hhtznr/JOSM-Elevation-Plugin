@@ -466,7 +466,7 @@ public class SRTMTileGrid extends SRTMTileConsumer implements ElevationGrid, SRT
         return gridBounds.contains(bounds);
     }
 
-    private int[] getGridIntBounds(Bounds bounds) {
+    private static int[] getGridIntBounds(Bounds bounds) {
         double latMin = Math.max(bounds.getMinLat(), -90.0);
         double latMax = Math.min(bounds.getMaxLat(), 90.0);
         double lonMin = Math.max(bounds.getMinLon(), -180.0);

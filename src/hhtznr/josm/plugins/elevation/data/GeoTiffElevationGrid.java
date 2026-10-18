@@ -68,7 +68,7 @@ public class GeoTiffElevationGrid implements ElevationGrid {
         ReferencedEnvelope envelope = new ReferencedEnvelope(coverage.getEnvelope2D());
         CoordinateReferenceSystem sourceCrs = envelope.getCoordinateReferenceSystem();
         if (sourceCrs == null) {
-            throw new GeoTiffImageException("GeoTIFF file '" + geoTiffImage.getFile().getAbsolutePath()
+            throw new GeoTiffImageException("GeoTIFF file '" + geoTiffImage.getAbsolutePath().toString()
                     + "' has no coordinate reference system");
         }
 
@@ -80,7 +80,7 @@ public class GeoTiffElevationGrid implements ElevationGrid {
             this.geographicToCrs = CRS.findMathTransform(geographicCrs, sourceCrs, true);
         } catch (FactoryException | InvalidGridGeometryException | TransformException e) {
             throw new GeoTiffImageException("Cannot create coordinate transforms for GeoTIFF file '"
-                    + geoTiffImage.getFile().getAbsolutePath() + "'", e);
+                    + geoTiffImage.getAbsolutePath().toString() + "'", e);
         }
 
         int sampleCount;
@@ -88,7 +88,7 @@ public class GeoTiffElevationGrid implements ElevationGrid {
             sampleCount = Math.multiplyExact(width, height);
         } catch (ArithmeticException e) {
             throw new GeoTiffImageException("GeoTIFF raster is too large to cache in memory: '"
-                    + geoTiffImage.getFile().getAbsolutePath() + "'", e);
+                    + geoTiffImage.getAbsolutePath().toString() + "'", e);
         }
         this.elevations = new double[sampleCount];
         double minElevation = Double.POSITIVE_INFINITY;

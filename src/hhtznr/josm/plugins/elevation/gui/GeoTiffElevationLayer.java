@@ -125,7 +125,7 @@ public class GeoTiffElevationLayer extends ElevationLayer {
                 elevationGrid = new GeoTiffElevationGrid(geoTiffImage);
             } catch (GeoTiffImageException e) {
                 Logging.error("Elevation: Cannot create contour lines for GeoTIFF file '"
-                        + geoTiffImage.getFile().getAbsolutePath() + "': " + e.toString());
+                        + geoTiffImage.getAbsolutePath().toString() + "': " + e.toString());
             } finally {
                 elevationGridFuture = null;
                 triggerRepaint();
@@ -153,8 +153,8 @@ public class GeoTiffElevationLayer extends ElevationLayer {
             try {
                 elevationGridView = elevationGrid.getView(mapBounds);
             } catch (ElevationGridException e) {
-                Logging.warn("Elevation: Could not create map view for GeoTIFF " + geoTiffImage.getFile().getName()
-                        + ": " + e.toString());
+                Logging.warn("Elevation: Could not create map view for GeoTIFF with path'"
+                        + geoTiffImage.getAbsolutePath().toString() + "': " + e.toString());
                 elevationGridView = null;
                 return;
             }
@@ -335,8 +335,8 @@ public class GeoTiffElevationLayer extends ElevationLayer {
                 } catch (AsyncOperationException e) {
                     synchronized (contourLinesLock) {
                         if (requestId == contourLinesRequestId) {
-                            Logging.error("Elevation: Cannot create contour lines for GeoTIFF "
-                                    + geoTiffImage.getFile().getName() + ": " + e.toString());
+                            Logging.error("Elevation: Cannot create contour lines for GeoTIFF file with path '"
+                                    + geoTiffImage.getAbsolutePath().toString() + "': " + e.toString());
                         }
                     }
                 } finally {
@@ -476,10 +476,10 @@ public class GeoTiffElevationLayer extends ElevationLayer {
      * @param geoTiffImage The GeoTIFF image for which to add the new layer.
      */
     public static void addGeoTiffElevationLayer(GeoTiffImage geoTiffImage) {
-        String layerName = deriveLayerName(geoTiffImage.getFile().toPath());
+        String layerName = deriveLayerName(geoTiffImage.getAbsolutePath());
 
         if (geoTiffLayerAlreadyExists(layerName)) {
-            Logging.info("Elevation: Not adding GeoTIFF layer for '" + geoTiffImage.getFile().getAbsolutePath()
+            Logging.info("Elevation: Not adding GeoTIFF layer for '" + geoTiffImage.getAbsolutePath()
                     + "' because a GeoTiFFLayer with the same name already exists");
             return;
         }

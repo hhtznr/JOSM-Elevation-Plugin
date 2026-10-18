@@ -7,9 +7,13 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.image.DataBuffer;
 import java.awt.image.RenderedImage;
-import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.text.DecimalFormat;
-import java.util.Date;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
 import javax.swing.BorderFactory;
@@ -49,26 +53,27 @@ public class GeoTiffMetadataPanel extends JPanel {
      * @param geoTiffImage The GeoTIFF image.
      */
     public GeoTiffMetadataPanel(GeoTiffImage geoTiffImage) {
-        this(geoTiffImage.getFile(), geoTiffImage.getRawImage(), geoTiffImage.getCoverage(),
-                geoTiffImage.getMetadata());
-    }
-
-    /**
-     * Creates a new {@code JPanel} with structured information on a GeoTIFF image
-     * based on different Java objects representing a GeoTIFF image. If an object is
-     * not available, {@code null} can be passed. This will result in the
-     * corresponding info section being skipped.
-     *
-     * @param file     The file associated with the GeoTIFF image or {@code null}.
-     * @param image    The rendered image of the GeoTIFF image or {@code null}.
-     * @param coverage The GeoTools grid coverage of the GeoTIFF image or
-     *                 {@code null}.
-     * @param metadata The GeoTools metadata object of the GeoTIFF image or
-     *                 {@code null}.
-     */
-    public GeoTiffMetadataPanel(File file, RenderedImage image, GridCoverage2D coverage,
-            GeoTiffIIOMetadataDecoder metadata) {
         super(new BorderLayout(8, 8));
+
+        Path path = geoTiffImage.getAbsolutePath();
+        long fileSize;
+        try {
+            fileSize = Files.size(path);
+        } catch (IOException e) {
+            fileSize = 0L;
+        }
+        String lastModified;
+        try {
+            Instant instant = Instant.ofEpochMilli(Files.getLastModifiedTime(path).toMillis());
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                    .withZone(ZoneId.systemDefault());
+            lastModified = formatter.format(instant);
+        } catch (IOException e) {
+            lastModified = UNAVAILABLE;
+        }
+        RenderedImage image = geoTiffImage.getRawImage();
+        GridCoverage2D coverage = geoTiffImage.getCoverage();
+        GeoTiffIIOMetadataDecoder metadata = geoTiffImage.getMetadata();
 
         setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
@@ -92,7 +97,7 @@ public class GeoTiffMetadataPanel extends JPanel {
         gbc.gridy++;
         gbc.insets = new Insets(3, 4, 3, 4);
 
-        loadMetadata(file, image, coverage, metadata, content, gbc);
+        loadMetadata(path, fileSize, lastModified, image, coverage, metadata, content, gbc);
 
         // Keep all metadata fields aligned to the top.
         GridBagConstraints filler = new GridBagConstraints();
@@ -106,17 +111,16 @@ public class GeoTiffMetadataPanel extends JPanel {
         add(content, BorderLayout.CENTER);
     }
 
-    private void loadMetadata(File file, RenderedImage image, GridCoverage2D coverage,
-            GeoTiffIIOMetadataDecoder metadata, JPanel content, GridBagConstraints gbc) {
+    private void loadMetadata(Path path, long fileSize, String lastModified, RenderedImage image,
+            GridCoverage2D coverage, GeoTiffIIOMetadataDecoder metadata, JPanel content, GridBagConstraints gbc) {
 
-        if (file != null) {
+        if (path != null) {
             addSection(content, gbc, "File");
 
-            addRow(content, gbc, "Name", file.getName());
-            addRow(content, gbc, "Path", file.getAbsolutePath());
-            addRow(content, gbc, "Size", Utils.getSizeString(file.length(), Locale.getDefault()));
-            addRow(content, gbc, "Last modified",
-                    file.lastModified() > 0 ? new Date(file.lastModified()).toString() : UNAVAILABLE);
+            addRow(content, gbc, "Name", path.getFileName().toString());
+            addRow(content, gbc, "Path", path.toString());
+            addRow(content, gbc, "Size", Utils.getSizeString(fileSize, Locale.getDefault()));
+            addRow(content, gbc, "Last modified", lastModified);
         }
 
         if (image != null) {

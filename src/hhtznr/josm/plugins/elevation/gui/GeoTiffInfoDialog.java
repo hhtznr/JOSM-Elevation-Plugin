@@ -26,8 +26,8 @@ public class GeoTiffInfoDialog extends ExtendedDialog {
      * @param geoTiffImage The GeoTIFF image.
      */
     public GeoTiffInfoDialog(Component parent, GeoTiffImage geoTiffImage) {
-        super(parent, "Information on GeoTIFF " + geoTiffImage.getFile().getName(), new String[] { "Close" }, false,
-                true);
+        super(parent, "Information on GeoTIFF " + geoTiffImage.getAbsolutePath().getFileName().toString(),
+                new String[] { "Close" }, false, true);
 
         GeoTiffMetadataPanel panel = new GeoTiffMetadataPanel(geoTiffImage);
 

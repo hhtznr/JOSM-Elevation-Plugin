@@ -7,7 +7,6 @@ import java.awt.image.BufferedImage;
 import java.awt.image.ColorConvertOp;
 import java.awt.image.Raster;
 import java.awt.image.RenderedImage;
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 
@@ -39,7 +38,7 @@ public class GeoTiffImage {
      */
     public static final String CRS_EPSG_4326 = "EPSG:4326";
 
-    private final File file;
+    private final Path path;
     private final GeoTiffIIOMetadataDecoder metadata;
     private final GridCoverage2D coverage;
     private final String crs;
@@ -51,22 +50,22 @@ public class GeoTiffImage {
      * Creates a new GeoTIFF image using {@link #CRS_EPSG_4326} as coordinate
      * reference system.
      *
-     * @param file     A reference to the GeoTIFF file.
+     * @param path     The path of the GeoTiff file.
      * @param metadata The metadata of the GeoTIFF image.
      * @param coverage The grid coverage of the GeoTIFF.
      * @throws GeoTiffImageException If the GeoTIFF file cannot be displayed due to
      *                               missing coordinate reference system or
      *                               transformation issues.
      */
-    public GeoTiffImage(File file, GeoTiffIIOMetadataDecoder metadata, GridCoverage2D coverage)
+    public GeoTiffImage(Path path, GeoTiffIIOMetadataDecoder metadata, GridCoverage2D coverage)
             throws GeoTiffImageException {
-        this(file, metadata, coverage, CRS_EPSG_4326);
+        this(path, metadata, coverage, CRS_EPSG_4326);
     }
 
     /**
      * Creates a new GeoTIFF image.
      *
-     * @param file     A reference to the GeoTIFF file.
+     * @param path     The path of the GeoTiff file.
      * @param metadata The metadata of the GeoTIFF image.
      * @param coverage The grid coverage of the GeoTIFF.
      * @param crs      The identifier of the coordinate reference system in which
@@ -75,16 +74,16 @@ public class GeoTiffImage {
      *                               missing coordinate reference system or
      *                               transformation issues.
      */
-    public GeoTiffImage(File file, GeoTiffIIOMetadataDecoder metadata, GridCoverage2D coverage, String crs)
+    public GeoTiffImage(Path path, GeoTiffIIOMetadataDecoder metadata, GridCoverage2D coverage, String crs)
             throws GeoTiffImageException {
-        this.file = file;
+        this.path = path.toAbsolutePath();
         this.metadata = metadata;
         this.coverage = coverage;
         this.crs = crs;
         ReferencedEnvelope referencedEnvelope = new ReferencedEnvelope(coverage.getEnvelope2D());
         CoordinateReferenceSystem sourceCrs = referencedEnvelope.getCoordinateReferenceSystem();
         if (sourceCrs == null) {
-            String message = "GeoTIFF file '" + file.getAbsolutePath()
+            String message = "GeoTIFF file '" + this.path.toString()
                     + "' cannot be displayed because it has no coordinate reference system";
             throw new GeoTiffImageException(message);
         }
@@ -92,7 +91,7 @@ public class GeoTiffImage {
             CoordinateReferenceSystem geographicCrs = CRS.decode(crs, true);
             this.referencedEnvelope = referencedEnvelope.transform(geographicCrs, true, 20);
         } catch (FactoryException | TransformException e) {
-            String message = "Cannot transform GeoTIFF bounds to latitude/longitude for '" + file.getAbsolutePath()
+            String message = "Cannot transform GeoTIFF bounds to latitude/longitude for '" + this.path.toString()
                     + "' due to " + e;
             throw new GeoTiffImageException(message, e);
         }
@@ -102,12 +101,12 @@ public class GeoTiffImage {
     }
 
     /**
-     * Returns the file associated with this GeoTIFF image.
+     * Returns the absolute path of the file associated with this GeoTIFF image.
      *
-     * @return The file associated with this GeoTIFF image.
+     * @return The absolute path associated with this GeoTIFF image.
      */
-    public File getFile() {
-        return file;
+    public Path getAbsolutePath() {
+        return path;
     }
 
     /**
@@ -209,7 +208,7 @@ public class GeoTiffImage {
             try {
                 return convertSingleBandToGrayscale(image, noDataValues);
             } catch (IllegalArgumentException e) {
-                String message = "Error for GeoTIFF file " + file.getAbsolutePath() + ": " + e.toString();
+                String message = "Error for GeoTIFF file " + path.toString() + ": " + e.toString();
                 throw new IllegalArgumentException(message, e);
             }
         }
@@ -312,7 +311,7 @@ public class GeoTiffImage {
                 return null;
             }
             try {
-                return new GeoTiffImage(path.toFile(), metadata, coverage);
+                return new GeoTiffImage(path, metadata, coverage);
             } catch (GeoTiffImageException e) {
                 Logging.error("Elevation: Cannot create GeoTiffImage for file '" + path.toAbsolutePath().toString()
                         + " due to " + e.toString() + " with cause: " + e.getCause());

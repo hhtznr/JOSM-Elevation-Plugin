@@ -1,7 +1,7 @@
 package hhtznr.josm.plugins.elevation.gui;
 
-import java.io.File;
 import java.net.HttpURLConnection;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,14 +42,15 @@ public class SRTMFileDownloadErrorDialog implements SRTMFileDownloadListener {
     }
 
     @Override
-    public void srtmFileDownloadSucceeded(File srtmFile, SRTMTile.Type type, ElevationDataSource dataSource) {
+    public void srtmFileDownloadSucceeded(Path srtmFile, SRTMTile.Type type, ElevationDataSource dataSource) {
     }
 
     @Override
     public void srtmFileDownloadFailed(String srtmTileID, SRTMTile.Type type, ElevationDataSource dataSource,
             Exception exception) {
-        if (ignoreErrors)
+        if (ignoreErrors) {
             return;
+        }
 
         final String optionOK = "OK";
         final String optionIgnore = "Ignore errors";
@@ -64,17 +65,20 @@ public class SRTMFileDownloadErrorDialog implements SRTMFileDownloadListener {
         if (exception instanceof SRTMFileDownloader.HTTPException) {
             SRTMFileDownloader.HTTPException httpException = (SRTMFileDownloader.HTTPException) exception;
             String advice = httpException.getAdvice();
-            if (advice != null)
+            if (advice != null) {
                 message = "<html>" + message + "<br><br>" + advice + "</html>";
-            if (httpException.getResponse().getResponseCode() == HttpURLConnection.HTTP_NOT_FOUND)
+            }
+            if (httpException.getResponse().getResponseCode() == HttpURLConnection.HTTP_NOT_FOUND) {
                 optionsList.add(optionRememberMissing);
+            }
         }
         Object[] options = optionsList.toArray();
         int choice = JOptionPane.showOptionDialog(MainApplication.getMainFrame(), message, title,
                 JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE, null, options, options[1]);
 
-        if (choice == JOptionPane.CLOSED_OPTION)
+        if (choice == JOptionPane.CLOSED_OPTION) {
             return;
+        }
 
         String selectedOption = (String) options[choice];
 

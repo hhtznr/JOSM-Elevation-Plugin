@@ -1,6 +1,5 @@
 package hhtznr.josm.plugins.elevation.io;
 
-import java.io.File;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,21 +37,6 @@ public class SRTMFiles {
     public static final Pattern SRTM_FILE_TILE_ID_PATTERN = Pattern.compile("^(([NS])(\\d{2})([EW])(\\d{3})).+");
 
     /**
-     * Returns the extension of a file.
-     *
-     * @param file The file from which to obtain the extension.
-     * @return The extension of the file without leading dot.
-     */
-    public static String getFileExtension(File file) {
-        String name = file.getName();
-        int lastIndexOf = name.lastIndexOf(".");
-        if (lastIndexOf == -1) {
-            return ""; // empty extension
-        }
-        return name.substring(lastIndexOf + 1);
-    }
-
-    /**
      * Extracts the SRTM tile ID from the given SRTM file name.
      *
      * @param fileName The name of the compressed SRTM file.
@@ -61,8 +45,9 @@ public class SRTMFiles {
      */
     public static String getSRTMTileIDFromFileName(String fileName) {
         Matcher matcher = SRTM_FILE_TILE_ID_PATTERN.matcher(fileName);
-        if (matcher.matches())
+        if (matcher.matches()) {
             return matcher.group(1);
+        }
         return null;
     }
 
@@ -74,12 +59,13 @@ public class SRTMFiles {
      *         extracted.
      */
     public static SRTMTile.Type getSRTMTileTypeFromEarthdataFileName(String fileName) {
-        if (fileName.contains(SRTM1_ZIP_FILE_ID))
+        if (fileName.contains(SRTM1_ZIP_FILE_ID)) {
             return SRTMTile.Type.SRTM1;
-        else if (fileName.contains(SRTM3_ZIP_FILE_ID))
+        } else if (fileName.contains(SRTM3_ZIP_FILE_ID)) {
             return SRTMTile.Type.SRTM3;
-        else
+        } else {
             return null;
+        }
     }
 
     /**
@@ -91,8 +77,9 @@ public class SRTMFiles {
      * @return The corresponding name of the uncompressed file.
      */
     public static String getEarthdataSRTMFileName(String srtmTileID, SRTMTile.Type srtmType) {
-        if (srtmType == SRTMTile.Type.SRTM1)
+        if (srtmType == SRTMTile.Type.SRTM1) {
             return srtmTileID + ".SRTMGL1.hgt";
+        }
         return srtmTileID + ".SRTMGL3.hgt";
     }
 

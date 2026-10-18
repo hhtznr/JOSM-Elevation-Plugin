@@ -1,7 +1,6 @@
 package hhtznr.josm.plugins.elevation;
 
 import java.awt.Color;
-import java.io.File;
 import java.net.Authenticator.RequestorType;
 import java.net.MalformedURLException;
 import java.net.PasswordAuthentication;
@@ -49,56 +48,56 @@ public class ElevationPreferences {
     /**
      * Default path, where elevation data is stored.
      */
-    public static final File DEFAULT_ELEVATION_DIRECTORY = Paths
-            .get(Preferences.main().getDirs().getCacheDirectory(true).toString(), "elevation").toFile();
+    public static final Path DEFAULT_ELEVATION_DIRECTORY = Paths
+            .get(Preferences.main().getDirs().getCacheDirectory(true).toString(), "elevation");
 
     /**
      * Default path, where SRTM1 and SRTM3 files were located until version 0.10.2.
      *
      * @since 0.11.0
      */
-    public static final File LEGACY_SRTM_DIRECTORY = Paths.get(DEFAULT_ELEVATION_DIRECTORY.toString(), "SRTM").toFile();
+    public static final Path LEGACY_SRTM_DIRECTORY = Paths.get(DEFAULT_ELEVATION_DIRECTORY.toString(), "SRTM");
 
     /**
      * Default path, where SRTM files from NASA Earthdata are stored in separate
      * directories for SRTM1 and SRTM3.
      */
-    public static final File DEFAULT_EARTHDATA_DIRECTORY = Paths
-            .get(DEFAULT_ELEVATION_DIRECTORY.toString(), "Earthdata").toFile();
+    public static final Path DEFAULT_EARTHDATA_DIRECTORY = Paths.get(DEFAULT_ELEVATION_DIRECTORY.toString(),
+            "Earthdata");
 
     /**
      * Default path, where SRTM1 files from NASA Earthdata are stored locally.
      */
-    public static final File DEFAULT_EARTHDATA_SRTM1_DIRECTORY = Paths
-            .get(DEFAULT_EARTHDATA_DIRECTORY.toString(), "SRTM1").toFile();
+    public static final Path DEFAULT_EARTHDATA_SRTM1_DIRECTORY = Paths.get(DEFAULT_EARTHDATA_DIRECTORY.toString(),
+            "SRTM1");
 
     /**
      * Default path, where SRTM3 files from NASA Earthdata are stored locally.
      */
-    public static final File DEFAULT_EARTHDATA_SRTM3_DIRECTORY = Paths
-            .get(DEFAULT_EARTHDATA_DIRECTORY.toString(), "SRTM3").toFile();
+    public static final Path DEFAULT_EARTHDATA_SRTM3_DIRECTORY = Paths.get(DEFAULT_EARTHDATA_DIRECTORY.toString(),
+            "SRTM3");
 
     /**
      * Default path, where SRTM-compatible HGT files from Sonny's LiDAR Digital
      * Terrain Models of Europe are stored in separate directories for DTM1 and
      * DTM3.
      */
-    public static final File DEFAULT_SONNY_LIDAR_DIRECTORY = Paths
-            .get(DEFAULT_ELEVATION_DIRECTORY.toString(), "Sonny LiDAR").toFile();
+    public static final Path DEFAULT_SONNY_LIDAR_DIRECTORY = Paths.get(DEFAULT_ELEVATION_DIRECTORY.toString(),
+            "Sonny LiDAR");
 
     /**
      * Default path, where DTM1 files from Sonny's LiDAR Digital Terrain Models of
      * Europe are stored locally.
      */
-    public static final File DEFAULT_SONNY_LIDAR_DTM1_DIRECTORY = Paths
-            .get(DEFAULT_SONNY_LIDAR_DIRECTORY.toString(), "DTM1").toFile();
+    public static final Path DEFAULT_SONNY_LIDAR_DTM1_DIRECTORY = Paths.get(DEFAULT_SONNY_LIDAR_DIRECTORY.toString(),
+            "DTM1");
 
     /**
      * Default path, where DTM3 files from Sonny's LiDAR Digital Terrain Models of
      * Europe are stored locally.
      */
-    public static final File DEFAULT_SONNY_LIDAR_DTM3_DIRECTORY = Paths
-            .get(DEFAULT_SONNY_LIDAR_DIRECTORY.toString(), "DTM3").toFile();
+    public static final Path DEFAULT_SONNY_LIDAR_DTM3_DIRECTORY = Paths.get(DEFAULT_SONNY_LIDAR_DIRECTORY.toString(),
+            "DTM3");
 
     /**
      * Property key for SRTM type.
@@ -583,7 +582,7 @@ public class ElevationPreferences {
      * Path, where the JSON file for persisting the GeoTIFF envelope data of the
      * {@link GeoTiffIndex} is located.
      */
-    public static final Path GEOTIFF_INDEX_CACHE_FILE = DEFAULT_ELEVATION_DIRECTORY.toPath()
+    public static final Path GEOTIFF_INDEX_CACHE_FILE = DEFAULT_ELEVATION_DIRECTORY
             .resolve("GeoTiffIndexCacheFile.json");
 
     /**
@@ -592,7 +591,8 @@ public class ElevationPreferences {
     public static final boolean DEFAULT_GEOTIFF_ENVELOPE_LAYER_ENABLED = true;
 
     /**
-     * Property key for persisting whether the {@link GeoTIFFEnvelopeLayer} is enabled.
+     * Property key for persisting whether the {@link GeoTIFFEnvelopeLayer} is
+     * enabled.
      */
     public static final String GEOTIFF_ENVELOPE_LAYER_ENABLED = "elevation.geotiff.envelope-layer.enabled";
 

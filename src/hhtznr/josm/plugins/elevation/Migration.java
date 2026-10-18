@@ -29,59 +29,107 @@ public class Migration {
      * @since 0.11.0
      */
     public static void migrateSRTMDirectory() {
-        if (ElevationPreferences.LEGACY_SRTM_DIRECTORY.isDirectory()) {
-            if (ElevationPreferences.DEFAULT_EARTHDATA_SRTM1_DIRECTORY.exists()
-                    || ElevationPreferences.DEFAULT_EARTHDATA_SRTM1_DIRECTORY.mkdirs()) {
-                try (DirectoryStream<Path> stream = Files
-                        .newDirectoryStream(ElevationPreferences.LEGACY_SRTM_DIRECTORY.toPath());) {
+        boolean migrateSRTM1 = true;
+        boolean migrateSRTM3 = true;
+        if (Files.isDirectory(ElevationPreferences.LEGACY_SRTM_DIRECTORY)) {
+            migrateSRTM1 = false;
+            migrateSRTM3 = false;
+        } else {
+            return;
+        }
 
-                    for (Path file : stream) {
-                        if (Files.isRegularFile(file) && SRTMFiles.getSRTMTileTypeFromEarthdataFileName(
-                                file.getFileName().toString()) == SRTMTile.Type.SRTM1) {
-                            Path targetPath = ElevationPreferences.DEFAULT_EARTHDATA_SRTM1_DIRECTORY.toPath()
-                                    .resolve(file.getFileName());
-                            Files.move(file, targetPath, StandardCopyOption.REPLACE_EXISTING);
-                            Logging.info("Elevation: Migrated SRTM file '" + file.toString() + "' to '"
-                                    + targetPath.toAbsolutePath() + "'");
-                        }
+        if (!Files.isDirectory(ElevationPreferences.DEFAULT_EARTHDATA_SRTM1_DIRECTORY)) {
+            try {
+                Files.createDirectories(ElevationPreferences.DEFAULT_EARTHDATA_SRTM1_DIRECTORY);
+            } catch (IOException e) {
+                Logging.error("Elevation: IOException during SRTM1 file migration: " + e.toString());
+                migrateSRTM1 = false;
+            }
+        }
+
+        if (!Files.isDirectory(ElevationPreferences.DEFAULT_EARTHDATA_SRTM3_DIRECTORY)) {
+            try {
+                Files.createDirectories(ElevationPreferences.DEFAULT_EARTHDATA_SRTM3_DIRECTORY);
+            } catch (IOException e) {
+                Logging.error("Elevation: IOException during SRTM3 file migration: " + e.toString());
+                migrateSRTM3 = false;
+            }
+        }
+
+        if (migrateSRTM1) {
+            DirectoryStream<Path> stream = null;
+            try {
+                stream = Files.newDirectoryStream(ElevationPreferences.LEGACY_SRTM_DIRECTORY);
+
+                for (Path file : stream) {
+                    if (Files.isRegularFile(file) && SRTMFiles.getSRTMTileTypeFromEarthdataFileName(
+                            file.getFileName().toString()) == SRTMTile.Type.SRTM1) {
+                        Path targetPath = ElevationPreferences.DEFAULT_EARTHDATA_SRTM1_DIRECTORY
+                                .resolve(file.getFileName());
+                        Files.move(file, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                        Logging.info("Elevation: Migrated SRTM file '" + file.toString() + "' to '"
+                                + targetPath.toAbsolutePath() + "'");
                     }
-                    stream.close();
-                } catch (IOException e) {
-                    Logging.error("Elevation: IOException during SRTM1 file migration: " + e.toString());
+                }
+
+            } catch (IOException e) {
+                Logging.error("Elevation: IOException during SRTM1 file migration: " + e.toString());
+            } finally {
+                if (stream != null) {
+                    try {
+                        stream.close();
+                    } catch (IOException e) {
+                        Logging.error("Elevation: IOException during SRTM1 file migration: " + e.toString());
+                    }
                 }
             }
-            if (ElevationPreferences.DEFAULT_EARTHDATA_SRTM3_DIRECTORY.exists()
-                    || ElevationPreferences.DEFAULT_EARTHDATA_SRTM3_DIRECTORY.mkdirs()) {
-                try (DirectoryStream<Path> stream = Files
-                        .newDirectoryStream(ElevationPreferences.LEGACY_SRTM_DIRECTORY.toPath());) {
+        }
 
-                    for (Path file : stream) {
-                        if (Files.isRegularFile(file) && SRTMFiles.getSRTMTileTypeFromEarthdataFileName(
-                                file.getFileName().toString()) == SRTMTile.Type.SRTM3) {
-                            Path targetPath = ElevationPreferences.DEFAULT_EARTHDATA_SRTM3_DIRECTORY.toPath()
-                                    .resolve(file.getFileName());
-                            Files.move(file, targetPath, StandardCopyOption.REPLACE_EXISTING);
-                            Logging.info("Elevation: Migrated SRTM file '" + file.toString() + "' to '"
-                                    + targetPath.toAbsolutePath() + "'");
-                        }
+        if (migrateSRTM3) {
+            DirectoryStream<Path> stream = null;
+            try {
+
+                stream = Files.newDirectoryStream(ElevationPreferences.LEGACY_SRTM_DIRECTORY);
+
+                for (Path file : stream) {
+                    if (Files.isRegularFile(file) && SRTMFiles.getSRTMTileTypeFromEarthdataFileName(
+                            file.getFileName().toString()) == SRTMTile.Type.SRTM3) {
+                        Path targetPath = ElevationPreferences.DEFAULT_EARTHDATA_SRTM3_DIRECTORY
+                                .resolve(file.getFileName());
+                        Files.move(file, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                        Logging.info("Elevation: Migrated SRTM file '" + file.toString() + "' to '"
+                                + targetPath.toAbsolutePath() + "'");
                     }
+                }
+            } catch (IOException e) {
+                Logging.error("Elevation: IOException during SRTM3 file migration: " + e.toString());
+            } finally {
+                try {
                     stream.close();
                 } catch (IOException e) {
                     Logging.error("Elevation: IOException during SRTM3 file migration: " + e.toString());
                 }
             }
-            try (DirectoryStream<Path> stream = Files
-                    .newDirectoryStream(ElevationPreferences.LEGACY_SRTM_DIRECTORY.toPath());) {
+        }
 
-                if (!stream.iterator().hasNext()) {
-                    Files.delete(ElevationPreferences.LEGACY_SRTM_DIRECTORY.toPath());
-                    Logging.info("Elevation: Deleted empty legacy SRTM directory '"
-                            + ElevationPreferences.LEGACY_SRTM_DIRECTORY.toPath().toAbsolutePath() + "'");
-                } else {
-                    Logging.info("Elevation: Will not delete legacy SRTM directory '"
-                            + ElevationPreferences.LEGACY_SRTM_DIRECTORY.toPath().toAbsolutePath()
-                            + "' which is not empty");
-                }
+        DirectoryStream<Path> stream = null;
+        try {
+            stream = Files.newDirectoryStream(ElevationPreferences.LEGACY_SRTM_DIRECTORY);
+
+            if (!stream.iterator().hasNext()) {
+                Files.delete(ElevationPreferences.LEGACY_SRTM_DIRECTORY);
+                Logging.info("Elevation: Deleted empty legacy SRTM directory '"
+                        + ElevationPreferences.LEGACY_SRTM_DIRECTORY.toAbsolutePath().toString() + "'");
+            } else {
+                Logging.info("Elevation: Will not delete legacy SRTM directory '"
+                        + ElevationPreferences.LEGACY_SRTM_DIRECTORY.toAbsolutePath().toString()
+                        + "' which is not empty");
+            }
+
+        } catch (IOException e) {
+            Logging.error("Elevation: IOException trying to delete legacy SRTM directory: " + e.toString());
+        } finally {
+            try {
                 stream.close();
             } catch (IOException e) {
                 Logging.error("Elevation: IOException trying to delete legacy SRTM directory: " + e.toString());
@@ -96,7 +144,8 @@ public class Migration {
      * @since 0.14.0
      */
     public static void removeElevationEnabledPreference() {
-        if (ElevationPreferences.removeElevationEnabledPreference())
+        if (ElevationPreferences.removeElevationEnabledPreference()) {
             Logging.info("Removed legacy 'elevation enabled' preference");
+        }
     }
 }

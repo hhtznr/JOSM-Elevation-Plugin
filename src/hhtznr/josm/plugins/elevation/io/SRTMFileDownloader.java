@@ -1,6 +1,5 @@
 package hhtznr.josm.plugins.elevation.io;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -79,8 +78,9 @@ public class SRTMFileDownloader {
          */
         public static AuthType fromString(String name) {
             for (AuthType type : AuthType.values()) {
-                if (type.toString().equals(name))
+                if (type.toString().equals(name)) {
                     return type;
+                }
             }
             return BASIC;
         }
@@ -105,13 +105,15 @@ public class SRTMFileDownloader {
     public void setPasswordAuthentication(PasswordAuthentication passwordAuth, String authRedirectLocation) {
         String userName = passwordAuth.getUserName();
         String password = "";
-        if (passwordAuth.getPassword() != null)
+        if (passwordAuth.getPassword() != null) {
             password = String.valueOf(passwordAuth.getPassword());
-        if (userName != null)
+        }
+        if (userName != null) {
             basicAuthHeader = "Basic "
                     + Base64.getEncoder().encodeToString((userName + ":" + password).getBytes(StandardCharsets.UTF_8));
-        else
+        } else {
             basicAuthHeader = null;
+        }
         this.authRedirectLocation = authRedirectLocation;
         oAuthToken = null;
     }
@@ -142,8 +144,9 @@ public class SRTMFileDownloader {
      */
     public void addDownloadListener(SRTMFileDownloadListener listener) {
         synchronized (downloadListeners) {
-            if (!downloadListeners.contains(listener))
+            if (!downloadListeners.contains(listener)) {
                 downloadListeners.add(listener);
+            }
         }
     }
 
@@ -165,15 +168,16 @@ public class SRTMFileDownloader {
      * @param srtmTileID          The SRTM tile ID for which to download the SRTM
      *                            file.
      * @param elevationDataSource The elevation data source from which to download.
-     * @return An optional either holding the downloaded file if download succeeded
-     *         or being empty if it failed.
+     * @return An optional either holding the downloaded path of the downloaded file
+     *         if download succeeded or being empty if it failed.
      * @throws InterruptedException if the thread was interrupted while downloading.
      */
-    public Optional<File> download(String srtmTileID, ElevationDataSource elevationDataSource)
+    public Optional<Path> download(String srtmTileID, ElevationDataSource elevationDataSource)
             throws InterruptedException {
-        if (Thread.currentThread().isInterrupted())
+        if (Thread.currentThread().isInterrupted()) {
             throw new InterruptedException(
                     "Download of SRTM tile " + srtmTileID + " from source " + elevationDataSource + " interrupted.");
+        }
         SRTMTile.Type srtmType = elevationDataSource.getSRTMTileType();
         // Earthdata URLs look like this:
         // https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/SRTMGL1.003/N00E013.SRTMGL1.hgt/N00E013.SRTMGL1.hgt.zip
@@ -181,15 +185,16 @@ public class SRTMFileDownloader {
         String srtmFileName = srtmFileBaseName + ".zip";
         String urlComponent = String.join("/", srtmFileBaseName, srtmFileName);
 
-        if (basicAuthHeader != null)
+        if (basicAuthHeader != null) {
             Logging.info("Elevation: Trying to download SRTM file " + srtmFileName + " using password authentication.");
-        else if (oAuthToken != null)
+        } else if (oAuthToken != null) {
             Logging.info(
                     "Elevation: Tyring to download SRTM file " + srtmFileName + " using authorization bearer token.");
-        else
+        } else {
             Logging.info("Elevation: Tyring to download SRTM file " + srtmFileName + " without authentication.");
+        }
         downloadStarted(srtmTileID, srtmType, elevationDataSource);
-        File srtmFile = null;
+        Path srtmFile = null;
 
         URL url = null;
         try {
@@ -210,25 +215,28 @@ public class SRTMFileDownloader {
             }
         }
         try {
-            if (Thread.currentThread().isInterrupted())
+            if (Thread.currentThread().isInterrupted()) {
                 throw new InterruptedException("Download of SRTM tile " + srtmTileID + " from source "
                         + elevationDataSource + " interrupted.");
-            if (basicAuthHeader != null)
+            }
+            if (basicAuthHeader != null) {
                 httpClient.connect(null, authRedirectLocation, basicAuthHeader);
-            else
+            } else {
                 httpClient.connect();
+            }
             int responseCode = httpClient.getResponse().getResponseCode();
             // https://urs.earthdata.nasa.gov/documentation/for_users/data_access/java
             if (responseCode != HttpURLConnection.HTTP_OK) {
                 String advice = null;
                 switch (responseCode) {
                 case HttpURLConnection.HTTP_UNAUTHORIZED:
-                    if (oAuthToken != null)
+                    if (oAuthToken != null) {
                         advice = "You may need to renew your Earthdata authorization bearer token";
-                    else if (basicAuthHeader != null)
+                    } else if (basicAuthHeader != null) {
                         advice = "You may need to set up or correct your Earthdata credentials";
-                    else
+                    } else {
                         advice = "You may need to enter valid Earhtdata credentials or an authorization bearer token in the Elevation Data preferences";
+                    }
                     break;
                 case HttpURLConnection.HTTP_FORBIDDEN:
                     advice = "You need to authorize the application 'LP DAAC Data Pool' at Earthdata Login -> Applications";
@@ -241,8 +249,9 @@ public class SRTMFileDownloader {
                 }
                 Logging.warn("Elevation: SRTM server responded: " + responseCode + " "
                         + httpClient.getResponse().getResponseMessage());
-                if (advice != null)
+                if (advice != null) {
                     Logging.info("Elevation: " + advice);
+                }
                 downloadFailed(srtmTileID, srtmType, elevationDataSource,
                         new HTTPException(url, httpClient.getResponse(), advice));
                 return Optional.empty();
@@ -250,7 +259,7 @@ public class SRTMFileDownloader {
             InputStream in = httpClient.getResponse().getContent();
             Path downloadedZipFile = Paths.get(elevationDataSource.getDataDirectory().toString(), srtmFileName);
             Files.copy(in, downloadedZipFile, StandardCopyOption.REPLACE_EXISTING);
-            srtmFile = downloadedZipFile.toFile();
+            srtmFile = downloadedZipFile;
         } catch (IOException e) {
             Logging.error("Elevation: Downloading SRTM file " + srtmFileName + " failed due to I/O Exception: "
                     + e.toString());
@@ -270,31 +279,34 @@ public class SRTMFileDownloader {
             return Optional.empty();
         }
 
-        Logging.info("Elevation: Successfully downloaded SRTM file " + srtmFile.getName() + " to SRTM directory: "
-                + elevationDataSource.getDataDirectory().toString());
+        Logging.info("Elevation: Successfully downloaded SRTM file " + srtmFile.getFileName().toString()
+                + " to SRTM directory: " + elevationDataSource.getDataDirectory().toString());
         downloadSucceeded(srtmFile, elevationDataSource.getSRTMTileType(), elevationDataSource);
         return Optional.of(srtmFile);
     }
 
     private void downloadStarted(String srtmTileID, SRTMTile.Type type, ElevationDataSource dataSource) {
         synchronized (downloadListeners) {
-            for (SRTMFileDownloadListener listener : downloadListeners)
+            for (SRTMFileDownloadListener listener : downloadListeners) {
                 listener.srtmFileDownloadStarted(srtmTileID, type, dataSource);
+            }
         }
     }
 
     private void downloadFailed(String srtmTileID, SRTMTile.Type type, ElevationDataSource dataSource,
             Exception exception) {
         synchronized (downloadListeners) {
-            for (SRTMFileDownloadListener listener : downloadListeners)
+            for (SRTMFileDownloadListener listener : downloadListeners) {
                 listener.srtmFileDownloadFailed(srtmTileID, type, dataSource, exception);
+            }
         }
     }
 
-    private void downloadSucceeded(File srtmFile, SRTMTile.Type type, ElevationDataSource dataSource) {
+    private void downloadSucceeded(Path srtmFile, SRTMTile.Type type, ElevationDataSource dataSource) {
         synchronized (downloadListeners) {
-            for (SRTMFileDownloadListener listener : downloadListeners)
+            for (SRTMFileDownloadListener listener : downloadListeners) {
                 listener.srtmFileDownloadSucceeded(srtmFile, type, dataSource);
+            }
         }
     }
 

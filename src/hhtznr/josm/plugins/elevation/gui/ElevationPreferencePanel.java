@@ -171,26 +171,27 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         sb.append(I18n.tr(
                 "SRTM1 files (elevation sampled at 1 arc seconds) of the whole Earth can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}<br><br>",
                 ElevationPreferences.SRTM1_MANUAL_DOWNLOAD_URL,
-                ElevationPreferences.DEFAULT_EARTHDATA_SRTM1_DIRECTORY.getAbsolutePath()));
+                ElevationPreferences.DEFAULT_EARTHDATA_SRTM1_DIRECTORY.toAbsolutePath().toString()));
         sb.append(I18n.tr(
                 "SRTM3 files (elevation sampled at 3 arc seconds) of the whole Earth can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}<br><br>",
                 ElevationPreferences.SRTM3_MANUAL_DOWNLOAD_URL,
-                ElevationPreferences.DEFAULT_EARTHDATA_SRTM3_DIRECTORY.getAbsolutePath()));
+                ElevationPreferences.DEFAULT_EARTHDATA_SRTM3_DIRECTORY.toAbsolutePath().toString()));
         sb.append(I18n.tr(
                 "High quality SRTM1 files (elevation sampled at 1 arc seconds) of Europe can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}<br><br>",
                 ElevationPreferences.SONNY_LIDAR_DTM1_BASE_URL,
-                ElevationPreferences.DEFAULT_SONNY_LIDAR_DTM1_DIRECTORY.getAbsolutePath()));
+                ElevationPreferences.DEFAULT_SONNY_LIDAR_DTM1_DIRECTORY.toAbsolutePath().toString()));
         sb.append(I18n.tr(
                 "High quality SRTM3 files (elevation sampled at 3 arc seconds) of Europe can be downloaded from <a href=\"{0}\">{0}</a> and need to be placed in {1}<br>",
                 ElevationPreferences.SONNY_LIDAR_DTM3_BASE_URL,
-                ElevationPreferences.DEFAULT_SONNY_LIDAR_DTM3_DIRECTORY.getAbsolutePath()));
+                ElevationPreferences.DEFAULT_SONNY_LIDAR_DTM3_DIRECTORY.toAbsolutePath().toString()));
         sb.append("</body>");
         sb.append("</html>");
 
         JMultilineLabel labelSRTMSources = new JMultilineLabel(sb.toString());
         labelSRTMSources.addHyperlinkListener(event -> {
-            if (event.getEventType() == HyperlinkEvent.EventType.ACTIVATED)
+            if (event.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
                 OpenBrowser.displayUrl(event.getURL().toString());
+            }
         });
 
         cbEnableElevationLayer.addItemListener(event -> updateEnabledState());
@@ -234,8 +235,9 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
         lblEarthdataNotes.setEditable(false);
         lblEarthdataNotes.addHyperlinkListener(event -> {
-            if (event.getEventType() == HyperlinkEvent.EventType.ACTIVATED)
+            if (event.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
                 OpenBrowser.displayUrl(event.getURL().toString());
+            }
         });
 
         GBC gc = GBC.std();
@@ -553,24 +555,28 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         cbContourLineColoring.setSelectedItem(ElevationPreferences.getContourLineColoringScheme());
         cbEnableAutoDownload.setSelected(ElevationPreferences.getAutoDownloadEnabled());
 
-        if (ElevationPreferences.getElevationServerAuthType() == SRTMFileDownloader.AuthType.BEARER_TOKEN)
+        if (ElevationPreferences.getElevationServerAuthType() == SRTMFileDownloader.AuthType.BEARER_TOKEN) {
             rbAuthBearer.setSelected(true);
-        else
+        } else {
             rbPasswordAuth.setSelected(true);
+        }
 
         PasswordAuthentication passwordAuth = ElevationPreferences.lookupEarthdataCredentials();
         if (passwordAuth != null) {
             String userName = passwordAuth.getUserName();
             char[] password = passwordAuth.getPassword();
-            if (userName != null)
+            if (userName != null) {
                 tfUserName.setText(userName);
-            if (password != null)
+            }
+            if (password != null) {
                 tfPassword.setText(String.valueOf(password));
+            }
         }
 
         OAuth20Token oAuthToken = ElevationPreferences.lookupEarthdataOAuthToken();
-        if (oAuthToken != null && oAuthToken.getBearerToken() != null)
+        if (oAuthToken != null && oAuthToken.getBearerToken() != null) {
             tfAuthBearer.setText(oAuthToken.getBearerToken());
+        }
     }
 
     private final void updateEnabledState() {
@@ -598,10 +604,12 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         rbPasswordAuth.setEnabled(autoDownloadEnabled);
         rbAuthBearer.setEnabled(autoDownloadEnabled);
         lblEarthdataNotes.setEnabled(autoDownloadEnabled);
-        for (Component component : pnlPasswordAuth.getComponents())
+        for (Component component : pnlPasswordAuth.getComponents()) {
             component.setEnabled(autoDownloadEnabled);
-        for (Component component : pnlAuthBearer.getComponents())
+        }
+        for (Component component : pnlAuthBearer.getComponents()) {
             component.setEnabled(autoDownloadEnabled);
+        }
         lblEarthdataNotes.setEnabled(autoDownloadEnabled);
     }
 
@@ -665,8 +673,9 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            if (ElevationPreferences.removeEarthdataOAuthToken())
+            if (ElevationPreferences.removeEarthdataOAuthToken()) {
                 tfAuthBearer.setText("");
+            }
         }
     }
 }

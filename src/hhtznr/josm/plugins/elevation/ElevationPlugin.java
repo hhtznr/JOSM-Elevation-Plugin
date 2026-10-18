@@ -2,6 +2,8 @@ package hhtznr.josm.plugins.elevation;
 
 import java.awt.Color;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -138,9 +140,18 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
         elevationDataSources.addAll(ElevationPreferences.ELEVATION_DATA_SOURCES_SRTM1);
         elevationDataSources.addAll(ElevationPreferences.ELEVATION_DATA_SOURCES_SRTM3);
         for (ElevationDataSource elevationDataSource : elevationDataSources) {
-            if (!elevationDataSource.getDataDirectory().exists() && elevationDataSource.getDataDirectory().mkdirs()) {
-                Logging.info("Elevation: Created elevation data directory '"
-                        + elevationDataSource.getDataDirectory().getAbsolutePath() + "'");
+            if (!Files.exists(elevationDataSource.getDataDirectory())) {
+                Path path = elevationDataSource.getDataDirectory();
+                // May throw IOException
+                try {
+                    Files.createDirectories(path);
+                    Logging.info("Elevation: Created elevation data directory '"
+                            + elevationDataSource.getDataDirectory().toString() + "'");
+                } catch (IOException e) {
+                    Logging.error("Elevation: I/O exception attempting to create elevation data directory '"
+                            + path.toString() + "'");
+                    continue;
+                }
             }
         }
     }

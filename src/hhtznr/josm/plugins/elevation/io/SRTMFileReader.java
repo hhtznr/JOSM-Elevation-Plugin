@@ -1,11 +1,11 @@
 package hhtznr.josm.plugins.elevation.io;
 
 import java.io.BufferedInputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.file.Path;
 
 import org.openstreetmap.josm.io.Compression;
 import org.openstreetmap.josm.tools.Logging;
@@ -65,7 +65,7 @@ public class SRTMFileReader {
      * Voids in Versions 1.0 and 2.1 are flagged with the value -32,768. There are
      * no voids in Version 3.0.</i>
      *
-     * @param srtmFile   The SRTM file to read.
+     * @param srtmFile   The path of the SRTM file to read.
      * @param dataSource The original source of the SRTM tile.
      * @return The SRTM tile read from the file.
      * @throws IOException              if the file cannot be read at all.
@@ -73,21 +73,25 @@ public class SRTMFileReader {
      *                                  the file.
      * @throws InvalidSRTMDataException if the data in the file has a wrong length.
      */
-    public SRTMTile readSRTMFile(File srtmFile, ElevationDataSource dataSource)
+    public SRTMTile readSRTMFile(Path srtmFile, ElevationDataSource dataSource)
             throws IOException, InterruptedException, InvalidSRTMDataException {
-        if (Thread.currentThread().isInterrupted())
-            throw new InterruptedException("Reading SRTM file '" + srtmFile.getAbsolutePath() + "' was interrupted.");
-        String srtmTileID = SRTMFiles.getSRTMTileIDFromFileName(srtmFile.getName());
+        if (Thread.currentThread().isInterrupted()) {
+            throw new InterruptedException(
+                    "Reading SRTM file '" + srtmFile.toAbsolutePath().toString() + "' was interrupted.");
+        }
+        String srtmTileID = SRTMFiles.getSRTMTileIDFromFileName(srtmFile.getFileName().toString());
         SRTMTile.Type type = dataSource.getSRTMTileType();
 
-        Logging.info("Elevation: Reading SRTM file '" + srtmFile.getAbsolutePath() + "' for tile ID " + srtmTileID);
+        Logging.info("Elevation: Reading SRTM file '" + srtmFile.toAbsolutePath().toString() + "' for tile ID "
+                + srtmTileID);
 
         // Expected number of elevation data points in one dimension
         int srtmTileLength;
-        if (type == SRTMTile.Type.SRTM1)
+        if (type == SRTMTile.Type.SRTM1) {
             srtmTileLength = SRTMTile.SRTM1_TILE_LENGTH;
-        else
+        } else {
             srtmTileLength = SRTMTile.SRTM3_TILE_LENGTH;
+        }
 
         // Expected number of bytes in the SRTM file (number of data points * 2 bytes
         // per short).
@@ -95,7 +99,7 @@ public class SRTMFileReader {
 
         InputStream inputStream = null;
         try {
-            inputStream = new BufferedInputStream(Compression.getUncompressedFileInputStream(srtmFile.toPath()));
+            inputStream = new BufferedInputStream(Compression.getUncompressedFileInputStream(srtmFile));
 
             byte[] readBuffer = new byte[8192]; // 8 KB buffer (typical size)
             int bytesRead;
@@ -103,15 +107,18 @@ public class SRTMFileReader {
             // https://www.baeldung.com/convert-input-stream-to-array-of-bytes
             ByteBuffer byteBuffer = ByteBuffer.allocate(bytesExpected);
             while ((bytesRead = inputStream.read(readBuffer)) != -1) {
-                if (byteBuffer.remaining() < bytesRead)
+                if (byteBuffer.remaining() < bytesRead) {
                     throw new InvalidSRTMDataException(
-                            "SRTM file '" + srtmFile.getName() + "' contains more bytes than expected.");
+                            "SRTM file '" + srtmFile.getFileName().toString() + "' contains more bytes than expected.");
+                }
                 byteBuffer.put(readBuffer, 0, bytesRead);
             }
 
-            if (byteBuffer.position() != bytesExpected)
-                throw new InvalidSRTMDataException("Wrong number of bytes in SRTM file '" + srtmFile.getName()
-                        + "'. Expected: " + bytesExpected + " bytes; read: " + bytesRead + " bytes");
+            if (byteBuffer.position() != bytesExpected) {
+                throw new InvalidSRTMDataException(
+                        "Wrong number of bytes in SRTM file '" + srtmFile.getFileName().toString() + "'. Expected: "
+                                + bytesExpected + " bytes; read: " + bytesRead + " bytes");
+            }
 
             // Convert byte order
             byteBuffer.order(ByteOrder.BIG_ENDIAN);
@@ -128,21 +135,24 @@ public class SRTMFileReader {
             // - End of array: North-east corner
             short[] elevationData = new short[srtmTileLength * srtmTileLength];
             for (int latIndex = 0; latIndex < srtmTileLength; latIndex++) {
-                if ((latIndex & 31) == 0 && Thread.currentThread().isInterrupted())
+                if ((latIndex & 31) == 0 && Thread.currentThread().isInterrupted()) {
                     throw new InterruptedException(
-                            "Reading SRTM file '" + srtmFile.getAbsolutePath() + "' was interrupted.");
+                            "Reading SRTM file '" + srtmFile.toAbsolutePath().toString() + "' was interrupted.");
+                }
                 int flippedLatIndex = srtmTileLength - 1 - latIndex;
-                for (int lonIndex = 0; lonIndex < srtmTileLength; lonIndex++)
+                for (int lonIndex = 0; lonIndex < srtmTileLength; lonIndex++) {
                     // Flip the order of the rows to rearrange the data with southernmost row first
                     // This will make read access more intuitive because latitude increases from
                     // south to north
                     elevationData[flippedLatIndex * srtmTileLength + lonIndex] = byteBuffer
                             .getShort((latIndex * srtmTileLength + lonIndex) * Short.BYTES);
+                }
             }
             return new SRTMTile(srtmTileID, type, elevationData, dataSource);
         } finally {
-            if (inputStream != null)
+            if (inputStream != null) {
                 inputStream.close();
+            }
         }
     }
 }

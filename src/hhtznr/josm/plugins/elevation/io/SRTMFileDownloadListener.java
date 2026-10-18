@@ -1,6 +1,6 @@
 package hhtznr.josm.plugins.elevation.io;
 
-import java.io.File;
+import java.nio.file.Path;
 
 import hhtznr.josm.plugins.elevation.data.ElevationDataSource;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
@@ -32,11 +32,11 @@ public interface SRTMFileDownloadListener {
      *
      * To be called by the thread downloading as soon as the download finished.
      *
-     * @param srtmFile   The downloaded SRTM file.
+     * @param srtmFile   The path of the downloaded SRTM file.
      * @param type       The type of the downloaded SRTM data, SRTM1 or SRTM3.
      * @param dataSource The original source of the SRTM tile.
      */
-    public void srtmFileDownloadSucceeded(File srtmFile, SRTMTile.Type type, ElevationDataSource dataSource);
+    public void srtmFileDownloadSucceeded(Path srtmFile, SRTMTile.Type type, ElevationDataSource dataSource);
 
     /**
      * Informs the implementing class that downloading SRTM data for the given

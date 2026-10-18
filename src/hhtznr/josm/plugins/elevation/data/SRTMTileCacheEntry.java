@@ -1,9 +1,9 @@
 package hhtznr.josm.plugins.elevation.data;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.ref.Cleaner;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -242,8 +242,9 @@ public class SRTMTileCacheEntry {
      */
     private synchronized boolean complete(SRTMTile tile) {
         boolean completed = tileFuture.complete(tile);
-        if (completed)
+        if (completed) {
             this.tile = tile;
+        }
         return completed;
     }
 
@@ -294,8 +295,9 @@ public class SRTMTileCacheEntry {
      */
     public synchronized int getDataSize() {
         Optional<SRTMTile> optional = getTileIfLoaded();
-        if (optional.isEmpty())
+        if (optional.isEmpty()) {
             return 0;
+        }
         return optional.get().getDataSize();
     }
 
@@ -320,8 +322,9 @@ public class SRTMTileCacheEntry {
      */
     public boolean addTileConsumer(SRTMTileConsumer consumer) {
         synchronized (tileConsumers) {
-            if (tileConsumers.contains(consumer))
+            if (tileConsumers.contains(consumer)) {
                 return false;
+            }
             tileConsumers.add(consumer);
             return true;
         }
@@ -353,20 +356,22 @@ public class SRTMTileCacheEntry {
     protected void loadAsync(SRTMTileCache cache) {
         asyncLoadFuture = CompletableFuture.runAsync(() -> {
             List<ElevationDataSource> dataSources = cache.getElevationDataSources();
-            if (dataSources.isEmpty())
+            if (dataSources.isEmpty()) {
                 return;
+            }
             SRTMTile.Type srtmType = dataSources.get(0).getSRTMTileType();
             try {
                 SRTMTile srtmTile = null;
                 for (ElevationDataSource dataSource : dataSources) {
-                    if (tileFuture.isCancelled() || tileFuture.isCompletedExceptionally())
+                    if (tileFuture.isCancelled() || tileFuture.isCompletedExceptionally()) {
                         throw new CancellationException("Loading of SRTM tile " + srtmTileID + " was canceled.");
+                    }
                     if (dataSource.isSRTMTilePermanentlyMissing(srtmTileID)) {
                         Logging.info("Elevation: SRTM tile with ID " + srtmTileID
                                 + " is permanently missing for source " + dataSource.toString());
                         continue;
                     }
-                    File srtmFile = null;
+                    Path srtmFile = null;
                     try {
                         srtmFile = dataSource.getLocalSRTMFile(srtmTileID);
                     } catch (FileNotFoundException e) {
@@ -375,7 +380,7 @@ public class SRTMTileCacheEntry {
                     // If an SRTM file with the data exists on disk, read it in
                     if (srtmFile != null) {
                         Logging.info("Elevation: Caching data of SRTM tile " + srtmTileID + " from file "
-                                + srtmFile.getAbsolutePath());
+                                + srtmFile.toString());
                         // Read the SRTM file as task in a separate thread
                         status = SRTMTileCacheEntry.Status.READING_SCHEDULED;
                         try {
@@ -383,30 +388,35 @@ public class SRTMTileCacheEntry {
                             fileFetchFuture.set(readFuture);
                             srtmTile = readFuture.get();
                             fileFetchFuture.set(null);
-                            if (tileFuture.isCancelled() || tileFuture.isCompletedExceptionally())
+                            if (tileFuture.isCancelled() || tileFuture.isCompletedExceptionally()) {
                                 throw new CancellationException(
                                         "Loading of SRTM tile " + srtmTileID + " was canceled.");
+                            }
                             break;
                         } catch (ExecutionException e) {
-                            if (e.getCause() instanceof IOException)
+                            if (e.getCause() instanceof IOException) {
                                 status = SRTMTileCacheEntry.Status.FILE_INVALID;
-                            if (e.getCause() instanceof InvalidSRTMDataException)
+                            }
+                            if (e.getCause() instanceof InvalidSRTMDataException) {
                                 status = SRTMTileCacheEntry.Status.DATA_INVALID;
+                            }
                         }
                     }
                     // If auto-downloading of SRTM files is enabled, try to download the missing
                     // file
                     else if (cache.isAutoDownloadEnabled() && dataSource.canAutoDownload()) {
                         SRTMFileDownloader downloader = cache.getSRTMFileDownloader();
-                        if (downloader == null)
+                        if (downloader == null) {
                             continue;
+                        }
                         status = SRTMTileCacheEntry.Status.DOWNLOAD_SCHEDULED;
-                        Future<Optional<File>> downloadFuture = downloadSRTMFile(dataSource, downloader);
+                        Future<Optional<Path>> downloadFuture = downloadSRTMFile(dataSource, downloader);
                         fileFetchFuture.set(downloadFuture);
-                        Optional<File> optionalFile = downloadFuture.get();
+                        Optional<Path> optionalFile = downloadFuture.get();
                         fileFetchFuture.set(null);
-                        if (tileFuture.isCancelled() || tileFuture.isCompletedExceptionally())
+                        if (tileFuture.isCancelled() || tileFuture.isCompletedExceptionally()) {
                             throw new CancellationException("Loading of SRTM tile " + srtmTileID + " was canceled.");
+                        }
                         if (optionalFile.isPresent()) {
                             srtmFile = optionalFile.get();
                             try {
@@ -415,15 +425,18 @@ public class SRTMTileCacheEntry {
                                 fileFetchFuture.set(readFuture);
                                 srtmTile = readFuture.get();
                                 fileFetchFuture.set(null);
-                                if (tileFuture.isCancelled() || tileFuture.isCompletedExceptionally())
+                                if (tileFuture.isCancelled() || tileFuture.isCompletedExceptionally()) {
                                     throw new CancellationException(
                                             "Loading of SRTM tile " + srtmTileID + " was canceled.");
+                                }
                                 break;
                             } catch (ExecutionException e) {
-                                if (e.getCause() instanceof IOException)
+                                if (e.getCause() instanceof IOException) {
                                     status = SRTMTileCacheEntry.Status.FILE_INVALID;
-                                if (e.getCause() instanceof InvalidSRTMDataException)
+                                }
+                                if (e.getCause() instanceof InvalidSRTMDataException) {
                                     status = SRTMTileCacheEntry.Status.DATA_INVALID;
+                                }
                             }
                         } else {
                             status = SRTMTileCacheEntry.Status.DOWNLOAD_FAILED;
@@ -431,11 +444,13 @@ public class SRTMTileCacheEntry {
                     }
                 }
 
-                if (tileFuture.isCancelled() || tileFuture.isCompletedExceptionally())
+                if (tileFuture.isCancelled() || tileFuture.isCompletedExceptionally()) {
                     throw new CancellationException("Loading of SRTM tile " + srtmTileID + " was canceled.");
+                }
 
-                if (status == null)
+                if (status == null) {
                     status = SRTMTileCacheEntry.Status.FILE_MISSING;
+                }
 
                 if (srtmTile == null) {
                     srtmTile = SRTMTile.createInvalidTile(srtmTileID, srtmType);
@@ -446,10 +461,11 @@ public class SRTMTileCacheEntry {
                 cache.srtmTileCached(srtmTile, status);
                 Logging.info("Elevation: SRTM tile " + srtmTileID + " loaded with status " + status.toString());
             } catch (Exception e) {
-                if (e instanceof CancellationException)
+                if (e instanceof CancellationException) {
                     status = SRTMTileCacheEntry.Status.LOADING_CANCELED;
-                else
+                } else {
                     status = SRTMTileCacheEntry.Status.DATA_INVALID;
+                }
                 SRTMTile srtmTile = SRTMTile.createInvalidTile(srtmTileID, srtmType);
                 completeExceptionally(e);
                 if (!(e instanceof CancellationException)) {
@@ -462,7 +478,7 @@ public class SRTMTileCacheEntry {
         });
     }
 
-    private Future<SRTMTile> readSRTMFile(File srtmFile, ElevationDataSource dataSource, SRTMFileReader srtmFileReader)
+    private Future<SRTMTile> readSRTMFile(Path srtmFile, ElevationDataSource dataSource, SRTMFileReader srtmFileReader)
             throws InterruptedException, ExecutionException {
         Callable<SRTMTile> fileReadTask = () -> {
             status = SRTMTileCacheEntry.Status.READING;
@@ -471,9 +487,9 @@ public class SRTMTileCacheEntry {
         return SRTMTileCache.fileReadExecutor.submit(fileReadTask);
     }
 
-    private Future<Optional<File>> downloadSRTMFile(ElevationDataSource elevationDataSource,
+    private Future<Optional<Path>> downloadSRTMFile(ElevationDataSource elevationDataSource,
             SRTMFileDownloader srtmFileDownloader) throws InterruptedException, ExecutionException {
-        Callable<Optional<File>> downloadTask = () -> {
+        Callable<Optional<Path>> downloadTask = () -> {
             status = SRTMTileCacheEntry.Status.DOWNLOADING;
             return srtmFileDownloader.download(srtmTileID, elevationDataSource);
         };
@@ -487,8 +503,9 @@ public class SRTMTileCacheEntry {
      * Disposing is intended to free memory.
      */
     protected synchronized void disposeTile() {
-        if (!tileFuture.isDone())
+        if (!tileFuture.isDone()) {
             cancelLoading();
+        }
         if (tile != null) {
             tile.dispose();
             tile = null;

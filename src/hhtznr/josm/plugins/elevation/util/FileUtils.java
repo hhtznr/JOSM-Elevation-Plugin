@@ -13,6 +13,21 @@ public class FileUtils {
     }
 
     /**
+     * Returns the extension of a file.
+     *
+     * @param path The path of the file from which to obtain the extension.
+     * @return The extension of the file without leading dot.
+     */
+    public static String getFileExtension(Path path) {
+        String name = path.getFileName().toString();
+        int lastIndexOf = name.lastIndexOf(".");
+        if (lastIndexOf == -1) {
+            return ""; // empty extension
+        }
+        return name.substring(lastIndexOf + 1);
+    }
+
+    /**
      * Returns the file name of the provided path removing the specified extensions
      * including the dot. Works case-insensitive.
      *

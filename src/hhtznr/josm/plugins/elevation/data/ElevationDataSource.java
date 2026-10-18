@@ -1,6 +1,5 @@
 package hhtznr.josm.plugins.elevation.data;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
@@ -9,7 +8,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -25,7 +23,7 @@ public class ElevationDataSource {
     public static final String PERMANENTLY_MISSING_FILE_NAME = "Permanently missing.txt";
 
     private final String name;
-    private final File dataDirectory;
+    private final Path dataDirectory;
     private final SRTMTile.Type srtmTileType;
     private final URL downloadBaseURL;
     private final String ssoHost;
@@ -46,10 +44,10 @@ public class ElevationDataSource {
      * @param canAutoDownload If {@code true}, it is assumed that automatic download
      *                        of SRTM files from the given base URL is possible.
      */
-    public ElevationDataSource(String name, File dataDirectory, SRTMTile.Type srtmTileType, URL downloadBaseURL,
+    public ElevationDataSource(String name, Path dataDirectory, SRTMTile.Type srtmTileType, URL downloadBaseURL,
             String ssoHost, boolean canAutoDownload) {
         this.name = name;
-        this.dataDirectory = dataDirectory;
+        this.dataDirectory = dataDirectory.toAbsolutePath();
         this.srtmTileType = srtmTileType;
         this.downloadBaseURL = downloadBaseURL;
         this.ssoHost = ssoHost;
@@ -71,7 +69,7 @@ public class ElevationDataSource {
      *
      * @return The data directory of this elevation data source.
      */
-    public File getDataDirectory() {
+    public Path getDataDirectory() {
         return dataDirectory;
     }
 
@@ -81,20 +79,28 @@ public class ElevationDataSource {
      *
      * @param srtmTileID The SRTM tile ID.
      * @return The SRTM file for the given tile ID.
-     * @throws FileNotFoundException if no SRTM files exists for the provided ID.
+     * @throws IOException if no SRTM files exists for the provided ID or another I/O exception occurs.
      */
-    public File getLocalSRTMFile(String srtmTileID) throws FileNotFoundException {
+    public Path getLocalSRTMFile(String srtmTileID) throws IOException {
         Logging.info("Elevation: Looking for on-disk SRTM file for tile ID " + srtmTileID);
         // List the SRTM directory and filter out files that start with the SRTM tile ID
-        // https://www.baeldung.com/java-list-directory-files
-        Set<File> files = Stream.of(dataDirectory.listFiles())
-                .filter(file -> file.isFile() && file.getName().startsWith(srtmTileID)).collect(Collectors.toSet());
+        List<Path> paths;
+        try (Stream<Path> stream = Files.find(dataDirectory, 1, (path, attrs) -> {
+            if (!attrs.isRegularFile()) {
+                return false;
+            }
+            String fileName = path.getFileName().toString();
+            return fileName.startsWith(srtmTileID);
+        })) {
+            paths = stream.collect(Collectors.toList());
+        }
 
-        if (files.size() == 0)
+        if (paths.size() == 0) {
             throw new FileNotFoundException(
                     "SRTM file for SRTM tile ID " + srtmTileID + " does not exist or is not a regular file.");
+        }
 
-        return files.iterator().next();
+        return paths.iterator().next().toAbsolutePath();
 
     }
 
@@ -188,11 +194,12 @@ public class ElevationDataSource {
     }
 
     private List<String> loadMissingSRTMTiles() {
-        Path filePath = dataDirectory.toPath().resolve(PERMANENTLY_MISSING_FILE_NAME);
+        Path filePath = dataDirectory.resolve(PERMANENTLY_MISSING_FILE_NAME);
 
         // Check if the file exists and is a regular file
-        if (!Files.exists(filePath) || !Files.isRegularFile(filePath))
+        if (!Files.exists(filePath) || !Files.isRegularFile(filePath)) {
             return new ArrayList<>();
+        }
 
         try (Stream<String> lineStream = Files.lines(filePath)) {
             List<String> missingTiles = lineStream.filter(SRTMTile::isValidSRTMTileID)
@@ -208,7 +215,7 @@ public class ElevationDataSource {
     }
 
     private void saveMissingSRTMTiles() {
-        Path filePath = dataDirectory.toPath().resolve(PERMANENTLY_MISSING_FILE_NAME);
+        Path filePath = dataDirectory.resolve(PERMANENTLY_MISSING_FILE_NAME);
 
         try {
             // Write the list to file, one item per line, using UTF-8 by default

@@ -26,6 +26,7 @@ import hhtznr.josm.plugins.elevation.data.Coloring;
 import hhtznr.josm.plugins.elevation.data.ElevationDataSource;
 import hhtznr.josm.plugins.elevation.data.GeoTiffIndex;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
+import hhtznr.josm.plugins.elevation.gui.GeoTiffEnvelopeLayer;
 import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
 import jakarta.json.Json;
 import jakarta.json.JsonObjectBuilder;
@@ -574,7 +575,7 @@ public class ElevationPreferences {
 
     /**
      * Property key for persisting the directory with GeoTIFF files to be indexed
-     * for quick access via {@link GeoTIFFEnvelopeLayer}.
+     * for quick access via {@link GeoTiffEnvelopeLayer}.
      */
     public static final String GEOTIFF_INDEX_DIRECTORY = "elevation.geotiff.index-directory";
 
@@ -586,12 +587,12 @@ public class ElevationPreferences {
             .resolve("GeoTiffIndexCacheFile.json");
 
     /**
-     * Property key for enabling or disabling the {@link GeoTIFFEnvelopeLayer}.
+     * Property key for enabling or disabling the {@link GeoTiffEnvelopeLayer}.
      */
     public static final boolean DEFAULT_GEOTIFF_ENVELOPE_LAYER_ENABLED = true;
 
     /**
-     * Property key for persisting whether the {@link GeoTIFFEnvelopeLayer} is
+     * Property key for persisting whether the {@link GeoTiffEnvelopeLayer} is
      * enabled.
      */
     public static final String GEOTIFF_ENVELOPE_LAYER_ENABLED = "elevation.geotiff.envelope-layer.enabled";

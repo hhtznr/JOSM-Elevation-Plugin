@@ -9,7 +9,7 @@ import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.ElevationDataConsumer;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.ElevationGrid;
-import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
+import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGrid;
 
 /**
  * This is the abstract super class of elevation tools that use an elevation
@@ -41,8 +41,8 @@ public abstract class AbstractElevationTool extends ElevationDataConsumer {
         super(name, elevationDataProvider.getGridMatching(bounds));
         // TODO: Resolve this temporary compatibility workaround
         ElevationGrid elevationGrid = getElevationGrid();
-        if (elevationGrid instanceof SRTMTileGrid) {
-            SRTMTileGrid srtmTileGrid = (SRTMTileGrid) elevationGrid;
+        if (elevationGrid instanceof SrtmTileGrid) {
+            SrtmTileGrid srtmTileGrid = (SrtmTileGrid) elevationGrid;
             srtmTileGrid.release();
         }
         this.elevationDataProvider = elevationDataProvider;

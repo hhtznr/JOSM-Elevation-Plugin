@@ -22,25 +22,25 @@ import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.concurrent.ParallelExecutorService;
-import hhtznr.josm.plugins.elevation.data.Coloring;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
-import hhtznr.josm.plugins.elevation.data.ElevationDataSource;
-import hhtznr.josm.plugins.elevation.data.SRTMTile;
-import hhtznr.josm.plugins.elevation.gui.AddElevationLayerAction;
-import hhtznr.josm.plugins.elevation.gui.AddGeoTiffEnvelopeLayerAction;
-import hhtznr.josm.plugins.elevation.gui.ElevationTabPreferenceSetting;
-import hhtznr.josm.plugins.elevation.gui.GeoTiffEnvelopeLayer;
-import hhtznr.josm.plugins.elevation.gui.GeoTiffSyncIndexFromDiskAction;
-import hhtznr.josm.plugins.elevation.gui.KeyColFinderAction;
-import hhtznr.josm.plugins.elevation.gui.LocalElevationLabel;
-import hhtznr.josm.plugins.elevation.gui.MapViewElevationDataConsumer;
-import hhtznr.josm.plugins.elevation.gui.OpenGeoTiffAction;
-import hhtznr.josm.plugins.elevation.gui.SRTMElevationLayer;
-import hhtznr.josm.plugins.elevation.gui.SRTMFileDownloadErrorDialog;
-import hhtznr.josm.plugins.elevation.gui.SetNodeElevationAction;
-import hhtznr.josm.plugins.elevation.gui.SetPeakProminenceAction;
-import hhtznr.josm.plugins.elevation.gui.TopographicIsolationFinderAction;
-import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
+import hhtznr.josm.plugins.elevation.data.srtm.SrtmDataSource;
+import hhtznr.josm.plugins.elevation.data.srtm.SrtmTile;
+import hhtznr.josm.plugins.elevation.gui.actions.AddElevationLayerAction;
+import hhtznr.josm.plugins.elevation.gui.actions.AddGeoTiffEnvelopeLayerAction;
+import hhtznr.josm.plugins.elevation.gui.actions.GeoTiffSyncIndexFromDiskAction;
+import hhtznr.josm.plugins.elevation.gui.actions.KeyColFinderAction;
+import hhtznr.josm.plugins.elevation.gui.actions.OpenGeoTiffAction;
+import hhtznr.josm.plugins.elevation.gui.actions.SetNodeElevationAction;
+import hhtznr.josm.plugins.elevation.gui.actions.SetPeakProminenceAction;
+import hhtznr.josm.plugins.elevation.gui.components.ElevationTabPreferenceSetting;
+import hhtznr.josm.plugins.elevation.gui.components.LocalElevationLabel;
+import hhtznr.josm.plugins.elevation.gui.dialogs.SrtmFileDownloadErrorDialog;
+import hhtznr.josm.plugins.elevation.gui.dialogs.TopographicIsolationFinderAction;
+import hhtznr.josm.plugins.elevation.gui.layers.GeoTiffEnvelopeLayer;
+import hhtznr.josm.plugins.elevation.gui.layers.MapViewElevationDataConsumer;
+import hhtznr.josm.plugins.elevation.gui.layers.SrtmElevationLayer;
+import hhtznr.josm.plugins.elevation.io.SrtmFileDownloader;
+import hhtznr.josm.plugins.elevation.util.Coloring;
 
 /**
  * Plugin class for displaying and visualizing elevation data.
@@ -52,7 +52,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     private ElevationTabPreferenceSetting tabPreferenceSetting = null;
 
     private final ElevationDataProvider elevationDataProvider;
-    private SRTMFileDownloadErrorDialog srtmFileDownloadErrorDialog = null;
+    private SrtmFileDownloadErrorDialog srtmFileDownloadErrorDialog = null;
 
     private LocalElevationLabel localElevationLabel = null;
     private static MapViewElevationDataConsumer mapViewElevationDataConsumer = null;
@@ -65,7 +65,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     private final KeyColFinderAction keyColFinderAction;
 
     private final Object elevationLayerLock = new Object();
-    private SRTMElevationLayer elevationLayer = null;
+    private SrtmElevationLayer elevationLayer = null;
     private final Object geoTiffEnvelopeLayerLock = new Object();
 
     private GeoTiffEnvelopeLayer geoTiffEnvelopeLayer = null;
@@ -144,10 +144,10 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     }
 
     private static void createElevationDataDirectories() {
-        List<ElevationDataSource> elevationDataSources = new ArrayList<>();
+        List<SrtmDataSource> elevationDataSources = new ArrayList<>();
         elevationDataSources.addAll(ElevationPreferences.ELEVATION_DATA_SOURCES_SRTM1);
         elevationDataSources.addAll(ElevationPreferences.ELEVATION_DATA_SOURCES_SRTM3);
-        for (ElevationDataSource elevationDataSource : elevationDataSources) {
+        for (SrtmDataSource elevationDataSource : elevationDataSources) {
             if (!Files.exists(elevationDataSource.getDataDirectory())) {
                 Path path = elevationDataSource.getDataDirectory();
                 // May throw IOException
@@ -179,7 +179,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
      *
      * @return The elevation layer which displays contour lines and hillshade.
      */
-    public SRTMElevationLayer getElevationLayer() {
+    public SrtmElevationLayer getElevationLayer() {
         return elevationLayer;
     }
 
@@ -278,9 +278,9 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
      */
     public void reconfigureElevationDataProvider() {
         // SRTM file type to read and download
-        SRTMTile.Type srtmType = ElevationPreferences.getSRTMType();
+        SrtmTile.Type srtmType = ElevationPreferences.getSRTMType();
         // Elevation interpolation method
-        SRTMTile.Interpolation elevationInterpolation = ElevationPreferences.getElevationInterpolation();
+        SrtmTile.Interpolation elevationInterpolation = ElevationPreferences.getElevationInterpolation();
         // Maximum size of the SRTM tile cache
         int cacheSizeLimit = ElevationPreferences.getRAMCacheSizeLimit();
         // Auto-download of SRTM files
@@ -307,16 +307,16 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
         elevationDataProvider.setCacheSizeLimit(cacheSizeLimit);
         elevationDataProvider.setAutoDownloadEnabled(elevationAutoDownloadEnabled);
         if (elevationAutoDownloadEnabled) {
-            SRTMFileDownloader.AuthType authType = ElevationPreferences.getElevationServerAuthType();
-            if (authType == SRTMFileDownloader.AuthType.BASIC) {
+            SrtmFileDownloader.AuthType authType = ElevationPreferences.getElevationServerAuthType();
+            if (authType == SrtmFileDownloader.AuthType.BASIC) {
                 elevationDataProvider.getSRTMFileDownloader().setPasswordAuthentication(
                         ElevationPreferences.lookupEarthdataCredentials(), ElevationPreferences.EARTHDATA_SSO_HOST);
-            } else if (authType == SRTMFileDownloader.AuthType.BEARER_TOKEN) {
+            } else if (authType == SrtmFileDownloader.AuthType.BEARER_TOKEN) {
                 elevationDataProvider.getSRTMFileDownloader()
                         .setOAuthToken(ElevationPreferences.lookupEarthdataOAuthToken());
             }
             if (srtmFileDownloadErrorDialog == null) {
-                srtmFileDownloadErrorDialog = new SRTMFileDownloadErrorDialog(
+                srtmFileDownloadErrorDialog = new SrtmFileDownloadErrorDialog(
                         elevationDataProvider.getSRTMFileDownloader());
             }
         } else {
@@ -350,7 +350,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                     int azimuth = ElevationPreferences.getHillshadeAzimuth();
                     short lowerCutoff = ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION;
                     short upperCutoff = ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION;
-                    elevationLayer = new SRTMElevationLayer(elevationDataProvider, renderingLimit, isostep, strokeWidth,
+                    elevationLayer = new SrtmElevationLayer(elevationDataProvider, renderingLimit, isostep, strokeWidth,
                             coloringScheme, color, altitude, azimuth, lowerCutoff, upperCutoff);
                     MainApplication.getLayerManager().addLayer(elevationLayer);
                 } else {

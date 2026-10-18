@@ -8,8 +8,8 @@ import java.nio.file.StandardCopyOption;
 
 import org.openstreetmap.josm.tools.Logging;
 
-import hhtznr.josm.plugins.elevation.data.SRTMTile;
-import hhtznr.josm.plugins.elevation.io.SRTMFiles;
+import hhtznr.josm.plugins.elevation.data.srtm.SrtmTile;
+import hhtznr.josm.plugins.elevation.io.SrtmFiles;
 
 /**
  * Class {@code Migration} provides methods for data migration for changes,
@@ -59,8 +59,8 @@ public class Migration {
         if (migrateSRTM1) {
             try (DirectoryStream<Path>stream = Files.newDirectoryStream(ElevationPreferences.LEGACY_SRTM_DIRECTORY)) {
                 for (Path file : stream) {
-                    if (Files.isRegularFile(file) && SRTMFiles.getSRTMTileTypeFromEarthdataFileName(
-                            file.getFileName().toString()) == SRTMTile.Type.SRTM1) {
+                    if (Files.isRegularFile(file) && SrtmFiles.getSRTMTileTypeFromEarthdataFileName(
+                            file.getFileName().toString()) == SrtmTile.Type.SRTM1) {
                         Path targetPath = ElevationPreferences.DEFAULT_EARTHDATA_SRTM1_DIRECTORY
                                 .resolve(file.getFileName());
                         Files.move(file, targetPath, StandardCopyOption.REPLACE_EXISTING);
@@ -77,8 +77,8 @@ public class Migration {
         if (migrateSRTM3) {
             try (DirectoryStream<Path>stream = Files.newDirectoryStream(ElevationPreferences.LEGACY_SRTM_DIRECTORY)) {
                 for (Path file : stream) {
-                    if (Files.isRegularFile(file) && SRTMFiles.getSRTMTileTypeFromEarthdataFileName(
-                            file.getFileName().toString()) == SRTMTile.Type.SRTM3) {
+                    if (Files.isRegularFile(file) && SrtmFiles.getSRTMTileTypeFromEarthdataFileName(
+                            file.getFileName().toString()) == SrtmTile.Type.SRTM3) {
                         Path targetPath = ElevationPreferences.DEFAULT_EARTHDATA_SRTM3_DIRECTORY
                                 .resolve(file.getFileName());
                         Files.move(file, targetPath, StandardCopyOption.REPLACE_EXISTING);

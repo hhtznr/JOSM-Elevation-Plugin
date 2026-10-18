@@ -10,10 +10,10 @@ import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.ElevationGrid;
 import hhtznr.josm.plugins.elevation.data.ElevationGridException;
-import hhtznr.josm.plugins.elevation.data.LatLonEle;
-import hhtznr.josm.plugins.elevation.data.SRTMTile;
-import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
-import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
+import hhtznr.josm.plugins.elevation.data.coordinate.LatLonEle;
+import hhtznr.josm.plugins.elevation.data.srtm.SrtmTile;
+import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGrid;
+import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGridView;
 import hhtznr.josm.plugins.elevation.util.IncrementalNumberedNameCreator;
 
 /**
@@ -214,14 +214,14 @@ public class KeyColFinder extends AbstractElevationTool {
 
         // TODO: Resolve this temporary compatibility workaround
         ElevationGrid elevationGrid = getElevationGrid();
-        if (!(elevationGrid instanceof SRTMTileGrid)) {
+        if (!(elevationGrid instanceof SrtmTileGrid)) {
             Logging.error(
                     "Elevation: Cannot establish key col search: Key col finder currently only works with SRTMTileGrid, not with "
                             + elevationGrid.getClass().toString());
             return null;
         }
-        SRTMTileGrid srtmTileGrid = (SRTMTileGrid) elevationGrid;
-        SRTMTileGridView tileGridView;
+        SrtmTileGrid srtmTileGrid = (SrtmTileGrid) elevationGrid;
+        SrtmTileGridView tileGridView;
         try {
             tileGridView = srtmTileGrid.getView(getBounds());
         } catch (ElevationGridException e) {
@@ -261,7 +261,7 @@ public class KeyColFinder extends AbstractElevationTool {
             for (int lonIndex = 0; lonIndex < width; lonIndex++) {
                 short elevation = tileGridView.getElevationAsShort(latIndex, lonIndex);
                 // Skip SRTM data voids
-                if (elevation == SRTMTile.SRTM_DATA_VOID) {
+                if (elevation == SrtmTile.SRTM_DATA_VOID) {
                     continue;
                 }
                 validCount++;
@@ -296,7 +296,7 @@ public class KeyColFinder extends AbstractElevationTool {
             }
             for (int lonIndex = 0; lonIndex < width; lonIndex++) {
                 short elevation = tileGridView.getElevationAsShort(latIndex, lonIndex);
-                if (elevation == SRTMTile.SRTM_DATA_VOID) {
+                if (elevation == SrtmTile.SRTM_DATA_VOID) {
                     continue;
                 }
                 histogramCounts[elevation - minElevation]++;
@@ -322,7 +322,7 @@ public class KeyColFinder extends AbstractElevationTool {
             int latOffset = latIndex * width;
             for (int lonIndex = 0; lonIndex < width; lonIndex++) {
                 short elevation = tileGridView.getElevationAsShort(latIndex, lonIndex);
-                if (elevation == SRTMTile.SRTM_DATA_VOID) {
+                if (elevation == SrtmTile.SRTM_DATA_VOID) {
                     continue;
                 }
                 // Determine the bucket
@@ -362,11 +362,11 @@ public class KeyColFinder extends AbstractElevationTool {
         // If peaks land on void cells, find nearest non-void cell as a fallback.
         int peakAIndexLinear = peakAIndices[0] * width + peakAIndices[1];
         int peakBIndexLinear = peakBIndices[0] * width + peakBIndices[1];
-        if (tileGridView.getElevationAsShort(peakAIndices[0], peakAIndices[1]) == SRTMTile.SRTM_DATA_VOID) {
+        if (tileGridView.getElevationAsShort(peakAIndices[0], peakAIndices[1]) == SrtmTile.SRTM_DATA_VOID) {
             peakAIndexLinear = findNearestNonVoidIndex(tileGridView, peakAIndices[0], peakAIndices[1]);
         }
 
-        if (tileGridView.getElevationAsShort(peakBIndices[0], peakBIndices[1]) == SRTMTile.SRTM_DATA_VOID) {
+        if (tileGridView.getElevationAsShort(peakBIndices[0], peakBIndices[1]) == SrtmTile.SRTM_DATA_VOID) {
             peakBIndexLinear = findNearestNonVoidIndex(tileGridView, peakBIndices[0], peakBIndices[1]);
         }
 
@@ -440,11 +440,11 @@ public class KeyColFinder extends AbstractElevationTool {
      * square-ring search. Returns linear index (row * width + col) or -1 if no
      * non-void cell is found within the raster.
      */
-    private int findNearestNonVoidIndex(SRTMTileGridView tileGridView, int latIndex, int lonIndex) {
+    private int findNearestNonVoidIndex(SrtmTileGridView tileGridView, int latIndex, int lonIndex) {
         if (latIndex < 0 || lonIndex < 0 || latIndex >= height || lonIndex >= width) {
             return -1;
         }
-        if (tileGridView.getElevationAsShort(latIndex, lonIndex) != SRTMTile.SRTM_DATA_VOID) {
+        if (tileGridView.getElevationAsShort(latIndex, lonIndex) != SrtmTile.SRTM_DATA_VOID) {
             return latIndex * width + lonIndex;
         }
 
@@ -459,7 +459,7 @@ public class KeyColFinder extends AbstractElevationTool {
                 if (candidateLatIndex >= 0 && candidateLonIndex >= 0 && candidateLatIndex < height
                         && candidateLonIndex < width) {
                     if (tileGridView.getElevationAsShort(candidateLatIndex,
-                            candidateLonIndex) != SRTMTile.SRTM_DATA_VOID) {
+                            candidateLonIndex) != SrtmTile.SRTM_DATA_VOID) {
                         return candidateLatIndex * width + candidateLonIndex;
                     }
                 }
@@ -471,7 +471,7 @@ public class KeyColFinder extends AbstractElevationTool {
                     if (candidateLatIndex >= 0 && candidateLonIndex >= 0 && candidateLatIndex < height
                             && candidateLonIndex < width) {
                         if (tileGridView.getElevationAsShort(candidateLatIndex,
-                                candidateLonIndex) != SRTMTile.SRTM_DATA_VOID) {
+                                candidateLonIndex) != SrtmTile.SRTM_DATA_VOID) {
                             return candidateLatIndex * width + candidateLonIndex;
                         }
                     }

@@ -3,6 +3,8 @@ package hhtznr.josm.plugins.elevation.data;
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
 
+import hhtznr.josm.plugins.elevation.data.coordinate.LatLonEle;
+
 /**
  * Interface for different types of elevation grids, where different types of
  * elevation data and therefore different approaches to evaluate it are used.

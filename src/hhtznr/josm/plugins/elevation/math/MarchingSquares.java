@@ -13,8 +13,8 @@ import hhtznr.josm.plugins.elevation.ElevationPlugin;
 import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.concurrent.ParallelExecutorService;
 import hhtznr.josm.plugins.elevation.data.ElevationGridView;
-import hhtznr.josm.plugins.elevation.data.LatLonLine;
-import hhtznr.josm.plugins.elevation.gui.ContourLines;
+import hhtznr.josm.plugins.elevation.data.coordinate.LatLonLine;
+import hhtznr.josm.plugins.elevation.gui.paintables.ContourLines;
 
 /**
  * Implementation of the Marching Squares algorithm to compute contour lines

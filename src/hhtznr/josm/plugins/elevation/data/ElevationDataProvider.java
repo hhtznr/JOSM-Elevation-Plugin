@@ -18,12 +18,24 @@ import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
 import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
-import hhtznr.josm.plugins.elevation.gui.ContourLines;
-import hhtznr.josm.plugins.elevation.gui.ElevationRaster;
-import hhtznr.josm.plugins.elevation.gui.HillshadeImageTile;
-import hhtznr.josm.plugins.elevation.gui.LowestAndHighestPoints;
-import hhtznr.josm.plugins.elevation.gui.MapViewElevationDataConsumer;
-import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
+import hhtznr.josm.plugins.elevation.data.coordinate.LatLonEle;
+import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffIndex;
+import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffIndexListener;
+import hhtznr.josm.plugins.elevation.data.srtm.SrtmDataSource;
+import hhtznr.josm.plugins.elevation.data.srtm.SrtmTile;
+import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileCache;
+import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileCacheEntry;
+import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileCacheListener;
+import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileConsumer;
+import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGrid;
+import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGridLease;
+import hhtznr.josm.plugins.elevation.data.srtm.SingleSrtmTileConsumer;
+import hhtznr.josm.plugins.elevation.gui.layers.MapViewElevationDataConsumer;
+import hhtznr.josm.plugins.elevation.gui.paintables.ContourLines;
+import hhtznr.josm.plugins.elevation.gui.paintables.ElevationRaster;
+import hhtznr.josm.plugins.elevation.gui.paintables.HillshadeImageTile;
+import hhtznr.josm.plugins.elevation.gui.paintables.LowestAndHighestPoints;
+import hhtznr.josm.plugins.elevation.io.SrtmFileDownloader;
 
 /**
  * Class {@code ElevationDataProvider} provides SRTM tiles and elevation data
@@ -32,19 +44,19 @@ import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
  *
  * @author Harald Hetzner
  */
-public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCacheListener {
+public class ElevationDataProvider implements GeoTiffIndexListener, SrtmTileCacheListener {
 
     /**
      * This elevation data provider's in-memory cache where SRTM tiles read from
      * file are stored.
      */
-    private final SRTMTileCache tileCache;
+    private final SrtmTileCache tileCache;
 
     private final GeoTiffIndex geoTiffIndex;
 
-    private final Set<SRTMTileGrid> activeTileGrids = ConcurrentHashMap.newKeySet();
+    private final Set<SrtmTileGrid> activeTileGrids = ConcurrentHashMap.newKeySet();
 
-    private SRTMTile.Interpolation eleInterpolation;
+    private SrtmTile.Interpolation eleInterpolation;
 
     private final LinkedList<ElevationDataProviderListener> listeners = new LinkedList<>();
 
@@ -69,9 +81,9 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
      * @param autoDownloadEnabled  If {@code true} automatic downloading of missing
      *                             SRTM tiles will be attempted.
      */
-    public ElevationDataProvider(List<ElevationDataSource> elevationDataSources, int ramCacheMaxSize,
-            SRTMTile.Type srtmType, SRTMTile.Interpolation eleInterpolation, boolean autoDownloadEnabled) {
-        tileCache = new SRTMTileCache(elevationDataSources, ramCacheMaxSize);
+    public ElevationDataProvider(List<SrtmDataSource> elevationDataSources, int ramCacheMaxSize,
+            SrtmTile.Type srtmType, SrtmTile.Interpolation eleInterpolation, boolean autoDownloadEnabled) {
+        tileCache = new SrtmTileCache(elevationDataSources, ramCacheMaxSize);
         tileCache.addSRTMTileCacheListener(this);
         setSRTMType(srtmType);
         this.eleInterpolation = eleInterpolation;
@@ -94,7 +106,7 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
     public List<String[]> getTileGridInfo() {
         List<String[]> infoList = new ArrayList<>();
         synchronized (activeTileGrids) {
-            for (SRTMTileGrid tileGrid : activeTileGrids) {
+            for (SrtmTileGrid tileGrid : activeTileGrids) {
                 String[] tileGridInfo = new String[2];
                 tileGridInfo[0] = tileGrid.getName();
                 tileGridInfo[1] = tileGrid.getInfoString();
@@ -120,7 +132,7 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
      *
      * @param listener The listener to add.
      */
-    public void addTileCacheListener(SRTMTileCacheListener listener) {
+    public void addTileCacheListener(SrtmTileCacheListener listener) {
         tileCache.addSRTMTileCacheListener(listener);
     }
 
@@ -129,7 +141,7 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
      *
      * @param listener The listener to remove.
      */
-    public void removeTileCacheListener(SRTMTileCacheListener listener) {
+    public void removeTileCacheListener(SrtmTileCacheListener listener) {
         tileCache.removeSRTMTileCacheListener(listener);
     }
 
@@ -149,7 +161,7 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
      *
      * @return The list of elevation data sources.
      */
-    public List<ElevationDataSource> getElevationDataSources() {
+    public List<SrtmDataSource> getElevationDataSources() {
         return tileCache.getElevationDataSources();
     }
 
@@ -158,7 +170,7 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
      *
      * @return The SRTM type.
      */
-    public SRTMTile.Type getSRTMType() {
+    public SrtmTile.Type getSRTMType() {
         return tileCache.getSRTMType();
     }
 
@@ -170,9 +182,9 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
      *
      * @param type The SRTM type to set.
      */
-    public boolean setSRTMType(SRTMTile.Type type) {
+    public boolean setSRTMType(SrtmTile.Type type) {
         synchronized (activeTileGrids) {
-            SRTMTile.Type oldType = getSRTMType();
+            SrtmTile.Type oldType = getSRTMType();
             // Only sets the type of the new type is not equal to the old type
             if (tileCache.setSRTMType(type)) {
                 activeTileGrids.clear();
@@ -192,7 +204,7 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
      *
      * @return The type of elevation interpolation.
      */
-    public SRTMTile.Interpolation getElevationInterpolation() {
+    public SrtmTile.Interpolation getElevationInterpolation() {
         return eleInterpolation;
     }
 
@@ -201,14 +213,14 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
      *
      * @param eleInterpolation The type of elevation interpolation to set.
      */
-    public void setElevationInterpolation(SRTMTile.Interpolation eleInterpolation) {
+    public void setElevationInterpolation(SrtmTile.Interpolation eleInterpolation) {
         this.eleInterpolation = eleInterpolation;
     }
 
     /**
      * Returns the elevation at the given location immediately, if an appropriate
      * SRTM file is available and the data is already loaded into memory. Otherwise,
-     * a {@link LatLonEle} with elevation set to {@link SRTMTile#SRTM_DATA_VOID
+     * a {@link LatLonEle} with elevation set to {@link SrtmTile#SRTM_DATA_VOID
      * SRTMTile.SRTM_DATA_VOID} is returned. If interpolation is disabled, the
      * raster location that is closest to the provided location and the
      * corresponding elevation is returned. Otherwise, the elevation is interpolated
@@ -219,8 +231,8 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
      *         coordinate (interpolation disabled) and the corresponding elevation.
      */
     public LatLonEle getLatLonEleNoWait(ILatLon latLon) {
-        String tileID = SRTMTile.getTileID(latLon);
-        Optional<SRTMTile> optionalTile = tileCache.getTileIfPresent(tileID);
+        String tileID = SrtmTile.getTileID(latLon);
+        Optional<SrtmTile> optionalTile = tileCache.getTileIfPresent(tileID);
         return optionalTile.map(srtmTile -> srtmTile.getLatLonEle(latLon, eleInterpolation))
                 .orElse(new LatLonEle(latLon));
     }
@@ -243,12 +255,12 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
     public LatLonEle getLatLonEleOrWait(ILatLon latLon) throws AsyncOperationException {
         // Calls ElevationDataProvider.getTileCacheEntryFor()
         // May throw CancellationException
-        SingleSRTMTileConsumer tileConsumer = new SingleSRTMTileConsumer(this, latLon);
+        SingleSrtmTileConsumer tileConsumer = new SingleSrtmTileConsumer(this, latLon);
 
-        SRTMTileCacheEntry entry = tileConsumer.getCacheEntry();
+        SrtmTileCacheEntry entry = tileConsumer.getCacheEntry();
         try {
             // may throw CancellationException, ExecutionException and InterruptedException
-            SRTMTile srtmTile = entry.getTileOrWait();
+            SrtmTile srtmTile = entry.getTileOrWait();
             return srtmTile.getLatLonEle(latLon, eleInterpolation);
         } finally {
             tileConsumer.considerDispose();
@@ -260,9 +272,9 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
      * matching the bounds, which is already used by other consumers, is returned.
      * <br>
      * Note: An {@link ElevationDataConsumer} needs to register itself to the
-     * returned grid. This method calls {@link SRTMTileGrid#acquire()} to protect
-     * the {@link SRTMTileGrid} from disposal. The code receiving the returned
-     * {@link SRTMTileGrid} needs to call {@link SRTMTileGrid#release()} after
+     * returned grid. This method calls {@link SrtmTileGrid#acquire()} to protect
+     * the {@link SrtmTileGrid} from disposal. The code receiving the returned
+     * {@link SrtmTileGrid} needs to call {@link SrtmTileGrid#release()} after
      * adding the {@link ElevationDataConsumer}.
      *
      * This method should only be used if {@link #getGridMatching(Bounds)} cannot be
@@ -275,11 +287,11 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
      *                                 completed exceptionally or canceled or the
      *                                 thread was interrupted.
      */
-    public synchronized SRTMTileGrid getGridMatching(Bounds bounds) throws AsyncOperationException {
-        SRTMTileGrid tileGrid = null;
-        SRTMTileGrid nextGrid;
+    public synchronized SrtmTileGrid getGridMatching(Bounds bounds) throws AsyncOperationException {
+        SrtmTileGrid tileGrid = null;
+        SrtmTileGrid nextGrid;
         synchronized (activeTileGrids) {
-            Iterator<SRTMTileGrid> iterator = activeTileGrids.iterator();
+            Iterator<SrtmTileGrid> iterator = activeTileGrids.iterator();
             while (iterator.hasNext()) {
                 nextGrid = iterator.next();
                 // Successfully calling acquire() blocks grid disposal until release() is called
@@ -289,7 +301,7 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
             }
             if (tileGrid == null) {
                 // May throw AsyncOperationException
-                tileGrid = new SRTMTileGrid(this, bounds);
+                tileGrid = new SrtmTileGrid(this, bounds);
                 // Successfully calling acquire() blocks grid disposal until release() is called
                 tileGrid.acquire();
                 activeTileGrids.add(tileGrid);
@@ -308,8 +320,8 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
      *                                 completed exceptionally or canceled or the
      *                                 thread was interrupted.
      */
-    public SRTMTileGridLease getGridMatchingLease(Bounds bounds) throws AsyncOperationException {
-        return new SRTMTileGridLease(getGridMatching(bounds));
+    public SrtmTileGridLease getGridMatchingLease(Bounds bounds) throws AsyncOperationException {
+        return new SrtmTileGridLease(getGridMatching(bounds));
     }
 
     /**
@@ -323,8 +335,8 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
      *         returned if not all SRTM tiles are cached yet.
      */
     public LowestAndHighestPoints getLowestAndHighestPoints(Bounds bounds) {
-        try (SRTMTileGridLease lease = getGridMatchingLease(bounds)) {
-            SRTMTileGrid tileGrid = lease.getTileGrid();
+        try (SrtmTileGridLease lease = getGridMatchingLease(bounds)) {
+            SrtmTileGrid tileGrid = lease.getTileGrid();
             LowestAndHighestPoints points = tileGrid.getView(bounds).getLowestAndHighestPoints();
             return points;
         } catch (AsyncOperationException | ElevationGridException e) {
@@ -344,8 +356,8 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
      *         {@code null} if insufficient cached elevation data is available.
      */
     public ElevationRaster getElevationRaster(Bounds bounds) {
-        try (SRTMTileGridLease lease = getGridMatchingLease(bounds)) {
-            SRTMTileGrid tileGrid = lease.getTileGrid();
+        try (SrtmTileGridLease lease = getGridMatchingLease(bounds)) {
+            SrtmTileGrid tileGrid = lease.getTileGrid();
             ElevationRaster raster = tileGrid.getView(bounds).getElevationRaster();
             return raster;
         } catch (AsyncOperationException | ElevationGridException e) {
@@ -373,10 +385,10 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
      */
     public ContourLines getContourLines(Bounds bounds, int isostep, int lowerCutoffElevation,
             int upperCutoffElevation) {
-        Bounds renderingBounds = SRTMTileGrid.getRenderingBoundsScaledByRasterStep(bounds,
+        Bounds renderingBounds = SrtmTileGrid.getRenderingBoundsScaledByRasterStep(bounds,
                 ContourLines.BOUNDS_SCALE_RASTER_STEP, getSRTMType());
-        try (SRTMTileGridLease lease = getGridMatchingLease(renderingBounds)) {
-            SRTMTileGrid tileGrid = lease.getTileGrid();
+        try (SrtmTileGridLease lease = getGridMatchingLease(renderingBounds)) {
+            SrtmTileGrid tileGrid = lease.getTileGrid();
             ContourLines contourLines = tileGrid.getView(renderingBounds).getContourLines(isostep, lowerCutoffElevation,
                     upperCutoffElevation);
             return contourLines;
@@ -408,10 +420,10 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
      */
     public HillshadeImageTile getHillshadeImageTile(Bounds bounds, double altitudeDeg, double azimuthDeg,
             boolean withPerimeter) {
-        Bounds renderingBounds = SRTMTileGrid.getRenderingBoundsScaledByRasterStep(bounds,
+        Bounds renderingBounds = SrtmTileGrid.getRenderingBoundsScaledByRasterStep(bounds,
                 ContourLines.BOUNDS_SCALE_RASTER_STEP, getSRTMType());
-        try (SRTMTileGridLease lease = getGridMatchingLease(renderingBounds)) {
-            SRTMTileGrid tileGrid = lease.getTileGrid();
+        try (SrtmTileGridLease lease = getGridMatchingLease(renderingBounds)) {
+            SrtmTileGrid tileGrid = lease.getTileGrid();
             HillshadeImageTile hillshade = tileGrid.getView(renderingBounds).getHillshadeImageTile(altitudeDeg,
                     azimuthDeg, withPerimeter);
             return hillshade;
@@ -471,7 +483,7 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
      * @param consumer The SRTM tile consumer for which the tiles are to be cached.
      */
     private void cacheSRTMTiles(double latSouth, double lonWest, double latNorth, double lonEast,
-            SRTMTileConsumer consumer) {
+            SrtmTileConsumer consumer) {
         int intLatSouth = (int) Math.floor(latSouth);
         int intLonWest = (int) Math.floor(lonWest);
         int intLatNorth = (int) Math.floor(latNorth);
@@ -485,7 +497,7 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
      * @param bounds   The map bounds.
      * @param consumer The SRTM tile consumer for which the tiles are to be cached.
      */
-    public void cacheSRTMTiles(Bounds bounds, SRTMTileConsumer consumer) {
+    public void cacheSRTMTiles(Bounds bounds, SrtmTileConsumer consumer) {
         double latSouth = bounds.getMinLat();
         double lonWest = bounds.getMinLon();
         double latNorth = bounds.getMaxLat();
@@ -505,7 +517,7 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
      *                                 completed exceptionally or canceled or the
      *                                 thread was interrupted.
      */
-    public SRTMTile getSRTMTileOrWait(String srtmTileID, SRTMTileConsumer consumer) throws AsyncOperationException {
+    public SrtmTile getSRTMTileOrWait(String srtmTileID, SrtmTileConsumer consumer) throws AsyncOperationException {
         return tileCache.getTileOrWait(srtmTileID, consumer);
     }
 
@@ -516,11 +528,11 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
      * @param srtmTileID The ID of the SRTM tile to retrieve.
      * @return An {@code Optional} holding the SRTM tile or being empty.
      */
-    public Optional<SRTMTile> getSRTMTileIfPresent(String srtmTileID) {
+    public Optional<SrtmTile> getSRTMTileIfPresent(String srtmTileID) {
         return tileCache.getTileIfPresent(srtmTileID);
     }
 
-    public SRTMTileCacheEntry getSRTMTileCacheEntryFor(String srtmTileID, SRTMTileConsumer consumer)
+    public SrtmTileCacheEntry getSRTMTileCacheEntryFor(String srtmTileID, SrtmTileConsumer consumer)
             throws CancellationException {
         return tileCache.getTileCacheEntryFor(srtmTileID, consumer);
     }
@@ -550,7 +562,7 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
      * @return The SRTM file downloader or {@code null} if auto-download is not
      *         enabled.
      */
-    public SRTMFileDownloader getSRTMFileDownloader() {
+    public SrtmFileDownloader getSRTMFileDownloader() {
         return tileCache.getSRTMFileDownloader();
     }
 
@@ -591,11 +603,11 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
     }
 
     @Override
-    public void srtmTileCached(SRTMTile tile, SRTMTileCacheEntry.Status status) {
+    public void srtmTileCached(SrtmTile tile, SrtmTileCacheEntry.Status status) {
         // Check if all SRTM tiles of most recently requested tile grid are cached now
         // If so, inform listeners
         synchronized (activeTileGrids) {
-            for (SRTMTileGrid tileGrid : activeTileGrids) {
+            for (SrtmTileGrid tileGrid : activeTileGrids) {
                 if (!tileGrid.isDisposed() && tileGrid.contains(tile) && tileGrid.areAllTilesCached()) {
                     synchronized (listeners) {
                         for (ElevationDataProviderListener listener : listeners) {
@@ -622,16 +634,16 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCach
      *
      * @param consumer The SRTM tile consumer to remove.
      */
-    protected void removeSRTMTileConsumer(SRTMTileConsumer consumer) {
+    public void removeSRTMTileConsumer(SrtmTileConsumer consumer) {
         synchronized (consumer) {
-            if (consumer instanceof SRTMTileGrid) {
-                SRTMTileGrid tileGrid = (SRTMTileGrid) consumer;
+            if (consumer instanceof SrtmTileGrid) {
+                SrtmTileGrid tileGrid = (SrtmTileGrid) consumer;
                 activeTileGrids.remove(tileGrid);
             }
             synchronized (tileCache) {
-                List<SRTMTileCacheEntry> cacheEntries = consumer.getCacheEntryList();
+                List<SrtmTileCacheEntry> cacheEntries = consumer.getCacheEntryList();
                 synchronized (cacheEntries) {
-                    for (SRTMTileCacheEntry entry : cacheEntries) {
+                    for (SrtmTileCacheEntry entry : cacheEntries) {
                         tileCache.removeSRTMTileConsumer(entry, consumer);
                     }
                 }

@@ -16,11 +16,11 @@ import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.ElevationGrid;
 import hhtznr.josm.plugins.elevation.data.ElevationGridException;
-import hhtznr.josm.plugins.elevation.data.LatLonEle;
-import hhtznr.josm.plugins.elevation.data.LatLonLine;
-import hhtznr.josm.plugins.elevation.data.SRTMTileGrid;
-import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
-import hhtznr.josm.plugins.elevation.gui.ContourLines;
+import hhtznr.josm.plugins.elevation.data.coordinate.LatLonEle;
+import hhtznr.josm.plugins.elevation.data.coordinate.LatLonLine;
+import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGrid;
+import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGridView;
+import hhtznr.josm.plugins.elevation.gui.paintables.ContourLines;
 import hhtznr.josm.plugins.elevation.util.IncrementalNumberedNameCreator;
 
 /**
@@ -96,14 +96,14 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
         Bounds searchBounds = getBounds();
         // TODO: Resolve this temporary compatibility workaround
         ElevationGrid elevationGrid = getElevationGrid();
-        if (!(elevationGrid instanceof SRTMTileGrid)) {
+        if (!(elevationGrid instanceof SrtmTileGrid)) {
             Logging.error(
                     "Elevation: Cannot establish topographic prominence search: Topographic prominence finder currently only works with SRTMTileGrid, not with "
                             + elevationGrid.getClass().toString());
             return null;
         }
-        SRTMTileGrid srtmTileGrid = (SRTMTileGrid) elevationGrid;
-        SRTMTileGridView tileGridView;
+        SrtmTileGrid srtmTileGrid = (SrtmTileGrid) elevationGrid;
+        SrtmTileGridView tileGridView;
         try {
             tileGridView = srtmTileGrid.getView(searchBounds);
         } catch (ElevationGridException e) {

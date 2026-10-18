@@ -15,7 +15,7 @@ import org.openstreetmap.josm.data.coor.ILatLon;
 import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.tools.Logging;
 
-import hhtznr.josm.plugins.elevation.data.SRTMTileGridView;
+import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGridView;
 
 /**
  * This class implements hill shading.
@@ -38,7 +38,7 @@ public class Hillshade {
      */
     public static final int MAX_HILLSHADE = 0;
 
-    private final SRTMTileGridView tileGridView;
+    private final SrtmTileGridView tileGridView;
     private Bounds bounds = null;
 
     private double zenithRad;
@@ -64,7 +64,7 @@ public class Hillshade {
      * @param azimuthDeg   The azimuth is the angular direction of the sun, measured
      *                     from north in clockwise degrees from 0 to 360.
      */
-    public Hillshade(SRTMTileGridView tileGridView, double altitudeDeg, double azimuthDeg) {
+    public Hillshade(SrtmTileGridView tileGridView, double altitudeDeg, double azimuthDeg) {
         this.tileGridView = tileGridView;
         // Will be fine-adjusted once getHillshadeImage() was called
         bounds = tileGridView.getBounds();

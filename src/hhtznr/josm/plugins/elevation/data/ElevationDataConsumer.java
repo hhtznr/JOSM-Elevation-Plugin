@@ -2,9 +2,12 @@ package hhtznr.josm.plugins.elevation.data;
 
 import org.openstreetmap.josm.tools.Logging;
 
+import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileConsumer;
+import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGrid;
+
 /**
  * This class implements an abstract elevation data consumer which consumes
- * elevation data from an {@link SRTMTileGrid}. <br>
+ * elevation data from an {@link SrtmTileGrid}. <br>
  * This class provides the instance method {@link #dispose()} which shall be
  * called as soon as an instance of the elevation data consumer is no longer
  * needed. It will unregister the consumer from the used tile grid. The tile
@@ -30,8 +33,8 @@ public abstract class ElevationDataConsumer {
     public ElevationDataConsumer(String name, ElevationGrid elevationGrid) {
         this.name = name;
         // TODO: Resolve this temporary compatibility workaround
-        if (elevationGrid instanceof SRTMTileConsumer) {
-            SRTMTileConsumer srtmTileConsumer = (SRTMTileConsumer) elevationGrid;
+        if (elevationGrid instanceof SrtmTileConsumer) {
+            SrtmTileConsumer srtmTileConsumer = (SrtmTileConsumer) elevationGrid;
             if (!srtmTileConsumer.addElevationDataConsumer(this)) {
                 throw new IllegalStateException("Cannot register " + name + " with an inactive tile grid.");
             }
@@ -86,8 +89,8 @@ public abstract class ElevationDataConsumer {
         }
 
         // TODO: Resolve this temporary compatibility workaround
-        if (newElevationGrid instanceof SRTMTileConsumer) {
-            SRTMTileConsumer newSrtmTileConsumer = (SRTMTileConsumer) newElevationGrid;
+        if (newElevationGrid instanceof SrtmTileConsumer) {
+            SrtmTileConsumer newSrtmTileConsumer = (SrtmTileConsumer) newElevationGrid;
             if (!newSrtmTileConsumer.addElevationDataConsumer(this)) {
                 throw new IllegalStateException("Cannot register " + name + " with an inactive tile grid.");
             }
@@ -97,8 +100,8 @@ public abstract class ElevationDataConsumer {
         elevationGrid = newElevationGrid;
 
         // TODO: Resolve this temporary compatibility workaround
-        if (oldElevationGrid instanceof SRTMTileConsumer) {
-            SRTMTileConsumer oldSrtmTileConsumer = (SRTMTileConsumer) oldElevationGrid;
+        if (oldElevationGrid instanceof SrtmTileConsumer) {
+            SrtmTileConsumer oldSrtmTileConsumer = (SrtmTileConsumer) oldElevationGrid;
             if (!oldSrtmTileConsumer.removeElevationDataConsumer(this)) {
                 Logging.warn("Elevation: " + name + " was not registered with its previous elevation grid "
                         + oldSrtmTileConsumer + ".");
@@ -127,8 +130,8 @@ public abstract class ElevationDataConsumer {
         }
 
         // TODO: Resolve this temporary compatibility workaround
-        if (gridToRelease != null && gridToRelease instanceof SRTMTileConsumer) {
-            SRTMTileConsumer srtmTileConsumerToRelease = (SRTMTileConsumer) gridToRelease;
+        if (gridToRelease != null && gridToRelease instanceof SrtmTileConsumer) {
+            SrtmTileConsumer srtmTileConsumerToRelease = (SrtmTileConsumer) gridToRelease;
             if (!srtmTileConsumerToRelease.removeElevationDataConsumer(this)) {
                 Logging.warn("Elevation: " + name + " was not registered with its tile grid during disposal.");
             }

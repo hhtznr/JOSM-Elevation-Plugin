@@ -22,12 +22,12 @@ import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.ColorHelper;
 import org.openstreetmap.josm.tools.Logging;
 
-import hhtznr.josm.plugins.elevation.data.Coloring;
-import hhtznr.josm.plugins.elevation.data.ElevationDataSource;
-import hhtznr.josm.plugins.elevation.data.GeoTiffIndex;
-import hhtznr.josm.plugins.elevation.data.SRTMTile;
-import hhtznr.josm.plugins.elevation.gui.GeoTiffEnvelopeLayer;
-import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
+import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffIndex;
+import hhtznr.josm.plugins.elevation.data.srtm.SrtmDataSource;
+import hhtznr.josm.plugins.elevation.data.srtm.SrtmTile;
+import hhtznr.josm.plugins.elevation.gui.layers.GeoTiffEnvelopeLayer;
+import hhtznr.josm.plugins.elevation.io.SrtmFileDownloader;
+import hhtznr.josm.plugins.elevation.util.Coloring;
 import jakarta.json.Json;
 import jakarta.json.JsonObjectBuilder;
 
@@ -108,7 +108,7 @@ public class ElevationPreferences {
     /**
      * Default property value for the SRTM type.
      */
-    private static final SRTMTile.Type DEFAULT_SRTM_TYPE = SRTMTile.Type.SRTM1;
+    private static final SrtmTile.Type DEFAULT_SRTM_TYPE = SrtmTile.Type.SRTM1;
 
     /**
      * Property key for defining the elevation interpolation method.
@@ -118,7 +118,7 @@ public class ElevationPreferences {
     /**
      * Default property value of the elevation interpolation method.
      */
-    private static final SRTMTile.Interpolation DEFAULT_ELEVATION_INTERPOLATION = SRTMTile.Interpolation.BILINEAR;
+    private static final SrtmTile.Interpolation DEFAULT_ELEVATION_INTERPOLATION = SrtmTile.Interpolation.BILINEAR;
 
     /**
      * Property key for size limit of the in-memory SRTM tile cache.
@@ -400,7 +400,7 @@ public class ElevationPreferences {
      * Default property value of the type of authentication at the elevation data
      * download server.
      */
-    public static final SRTMFileDownloader.AuthType DEFAULT_ELEVATION_SERVER_AUTH_TYPE = SRTMFileDownloader.AuthType.BEARER_TOKEN;
+    public static final SrtmFileDownloader.AuthType DEFAULT_ELEVATION_SERVER_AUTH_TYPE = SrtmFileDownloader.AuthType.BEARER_TOKEN;
 
     /**
      * Host name of the NASA Earthdata single sign-on server.
@@ -524,35 +524,35 @@ public class ElevationPreferences {
     /**
      * Data source object for NASA Earthdata SRTM1.
      */
-    public static final ElevationDataSource ELEVATION_DATA_SOURCE_EARTHDATA_SRTM1 = new ElevationDataSource(
-            "NASA Earthdata SRTM1", DEFAULT_EARTHDATA_SRTM1_DIRECTORY, SRTMTile.Type.SRTM1, SRTM1_SERVER_BASE_URL,
+    public static final SrtmDataSource ELEVATION_DATA_SOURCE_EARTHDATA_SRTM1 = new SrtmDataSource(
+            "NASA Earthdata SRTM1", DEFAULT_EARTHDATA_SRTM1_DIRECTORY, SrtmTile.Type.SRTM1, SRTM1_SERVER_BASE_URL,
             EARTHDATA_SSO_HOST, true);
 
     /**
      * Data source object for NASA Earthdata SRTM3.
      */
-    public static final ElevationDataSource ELEVATION_DATA_SOURCE_EARTHDATA_SRTM3 = new ElevationDataSource(
-            "NASA Earthdata SRTM3", DEFAULT_EARTHDATA_SRTM3_DIRECTORY, SRTMTile.Type.SRTM3, SRTM3_SERVER_BASE_URL,
+    public static final SrtmDataSource ELEVATION_DATA_SOURCE_EARTHDATA_SRTM3 = new SrtmDataSource(
+            "NASA Earthdata SRTM3", DEFAULT_EARTHDATA_SRTM3_DIRECTORY, SrtmTile.Type.SRTM3, SRTM3_SERVER_BASE_URL,
             EARTHDATA_SSO_HOST, true);
 
     /*
      * Data source object for Sonny's LiDAR DTM1.
      */
-    public static final ElevationDataSource ELEVATION_DATA_SOURCE_SONNY_LIDAR_DTM1 = new ElevationDataSource(
-            "Sonny's LiDAR DTM1", DEFAULT_SONNY_LIDAR_DTM1_DIRECTORY, SRTMTile.Type.SRTM1, SONNY_LIDAR_DTM1_BASE_URL,
+    public static final SrtmDataSource ELEVATION_DATA_SOURCE_SONNY_LIDAR_DTM1 = new SrtmDataSource(
+            "Sonny's LiDAR DTM1", DEFAULT_SONNY_LIDAR_DTM1_DIRECTORY, SrtmTile.Type.SRTM1, SONNY_LIDAR_DTM1_BASE_URL,
             null, false);
 
     /*
      * Data source object for Sonny's LiDAR DTM3.
      */
-    public static final ElevationDataSource ELEVATION_DATA_SOURCE_SONNY_LIDAR_DTM3 = new ElevationDataSource(
-            "Sonny's LiDAR DTM3", DEFAULT_SONNY_LIDAR_DTM3_DIRECTORY, SRTMTile.Type.SRTM3, SONNY_LIDAR_DTM3_BASE_URL,
+    public static final SrtmDataSource ELEVATION_DATA_SOURCE_SONNY_LIDAR_DTM3 = new SrtmDataSource(
+            "Sonny's LiDAR DTM3", DEFAULT_SONNY_LIDAR_DTM3_DIRECTORY, SrtmTile.Type.SRTM3, SONNY_LIDAR_DTM3_BASE_URL,
             null, false);
 
     /**
      * List of elevation data sources for SRM1 data.
      */
-    public static final List<ElevationDataSource> ELEVATION_DATA_SOURCES_SRTM1 = new LinkedList<>();
+    public static final List<SrtmDataSource> ELEVATION_DATA_SOURCES_SRTM1 = new LinkedList<>();
     static {
         ELEVATION_DATA_SOURCES_SRTM1.add(ELEVATION_DATA_SOURCE_SONNY_LIDAR_DTM1);
         ELEVATION_DATA_SOURCES_SRTM1.add(ELEVATION_DATA_SOURCE_EARTHDATA_SRTM1);
@@ -561,7 +561,7 @@ public class ElevationPreferences {
     /**
      * List of elevation data sources for SRTM3 data.
      */
-    public static final List<ElevationDataSource> ELEVATION_DATA_SOURCES_SRTM3 = new LinkedList<>();
+    public static final List<SrtmDataSource> ELEVATION_DATA_SOURCES_SRTM3 = new LinkedList<>();
     static {
         ELEVATION_DATA_SOURCES_SRTM3.add(ELEVATION_DATA_SOURCE_SONNY_LIDAR_DTM3);
         ELEVATION_DATA_SOURCES_SRTM3.add(ELEVATION_DATA_SOURCE_EARTHDATA_SRTM3);
@@ -611,8 +611,8 @@ public class ElevationPreferences {
      *
      * @return The SRTM type, {@code SRTM1} or {@code SRTM3}.
      */
-    public static SRTMTile.Type getSRTMType() {
-        return SRTMTile.Type.fromString(Config.getPref().get(SRTM_TYPE, DEFAULT_SRTM_TYPE.toString()));
+    public static SrtmTile.Type getSRTMType() {
+        return SrtmTile.Type.fromString(Config.getPref().get(SRTM_TYPE, DEFAULT_SRTM_TYPE.toString()));
     }
 
     /**
@@ -621,7 +621,7 @@ public class ElevationPreferences {
      * @param type The SRTM type.
      * @return {@code true} if the SRTM type has changed.
      */
-    public static boolean setSRTMType(SRTMTile.Type type) {
+    public static boolean setSRTMType(SrtmTile.Type type) {
         return Config.getPref().put(SRTM_TYPE, type.toString());
     }
 
@@ -630,8 +630,8 @@ public class ElevationPreferences {
      *
      * @return The method for interpolation of elevation values.
      */
-    public static SRTMTile.Interpolation getElevationInterpolation() {
-        return SRTMTile.Interpolation
+    public static SrtmTile.Interpolation getElevationInterpolation() {
+        return SrtmTile.Interpolation
                 .fromString(Config.getPref().get(ELEVATION_INTERPOLATION, DEFAULT_ELEVATION_INTERPOLATION.toString()));
     }
 
@@ -641,7 +641,7 @@ public class ElevationPreferences {
      * @param interpolation The interpolation type.
      * @return {@code true} if the interpolation type has changed.
      */
-    public static boolean setElevationInterpolation(SRTMTile.Interpolation interpolation) {
+    public static boolean setElevationInterpolation(SrtmTile.Interpolation interpolation) {
         return Config.getPref().put(ELEVATION_INTERPOLATION, interpolation.toString());
     }
 
@@ -938,8 +938,8 @@ public class ElevationPreferences {
      *
      * @return The type of authentication at the elevation data download server.
      */
-    public static SRTMFileDownloader.AuthType getElevationServerAuthType() {
-        return SRTMFileDownloader.AuthType.fromString(
+    public static SrtmFileDownloader.AuthType getElevationServerAuthType() {
+        return SrtmFileDownloader.AuthType.fromString(
                 Config.getPref().get(ELEVATION_SERVER_AUTH_TYPE, DEFAULT_ELEVATION_SERVER_AUTH_TYPE.toString()));
     }
 
@@ -951,7 +951,7 @@ public class ElevationPreferences {
      *                 server.
      * @return {@code true} if the value has changed.
      */
-    public static boolean setElevationServerAuthType(SRTMFileDownloader.AuthType authType) {
+    public static boolean setElevationServerAuthType(SrtmFileDownloader.AuthType authType) {
         return Config.getPref().put(ELEVATION_SERVER_AUTH_TYPE, authType.toString());
     }
 
@@ -1153,8 +1153,8 @@ public class ElevationPreferences {
      *
      * @return The elevation data sources.
      */
-    public static List<ElevationDataSource> getElevationDataSources() {
-        if (getSRTMType() == SRTMTile.Type.SRTM1) {
+    public static List<SrtmDataSource> getElevationDataSources() {
+        if (getSRTMType() == SrtmTile.Type.SRTM1) {
             return ELEVATION_DATA_SOURCES_SRTM1;
         }
         return ELEVATION_DATA_SOURCES_SRTM3;

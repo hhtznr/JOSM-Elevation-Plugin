@@ -3,7 +3,8 @@ package hhtznr.josm.plugins.elevation.data;
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
 
-import hhtznr.josm.plugins.elevation.gui.LowestAndHighestPoints;
+import hhtznr.josm.plugins.elevation.data.coordinate.LatLonEle;
+import hhtznr.josm.plugins.elevation.gui.paintables.LowestAndHighestPoints;
 
 /**
  * Interface for views on different types of elevation grids, where the

@@ -2,8 +2,8 @@ package hhtznr.josm.plugins.elevation.math;
 
 import org.openstreetmap.josm.data.coor.ILatLon;
 
-import hhtznr.josm.plugins.elevation.data.LatLonEle;
-import hhtznr.josm.plugins.elevation.data.SRTMTile;
+import hhtznr.josm.plugins.elevation.data.coordinate.LatLonEle;
+import hhtznr.josm.plugins.elevation.data.srtm.SrtmTile;
 
 /**
  * This class implements general bilinear interpolation of a function value in
@@ -72,8 +72,8 @@ public class BiLinearInterpolation {
      */
     public static double interpolate(LatLonEle southWest, LatLonEle northWest, LatLonEle southEast, LatLonEle northEast,
             ILatLon latLon) {
-        if (southWest.ele() == SRTMTile.SRTM_DATA_VOID || northWest.ele() == SRTMTile.SRTM_DATA_VOID
-                || southEast.ele() == SRTMTile.SRTM_DATA_VOID || northEast.ele() == SRTMTile.SRTM_DATA_VOID)
+        if (southWest.ele() == SrtmTile.SRTM_DATA_VOID || northWest.ele() == SrtmTile.SRTM_DATA_VOID
+                || southEast.ele() == SrtmTile.SRTM_DATA_VOID || northEast.ele() == SrtmTile.SRTM_DATA_VOID)
             throw new IllegalArgumentException("Cannot interpolate with elevation data voids.");
         double x1 = southWest.lon();
         double x2 = southEast.lon();

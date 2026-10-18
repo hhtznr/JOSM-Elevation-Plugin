@@ -30,6 +30,7 @@ import hhtznr.josm.plugins.elevation.gui.AddElevationLayerAction;
 import hhtznr.josm.plugins.elevation.gui.AddGeoTiffEnvelopeLayerAction;
 import hhtznr.josm.plugins.elevation.gui.ElevationTabPreferenceSetting;
 import hhtznr.josm.plugins.elevation.gui.GeoTiffEnvelopeLayer;
+import hhtznr.josm.plugins.elevation.gui.GeoTiffSyncIndexFromDiskAction;
 import hhtznr.josm.plugins.elevation.gui.KeyColFinderAction;
 import hhtznr.josm.plugins.elevation.gui.LocalElevationLabel;
 import hhtznr.josm.plugins.elevation.gui.MapViewElevationDataConsumer;
@@ -57,13 +58,16 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     private static MapViewElevationDataConsumer mapViewElevationDataConsumer = null;
 
     private final OpenGeoTiffAction openGeoTiffAction;
+    private final GeoTiffSyncIndexFromDiskAction geoTiffSyncIndexAction;
     private final AddElevationLayerAction addElevationLayerAction;
     private final AddGeoTiffEnvelopeLayerAction addGeoTiffEnvelopeLayerAction;
     private final TopographicIsolationFinderAction isolationFinderAction;
     private final KeyColFinderAction keyColFinderAction;
+
     private final Object elevationLayerLock = new Object();
     private SRTMElevationLayer elevationLayer = null;
     private final Object geoTiffEnvelopeLayerLock = new Object();
+
     private GeoTiffEnvelopeLayer geoTiffEnvelopeLayer = null;
     private final SetNodeElevationAction setNodeElevationAction;
     private final SetPeakProminenceAction setPeakProminenceAction;
@@ -84,6 +88,10 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
 
         elevationDataProvider = new ElevationDataProvider();
         reconfigureElevationDataProvider();
+
+        geoTiffSyncIndexAction = new GeoTiffSyncIndexFromDiskAction(elevationDataProvider.getGeoTiffIndex());
+        MainMenu.add(MainApplication.getMenu().fileMenu, geoTiffSyncIndexAction, MainMenu.WINDOW_MENU_GROUP.ALWAYS);
+        geoTiffSyncIndexAction.setEnabled(false);
 
         openGeoTiffAction = new OpenGeoTiffAction();
         openGeoTiffAction.setEnabled(false);
@@ -394,11 +402,15 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                     }
                 }
             }
+            if (elevationDataProvider.getGeoTiffIndex().getGeoTiffDirectory() != null) {
+                geoTiffSyncIndexAction.setEnabled(true);
+            }
 
             if (mapFrame != null) {
                 mapFrame.mapView.repaint();
             }
         } else {
+            geoTiffSyncIndexAction.setEnabled(false);
             removeGeoTiffEnvelopeLayer();
             addGeoTiffEnvelopeLayerAction.setEnabled(true);
         }
@@ -426,6 +438,9 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
         synchronized (geoTiffEnvelopeLayerLock) {
             if (e.getAddedLayer().equals(geoTiffEnvelopeLayer)) {
                 addGeoTiffEnvelopeLayerAction.setEnabled(false);
+                if (elevationDataProvider.getGeoTiffIndex().getGeoTiffDirectory() != null) {
+                    geoTiffSyncIndexAction.setEnabled(true);
+                }
             }
         }
 
@@ -448,6 +463,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
         }
         synchronized (geoTiffEnvelopeLayerLock) {
             if (e.getRemovedLayer().equals(geoTiffEnvelopeLayer)) {
+                geoTiffSyncIndexAction.setEnabled(false);
                 geoTiffEnvelopeLayer = null;
                 addGeoTiffEnvelopeLayerAction.setEnabled(true);
             }

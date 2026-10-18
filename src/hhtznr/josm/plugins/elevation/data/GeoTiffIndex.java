@@ -124,6 +124,17 @@ public class GeoTiffIndex {
     }
 
     /**
+     * Returns the GeoTIFF directory from which the envelopes of the contained
+     * GeoTIFF files are synchronized to the index.
+     *
+     * @return The path of the GeoTIFF directory or {@code null}, if it is not
+     *         specified.
+     */
+    public Path getGeoTiffDirectory() {
+        return geoTiffDirectory;
+    }
+
+    /**
      * Sets the GeoTIFF directory to the specified directory and initiates a re-sync
      * of the cache and a rebuild of the index if the new directory differs from the
      * previous directory.
@@ -471,9 +482,20 @@ public class GeoTiffIndex {
             }
             syncInProgress = true;
         }
-
+        Path directory = geoTiffDirectory;
         try {
-            if (geoTiffDirectory == null) {
+            if (directory == null) {
+                synchronized (indexLock) {
+                    if (!cachedRecords.isEmpty()) {
+                        Logging.info("Elevation: GeoTIFF directory is no longer defined; clearing index and cache");
+                        try {
+                            rebuildIndex(new HashMap<String, GeoTiffRecord>(0), true);
+                        } catch (InterruptedException e) {
+                            return;
+                        }
+                        return;
+                    }
+                }
                 Logging.error(
                         "Elevation: You need to define the path of the directory with the GeoTIFF files in the preferences first");
                 synchronized (syncLock) {
@@ -482,26 +504,24 @@ public class GeoTiffIndex {
                     return;
                 }
             }
-            if (!Files.exists(geoTiffDirectory)) {
-                Logging.error("Elevation: GeoTIFF directory path '" + geoTiffDirectory.toString() + "' does not exist");
+            if (!Files.exists(directory)) {
+                Logging.error("Elevation: GeoTIFF directory path '" + directory.toString() + "' does not exist");
                 return;
             }
-            if (!Files.isDirectory(geoTiffDirectory)) {
-                Logging.error(
-                        "Elevation: GeoTIFF directory path '" + geoTiffDirectory.toString() + "' is not a directory");
+            if (!Files.isDirectory(directory)) {
+                Logging.error("Elevation: GeoTIFF directory path '" + directory.toString() + "' is not a directory");
                 return;
             }
-            if (!Files.isReadable(geoTiffDirectory)) {
-                Logging.error("Elevation: Permission for reading from GeoTIFF directory path '"
-                        + geoTiffDirectory.toString() + "' is denied");
+            if (!Files.isReadable(directory)) {
+                Logging.error("Elevation: Permission for reading from GeoTIFF directory path '" + directory.toString()
+                        + "' is denied");
                 return;
             }
 
             List<Path> paths = findTiffFilesInGeoTiffDirectory();
 
             if (paths.isEmpty()) {
-                Logging.info(
-                        "Elevation: No GeoTIFF files found in GeoTIFF directory '" + geoTiffDirectory.toString() + "'");
+                Logging.info("Elevation: No GeoTIFF files found in GeoTIFF directory '" + directory.toString() + "'");
                 synchronized (indexLock) {
                     if (!index.isEmpty()) {
                         Logging.info("Elevation: Clearing index with GeoTIFF envelopes");
@@ -519,8 +539,9 @@ public class GeoTiffIndex {
             @SuppressWarnings("unchecked")
             HashMap<String, GeoTiffRecord> newCachedRecords = (HashMap<String, GeoTiffRecord>) cachedRecords.clone();
             boolean cacheUpdated = false;
-
             int numberOfProcessedPaths = 0;
+            Logging.info("Elevation: Synchronizing GeoTIFF elevation index from GeoTIFF directory '"
+                    + directory.toString() + "'");
             // Discover new files and update modified files
             for (Path path : paths) {
                 synchronized (syncLock) {

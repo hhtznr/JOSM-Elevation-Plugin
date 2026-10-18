@@ -1,5 +1,6 @@
 package hhtznr.josm.plugins.elevation.data;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -31,13 +32,15 @@ import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
  *
  * @author Harald Hetzner
  */
-public class ElevationDataProvider implements SRTMTileCacheListener {
+public class ElevationDataProvider implements GeoTiffIndexListener, SRTMTileCacheListener {
 
     /**
      * This elevation data provider's in-memory cache where SRTM tiles read from
      * file are stored.
      */
     private final SRTMTileCache tileCache;
+
+    private final GeoTiffIndex geoTiffIndex;
 
     private final Set<SRTMTileGrid> activeTileGrids = ConcurrentHashMap.newKeySet();
 
@@ -73,6 +76,10 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
         setSRTMType(srtmType);
         this.eleInterpolation = eleInterpolation;
         setAutoDownloadEnabled(autoDownloadEnabled);
+
+        Path geoTiffDirectory = ElevationPreferences.getGeoTiffIndexDirectory();
+        Path indexCacheFile = ElevationPreferences.GEOTIFF_INDEX_CACHE_FILE;
+        geoTiffIndex = new GeoTiffIndex(geoTiffDirectory, true, indexCacheFile, this);
     }
 
     /**
@@ -548,6 +555,16 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
     }
 
     /**
+     * Returns the {@link GeoTiffIndex}, which allows to query which GeoTIFF images
+     * are know to be located within specified bounds.
+     *
+     * @return The GeoTIFF index.
+     */
+    public GeoTiffIndex getGeoTiffIndex() {
+        return geoTiffIndex;
+    }
+
+    /**
      * Adds an elevation data provider listener to this elevation data provider. All
      * listeners are informed if elevation data for a particular SRTM tile is
      * available.
@@ -586,6 +603,15 @@ public class ElevationDataProvider implements SRTMTileCacheListener {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    @Override
+    public void geoTiffIndexUpdated() {
+        synchronized (listeners) {
+            for (ElevationDataProviderListener listener : listeners) {
+                listener.geoTiffIndexUpdated();
             }
         }
     }

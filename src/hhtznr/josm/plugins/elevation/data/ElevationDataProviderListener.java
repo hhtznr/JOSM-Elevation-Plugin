@@ -24,4 +24,10 @@ public interface ElevationDataProviderListener {
      * @param newType The new type of SRTM data.
      */
     public void srtmTileTypeChanged(SRTMTile.Type oldType, SRTMTile.Type newType);
+
+    /**
+     * Informs the implementing class that the GeoTIFF envelope index has been
+     * updated.
+     */
+    public void geoTiffIndexUpdated();
 }

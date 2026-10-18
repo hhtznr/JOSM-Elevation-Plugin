@@ -9,6 +9,7 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.image.BufferedImage;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Future;
@@ -23,6 +24,7 @@ import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.visitor.BoundingXYVisitor;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.MapView;
+import org.openstreetmap.josm.gui.layer.MainLayerManager;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Logging;
 
@@ -452,6 +454,105 @@ public class GeoTiffElevationLayer extends ElevationLayer {
         elevationGrid = null;
 
         super.destroy();
+    }
+
+    /**
+     * Derives the name to be used for a {@code GeoTIFFElevationLayer} from the file
+     * name taken from the path of the GeoTIFF file.
+     *
+     * @param path The file path.
+     * @return The name to be used for a {@code GeoTIFFElevationLayer}.
+     */
+    public static String deriveLayerName(Path path) {
+        String fileName = path.getFileName().toString();
+        return "GeoTIFF " + fileName;
+    }
+
+    /**
+     * Adds a new {@code GeoTIFFElevationLayer} to JOSM, if no
+     * {@code GeoTIFFElevationLayer} for the same file name exists yet. Otherwise
+     * does nothing, but noting this via the logger.
+     *
+     * @param geoTiffImage The GeoTIFF image for which to add the new layer.
+     */
+    public static void addGeoTiffElevationLayer(GeoTiffImage geoTiffImage) {
+        String layerName = deriveLayerName(geoTiffImage.getFile().toPath());
+
+        if (geoTiffLayerAlreadyExists(layerName)) {
+            Logging.info("Elevation: Not adding GeoTIFF layer for '" + geoTiffImage.getFile().getAbsolutePath()
+                    + "' because a GeoTiFFLayer with the same name already exists");
+            return;
+        }
+
+        GeoTiffElevationLayer geoTiffLayer = new GeoTiffElevationLayer(layerName, geoTiffImage);
+        MainApplication.getLayerManager().addLayer(geoTiffLayer);
+    }
+
+    /**
+     * Checks whether a {@code GeoTiffElevationLayer} with the specified name is
+     * already on JOSM's layer list.
+     *
+     * @param layerName The name of the GeoTIFF layer.
+     * @return {@code true} if a {@code GeoTiffElevationLayer} with the specified
+     *         name is already known to JOSM's layer manager, {@code false}
+     *         otherwise.
+     */
+    public static boolean geoTiffLayerAlreadyExists(String layerName) {
+        MainLayerManager layerManager = MainApplication.getLayerManager();
+        List<GeoTiffElevationLayer> geoTiffLayers = layerManager.getLayersOfType(GeoTiffElevationLayer.class);
+
+        for (GeoTiffElevationLayer geoTiffLayer : geoTiffLayers) {
+            if (geoTiffLayer.getName().equals(layerName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Sets the {@code GeoTiffElevationLayer} with the provided name visible if it
+     * is not already visible.
+     *
+     * @param layerName The name of the GeoTIFF layer.
+     * @return {@code true} if a GeoTIFF layer with the specified name exists, it
+     *         was not previously visible and it was set visible, {@code false}
+     *         otherwise.
+     */
+    public static boolean setGeoTiffLayerVisible(String layerName) {
+        MainLayerManager layerManager = MainApplication.getLayerManager();
+        List<GeoTiffElevationLayer> geoTiffLayers = layerManager.getLayersOfType(GeoTiffElevationLayer.class);
+
+        for (GeoTiffElevationLayer geoTiffLayer : geoTiffLayers) {
+            if (geoTiffLayer.getName().equals(layerName)) {
+                if (geoTiffLayer.isVisible()) {
+                    return false;
+                }
+                geoTiffLayer.setVisible(true);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Sets the {@code GeoTiffElevationLayer} with the provided name as active
+     * layer.
+     *
+     * @param layerName The name of the GeoTIFF layer.
+     * @return {@code true} if a GeoTIFF layer with the specified name exists and it
+     *         was set active, {@code false} otherwise.
+     */
+    public static boolean setGeoTiffLayerActive(String layerName) {
+        MainLayerManager layerManager = MainApplication.getLayerManager();
+        List<GeoTiffElevationLayer> geoTiffLayers = layerManager.getLayersOfType(GeoTiffElevationLayer.class);
+
+        for (GeoTiffElevationLayer geoTiffLayer : geoTiffLayers) {
+            if (geoTiffLayer.getName().equals(layerName)) {
+                layerManager.setActiveLayer(geoTiffLayer);
+                return true;
+            }
+        }
+        return false;
     }
 
     private class ShowGrayscaleImageAction extends AbstractElevationLayerAction {

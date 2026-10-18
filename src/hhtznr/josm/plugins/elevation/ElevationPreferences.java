@@ -2,10 +2,11 @@ package hhtznr.josm.plugins.elevation;
 
 import java.awt.Color;
 import java.io.File;
-import java.net.PasswordAuthentication;
-import java.net.URL;
 import java.net.Authenticator.RequestorType;
 import java.net.MalformedURLException;
+import java.net.PasswordAuthentication;
+import java.net.URL;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.List;
@@ -24,6 +25,7 @@ import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.data.Coloring;
 import hhtznr.josm.plugins.elevation.data.ElevationDataSource;
+import hhtznr.josm.plugins.elevation.data.GeoTiffIndex;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
 import hhtznr.josm.plugins.elevation.io.SRTMFileDownloader;
 import jakarta.json.Json;
@@ -366,7 +368,8 @@ public class ElevationPreferences {
     private static final boolean DEFAULT_LOWEST_AND_HIGHEST_POINTS_ENABLED = false;
 
     /**
-     * The maximum number of lowest points and highest points, respectively, that is rendered in a map view.
+     * The maximum number of lowest points and highest points, respectively, that is
+     * rendered in a map view.
      */
     public static final int MAX_RENDERED_LOWEST_OR_HIGHEST_POINTS = 10;
 
@@ -565,9 +568,33 @@ public class ElevationPreferences {
     }
 
     /**
-     * Property key for persisting the last directory used for opening GeoTIFF files.
+     * Property key for persisting the last directory used for opening GeoTIFF
+     * files.
      */
-    public static final String ELEVATION_GEOTIFF_LAST_DIRECTORY = "elevation.geotiff.last-directory";
+    public static final String GEOTIFF_LAST_DIRECTORY = "elevation.geotiff.last-directory";
+
+    /**
+     * Property key for persisting the directory with GeoTIFF files to be indexed
+     * for quick access via {@link GeoTIFFEnvelopeLayer}.
+     */
+    public static final String GEOTIFF_INDEX_DIRECTORY = "elevation.geotiff.index-directory";
+
+    /**
+     * Path, where the JSON file for persisting the GeoTIFF envelope data of the
+     * {@link GeoTiffIndex} is located.
+     */
+    public static final Path GEOTIFF_INDEX_CACHE_FILE = DEFAULT_ELEVATION_DIRECTORY.toPath()
+            .resolve("GeoTiffIndexCacheFile.json");
+
+    /**
+     * Property key for enabling or disabling the {@link GeoTIFFEnvelopeLayer}.
+     */
+    public static final boolean DEFAULT_GEOTIFF_ENVELOPE_LAYER_ENABLED = true;
+
+    /**
+     * Property key for persisting whether the {@link GeoTIFFEnvelopeLayer} is enabled.
+     */
+    public static final String GEOTIFF_ENVELOPE_LAYER_ENABLED = "elevation.geotiff.envelope-layer.enabled";
 
     /**
      * Removes the legacy 'elevation enabled' preference from the settings.
@@ -957,10 +984,12 @@ public class ElevationPreferences {
      *         exception occurred when trying to store the credentials.
      */
     public static PasswordAuthentication storeEarthdataCredentials(String userName, char[] password) {
-        if (userName.trim().isBlank())
+        if (userName.trim().isBlank()) {
             return null;
-        if (password.length < 1)
+        }
+        if (password.length < 1) {
             return null;
+        }
         CredentialsAgent cm = CredentialsManager.getInstance();
         try {
             PasswordAuthentication pa = new PasswordAuthentication(userName.trim(), password);
@@ -983,8 +1012,9 @@ public class ElevationPreferences {
      */
     public static boolean removeEarthdataCredentials() {
         PasswordAuthentication existingCredentials = lookupEarthdataCredentials();
-        if (existingCredentials == null)
+        if (existingCredentials == null) {
             return true;
+        }
         CredentialsAgent cm = CredentialsManager.getInstance();
         try {
             PasswordAuthentication pa = new PasswordAuthentication("", new char[0]);
@@ -1011,8 +1041,9 @@ public class ElevationPreferences {
             // Legacy support (bearer stored as normal preferences parameter)
             if (authToken == null) {
                 String bearer = Config.getPref().get(ELEVATION_SERVER_AUTH_BEARER, null);
-                if (bearer == null || bearer.isBlank())
+                if (bearer == null || bearer.isBlank()) {
                     return null;
+                }
                 Logging.info("Elevation: Migrating authorization bearer token to JOSM OAuth 2.0 format");
                 bearer = bearer.trim();
                 OAuth20Token oAuthToken = storeEarthdataOAuthToken(bearer);
@@ -1020,8 +1051,9 @@ public class ElevationPreferences {
                 return oAuthToken;
             }
 
-            if (authToken instanceof OAuth20Token)
+            if (authToken instanceof OAuth20Token) {
                 return (OAuth20Token) authToken;
+            }
 
             return null;
         } catch (CredentialsAgentException e) {
@@ -1082,8 +1114,9 @@ public class ElevationPreferences {
      */
     private static OAuth20Token createEarthdataOAuthToken(String bearerToken) {
         // Either client ID or bearer token must be non-null/non-blank
-        if (bearerToken == null || bearerToken.isBlank())
+        if (bearerToken == null || bearerToken.isBlank()) {
             return null;
+        }
         JsonObjectBuilder jsonObjectBuilder = Json.createObjectBuilder();
         jsonObjectBuilder.add("token_type", "bearer");
         jsonObjectBuilder.add("access_token", bearerToken);
@@ -1120,9 +1153,88 @@ public class ElevationPreferences {
      * @return The elevation data sources.
      */
     public static List<ElevationDataSource> getElevationDataSources() {
-        if (getSRTMType() == SRTMTile.Type.SRTM1)
+        if (getSRTMType() == SRTMTile.Type.SRTM1) {
             return ELEVATION_DATA_SOURCES_SRTM1;
+        }
         return ELEVATION_DATA_SOURCES_SRTM3;
+    }
+
+    /**
+     * Returns the path of the directory from which individual GeoTIFF files were
+     * opened most recently.
+     *
+     * @return The absolute path of the directory or {@code null} if it is not
+     *         specified.
+     */
+    public static Path getGeoTiffLastDirectory() {
+        String path = Config.getPref().get(GEOTIFF_LAST_DIRECTORY, null);
+        if (path == null) {
+            return null;
+        }
+        return Path.of(path).toAbsolutePath();
+    }
+
+    /**
+     * Sets the path of the directory from which individual GeoTIFF files were
+     * opened most recently in the settings.
+     *
+     * @param path The directory path or {@code null} if it is not specified.
+     * @return {@code true} if the path has changed.
+     */
+    public static boolean setGeoTiffLastDirectory(Path path) {
+        if (path == null) {
+            return Config.getPref().put(ElevationPreferences.GEOTIFF_LAST_DIRECTORY, null);
+        }
+        return Config.getPref().put(ElevationPreferences.GEOTIFF_LAST_DIRECTORY, path.toAbsolutePath().toString());
+    }
+
+    /**
+     * Returns the path of the directory with the GeoTIFF files that should be
+     * loaded into the {@link GeoTiffIndex}.
+     *
+     * @return The absolute path of the directory or {@code null} if it is not
+     *         specified.
+     */
+    public static Path getGeoTiffIndexDirectory() {
+        String path = Config.getPref().get(GEOTIFF_INDEX_DIRECTORY, null);
+        if (path == null) {
+            return null;
+        }
+        return Path.of(path).toAbsolutePath();
+    }
+
+    /**
+     * Sets the path of the directory with the GeoTIFF files that should be loaded
+     * into the {@link GeoTiffIndex} in the settings.
+     *
+     * @param path The directory path or {@code null} if it is not specified.
+     * @return {@code true} if the path has changed.
+     */
+    public static boolean setGeoTiffIndexDirectory(Path path) {
+        if (path == null) {
+            return Config.getPref().put(ElevationPreferences.GEOTIFF_INDEX_DIRECTORY, null);
+        }
+        return Config.getPref().put(ElevationPreferences.GEOTIFF_INDEX_DIRECTORY, path.toAbsolutePath().toString());
+    }
+
+    /**
+     * Returns whether the GeoTIFF envelope layer layer is enabled or disabled.
+     *
+     * @return {@code true} if enabled.
+     */
+    public static boolean getGeoTiffEnvelopeLayerEnabled() {
+        return Config.getPref().getBoolean(GEOTIFF_ENVELOPE_LAYER_ENABLED, DEFAULT_GEOTIFF_ENVELOPE_LAYER_ENABLED);
+    }
+
+    /**
+     * Sets the GeoTIFF envelope layer to the specified enabled state in the
+     * settings.
+     *
+     * @param enabled If {@code true}, the elevation layer is enabled.
+     * @return {@code true} if the enabled state has changed.
+     */
+    public static boolean setGeoTiffEnvelopeLayerEnabled(boolean enabled) {
+        return Config.getPref().putBoolean(GEOTIFF_ENVELOPE_LAYER_ENABLED, enabled);
     }
 
     private ElevationPreferences() {

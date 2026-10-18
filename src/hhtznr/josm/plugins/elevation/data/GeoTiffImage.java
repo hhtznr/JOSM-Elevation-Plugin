@@ -8,16 +8,22 @@ import java.awt.image.ColorConvertOp;
 import java.awt.image.Raster;
 import java.awt.image.RenderedImage;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
 
+import org.geotools.api.data.DataSourceException;
 import org.geotools.api.referencing.FactoryException;
 import org.geotools.api.referencing.crs.CoordinateReferenceSystem;
 import org.geotools.api.referencing.operation.TransformException;
 import org.geotools.coverage.grid.GridCoverage2D;
 import org.geotools.coverage.grid.GridEnvelope2D;
 import org.geotools.coverage.grid.io.imageio.geotiff.GeoTiffIIOMetadataDecoder;
+import org.geotools.gce.geotiff.GeoTiffReader;
+import org.geotools.geometry.GeneralBounds;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.referencing.CRS;
 import org.openstreetmap.josm.data.Bounds;
+import org.openstreetmap.josm.tools.Logging;
 
 /**
  * This class implements a wrapper around the GeoTools objects and methods
@@ -26,15 +32,24 @@ import org.openstreetmap.josm.data.Bounds;
  * @author Harald Hetzner
  */
 public class GeoTiffImage {
+
+    /**
+     * Identifier of the EPSG:4326 coordinate reference system. For practical JOSM
+     * mapping, EPSG:4326 is equivalent to WGS84 used by JOSM.
+     */
+    public static final String CRS_EPSG_4326 = "EPSG:4326";
+
     private final File file;
     private final GeoTiffIIOMetadataDecoder metadata;
     private final GridCoverage2D coverage;
+    private final String crs;
     private final ReferencedEnvelope referencedEnvelope;
     private final int width;
     private final int height;
 
     /**
-     * Creates a new GeoTIFF image.
+     * Creates a new GeoTIFF image using {@link #CRS_EPSG_4326} as coordinate
+     * reference system.
      *
      * @param file     A reference to the GeoTIFF file.
      * @param metadata The metadata of the GeoTIFF image.
@@ -45,9 +60,27 @@ public class GeoTiffImage {
      */
     public GeoTiffImage(File file, GeoTiffIIOMetadataDecoder metadata, GridCoverage2D coverage)
             throws GeoTiffImageException {
+        this(file, metadata, coverage, CRS_EPSG_4326);
+    }
+
+    /**
+     * Creates a new GeoTIFF image.
+     *
+     * @param file     A reference to the GeoTIFF file.
+     * @param metadata The metadata of the GeoTIFF image.
+     * @param coverage The grid coverage of the GeoTIFF.
+     * @param crs      The identifier of the coordinate reference system in which
+     *                 the coordinates of the GeoTIFF pixels should be represented.
+     * @throws GeoTiffImageException If the GeoTIFF file cannot be displayed due to
+     *                               missing coordinate reference system or
+     *                               transformation issues.
+     */
+    public GeoTiffImage(File file, GeoTiffIIOMetadataDecoder metadata, GridCoverage2D coverage, String crs)
+            throws GeoTiffImageException {
         this.file = file;
         this.metadata = metadata;
         this.coverage = coverage;
+        this.crs = crs;
         ReferencedEnvelope referencedEnvelope = new ReferencedEnvelope(coverage.getEnvelope2D());
         CoordinateReferenceSystem sourceCrs = referencedEnvelope.getCoordinateReferenceSystem();
         if (sourceCrs == null) {
@@ -56,8 +89,7 @@ public class GeoTiffImage {
             throw new GeoTiffImageException(message);
         }
         try {
-            // For practical JOSM mapping, EPSG:4326 is equivalent to WGS84 used by JOSM
-            CoordinateReferenceSystem geographicCrs = CRS.decode("EPSG:4326", true);
+            CoordinateReferenceSystem geographicCrs = CRS.decode(crs, true);
             this.referencedEnvelope = referencedEnvelope.transform(geographicCrs, true, 20);
         } catch (FactoryException | TransformException e) {
             String message = "Cannot transform GeoTIFF bounds to latitude/longitude for '" + file.getAbsolutePath()
@@ -98,6 +130,16 @@ public class GeoTiffImage {
     }
 
     /**
+     * Returns a string representation of the coordinate reference system used for
+     * the geographical representation of this GeoTIFF image.
+     *
+     * @return The designation of the coordinate reference system.
+     */
+    public String getCoordinateReferenceSystem() {
+        return crs;
+    }
+
+    /**
      * Returns the raw image data of the GeoTIFF.
      *
      * @return The raw image data of the GeoTIFF.
@@ -116,10 +158,20 @@ public class GeoTiffImage {
         return referencedEnvelope;
     }
 
+    /**
+     * Returns the width of the GeoTIFF image.
+     *
+     * @return The width of the image.
+     */
     public int getWidth() {
         return width;
     }
 
+    /**
+     * Returns the height of the GeoTIFF image.
+     *
+     * @return The height of the image.
+     */
     public int getHeight() {
         return height;
     }
@@ -230,5 +282,81 @@ public class GeoTiffImage {
             }
         }
         return true;
+    }
+
+    /**
+     * Reads a GeoTIFF image from a GeoTIFF file.
+     *
+     * @param path The path from which to read the GeoTIFF image.
+     * @return The GeoTIFF image or {@code null} if an error occurs reading the
+     *         file.
+     */
+    public static GeoTiffImage readGeoTiffFile(Path path) {
+        GeoTiffReader reader = null;
+        try {
+            reader = new GeoTiffReader(path.toFile());
+        } catch (DataSourceException e) {
+            Logging.error("Elevation: Cannot read GeoTIFF file '" + path.toAbsolutePath().toString() + " due to "
+                    + e.toString());
+            return null;
+        }
+        try {
+            GeoTiffIIOMetadataDecoder metadata;
+            GridCoverage2D coverage;
+            try {
+                metadata = reader.getMetadata();
+                coverage = reader.read(null);
+            } catch (IOException e) {
+                Logging.error("Elevation: Cannot read GeoTIFF file '" + path.toAbsolutePath().toString() + " due to "
+                        + e.toString());
+                return null;
+            }
+            try {
+                return new GeoTiffImage(path.toFile(), metadata, coverage);
+            } catch (GeoTiffImageException e) {
+                Logging.error("Elevation: Cannot create GeoTiffImage for file '" + path.toAbsolutePath().toString()
+                        + " due to " + e.toString() + " with cause: " + e.getCause());
+                return null;
+            }
+        } finally {
+            reader.dispose();
+        }
+    }
+
+    /**
+     * Reads the referenced envelope from a GeoTIFF file and transforms its to the
+     * coordinate reference system {@link #CRS_EPSG_4326}. This file read operation
+     * is more lightweight than reading further metadata and grid coverage.
+     *
+     * @param geoTiffFile The GeoTIFF file from with to read the referenced
+     *                    envelope.
+     * @return The referenced envelope of the GeoTIFF file.
+     */
+    public static ReferencedEnvelope readReferencedEnvelopeAsEPSG4326(Path geoTiffFile) {
+        GeoTiffReader reader;
+        try {
+            // GeoTiffReader cannot handle Path, only File
+            reader = new GeoTiffReader(geoTiffFile.toFile());
+        } catch (DataSourceException e) {
+            Logging.error("Elevation: Data source exception attempting to read GeoTIFF data from '"
+                    + geoTiffFile.toAbsolutePath().toString() + "': " + e.toString());
+            return null;
+        }
+        try {
+            GeneralBounds source = reader.getOriginalEnvelope();
+            CoordinateReferenceSystem sourceCrs = reader.getCoordinateReferenceSystem();
+
+            ReferencedEnvelope envelope = new ReferencedEnvelope(source.getMinimum(0), source.getMaximum(0),
+                    source.getMinimum(1), source.getMaximum(1), sourceCrs);
+
+            CoordinateReferenceSystem wgs84 = CRS.decode(CRS_EPSG_4326, true);
+            return envelope.transform(wgs84, true, 20);
+        } catch (FactoryException | TransformException e) {
+            Logging.error("Elevation: I/O exception attempting to read coverage from '"
+                    + geoTiffFile.toAbsolutePath().toString() + "': " + e.toString());
+            return null;
+        } finally {
+            reader.dispose();
+        }
     }
 }

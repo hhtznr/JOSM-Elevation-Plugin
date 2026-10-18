@@ -4,25 +4,18 @@ import static org.openstreetmap.josm.tools.I18n.tr;
 
 import java.awt.event.ActionEvent;
 import java.io.File;
-import java.io.IOException;
-import java.util.List;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
-import org.geotools.api.data.DataSourceException;
-import org.geotools.coverage.grid.GridCoverage2D;
-import org.geotools.coverage.grid.io.imageio.geotiff.GeoTiffIIOMetadataDecoder;
-import org.geotools.gce.geotiff.GeoTiffReader;
 import org.openstreetmap.josm.actions.DiskAccessAction;
 import org.openstreetmap.josm.gui.MainApplication;
-import org.openstreetmap.josm.gui.layer.MainLayerManager;
-import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
 import hhtznr.josm.plugins.elevation.data.GeoTiffImage;
-import hhtznr.josm.plugins.elevation.data.GeoTiffImageException;
 
 /**
  * This class implements a JOSM menu action opening one or more GeoTIFF files.
@@ -57,12 +50,9 @@ public class OpenGeoTiffAction extends DiskAccessAction {
         fileChooser.setFileFilter(geotiffFilter);
 
         // Load JOSM's last saved directory preference
-        String lastDirectory = Config.getPref().get(ElevationPreferences.ELEVATION_GEOTIFF_LAST_DIRECTORY, null);
-        if (lastDirectory != null && !lastDirectory.isEmpty()) {
-            File geoTiffDirectory = new File(lastDirectory);
-            if (geoTiffDirectory.exists() && geoTiffDirectory.isDirectory()) {
-                fileChooser.setCurrentDirectory(geoTiffDirectory);
-            }
+        Path lastDirectory = ElevationPreferences.getGeoTiffLastDirectory();
+        if (lastDirectory != null && Files.isDirectory(lastDirectory)) {
+            fileChooser.setCurrentDirectory(lastDirectory.toFile());
         }
 
         // Open the modal dialog bound to JOSM's main window frame
@@ -77,8 +67,7 @@ public class OpenGeoTiffAction extends DiskAccessAction {
         // Save the newly navigated directory path back into JOSM's system preferences
         File currentDirectory = fileChooser.getCurrentDirectory();
         if (currentDirectory != null) {
-            Config.getPref().put(ElevationPreferences.ELEVATION_GEOTIFF_LAST_DIRECTORY,
-                    currentDirectory.getAbsolutePath());
+            ElevationPreferences.setGeoTiffLastDirectory(currentDirectory.toPath());
         }
 
         File[] files;
@@ -92,60 +81,12 @@ public class OpenGeoTiffAction extends DiskAccessAction {
         Logging.info("Elevation: User selected " + files.length + " GeoTIFF files");
         for (File file : files) {
             Logging.info("Elevation: GeoTIFF file opened: " + file.getAbsolutePath());
-            GeoTiffImage geoTiffImage = readGeoTiffFile(file);
+            GeoTiffImage geoTiffImage = GeoTiffImage.readGeoTiffFile(file.toPath());
             if (geoTiffImage == null) {
                 Logging.error("Elevation: Failed to read GeoTIFF file '" + file.getAbsolutePath() + "'");
                 continue;
             }
-            addGeoTiffLayer(geoTiffImage);
+            GeoTiffElevationLayer.addGeoTiffElevationLayer(geoTiffImage);
         }
-    }
-
-    private GeoTiffImage readGeoTiffFile(File file) {
-        GeoTiffReader reader = null;
-        try {
-            reader = new GeoTiffReader(file);
-        } catch (DataSourceException e) {
-            Logging.error("Elevation: Cannot read GeoTIFF file '" + file.getAbsolutePath() + " due to " + e.toString());
-            return null;
-        }
-        try {
-            GeoTiffIIOMetadataDecoder metadata;
-            GridCoverage2D coverage;
-            try {
-                metadata = reader.getMetadata();
-                coverage = reader.read(null);
-            } catch (IOException e) {
-                Logging.error("Elevation: Cannot read GeoTIFF file '" + file.getAbsolutePath() + " due to " + e.toString());
-                return null;
-            }
-            try {
-                return new GeoTiffImage(file, metadata, coverage);
-            } catch (GeoTiffImageException e) {
-                Logging.error("Elevation: Cannot create GeoTiffImage for file '" + file.getAbsolutePath() + " due to "
-                        + e.toString() + " with cause: " + e.getCause());
-                return null;
-            }
-        } finally {
-            reader.dispose();
-        }
-    }
-
-    private void addGeoTiffLayer(GeoTiffImage geoTiffImage) {
-        String layerName = "GeoTIFF " + geoTiffImage.getFile().getName();
-
-        MainLayerManager layerManager = MainApplication.getLayerManager();
-        List<GeoTiffElevationLayer> existingGeoTiffLayers = layerManager.getLayersOfType(GeoTiffElevationLayer.class);
-
-        for (GeoTiffElevationLayer existingLayer : existingGeoTiffLayers) {
-            if (existingLayer.getName().equals(layerName)) {
-                Logging.info("Elevation: Not adding GeoTIFF layer for '" + geoTiffImage.getFile().getAbsolutePath()
-                        + "' because a GeoTiFFLayer with the same name already exists");
-                return;
-            }
-        }
-
-        GeoTiffElevationLayer geoTiffLayer = new GeoTiffElevationLayer(layerName, geoTiffImage);
-        layerManager.addLayer(geoTiffLayer);
     }
 }

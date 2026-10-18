@@ -259,6 +259,10 @@ public class SRTMElevationLayer extends ElevationLayer implements ElevationDataP
         invalidate();
     }
 
+    @Override
+    public void geoTiffIndexUpdated() {
+    }
+
     private class ShowHillshadeAction extends AbstractElevationLayerAction {
 
         private static final long serialVersionUID = 1L;

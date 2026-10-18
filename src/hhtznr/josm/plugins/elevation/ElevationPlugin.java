@@ -1,6 +1,7 @@
 package hhtznr.josm.plugins.elevation;
 
 import java.awt.Color;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,7 +25,9 @@ import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.ElevationDataSource;
 import hhtznr.josm.plugins.elevation.data.SRTMTile;
 import hhtznr.josm.plugins.elevation.gui.AddElevationLayerAction;
+import hhtznr.josm.plugins.elevation.gui.AddGeoTiffEnvelopeLayerAction;
 import hhtznr.josm.plugins.elevation.gui.ElevationTabPreferenceSetting;
+import hhtznr.josm.plugins.elevation.gui.GeoTiffEnvelopeLayer;
 import hhtznr.josm.plugins.elevation.gui.KeyColFinderAction;
 import hhtznr.josm.plugins.elevation.gui.LocalElevationLabel;
 import hhtznr.josm.plugins.elevation.gui.MapViewElevationDataConsumer;
@@ -53,10 +56,13 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
 
     private final OpenGeoTiffAction openGeoTiffAction;
     private final AddElevationLayerAction addElevationLayerAction;
+    private final AddGeoTiffEnvelopeLayerAction addGeoTiffEnvelopeLayerAction;
     private final TopographicIsolationFinderAction isolationFinderAction;
     private final KeyColFinderAction keyColFinderAction;
     private final Object elevationLayerLock = new Object();
     private SRTMElevationLayer elevationLayer = null;
+    private final Object geoTiffEnvelopeLayerLock = new Object();
+    private GeoTiffEnvelopeLayer geoTiffEnvelopeLayer = null;
     private final SetNodeElevationAction setNodeElevationAction;
     private final SetPeakProminenceAction setPeakProminenceAction;
 
@@ -85,6 +91,25 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
         addElevationLayerAction.setEnabled(false);
         MainMenu.add(MainApplication.getMenu().imagerySubMenu, addElevationLayerAction,
                 MainMenu.WINDOW_MENU_GROUP.ALWAYS);
+
+        addGeoTiffEnvelopeLayerAction = new AddGeoTiffEnvelopeLayerAction(this);
+        addGeoTiffEnvelopeLayerAction.setEnabled(false);
+        MainMenu.add(MainApplication.getMenu().imagerySubMenu, addGeoTiffEnvelopeLayerAction,
+                MainMenu.WINDOW_MENU_GROUP.ALWAYS);
+
+        // Register shutdown thread to save cached GeoTIFF envelopes upon JOSM shutdown
+        Runtime.getRuntime().addShutdownHook(new Thread("elevation-shutdown") {
+            @Override
+            public void run() {
+                try {
+                    elevationDataProvider.getGeoTiffIndex().saveGeoTiffRecordsToCacheFile();
+                } catch (IOException e) {
+                    System.err.println("Elevation: Could not save the cached GeoTIFF envelopes to '"
+                            + elevationDataProvider.getGeoTiffIndex().getCacheFilePath().toString() + "': "
+                            + e.toString());
+                }
+            }
+        });
 
         isolationFinderAction = new TopographicIsolationFinderAction(this);
         isolationFinderAction.setEnabled(false);
@@ -148,6 +173,15 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
         }
     }
 
+    private void removeGeoTiffEnvelopeLayer() {
+        synchronized (geoTiffEnvelopeLayerLock) {
+            if (geoTiffEnvelopeLayer != null) {
+                MainApplication.getLayerManager().removeLayer(geoTiffEnvelopeLayer);
+                geoTiffEnvelopeLayer = null;
+            }
+        }
+    }
+
     /**
      * Returns whether the elevation layer is enabled. We can deduce that the
      * elevation layer is enabled, if it is not {@code null}.
@@ -183,6 +217,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                 mapViewElevationDataConsumer.dispose();
                 mapViewElevationDataConsumer = null;
             }
+            openGeoTiffAction.setEnabled(false);
         } else {
             if (mapViewElevationDataConsumer == null) {
                 double renderingLimit = ElevationPreferences.getElevationLayerRenderingLimit();
@@ -194,12 +229,14 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                 }
             }
             mapViewElevationDataConsumer.addToMapFrame(newFrame);
+            openGeoTiffAction.setEnabled(true);
         }
 
         addLocalElevationLabel(newFrame);
         // newFrame is null if the map was active and the last layer is closed
         if (newFrame != null) {
             setElevationLayerEnabled(ElevationPreferences.getElevationLayerEnabled());
+            setGeoTiffEnvelopeLayerEnabled(ElevationPreferences.getGeoTiffEnvelopeLayerEnabled(), false);
         }
     }
 
@@ -306,19 +343,53 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                     elevationLayer.setHillshadeIllumination(ElevationPreferences.getHillshadeAltitude(),
                             ElevationPreferences.getHillshadeAzimuth());
                 }
+
             }
+
             if (mapFrame != null) {
                 mapFrame.mapView.repaint();
             }
-            openGeoTiffAction.setEnabled(true);
+
         } else {
             removeElevationLayer();
             // Allow re-adding the elevation layer if enabled in the preferences
             // i.e. the layer was (temporarily) removed by the user
             if (ElevationPreferences.getElevationLayerEnabled()) {
                 addElevationLayerAction.setEnabled(true);
-                openGeoTiffAction.setEnabled(false);
             }
+        }
+    }
+
+    /**
+     * Enables or disables the {@link GeoTiffEnvelopeLayer}.
+     *
+     * @param enabled   If {@code true}, the layer is enabled. If {@code false}, the
+     *                  layer is disabled.
+     * @param setActive If {@code true}, the layer is set as active layer if is
+     *                  enabled. If {@code false}, the layer will not be set as the
+     *                  active layer if it is enabled.
+     */
+    public void setGeoTiffEnvelopeLayerEnabled(boolean enabled, boolean setActive) {
+        MapFrame mapFrame = MainApplication.getMap();
+
+        if (enabled) {
+            addGeoTiffEnvelopeLayerAction.setEnabled(false);
+            synchronized (geoTiffEnvelopeLayerLock) {
+                if (geoTiffEnvelopeLayer == null) {
+                    geoTiffEnvelopeLayer = new GeoTiffEnvelopeLayer(elevationDataProvider);
+                    MainApplication.getLayerManager().addLayer(geoTiffEnvelopeLayer);
+                    if (setActive) {
+                        MainApplication.getLayerManager().setActiveLayer(geoTiffEnvelopeLayer);
+                    }
+                }
+            }
+
+            if (mapFrame != null) {
+                mapFrame.mapView.repaint();
+            }
+        } else {
+            removeGeoTiffEnvelopeLayer();
+            addGeoTiffEnvelopeLayerAction.setEnabled(true);
         }
     }
 
@@ -341,6 +412,12 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                 addElevationLayerAction.setEnabled(false);
             }
         }
+        synchronized (geoTiffEnvelopeLayerLock) {
+            if (e.getAddedLayer().equals(geoTiffEnvelopeLayer)) {
+                addGeoTiffEnvelopeLayerAction.setEnabled(false);
+            }
+        }
+
         boolean hasDataLayer = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class).size() > 0;
         if (hasDataLayer) {
             isolationFinderAction.setEnabled(true);
@@ -356,6 +433,12 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
             if (e.getRemovedLayer().equals(elevationLayer)) {
                 elevationLayer = null;
                 addElevationLayerAction.setEnabled(true);
+            }
+        }
+        synchronized (geoTiffEnvelopeLayerLock) {
+            if (e.getRemovedLayer().equals(geoTiffEnvelopeLayer)) {
+                geoTiffEnvelopeLayer = null;
+                addGeoTiffEnvelopeLayerAction.setEnabled(true);
             }
         }
         boolean hasDataLayer = MainApplication.getLayerManager().getLayersOfType(OsmDataLayer.class).size() > 0;

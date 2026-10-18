@@ -52,6 +52,8 @@ import hhtznr.josm.plugins.elevation.util.DrawUtils.NonOverlappingTextRenderer;
  */
 public class GeoTiffElevationLayer extends ElevationLayer {
 
+    private static final double MIN_CONTOUR_LINE_PIXELS = 100.0;
+
     private final GeoTiffImage geoTiffImage;
     private GeoTiffElevationGrid elevationGrid = null;
     private GeoTiffElevationGridView elevationGridView = null;
@@ -168,6 +170,18 @@ public class GeoTiffElevationLayer extends ElevationLayer {
         }
 
         if (elevationGridView == null) {
+            return;
+        }
+
+        // Determine the size of the GeoTIFF in pixels
+        Bounds gridBounds = elevationGrid.getBounds();
+        Point p1 = mapView.getPoint(gridBounds.getMin());
+        Point p2 = mapView.getPoint(gridBounds.getMax());
+        int widthPixels = Math.abs(p2.x - p1.x);
+        int heightPixels = Math.abs(p2.y - p1.y);
+        // Do not draw expensive features if dimensions below threshold
+        if (widthPixels < MIN_CONTOUR_LINE_PIXELS && heightPixels < MIN_CONTOUR_LINE_PIXELS) {
+            invalidateContourLines();
             return;
         }
 

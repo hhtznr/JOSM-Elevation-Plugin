@@ -1,5 +1,7 @@
 package hhtznr.josm.plugins.elevation.gui.components;
 
+import java.nio.file.Path;
+
 import javax.swing.Box;
 
 import org.openstreetmap.josm.gui.preferences.DefaultTabPreferenceSetting;
@@ -47,22 +49,34 @@ public final class ElevationTabPreferenceSetting extends DefaultTabPreferenceSet
         // Save to preferences file
         pnlElevationPreferences.saveToPreferences();
         // Apply preferences
-        boolean elevationLayerEnabled = ElevationPreferences.getElevationLayerEnabled();
+        boolean srtmElevationLayerEnabled = ElevationPreferences.getElevationLayerEnabled();
         // If the elevation layer is to be enabled, but was previously disabled
-        if (elevationLayerEnabled && !plugin.isElevationLayerEnabled()) {
+        if (srtmElevationLayerEnabled && !plugin.isElevationLayerEnabled()) {
             // Reconfigure the data provider (can include change of SRTM type)
             plugin.reconfigureElevationDataProvider();
             // And afterwards enable the layer which will immediately use the new data provider configuration
-            plugin.setElevationLayerEnabled(elevationLayerEnabled);
+            plugin.setSrtmElevationLayerEnabled(srtmElevationLayerEnabled);
         }
         // If the elevation layer is to be disabled or was previously already enabled
         else  {
             // Set the enabled state of the layer first (only has an effect if it gets disabled)
-            plugin.setElevationLayerEnabled(elevationLayerEnabled);
+            plugin.setSrtmElevationLayerEnabled(srtmElevationLayerEnabled);
             // And afterwards reconfigure the data provider
             // This avoids rendering the layer with a new configuration if it gets disabled anyway
             plugin.reconfigureElevationDataProvider();
         }
+
+        boolean geoTiffEnvelopeLayerEnabled = ElevationPreferences.getGeoTiffEnvelopeLayerEnabled();
+        Path geoTiffDirectory = ElevationPreferences.getGeoTiffIndexDirectory();
+        boolean recursive = ElevationPreferences.getGeoTiffIndexDirectoryRecursive();
+        if (geoTiffEnvelopeLayerEnabled && !plugin.isGeoTiffEnvelopeLayerEnabled()) {
+            plugin.getElevationDataProvider().getGeoTiffIndex().setGeoTiffDirectory(geoTiffDirectory, recursive);
+            plugin.setGeoTiffEnvelopeLayerEnabled(true, false);
+        } else {
+            plugin.setGeoTiffEnvelopeLayerEnabled(false, false);
+            plugin.getElevationDataProvider().getGeoTiffIndex().setGeoTiffDirectory(geoTiffDirectory, recursive);
+        }
+
         return false;
     }
 

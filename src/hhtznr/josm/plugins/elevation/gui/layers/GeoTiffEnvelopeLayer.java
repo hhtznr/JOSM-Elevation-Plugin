@@ -30,12 +30,10 @@ import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
-import hhtznr.josm.plugins.elevation.data.ElevationDataProviderListener;
+import hhtznr.josm.plugins.elevation.data.GeoTiffElevationDataProviderListener;
 import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffImage;
 import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffIndex;
 import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffRecord;
-import hhtznr.josm.plugins.elevation.data.srtm.SrtmTile;
-import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGrid;
 import hhtznr.josm.plugins.elevation.util.DrawUtils;
 import hhtznr.josm.plugins.elevation.util.FileUtils;
 
@@ -51,7 +49,7 @@ import hhtznr.josm.plugins.elevation.util.FileUtils;
  *
  * @author Harald Hetzner
  */
-public class GeoTiffEnvelopeLayer extends Layer implements ElevationDataProviderListener {
+public class GeoTiffEnvelopeLayer extends Layer implements GeoTiffElevationDataProviderListener {
 
     private static final Color ENVELOPE_COLOR = Color.BLUE;
     private static final Color HOVERED_ENVELOPE_COLOR = Color.RED;
@@ -77,7 +75,7 @@ public class GeoTiffEnvelopeLayer extends Layer implements ElevationDataProvider
     public GeoTiffEnvelopeLayer(ElevationDataProvider elevationDataProvider) {
         super("GeoTIFF Overview Layer");
         this.elevationDataProvider = elevationDataProvider;
-        this.elevationDataProvider.addElevationDataProviderListener(this);
+        this.elevationDataProvider.addGeoTiffElevationDataProviderListener(this);
         this.index = this.elevationDataProvider.getGeoTiffIndex();
     }
 
@@ -178,7 +176,7 @@ public class GeoTiffEnvelopeLayer extends Layer implements ElevationDataProvider
 
     @Override
     public synchronized void destroy() {
-        elevationDataProvider.removeElevationDataProviderListener(this);
+        elevationDataProvider.removeGeoTiffElevationDataProviderListener(this);
         super.destroy();
     }
 
@@ -288,14 +286,6 @@ public class GeoTiffEnvelopeLayer extends Layer implements ElevationDataProvider
                 delegate.detachFromMapView(detachEvent);
             }
         };
-    }
-
-    @Override
-    public void elevationDataAvailable(SrtmTileGrid tileGrid) {
-    }
-
-    @Override
-    public void srtmTileTypeChanged(SrtmTile.Type oldType, SrtmTile.Type newType) {
     }
 
     @Override

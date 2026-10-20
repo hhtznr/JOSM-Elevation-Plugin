@@ -91,7 +91,7 @@ public class GeoTiffIndex {
         HashMap<String, GeoTiffRecord> records;
         if (Files.exists(cacheFile)) {
             try {
-                records = loadGeoTiffRecordsFromCacheFile();
+                records = loadGeoTiffRecordsFromCacheFile(this.geoTiffDirectory, this.recursive);
             } catch (IOException e) {
                 Logging.error("Elevation: I/O exception while attempting to read GeoTIFF envelope cache file '"
                         + cacheFile.toString() + "': " + e.toString());
@@ -99,7 +99,7 @@ public class GeoTiffIndex {
             }
         } else {
             try {
-                records = readGeoTiffRecordsFromGeoTiffDirectory();
+                records = readGeoTiffRecordsFromGeoTiffDirectory(this.geoTiffDirectory, this.recursive);
                 cacheUpdated = true;
             } catch (InterruptedException e) {
                 return;
@@ -135,27 +135,50 @@ public class GeoTiffIndex {
     }
 
     /**
+     * Returns whether the GeoTIFF directory is searched for GeoTIFF files
+     * recursively.
+     *
+     * @return {@code true} if the search for GeoTIFF files is performed
+     *         recursively.
+     */
+    public boolean getGeoTiffDirectoryRecursive() {
+        return recursive;
+    }
+
+    /**
      * Sets the GeoTIFF directory to the specified directory and initiates a re-sync
      * of the cache and a rebuild of the index if the new directory differs from the
      * previous directory.
      *
      * @param directory The new GeoTIFF directory to set.
+     * @param recursive If {@code true}, the GeoTIFF directory and its
+     *                  subdirectories are traversed recursively searching for
+     *                  GeoTIFF files. If {@code false}, only GeoTIFF files in the
+     *                  GeoTIFF directory will be considered and files in
+     *                  subdirectories will not be considered.
      * @return {@code true} if the new GeoTIFF directory was actually set.
-     *         {@code false} if the provided directory is {@code null}, not a
-     *         directory or it is equal to the previous GeoTIFF directory.
+     *         {@code false} if the provided directory is equal to the previous
+     *         GeoTIFF directory and recursion was not changed as well.
      */
-    public boolean setGeoTiffDirectory(Path directory) {
+    public boolean setGeoTiffDirectory(Path directory, boolean recursive) {
         synchronized (syncLock) {
-            if (directory == null || !Files.isDirectory(directory) || directory.equals(geoTiffDirectory)) {
-                return false;
+            try {
+                if (Files.isSameFile(directory, geoTiffDirectory) && recursive == this.recursive) {
+                    Logging.info(
+                            "Elevation: Not updateing GeoTiff directory used for GeoTIFF envelope index because it is unchanged.");
+                    return false;
+                }
+            } catch (IOException e) {
+                Logging.error("Elevation: Exception comparing GeoTIFF directories: " + e.toString());
             }
             if (syncInProgress) {
                 cancelSync();
             }
             geoTiffDirectory = directory;
+            this.recursive = recursive;
         }
         try {
-            syncCacheFromDisk(null);
+            syncCacheFromDisk(directory, recursive, null);
         } catch (IOException e) {
             Logging.error("Elevation: I/O exception while syncing GeoTIFF envelope index with files on disk: "
                     + e.toString());
@@ -203,52 +226,58 @@ public class GeoTiffIndex {
      * {@link GeoTiffRecord}, which are used for fast coordinate-based file lookups
      * using an index and comparing the envelope of the GeoTIFF data.
      *
+     * @param directory The directory from which to read the GeoTIFF files.
+     * @param recursive If {@code true}, the GeoTIFF directory and its
+     *                  subdirectories are traversed recursively searching for
+     *                  GeoTIFF files. If {@code false}, only GeoTIFF files in the
+     *                  GeoTIFF directory will be considered and files in
+     *                  subdirectories will not be considered.
      * @return A hash map with the GeoTIFF records using the absolute path name as
      *         keys.
      * @throws InterruptedException If the thread reading the GeoTIFF files is
      *                              interrupted.
      */
-    private HashMap<String, GeoTiffRecord> readGeoTiffRecordsFromGeoTiffDirectory() throws InterruptedException {
+    private static HashMap<String, GeoTiffRecord> readGeoTiffRecordsFromGeoTiffDirectory(Path directory,
+            boolean recursive) throws InterruptedException {
         if (Thread.currentThread().isInterrupted()) {
-            throw new InterruptedException("Creating GeoTIFF index from files in directory "
-                    + geoTiffDirectory.toString() + " interrupted prior to execution");
+            throw new InterruptedException("Creating GeoTIFF index from files in directory " + directory.toString()
+                    + " interrupted prior to execution");
         }
 
-        if (geoTiffDirectory == null) {
+        if (directory == null) {
             Logging.info("Elevation: GeoTIFF directory is not defined");
             return new HashMap<>(0);
         }
 
-        if (!Files.exists(geoTiffDirectory)) {
-            Logging.error("Elevation: GeoTIFF directory path '" + geoTiffDirectory.toString() + "' does not exist");
+        if (!Files.exists(directory)) {
+            Logging.error("Elevation: GeoTIFF directory path '" + directory.toString() + "' does not exist");
             return new HashMap<>(0);
         }
-        if (!Files.isDirectory(geoTiffDirectory)) {
-            Logging.error("Elevation: GeoTIFF directory path '" + geoTiffDirectory.toString() + "' is not a directory");
+        if (!Files.isDirectory(directory)) {
+            Logging.error("Elevation: GeoTIFF directory path '" + directory.toString() + "' is not a directory");
             return new HashMap<>(0);
         }
-        if (!Files.isReadable(geoTiffDirectory)) {
-            Logging.error("Elevation: Permission for reading from GeoTIFF directory path '"
-                    + geoTiffDirectory.toString() + "' is denied");
+        if (!Files.isReadable(directory)) {
+            Logging.error("Elevation: Permission for reading from GeoTIFF directory path '" + directory.toString()
+                    + "' is denied");
             return new HashMap<>(0);
         }
 
-        Logging.info("Elevation: Creating GeoTIFF index for GeoTIFF directory " + geoTiffDirectory.toString() + " in "
+        Logging.info("Elevation: Creating GeoTIFF index for GeoTIFF directory " + directory.toString() + " in "
                 + (recursive ? "recursive" : "non-recurisve") + " mode");
 
-        List<Path> paths = findTiffFilesInGeoTiffDirectory();
+        List<Path> paths = findTiffFilesInGeoTiffDirectory(directory, recursive);
 
         if (paths.isEmpty()) {
-            Logging.info(
-                    "Elevation: No GeoTIFF files found in GeoTIFF directory '" + geoTiffDirectory.toString() + "'");
+            Logging.info("Elevation: No GeoTIFF files found in GeoTIFF directory '" + directory.toString() + "'");
             return new HashMap<>(0);
         }
 
         HashMap<String, GeoTiffRecord> geoTiffRecords = new HashMap<>(paths.size());
         for (Path path : paths) {
             if (Thread.currentThread().isInterrupted()) {
-                throw new InterruptedException("Creating GeoTIFF index from files in directory "
-                        + geoTiffDirectory.toString() + " was interrupted while working on GeoTIFF files");
+                throw new InterruptedException("Creating GeoTIFF index from files in directory " + directory.toString()
+                        + " was interrupted while working on GeoTIFF files");
             }
             path = path.toAbsolutePath();
             Logging.info("Elevation: Reading GeoTIFF file '" + path.toString() + "' for index");
@@ -280,12 +309,23 @@ public class GeoTiffIndex {
             geoTiffRecords.put(path.toString(), record);
         }
         Logging.info("Elevation: Created GeoTIFF index with " + geoTiffRecords.size()
-                + " GeoTiff files for GeoTIFF directory " + geoTiffDirectory.toString());
+                + " GeoTiff files for GeoTIFF directory " + directory.toString());
         return geoTiffRecords;
     }
 
-    private List<Path> findTiffFilesInGeoTiffDirectory() {
-        if (geoTiffDirectory == null) {
+    /**
+     * Finds all TIFF (GeoTIFF) files in the specified directory.
+     *
+     * @param directory The directory from which to read the GeoTIFF files.
+     * @param recursive If {@code true}, the GeoTIFF directory and its
+     *                  subdirectories are traversed recursively searching for
+     *                  GeoTIFF files. If {@code false}, only GeoTIFF files in the
+     *                  GeoTIFF directory will be considered and files in
+     *                  subdirectories will not be considered.
+     * @return A list with the paths of all GeoTIFF files found in the directory.
+     */
+    private static List<Path> findTiffFilesInGeoTiffDirectory(Path directory, boolean recursive) {
+        if (directory == null) {
             Logging.info("Elevation: GeoTIFF directory is not defined");
             return new ArrayList<Path>(0);
         }
@@ -295,7 +335,7 @@ public class GeoTiffIndex {
         int maxDepth = recursive ? Integer.MAX_VALUE : 1;
 
         List<Path> paths;
-        try (Stream<Path> stream = Files.find(geoTiffDirectory, maxDepth, (path, attrs) -> {
+        try (Stream<Path> stream = Files.find(directory, maxDepth, (path, attrs) -> {
             if (!attrs.isRegularFile()) {
                 return false;
             }
@@ -305,7 +345,7 @@ public class GeoTiffIndex {
             paths = stream.collect(Collectors.toList());
         } catch (IOException e) {
             Logging.error("Elevation: I/O exception while finding GeoTIFF files in the GeoTIFF directory '"
-                    + geoTiffDirectory.toString() + "': " + e.toString());
+                    + directory.toString() + "': " + e.toString());
             return new ArrayList<Path>(0);
         }
         return paths;
@@ -314,9 +354,16 @@ public class GeoTiffIndex {
     /**
      * Loads the previously cached GeoTIFF envelopes from the cache file.
      *
+     * @param directory The directory from which to read the GeoTIFF files.
+     * @param recursive If {@code true}, the GeoTIFF directory and its
+     *                  subdirectories are traversed recursively searching for
+     *                  GeoTIFF files. If {@code false}, only GeoTIFF files in the
+     *                  GeoTIFF directory will be considered and files in
+     *                  subdirectories will not be considered.
      * @throws IOException If the file reader cannot be created.
      */
-    private HashMap<String, GeoTiffRecord> loadGeoTiffRecordsFromCacheFile() throws IOException {
+    private HashMap<String, GeoTiffRecord> loadGeoTiffRecordsFromCacheFile(Path directory, boolean recursive)
+            throws IOException {
         if (!Files.exists(cacheFile)) {
             Logging.info("Elevation: GeoTIFF envelope cache file '" + cacheFile.toAbsolutePath().toString()
                     + "' does not exist.");
@@ -372,7 +419,7 @@ public class GeoTiffIndex {
                         + "': " + ex.toString());
             }
             try {
-                loadedRecords = readGeoTiffRecordsFromGeoTiffDirectory();
+                loadedRecords = readGeoTiffRecordsFromGeoTiffDirectory(directory, recursive);
                 synchronized (indexLock) {
                     cacheUpdated = true;
                     return loadedRecords;
@@ -469,6 +516,13 @@ public class GeoTiffIndex {
      *                     the GeoTIFF directory.
      */
     public void syncCacheFromDisk(ProgressMonitor progressMonitor) throws IOException {
+        Path directory = this.geoTiffDirectory;
+        boolean recursive = this.recursive;
+        syncCacheFromDisk(directory, recursive, progressMonitor);
+    }
+
+    private void syncCacheFromDisk(Path directory, boolean recursive, ProgressMonitor progressMonitor)
+            throws IOException {
         synchronized (syncLock) {
             if (syncInProgress) {
                 Logging.warn(
@@ -482,7 +536,6 @@ public class GeoTiffIndex {
             }
             syncInProgress = true;
         }
-        Path directory = geoTiffDirectory;
         try {
             if (directory == null) {
                 synchronized (indexLock) {
@@ -518,7 +571,7 @@ public class GeoTiffIndex {
                 return;
             }
 
-            List<Path> paths = findTiffFilesInGeoTiffDirectory();
+            List<Path> paths = findTiffFilesInGeoTiffDirectory(directory, recursive);
 
             if (paths.isEmpty()) {
                 Logging.info("Elevation: No GeoTIFF files found in GeoTIFF directory '" + directory.toString() + "'");
@@ -614,6 +667,8 @@ public class GeoTiffIndex {
      */
     public void cancelSync() {
         synchronized (syncLock) {
+            Logging.info(
+                    "Elevation: Cancelling running synchronization of GeoTIFF files in GeoTIFF directory and index cache");
             syncCanceled = true;
         }
     }

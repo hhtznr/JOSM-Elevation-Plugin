@@ -32,6 +32,7 @@ import hhtznr.josm.plugins.elevation.ElevationPlugin;
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
 import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.ElevationGridException;
+import hhtznr.josm.plugins.elevation.data.GeoTiffElevationDataProviderListener;
 import hhtznr.josm.plugins.elevation.data.coordinate.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.coordinate.LatLonLine;
 import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffElevationGrid;
@@ -55,7 +56,7 @@ import hhtznr.josm.plugins.elevation.util.DrawUtils.NonOverlappingTextRenderer;
  *
  * @author Harald Hetzner
  */
-public class GeoTiffElevationLayer extends ElevationLayer {
+public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElevationDataProviderListener {
 
     private static final double MIN_CONTOUR_LINE_PIXELS = 100.0;
 
@@ -638,5 +639,10 @@ public class GeoTiffElevationLayer extends ElevationLayer {
             }
             layerAdjustmentDialog.showDialog();
         }
+    }
+
+    @Override
+    public void geoTiffIndexUpdated() {
+        triggerRepaint();
     }
 }

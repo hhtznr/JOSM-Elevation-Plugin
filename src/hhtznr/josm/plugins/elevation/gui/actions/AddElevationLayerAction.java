@@ -32,6 +32,6 @@ public class AddElevationLayerAction extends JosmAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        plugin.setElevationLayerEnabled(true);
+        plugin.setSrtmElevationLayerEnabled(true);
     }
 }

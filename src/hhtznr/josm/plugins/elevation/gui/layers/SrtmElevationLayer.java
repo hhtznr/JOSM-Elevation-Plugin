@@ -30,7 +30,7 @@ import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
-import hhtznr.josm.plugins.elevation.data.ElevationDataProviderListener;
+import hhtznr.josm.plugins.elevation.data.SrtmElevationDataProviderListener;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmTile;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGrid;
 import hhtznr.josm.plugins.elevation.gui.components.UIFactory;
@@ -45,7 +45,7 @@ import hhtznr.josm.plugins.elevation.util.Coloring;
  *
  * @author Harald Hetzner
  */
-public class SrtmElevationLayer extends ElevationLayer implements ElevationDataProviderListener {
+public class SrtmElevationLayer extends ElevationLayer implements SrtmElevationDataProviderListener {
 
     private final ElevationDrawHelper layerPainter;
     private final ElevationDataProvider elevationDataProvider;
@@ -95,7 +95,7 @@ public class SrtmElevationLayer extends ElevationLayer implements ElevationDataP
         this.hillshadeAltitude = hillshadeAltitude;
         this.hillshadeAzimuth = hillshadeAzimuth;
         this.elevationDataProvider = elevationDataProvider;
-        elevationDataProvider.addElevationDataProviderListener(this);
+        elevationDataProvider.addSrtmElevationDataProviderListener(this);
         hillshadeEnabled = ElevationPreferences.getHillshadeEnabled();
         elevationRasterEnabled = ElevationPreferences.getElevationRasterEnabled();
     }
@@ -241,7 +241,7 @@ public class SrtmElevationLayer extends ElevationLayer implements ElevationDataP
 
     @Override
     public synchronized void destroy() {
-        elevationDataProvider.removeElevationDataProviderListener(this);
+        elevationDataProvider.removeSrtmElevationDataProviderListener(this);
         if (layerAdjustmentDialog != null) {
             layerAdjustmentDialog.setVisible(false);
             layerAdjustmentDialog.dispose();
@@ -259,10 +259,6 @@ public class SrtmElevationLayer extends ElevationLayer implements ElevationDataP
     public void srtmTileTypeChanged(SrtmTile.Type oldType, SrtmTile.Type newType) {
         layerPainter.invalidate();
         invalidate();
-    }
-
-    @Override
-    public void geoTiffIndexUpdated() {
     }
 
     private class ShowHillshadeAction extends AbstractElevationLayerAction {

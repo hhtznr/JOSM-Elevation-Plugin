@@ -9,7 +9,7 @@ import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGrid;
  *
  * @author Harald Hetzner
  */
-public interface ElevationDataProviderListener {
+public interface SrtmElevationDataProviderListener {
 
     /**
      * Informs the implementing class that elevation data from a SRTM tile grid is
@@ -27,10 +27,4 @@ public interface ElevationDataProviderListener {
      * @param newType The new type of SRTM data.
      */
     public void srtmTileTypeChanged(SrtmTile.Type oldType, SrtmTile.Type newType);
-
-    /**
-     * Informs the implementing class that the GeoTIFF envelope index has been
-     * updated.
-     */
-    public void geoTiffIndexUpdated();
 }

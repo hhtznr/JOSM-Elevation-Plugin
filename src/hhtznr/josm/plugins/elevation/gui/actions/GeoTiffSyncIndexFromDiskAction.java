@@ -53,7 +53,7 @@ public class GeoTiffSyncIndexFromDiskAction extends JosmAction {
         }
     }
 
-    public static class SyncCacheFromDiskTask extends PleaseWaitRunnable {
+    private static class SyncCacheFromDiskTask extends PleaseWaitRunnable {
 
         private final GeoTiffIndex index;
 

@@ -538,16 +538,14 @@ public class ElevationPreferences {
     /*
      * Data source object for Sonny's LiDAR DTM1.
      */
-    public static final SrtmDataSource ELEVATION_DATA_SOURCE_SONNY_LIDAR_DTM1 = new SrtmDataSource(
-            "Sonny's LiDAR DTM1", DEFAULT_SONNY_LIDAR_DTM1_DIRECTORY, SrtmTile.Type.SRTM1, SONNY_LIDAR_DTM1_BASE_URL,
-            null, false);
+    public static final SrtmDataSource ELEVATION_DATA_SOURCE_SONNY_LIDAR_DTM1 = new SrtmDataSource("Sonny's LiDAR DTM1",
+            DEFAULT_SONNY_LIDAR_DTM1_DIRECTORY, SrtmTile.Type.SRTM1, SONNY_LIDAR_DTM1_BASE_URL, null, false);
 
     /*
      * Data source object for Sonny's LiDAR DTM3.
      */
-    public static final SrtmDataSource ELEVATION_DATA_SOURCE_SONNY_LIDAR_DTM3 = new SrtmDataSource(
-            "Sonny's LiDAR DTM3", DEFAULT_SONNY_LIDAR_DTM3_DIRECTORY, SrtmTile.Type.SRTM3, SONNY_LIDAR_DTM3_BASE_URL,
-            null, false);
+    public static final SrtmDataSource ELEVATION_DATA_SOURCE_SONNY_LIDAR_DTM3 = new SrtmDataSource("Sonny's LiDAR DTM3",
+            DEFAULT_SONNY_LIDAR_DTM3_DIRECTORY, SrtmTile.Type.SRTM3, SONNY_LIDAR_DTM3_BASE_URL, null, false);
 
     /**
      * List of elevation data sources for SRM1 data.
@@ -578,6 +576,17 @@ public class ElevationPreferences {
      * for quick access via {@link GeoTiffEnvelopeLayer}.
      */
     public static final String GEOTIFF_INDEX_DIRECTORY = "elevation.geotiff.index-directory";
+
+    /**
+     * Property key for persisting whether the directory with GeoTIFF files to be
+     * index shall be searched for GeoTIFF files recursively.
+     */
+    public static final String GEOTIFF_INDEX_DIRECTORY_RECURSIVE = "elevation.geotiff.index-directory.recursive";
+
+    /**
+     * Default property value for recursive GeoTIFF search: {@code true}.
+     */
+    public static final boolean DEFAULT_GEOTIFF_INDEX_DIRECTORY_RECURSIVE = true;
 
     /**
      * Path, where the JSON file for persisting the GeoTIFF envelope data of the
@@ -1184,9 +1193,9 @@ public class ElevationPreferences {
      */
     public static boolean setGeoTiffLastDirectory(Path path) {
         if (path == null) {
-            return Config.getPref().put(ElevationPreferences.GEOTIFF_LAST_DIRECTORY, null);
+            return Config.getPref().put(GEOTIFF_LAST_DIRECTORY, null);
         }
-        return Config.getPref().put(ElevationPreferences.GEOTIFF_LAST_DIRECTORY, path.toAbsolutePath().toString());
+        return Config.getPref().put(GEOTIFF_LAST_DIRECTORY, path.toAbsolutePath().toString());
     }
 
     /**
@@ -1213,9 +1222,32 @@ public class ElevationPreferences {
      */
     public static boolean setGeoTiffIndexDirectory(Path path) {
         if (path == null) {
-            return Config.getPref().put(ElevationPreferences.GEOTIFF_INDEX_DIRECTORY, null);
+            return Config.getPref().put(GEOTIFF_INDEX_DIRECTORY, null);
         }
-        return Config.getPref().put(ElevationPreferences.GEOTIFF_INDEX_DIRECTORY, path.toAbsolutePath().toString());
+        return Config.getPref().put(GEOTIFF_INDEX_DIRECTORY, path.toAbsolutePath().toString());
+    }
+
+    /**
+     * Sets whether to search for GeoTIFF files in the GeoTIFF directory
+     * recursively.
+     *
+     * @return {@code true} if search shall be performed recursively.
+     */
+    public static boolean getGeoTiffIndexDirectoryRecursive() {
+        return Config.getPref().getBoolean(GEOTIFF_INDEX_DIRECTORY_RECURSIVE,
+                DEFAULT_GEOTIFF_INDEX_DIRECTORY_RECURSIVE);
+    }
+
+    /**
+     * Returns whether to search for GeoTIFF files in the GeoTIFF directory
+     * recursively.
+     *
+     * @param recursive If {@code true}, the GeoTIFF directory will be searched for
+     *                  GeoTIFF files recursively.
+     * @return {@code true} if the recursive flag has changed.
+     */
+    public static boolean setGeoTiffIndexDirectoryRecursive(boolean recursive) {
+        return Config.getPref().putBoolean(GEOTIFF_INDEX_DIRECTORY_RECURSIVE, recursive);
     }
 
     /**

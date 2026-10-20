@@ -21,6 +21,7 @@ import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.coordinate.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffIndex;
 import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffIndexListener;
+import hhtznr.josm.plugins.elevation.data.srtm.SingleSrtmTileConsumer;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmDataSource;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmTile;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileCache;
@@ -29,7 +30,6 @@ import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileCacheListener;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileConsumer;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGrid;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGridLease;
-import hhtznr.josm.plugins.elevation.data.srtm.SingleSrtmTileConsumer;
 import hhtznr.josm.plugins.elevation.gui.layers.MapViewElevationDataConsumer;
 import hhtznr.josm.plugins.elevation.gui.paintables.ContourLines;
 import hhtznr.josm.plugins.elevation.gui.paintables.ElevationRaster;
@@ -58,7 +58,8 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SrtmTileCach
 
     private SrtmTile.Interpolation eleInterpolation;
 
-    private final LinkedList<ElevationDataProviderListener> listeners = new LinkedList<>();
+    private final LinkedList<SrtmElevationDataProviderListener> srtmListeners = new LinkedList<>();
+    private final LinkedList<GeoTiffElevationDataProviderListener> geotiffListeners = new LinkedList<>();
 
     /**
      * Creates a new elevation data provider based on preferences or defaults.
@@ -66,32 +67,38 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SrtmTileCach
     public ElevationDataProvider() {
         this(ElevationPreferences.getElevationDataSources(), ElevationPreferences.getRAMCacheSizeLimit(),
                 ElevationPreferences.getSRTMType(), ElevationPreferences.getElevationInterpolation(),
-                ElevationPreferences.getAutoDownloadEnabled());
+                ElevationPreferences.getAutoDownloadEnabled(), ElevationPreferences.getGeoTiffIndexDirectory(),
+                ElevationPreferences.getGeoTiffIndexDirectoryRecursive());
     }
 
     /**
      * Creates a new elevation data provider.
      *
-     * @param elevationDataSources A list of data sources from which to obtain
-     *                             elevation data.
-     * @param ramCacheMaxSize      The maximum size of the in-memory SRTM tile cache
-     *                             in MiB.
-     * @param srtmType             The SRTM type (SRTM1 or SRTM3).
-     * @param eleInterpolation     The type of elevation interpolation.
-     * @param autoDownloadEnabled  If {@code true} automatic downloading of missing
-     *                             SRTM tiles will be attempted.
+     * @param elevationDataSources      A list of data sources from which to obtain
+     *                                  elevation data.
+     * @param ramCacheMaxSize           The maximum size of the in-memory SRTM tile
+     *                                  cache in MiB.
+     * @param srtmType                  The SRTM type (SRTM1 or SRTM3).
+     * @param eleInterpolation          The type of elevation interpolation.
+     * @param autoDownloadEnabled       If {@code true} automatic downloading of
+     *                                  missing SRTM tiles will be attempted.
+     * @param geoTiffDirectory          The directory from which to read the GeoTIFF
+     *                                  files.
+     * @param geoTiffDirectoryRecursive If {@code true}, the GeoTIFF directory and
+     *                                  its subdirectories are traversed recursively
+     *                                  searching for GeoTIFF files.
      */
-    public ElevationDataProvider(List<SrtmDataSource> elevationDataSources, int ramCacheMaxSize,
-            SrtmTile.Type srtmType, SrtmTile.Interpolation eleInterpolation, boolean autoDownloadEnabled) {
+    public ElevationDataProvider(List<SrtmDataSource> elevationDataSources, int ramCacheMaxSize, SrtmTile.Type srtmType,
+            SrtmTile.Interpolation eleInterpolation, boolean autoDownloadEnabled, Path geoTiffDirectory,
+            boolean geoTiffDirectoryRecursive) {
         tileCache = new SrtmTileCache(elevationDataSources, ramCacheMaxSize);
         tileCache.addSRTMTileCacheListener(this);
         setSRTMType(srtmType);
         this.eleInterpolation = eleInterpolation;
         setAutoDownloadEnabled(autoDownloadEnabled);
 
-        Path geoTiffDirectory = ElevationPreferences.getGeoTiffIndexDirectory();
         Path indexCacheFile = ElevationPreferences.GEOTIFF_INDEX_CACHE_FILE;
-        geoTiffIndex = new GeoTiffIndex(geoTiffDirectory, true, indexCacheFile, this);
+        geoTiffIndex = new GeoTiffIndex(geoTiffDirectory, geoTiffDirectoryRecursive, indexCacheFile, this);
     }
 
     /**
@@ -188,8 +195,8 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SrtmTileCach
             // Only sets the type of the new type is not equal to the old type
             if (tileCache.setSRTMType(type)) {
                 activeTileGrids.clear();
-                synchronized (listeners) {
-                    for (ElevationDataProviderListener listener : listeners) {
+                synchronized (srtmListeners) {
+                    for (SrtmElevationDataProviderListener listener : srtmListeners) {
                         listener.srtmTileTypeChanged(oldType, type);
                     }
                 }
@@ -577,28 +584,56 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SrtmTileCach
     }
 
     /**
-     * Adds an elevation data provider listener to this elevation data provider. All
-     * listeners are informed if elevation data for a particular SRTM tile is
-     * available.
+     * Adds an SRTM elevation data provider listener to this elevation data
+     * provider. All listeners are informed if elevation data for a particular SRTM
+     * tile is available.
      *
      * @param listener The listener to add.
      */
-    public void addElevationDataProviderListener(ElevationDataProviderListener listener) {
-        synchronized (listeners) {
-            if (!listeners.contains(listener)) {
-                listeners.add(listener);
+    public void addSrtmElevationDataProviderListener(SrtmElevationDataProviderListener listener) {
+        synchronized (srtmListeners) {
+            if (!srtmListeners.contains(listener)) {
+                srtmListeners.add(listener);
             }
         }
     }
 
     /**
-     * Removes a listener from this elevation data provider.
+     * Removes an SRTM elevation data provider listener from this elevation data
+     * provider.
      *
      * @param listener The listener to be removed.
      */
-    public void removeElevationDataProviderListener(ElevationDataProviderListener listener) {
-        synchronized (listeners) {
-            listeners.remove(listener);
+    public void removeSrtmElevationDataProviderListener(SrtmElevationDataProviderListener listener) {
+        synchronized (srtmListeners) {
+            srtmListeners.remove(listener);
+        }
+    }
+
+    /**
+     * Adds a GeoTIFF elevation data provider listener to this elevation data
+     * provider. All listeners are informed if elevation data for a particular SRTM
+     * tile is available.
+     *
+     * @param listener The listener to add.
+     */
+    public void addGeoTiffElevationDataProviderListener(GeoTiffElevationDataProviderListener listener) {
+        synchronized (geotiffListeners) {
+            if (!geotiffListeners.contains(listener)) {
+                geotiffListeners.add(listener);
+            }
+        }
+    }
+
+    /**
+     * Removes a GeoTIFF elevation data provider listener from this elevation data
+     * provider.
+     *
+     * @param listener The listener to be removed.
+     */
+    public void removeGeoTiffElevationDataProviderListener(GeoTiffElevationDataProviderListener listener) {
+        synchronized (geotiffListeners) {
+            geotiffListeners.remove(listener);
         }
     }
 
@@ -609,8 +644,8 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SrtmTileCach
         synchronized (activeTileGrids) {
             for (SrtmTileGrid tileGrid : activeTileGrids) {
                 if (!tileGrid.isDisposed() && tileGrid.contains(tile) && tileGrid.areAllTilesCached()) {
-                    synchronized (listeners) {
-                        for (ElevationDataProviderListener listener : listeners) {
+                    synchronized (srtmListeners) {
+                        for (SrtmElevationDataProviderListener listener : srtmListeners) {
                             listener.elevationDataAvailable(tileGrid);
                         }
                     }
@@ -621,8 +656,8 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SrtmTileCach
 
     @Override
     public void geoTiffIndexUpdated() {
-        synchronized (listeners) {
-            for (ElevationDataProviderListener listener : listeners) {
+        synchronized (geotiffListeners) {
+            for (GeoTiffElevationDataProviderListener listener : geotiffListeners) {
                 listener.geoTiffIndexUpdated();
             }
         }

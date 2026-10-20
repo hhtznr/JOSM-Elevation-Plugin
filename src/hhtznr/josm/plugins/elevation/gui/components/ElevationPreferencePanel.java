@@ -9,7 +9,9 @@ import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
+import java.io.File;
 import java.net.PasswordAuthentication;
+import java.nio.file.Path;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
@@ -17,12 +19,16 @@ import javax.swing.Box;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
+import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.JSpinner;
+import javax.swing.JTextField;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.event.HyperlinkEvent;
 
 import org.openstreetmap.josm.data.oauth.OAuth20Token;
@@ -77,10 +83,11 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
             ElevationPreferences.MIN_RAM_CACHE_SIZE_LIMIT, ElevationPreferences.MAX_RAM_CACHE_SIZE_LIMIT,
             ElevationPreferences.INCR_RAM_CACHE_SIZE_LIMIT);
 
-    private final JCheckBox cbEnableElevationLayer = new JCheckBox("Enable Elevation Visualization Layer");
+    private final JCheckBox cbEnableSrtmElevationLayer = new JCheckBox("Enable SRTM Elevation Visualization Layer");
 
     private final JLabel lblRenderingLimit = new JLabel("Layer Rendering Map Size Limit:");
-    private final JSpinner spRenderingLimit = UIFactory.createSpinner(ElevationPreferences.getElevationLayerRenderingLimit(),
+    private final JSpinner spRenderingLimit = UIFactory.createSpinner(
+            ElevationPreferences.getElevationLayerRenderingLimit(),
             ElevationPreferences.MIN_ELEVATION_LAYER_RENDERING_LIMIT,
             ElevationPreferences.MAX_ELEVATION_LAYER_RENDERING_LIMIT,
             ElevationPreferences.INCR_ELEVATION_LAYER_RENDERING_LIMIT);
@@ -121,7 +128,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
     private final JLabel lblHillshadeAzimuthUnit = new JLabel("°");
 
     private final JCheckBox cbEnableAutoDownload = new JCheckBox(
-            "Enable Automatic Downloading of Elevation Data from NASA Earthdata");
+            "Enable Automatic Downloading of SRTM Elevation Data from NASA Earthdata");
 
     private final JRadioButton rbPasswordAuth = new JRadioButton("Use Password Authentication");
     private final JRadioButton rbAuthBearer = new JRadioButton("Use Authorization Bearer Token");
@@ -141,8 +148,14 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
     private final JPanel pnlAuthBearer = new AutoSizePanel();
     private final JLabel lblAuthBearer = new JLabel("Earthdata Authorization Bearer Token:");
-    private final JosmTextField tfAuthBearer = new JosmTextField();
+    private final JosmTextField tfAuthBearer = new JosmTextField(70);
     private final JButton btnRemoveAuthBearer = new JButton(new RemoveAuthBearerAction());
+
+    private final JCheckBox cbEnableGeoTiffEnvelopeLayer = new JCheckBox("Enable GeoTIFF Overview Layer");
+    private final JLabel lblGeoTiffDirectory = new JLabel("GeoTIFF Directory:");
+    private final JTextField tfGeoTiffDirectory = new JosmTextField(70);;
+    private final JButton btSelectGeoTiffDirectory = new JButton("Select");
+    private final JCheckBox cbGeoTiffRecursive = new JCheckBox("Recursive");
 
     /**
      * Constructs a new {@code ElevationPreferencePanel}.
@@ -156,7 +169,8 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         add(buildPreferencePanel(), GBC.eop().anchor(GBC.NORTHWEST).fill(GBC.BOTH));
 
         initFromPreferences();
-        updateEnabledState();
+        updateSrtmLayerEnabledState();
+        updateGeoTiffLayerEnabledState();
     }
 
     /**
@@ -187,6 +201,8 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         sb.append("</body>");
         sb.append("</html>");
 
+        JLabel labelSrtmSourceInfo = new JLabel("Information on SRTM Data Sources");
+
         JMultilineLabel labelSRTMSources = new JMultilineLabel(sb.toString());
         labelSRTMSources.addHyperlinkListener(event -> {
             if (event.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
@@ -194,7 +210,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
             }
         });
 
-        cbEnableElevationLayer.addItemListener(event -> updateEnabledState());
+        cbEnableSrtmElevationLayer.addItemListener(event -> updateSrtmLayerEnabledState());
 
         spRenderingLimit.setToolTipText(ElevationPluginTexts.TOOL_TIP_LAYER_RENDERING_LIMIT);
 
@@ -203,7 +219,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
         cbEnableAutoDownload.setToolTipText(I18n.tr("SRTM files will be downloaded from {0} or {1}",
                 ElevationPreferences.SRTM1_SERVER_BASE_URL, ElevationPreferences.SRTM3_SERVER_BASE_URL));
-        cbEnableAutoDownload.addItemListener(event -> updateEnabledState());
+        cbEnableAutoDownload.addItemListener(event -> updateSrtmLayerEnabledState());
 
         JPanel pnlAuthButtons = new JPanel(new FlowLayout(FlowLayout.LEADING));
         pnlAuthButtons.add(rbPasswordAuth);
@@ -240,86 +256,28 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
             }
         });
 
+        cbEnableGeoTiffEnvelopeLayer.addItemListener(event -> updateGeoTiffLayerEnabledState());
+        tfGeoTiffDirectory.setEditable(false);
+        btSelectGeoTiffDirectory.addActionListener(event -> showGeoTiffDirectoryChooser());
+
+        buildCredentialsPanel();
+        buildAuthBearerPanel();
+
         GBC gc = GBC.std();
-
-        // Credentials panel
-        // Row "User name"
-        gc.gridy = 0;
-        gc.gridx = 0;
-        gc.insets = new Insets(5, 5, 0, 0);
-        gc.fill = GBC.NONE;
-        gc.gridwidth = 1;
-        gc.weightx = 0.0;
-        pnlPasswordAuth.add(lblUserName, gc);
-
-        gc.gridx++;
-        gc.fill = GBC.HORIZONTAL;
-        gc.gridwidth = GBC.REMAINDER;
-        gc.weightx = 1.0;
-        pnlPasswordAuth.add(tfUserName, gc);
-
-        // Row "Password"
-        gc.gridy++;
-        gc.gridx = 0;
-        gc.fill = GBC.NONE;
-        gc.gridwidth = 1;
-        gc.weightx = 0.0;
-        pnlPasswordAuth.add(lblPassword, gc);
-
-        gc.gridx++;
-        gc.fill = GBC.HORIZONTAL;
-        gc.gridwidth = GBC.REMAINDER;
-        gc.weightx = 1.0;
-        pnlPasswordAuth.add(tfPassword, gc);
-
-        // Button "Remove credentials"
-        gc.gridy++;
-        gc.gridx = 0;
-        gc.fill = GBC.NONE;
-        gc.gridwidth = 1;
-        gc.weightx = 0.0;
-        pnlPasswordAuth.add(new JPanel(), gc);
-
-        gc.gridx++;
-        gc.fill = GBC.NONE;
-        gc.gridwidth = GBC.REMAINDER;
-        gc.weightx = 1.0;
-        pnlPasswordAuth.add(btnRemoveCredentials, gc);
-
-        // Authorization bearer token panel
-        // Row "Bearer token"
-        gc.gridy = 0;
-        gc.gridx = 0;
-        gc.insets = new Insets(5, 5, 0, 0);
-        gc.fill = GBC.NONE;
-        gc.gridwidth = 1;
-        gc.weightx = 0.0;
-        pnlAuthBearer.add(lblAuthBearer, gc);
-
-        gc.gridx++;
-        gc.fill = GBC.HORIZONTAL;
-        gc.gridwidth = GBC.REMAINDER;
-        gc.weightx = 1.0;
-        pnlAuthBearer.add(tfAuthBearer, gc);
-
-        // Button "Remove auth bearer"
-        gc.gridy++;
-        gc.gridx = 0;
-        gc.fill = GBC.NONE;
-        gc.gridwidth = 1;
-        gc.weightx = 0.0;
-        pnlAuthBearer.add(new JPanel(), gc);
-
-        gc.gridx++;
-        gc.gridwidth = GBC.REMAINDER;
-        gc.weightx = 1.0;
-        pnlAuthBearer.add(btnRemoveAuthBearer, gc);
 
         // Elevation preferences panel
         JPanel pnl = new AutoSizePanel();
 
-        // Row "SRTM sources"
+        // Row "SRTM source info"
         gc.gridy = 0;
+        gc.gridx = 0;
+        gc.fill = GBC.HORIZONTAL;
+        gc.gridwidth = GBC.REMAINDER;
+        gc.weightx = 1.0;
+        pnl.add(labelSrtmSourceInfo, gc);
+
+        // Row "SRTM sources"
+        gc.gridy++;
         gc.gridx = 0;
         gc.fill = GBC.HORIZONTAL;
         gc.gridwidth = GBC.REMAINDER;
@@ -386,7 +344,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.gridy++;
         gc.gridx = 0;
         gc.fill = GBC.NONE;
-        pnl.add(cbEnableElevationLayer, gc);
+        pnl.add(cbEnableSrtmElevationLayer, gc);
 
         // Row "Layer rendering limit"
         gc.gridy++;
@@ -540,8 +498,186 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.fill = GBC.BOTH;
         pnl.add(pnlAuthData, gc);
 
+        // Separator before next section
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.fill = GBC.HORIZONTAL;
+        gc.gridwidth = GBC.REMAINDER;
+        gc.weightx = 1.0;
+        pnl.add(new JSeparator(SwingConstants.HORIZONTAL), gc);
+
+        // Row "Enable GeoTIFF layer"
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.fill = GBC.NONE;
+        pnl.add(cbEnableGeoTiffEnvelopeLayer, gc);
+
+        // Row "GeoTiff layer panel"
+        gc.gridy++;
+        gc.fill = GBC.BOTH;
+        pnl.add(buildGeoTiffLayerPanel(), gc);
+
         // add an extra spacer, otherwise the layout is broken
         pnl.add(Box.createVerticalGlue(), GBC.eol().fill());
+        return pnl;
+    }
+
+    public void buildCredentialsPanel() {
+        GBC gc = GBC.std();
+
+        // Credentials panel
+        // Row "User name"
+        gc.gridy = 0;
+        gc.gridx = 0;
+        gc.insets = new Insets(5, 5, 0, 0);
+        gc.fill = GBC.NONE;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnlPasswordAuth.add(lblUserName, gc);
+
+        gc.gridx++;
+        gc.fill = GBC.HORIZONTAL;
+        gc.gridwidth = GBC.REMAINDER;
+        gc.weightx = 1.0;
+        pnlPasswordAuth.add(tfUserName, gc);
+
+        // Row "Password"
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.fill = GBC.NONE;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnlPasswordAuth.add(lblPassword, gc);
+
+        gc.gridx++;
+        gc.fill = GBC.HORIZONTAL;
+        gc.gridwidth = GBC.REMAINDER;
+        gc.weightx = 1.0;
+        pnlPasswordAuth.add(tfPassword, gc);
+
+        // Button "Remove credentials"
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.fill = GBC.NONE;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnlPasswordAuth.add(new JPanel(), gc);
+
+        gc.gridx++;
+        gc.fill = GBC.NONE;
+        gc.gridwidth = GBC.REMAINDER;
+        gc.weightx = 1.0;
+        pnlPasswordAuth.add(btnRemoveCredentials, gc);
+    }
+
+    public void buildAuthBearerPanel() {
+        JScrollPane authBearerScrollPane = new JScrollPane(tfAuthBearer, JScrollPane.VERTICAL_SCROLLBAR_NEVER,
+                JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+
+        GBC gc = GBC.std();
+
+        // Authorization bearer token panel
+        // Row "Bearer token"
+        gc.gridy = 0;
+        gc.gridx = 0;
+        gc.insets = new Insets(5, 5, 0, 0);
+        gc.fill = GBC.NONE;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnlAuthBearer.add(lblAuthBearer, gc);
+
+        gc.gridx++;
+        gc.fill = GBC.NONE;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnlAuthBearer.add(authBearerScrollPane, gc);
+
+        gc.gridx++;
+        gc.fill = GBC.HORIZONTAL;
+        gc.gridwidth = GBC.REMAINDER;
+        gc.weightx = 1.0;
+        pnlAuthBearer.add(new JPanel(), gc);
+
+        // Button "Remove auth bearer"
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.fill = GBC.NONE;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnlAuthBearer.add(new JPanel(), gc);
+
+        gc.gridx++;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnlAuthBearer.add(btnRemoveAuthBearer, gc);
+
+        gc.gridx++;
+        gc.fill = GBC.HORIZONTAL;
+        gc.gridwidth = GBC.REMAINDER;
+        gc.weightx = 1.0;
+        pnlAuthBearer.add(new JPanel(), gc);
+    }
+
+    public JPanel buildGeoTiffLayerPanel() {
+        JScrollPane geoTiffDirectoryScrollPane = new JScrollPane(tfGeoTiffDirectory,
+                JScrollPane.VERTICAL_SCROLLBAR_NEVER, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+
+        JPanel pnl = new AutoSizePanel();
+        GBC gc = GBC.std();
+
+        // Row 1
+        gc.gridy = 0;
+        gc.gridx = 0;
+        gc.anchor = GBC.LINE_START;
+        gc.insets = new Insets(5, 5, 0, 0);
+        gc.fill = GBC.NONE;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnl.add(lblGeoTiffDirectory, gc);
+
+        gc.gridx++;
+        gc.fill = GBC.NONE;
+        gc.weightx = 0.0;
+        pnl.add(geoTiffDirectoryScrollPane, gc);
+
+        gc.gridx++;
+        gc.fill = GBC.NONE;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnl.add(btSelectGeoTiffDirectory, gc);
+
+        gc.gridx++;
+        gc.fill = GBC.HORIZONTAL;
+        gc.gridwidth = GBC.REMAINDER;
+        gc.weightx = 1.0;
+        pnl.add(new JPanel(), gc);
+
+        // Row 2
+        gc.gridx++;
+        gc.fill = GBC.HORIZONTAL;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnl.add(new JPanel(), gc);
+
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.fill = GBC.NONE;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnl.add(cbGeoTiffRecursive, gc);
+
+        gc.gridx++;
+        gc.fill = GBC.HORIZONTAL;
+        gc.gridwidth = GBC.REMAINDER;
+        gc.weightx = 1.0;
+        pnl.add(new JPanel(), gc);
+
+        // add an extra spacer, otherwise the layout is broken
+        gc.gridy++;
+        gc.gridwidth = 4;
+        gc.fill = GBC.BOTH;
+        gc.weighty = 1.0;
+        pnl.add(new JPanel(), gc);
         return pnl;
     }
 
@@ -551,7 +687,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
     private final void initFromPreferences() {
         cbSRTMType.setSelectedItem(ElevationPreferences.getSRTMType());
         cbInterpolation.setSelectedItem(ElevationPreferences.getElevationInterpolation());
-        cbEnableElevationLayer.setSelected(ElevationPreferences.getElevationLayerEnabled());
+        cbEnableSrtmElevationLayer.setSelected(ElevationPreferences.getElevationLayerEnabled());
         cbContourLineColoring.setSelectedItem(ElevationPreferences.getContourLineColoringScheme());
         cbEnableAutoDownload.setSelected(ElevationPreferences.getAutoDownloadEnabled());
 
@@ -577,11 +713,18 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         if (oAuthToken != null && oAuthToken.getBearerToken() != null) {
             tfAuthBearer.setText(oAuthToken.getBearerToken());
         }
+
+        cbEnableGeoTiffEnvelopeLayer.setSelected(ElevationPreferences.getGeoTiffEnvelopeLayerEnabled());
+        Path path = ElevationPreferences.getGeoTiffIndexDirectory();
+        if (path != null) {
+            tfGeoTiffDirectory.setText(path.toAbsolutePath().toString());
+        }
+        cbGeoTiffRecursive.setSelected(ElevationPreferences.getGeoTiffIndexDirectoryRecursive());
     }
 
-    private final void updateEnabledState() {
-        boolean elevationLayerEnabled = cbEnableElevationLayer.isSelected();
-        boolean autoDownloadEnabled = cbEnableAutoDownload.isSelected();
+    private final void updateSrtmLayerEnabledState() {
+        boolean elevationLayerEnabled = cbEnableSrtmElevationLayer.isSelected();
+        boolean autoDownloadEnabled = elevationLayerEnabled && cbEnableAutoDownload.isSelected();
         lblRenderingLimit.setEnabled(elevationLayerEnabled);
         spRenderingLimit.setEnabled(elevationLayerEnabled);
         lblRenderingLimitUnit.setEnabled(elevationLayerEnabled);
@@ -613,6 +756,38 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         lblEarthdataNotes.setEnabled(autoDownloadEnabled);
     }
 
+    private final void updateGeoTiffLayerEnabledState() {
+        boolean layerEnabled = cbEnableGeoTiffEnvelopeLayer.isSelected();
+        lblGeoTiffDirectory.setEnabled(layerEnabled);
+        tfGeoTiffDirectory.setEnabled(layerEnabled);
+        btSelectGeoTiffDirectory.setEnabled(layerEnabled);
+        cbGeoTiffRecursive.setEnabled(layerEnabled);
+    }
+
+    /**
+     * Shows a file chooser for selection of the directory containing GeoTIFF files.
+     */
+    private void showGeoTiffDirectoryChooser() {
+        SwingUtilities.invokeLater(() -> {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+            fileChooser.setDialogTitle("Select a directory with GeoTIFF files");
+
+            if (!tfGeoTiffDirectory.getText().equals("")) {
+                File currentDirectory = new File(tfGeoTiffDirectory.getText());
+                fileChooser.setCurrentDirectory(currentDirectory);
+            }
+
+            if (fileChooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+                File selectedDirectory = fileChooser.getSelectedFile();
+                // The FileChooser is weird. You can type in a directory, which does not exist
+                if (selectedDirectory.isDirectory()) {
+                    tfGeoTiffDirectory.setText(selectedDirectory.getAbsolutePath());
+                }
+            }
+        });
+    }
+
     /**
      * Saves the current values to the preferences.
      */
@@ -620,7 +795,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         ElevationPreferences.setSRTMType((SrtmTile.Type) cbSRTMType.getSelectedItem());
         ElevationPreferences.setElevationInterpolation((SrtmTile.Interpolation) cbInterpolation.getSelectedItem());
         ElevationPreferences.setRAMCacheSizeLimit((Integer) spCacheSize.getValue());
-        ElevationPreferences.setElevationLayerEnabled(cbEnableElevationLayer.isSelected());
+        ElevationPreferences.setElevationLayerEnabled(cbEnableSrtmElevationLayer.isSelected());
         ElevationPreferences.setElevationLayerRenderingLimit((Double) spRenderingLimit.getValue());
         ElevationPreferences.setContourLineIsostep((Integer) spIsostep.getValue());
         ElevationPreferences.setContourLineStrokeWidth((Double) spStrokeWidth.getValue());
@@ -639,6 +814,15 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
             ElevationPreferences.storeEarthdataOAuthToken(tfAuthBearer.getText());
             ElevationPreferences.setElevationServerAuthType(SrtmFileDownloader.AuthType.BEARER_TOKEN);
         }
+
+        ElevationPreferences.setGeoTiffEnvelopeLayerEnabled(cbEnableGeoTiffEnvelopeLayer.isSelected());
+        String pathString = tfGeoTiffDirectory.getText();
+        Path path = null;
+        if (!pathString.isBlank()) {
+            path = Path.of(pathString);
+        }
+        ElevationPreferences.setGeoTiffIndexDirectory(path);
+        ElevationPreferences.setGeoTiffIndexDirectoryRecursive(cbGeoTiffRecursive.isSelected());
     }
 
     private class RemoveCredentialsAction extends AbstractAction {

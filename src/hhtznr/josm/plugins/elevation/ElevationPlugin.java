@@ -186,7 +186,9 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     private void removeElevationLayer() {
         synchronized (elevationLayerLock) {
             if (elevationLayer != null) {
-                MainApplication.getLayerManager().removeLayer(elevationLayer);
+                if (MainApplication.getLayerManager().containsLayer(elevationLayer)) {
+                    MainApplication.getLayerManager().removeLayer(elevationLayer);
+                }
                 elevationLayer = null;
             }
         }
@@ -195,7 +197,9 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     private void removeGeoTiffEnvelopeLayer() {
         synchronized (geoTiffEnvelopeLayerLock) {
             if (geoTiffEnvelopeLayer != null) {
-                MainApplication.getLayerManager().removeLayer(geoTiffEnvelopeLayer);
+                if (MainApplication.getLayerManager().containsLayer(geoTiffEnvelopeLayer)) {
+                    MainApplication.getLayerManager().removeLayer(geoTiffEnvelopeLayer);
+                }
                 geoTiffEnvelopeLayer = null;
             }
         }
@@ -211,6 +215,19 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     public boolean isElevationLayerEnabled() {
         synchronized (elevationLayerLock) {
             return elevationLayer != null;
+        }
+    }
+
+    /**
+     * Returns whether the GeoTIFF envelope layer is enabled. We can deduce that the
+     * GeoTIFF envelope layer is enabled, if it is not {@code null}.
+     *
+     * @return {@code true} if the GeoTIFF envelope layer is enabled, {@code false}
+     *         otherwise.
+     */
+    public boolean isGeoTiffEnvelopeLayerEnabled() {
+        synchronized (geoTiffEnvelopeLayerLock) {
+            return geoTiffEnvelopeLayer != null;
         }
     }
 
@@ -254,7 +271,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
         addLocalElevationLabel(newFrame);
         // newFrame is null if the map was active and the last layer is closed
         if (newFrame != null) {
-            setElevationLayerEnabled(ElevationPreferences.getElevationLayerEnabled());
+            setSrtmElevationLayerEnabled(ElevationPreferences.getElevationLayerEnabled());
             setGeoTiffEnvelopeLayerEnabled(ElevationPreferences.getGeoTiffEnvelopeLayerEnabled(), false);
         }
     }
@@ -333,7 +350,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
      * @param enabled If {@code true}, the layer is enabled. If {@code false}, the
      *                layer is disabled.
      */
-    public void setElevationLayerEnabled(boolean enabled) {
+    public void setSrtmElevationLayerEnabled(boolean enabled) {
         MapFrame mapFrame = MainApplication.getMap();
 
         if (enabled) {
@@ -352,7 +369,6 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
                     short upperCutoff = ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION;
                     elevationLayer = new SrtmElevationLayer(elevationDataProvider, renderingLimit, isostep, strokeWidth,
                             coloringScheme, color, altitude, azimuth, lowerCutoff, upperCutoff);
-                    MainApplication.getLayerManager().addLayer(elevationLayer);
                 } else {
                     elevationLayer.setRenderingLimit(ElevationPreferences.getElevationLayerRenderingLimit());
                     elevationLayer.setContourLineIsostep(ElevationPreferences.getContourLineIsostep());
@@ -366,6 +382,9 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
             }
 
             if (mapFrame != null) {
+                if (!MainApplication.getLayerManager().containsLayer(elevationLayer)) {
+                    MainApplication.getLayerManager().addLayer(elevationLayer);
+                }
                 mapFrame.mapView.repaint();
             }
 
@@ -396,10 +415,6 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
             synchronized (geoTiffEnvelopeLayerLock) {
                 if (geoTiffEnvelopeLayer == null) {
                     geoTiffEnvelopeLayer = new GeoTiffEnvelopeLayer(elevationDataProvider);
-                    MainApplication.getLayerManager().addLayer(geoTiffEnvelopeLayer);
-                    if (setActive) {
-                        MainApplication.getLayerManager().setActiveLayer(geoTiffEnvelopeLayer);
-                    }
                 }
             }
             if (elevationDataProvider.getGeoTiffIndex().getGeoTiffDirectory() != null) {
@@ -407,6 +422,12 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
             }
 
             if (mapFrame != null) {
+                if (!MainApplication.getLayerManager().containsLayer(geoTiffEnvelopeLayer)) {
+                    MainApplication.getLayerManager().addLayer(geoTiffEnvelopeLayer);
+                    if (setActive) {
+                        MainApplication.getLayerManager().setActiveLayer(geoTiffEnvelopeLayer);
+                    }
+                }
                 mapFrame.mapView.repaint();
             }
         } else {

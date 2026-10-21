@@ -34,7 +34,7 @@ import hhtznr.josm.plugins.elevation.data.GeoTiffElevationDataProviderListener;
 import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffImage;
 import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffIndex;
 import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffRecord;
-import hhtznr.josm.plugins.elevation.util.DrawUtils;
+import hhtznr.josm.plugins.elevation.util.DrawUtils.NonOverlappingTextRenderer;
 import hhtznr.josm.plugins.elevation.util.FileUtils;
 
 /**
@@ -92,6 +92,7 @@ public class GeoTiffEnvelopeLayer extends Layer implements GeoTiffElevationDataP
         }
         synchronized (geoTiffRecordsLock) {
             if (geoTiffRecords != null) {
+                NonOverlappingTextRenderer textRenderer = new NonOverlappingTextRenderer();
                 for (GeoTiffRecord record : geoTiffRecords) {
                     Color envelopeColor = ENVELOPE_COLOR;
                     Layer activeLayer = MainApplication.getLayerManager().getActiveLayer();
@@ -99,13 +100,14 @@ public class GeoTiffEnvelopeLayer extends Layer implements GeoTiffElevationDataP
                             && hoveredGeoTiffRecord.equals(record)) {
                         envelopeColor = HOVERED_ENVELOPE_COLOR;
                     }
-                    drawEnvelope(g, mapView, record, envelopeColor);
+                    drawEnvelope(g, mapView, record, envelopeColor, textRenderer);
                 }
             }
         }
     }
 
-    private void drawEnvelope(Graphics2D g, MapView mapView, GeoTiffRecord geoTiffRecord, Color envelopeColor) {
+    private void drawEnvelope(Graphics2D g, MapView mapView, GeoTiffRecord geoTiffRecord, Color envelopeColor,
+            NonOverlappingTextRenderer textRenderer) {
         ReferencedEnvelope envelope = geoTiffRecord.getReferencedEnvelope();
 
         Point northWest = mapView.getPoint(new LatLon(envelope.getMaxY(), envelope.getMinX()));
@@ -125,17 +127,22 @@ public class GeoTiffEnvelopeLayer extends Layer implements GeoTiffElevationDataP
         int y = outlineBounds.y;
 
         String name = FileUtils.getFileNameWithoutExtension(geoTiffRecord.getAbsolutePath(), ".tif", ",tiff");
-        Font font = g.getFont().deriveFont(Font.BOLD, 12);
+        int fontSize = 12;
+        Font font = g.getFont().deriveFont(Font.BOLD, fontSize);
 
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
+        // Draw stroke
         g.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         g.setColor(Color.WHITE);
         g.draw(outline);
         g.setStroke(new BasicStroke(1.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         g.setColor(envelopeColor);
         g.draw(outline);
-        DrawUtils.drawOutlinedText(g, x, y, font, envelopeColor, Color.WHITE, 1.0f, name);
+
+        // Draw text
+        g.setFont(font);
+        textRenderer.drawTextSafely(g, x + 4, y + fontSize / 2 + 2, envelopeColor, Color.WHITE, name);
     }
 
     @Override

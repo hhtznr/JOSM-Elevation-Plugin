@@ -47,7 +47,7 @@ import jakarta.json.stream.JsonParsingException;
  */
 public class GeoTiffIndex {
 
-    private Path geoTiffDirectory;
+    private Path geoTiffDirectory = null;
     private boolean recursive;
     private Path cacheFile;
     private final GeoTiffIndexListener listener;
@@ -79,7 +79,9 @@ public class GeoTiffIndex {
      *                         persist them across JSON sessions.
      */
     public GeoTiffIndex(Path geoTiffDirectory, boolean recursive, Path cacheFile, GeoTiffIndexListener listener) {
-        this.geoTiffDirectory = geoTiffDirectory.toAbsolutePath();
+        if (geoTiffDirectory != null) {
+            this.geoTiffDirectory = geoTiffDirectory.toAbsolutePath();
+        }
         this.recursive = recursive;
         this.cacheFile = cacheFile.toAbsolutePath();
         this.listener = listener;
@@ -162,8 +164,13 @@ public class GeoTiffIndex {
      */
     public boolean setGeoTiffDirectory(Path directory, boolean recursive) {
         synchronized (syncLock) {
+            if (directory == null && geoTiffDirectory == null) {
+                Logging.info(
+                        "Elevation: Not updateing GeoTiff directory which shall remain unset.");
+                return false;
+            }
             try {
-                if (Files.isSameFile(directory, geoTiffDirectory) && recursive == this.recursive) {
+                if (directory != null && geoTiffDirectory != null && Files.isSameFile(directory, geoTiffDirectory) && recursive == this.recursive) {
                     Logging.info(
                             "Elevation: Not updateing GeoTiff directory used for GeoTIFF envelope index because it is unchanged.");
                     return false;

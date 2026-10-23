@@ -69,7 +69,7 @@ public final class ElevationTabPreferenceSetting extends DefaultTabPreferenceSet
         boolean geoTiffEnvelopeLayerEnabled = ElevationPreferences.getGeoTiffEnvelopeLayerEnabled();
         Path geoTiffDirectory = ElevationPreferences.getGeoTiffIndexDirectory();
         boolean recursive = ElevationPreferences.getGeoTiffIndexDirectoryRecursive();
-        if (geoTiffEnvelopeLayerEnabled && !plugin.isGeoTiffEnvelopeLayerEnabled()) {
+        if (geoTiffEnvelopeLayerEnabled) {
             plugin.getElevationDataProvider().getGeoTiffIndex().setGeoTiffDirectory(geoTiffDirectory, recursive);
             plugin.setGeoTiffEnvelopeLayerEnabled(true, false);
         } else {

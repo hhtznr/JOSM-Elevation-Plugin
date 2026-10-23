@@ -466,6 +466,7 @@ public class GeoTiffIndex {
                 Files.deleteIfExists(cacheFile);
                 Logging.info("Elevation: Deleted GeoTIFF envelope cache file '" + cacheFile.toString() + "'");
             }
+            return;
         }
 
         Logging.info("Elevation: Saving " + records.size() + " cached envelopes of GeoTIFF files to '"

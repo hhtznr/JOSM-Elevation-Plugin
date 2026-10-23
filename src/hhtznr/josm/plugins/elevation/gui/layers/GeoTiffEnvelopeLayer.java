@@ -34,6 +34,7 @@ import hhtznr.josm.plugins.elevation.data.GeoTiffElevationDataProviderListener;
 import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffImage;
 import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffIndex;
 import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffRecord;
+import hhtznr.josm.plugins.elevation.gui.actions.GeoTiffSyncIndexFromDiskAction;
 import hhtznr.josm.plugins.elevation.util.DrawUtils.NonOverlappingTextRenderer;
 import hhtznr.josm.plugins.elevation.util.FileUtils;
 
@@ -157,9 +158,11 @@ public class GeoTiffEnvelopeLayer extends Layer implements GeoTiffElevationDataP
 
     @Override
     public Action[] getMenuEntries() {
-        Action[] actions = new Action[2];
+        Action[] actions = new Action[4];
         actions[0] = LayerListDialog.getInstance().createActivateLayerAction(this);
         actions[1] = LayerListDialog.getInstance().createShowHideLayerAction();
+        actions[2] = SeparatorLayerAction.INSTANCE;
+        actions[3] = new GeoTiffSyncIndexFromDiskAction(elevationDataProvider.getGeoTiffIndex());
         return actions;
     }
 

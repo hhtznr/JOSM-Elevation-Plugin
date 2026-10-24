@@ -53,4 +53,19 @@ public class ColorChooserButton extends JButton {
     public Color getSelectedColor() {
         return getBackground();
     }
+
+    /**
+     * Sets the color of this color chooser button to the specified color.
+     *
+     * @param color The color to set.
+     * @return {@code true} if the new color is different from the previous color,
+     *         {@code false} otherwise.
+     */
+    public boolean setSelectedColor(Color color) {
+        if (getBackground().equals(color)) {
+            return false;
+        }
+        setBackground(color);
+        return true;
+    }
 }

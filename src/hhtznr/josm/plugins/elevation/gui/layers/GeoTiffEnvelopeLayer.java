@@ -256,13 +256,17 @@ public class GeoTiffEnvelopeLayer extends Layer implements GeoTiffElevationDataP
 
             @Override
             public void mouseClicked(MouseEvent e) {
+                // Double-click of (commonly left) mouse button 1
                 if (e.getButton() == MouseEvent.BUTTON1 && e.getClickCount() == 2) {
                     GeoTiffRecord record = hoveredGeoTiffRecord;
                     if (record != null) {
                         Path path = record.getAbsolutePath();
                         String layerName = GeoTiffElevationLayer.deriveLayerName(path);
-                        if (GeoTiffElevationLayer.geoTiffLayerAlreadyExists(layerName)) {
-                            GeoTiffElevationLayer.setGeoTiffLayerVisible(layerName);
+                        GeoTiffElevationLayer layer = GeoTiffElevationLayer.getGeoTiffLayer(layerName);
+                        if (layer != null) {
+                            layer.setVisible(true);
+                            layer.acquireLayerAdjustmentDialog();
+
                             Logging.info("Elevation: Not adding GeoTIFF layer for '" + path.toAbsolutePath().toString()
                                     + "' because a GeoTiFFLayer with the same name already exists");
                             return;

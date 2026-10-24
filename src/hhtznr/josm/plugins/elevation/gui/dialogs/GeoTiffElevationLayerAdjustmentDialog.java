@@ -35,7 +35,8 @@ public class GeoTiffElevationLayerAdjustmentDialog extends ExtendedDialog {
 
     private static final long serialVersionUID = -1L;
 
-    private final GeoTiffElevationLayer elevationLayer;
+    private GeoTiffElevationLayer elevationLayer = null;
+    private final Object elevationLayerLock = new Object();
 
     // Contour lines
     private final JSpinner spIsostep = UIFactory.createSpinner(ElevationPreferences.getContourLineIsostep(), 1,
@@ -56,7 +57,8 @@ public class GeoTiffElevationLayerAdjustmentDialog extends ExtendedDialog {
     private final JosmComboBox<Coloring.Scheme> comboBoxColoring = new JosmComboBox<>(
             new Coloring.Scheme[] { Coloring.Scheme.CONSTANT_COLOR, Coloring.Scheme.FALSE_COLOR });
 
-    private final ColorChooserButton btnStrokeColor;
+    private final ColorChooserButton btnStrokeColor = new ColorChooserButton(this, "Choose Color of Contour Lines",
+            ElevationPreferences.getContourLineColor());
 
     /**
      * Constructs a dialog that allows to dynamically adjust rendering parameters of
@@ -66,18 +68,17 @@ public class GeoTiffElevationLayerAdjustmentDialog extends ExtendedDialog {
      * @param layer  The elevation layer.
      */
     public GeoTiffElevationLayerAdjustmentDialog(Component parent, GeoTiffElevationLayer layer) {
-        super(parent, layer.getName() + " Adjustment", new String[] { tr("Refresh"), tr("Close") }, false, false);
+        super(parent, getDialogTitle(layer), new String[] { tr("Refresh"), tr("Close") }, false, false);
         // Set the icon of the close button via the superclass method
         setButtonIcons("dialogs/refresh.svg", "misc/close.svg");
 
-        elevationLayer = layer;
+        // Sets the layer and sets the values of the components accordingly
+        setGeoTiffElevationLayer(layer);
 
         spUpperCutoffValue.setToolTipText(ElevationPluginTexts.TOOL_TIP_HILLSHADE_ALTITUDE);
         spLowerCutoffValue.setToolTipText(ElevationPluginTexts.TOOL_TIP_LOWER_CUTOFF_ELEVATION);
 
         comboBoxColoring.setSelectedItem(ElevationPreferences.getContourLineColoringScheme());
-        btnStrokeColor = new ColorChooserButton(this, "Choose Color of Contour Lines",
-                ElevationPreferences.getContourLineColor());
 
         JLabel labelSectionGeneral = new JLabel("General Layer Settings");
         labelSectionGeneral.setFont(labelSectionGeneral.getFont().deriveFont(Font.BOLD));
@@ -203,6 +204,54 @@ public class GeoTiffElevationLayerAdjustmentDialog extends ExtendedDialog {
         setContent(scrollPane);
     }
 
+    private static String getDialogTitle(GeoTiffElevationLayer layer) {
+        return layer.getName() + " Adjustment";
+    }
+
+    /**
+     * Returns the {@link GeoTiffElevationLayer} currently handled by this
+     * adjustment dialog.
+     *
+     * @return The GeoTIFF elevation layer.a
+     */
+    public GeoTiffElevationLayer getGeoTiffElevationLayer() {
+        synchronized (elevationLayerLock) {
+            return elevationLayer;
+        }
+    }
+
+    /**
+     * Sets the GeoTIFF elevation layer handled by this adjustment dialog to a new
+     * layer.
+     *
+     * @param newLayer The new layer to set as layer handled by this adjustment
+     *                 dialog.
+     * @return {@code true} if the layer is not identical to the layer currently
+     *         handled by this adjustment dialog, {@code false} otherwise.
+     */
+    public boolean setGeoTiffElevationLayer(GeoTiffElevationLayer newLayer) {
+        synchronized (elevationLayerLock) {
+            if (elevationLayer == null && newLayer == null) {
+                return false;
+            }
+
+            if (elevationLayer != null && elevationLayer.equals(newLayer)) {
+                return false;
+            }
+
+            setTitle(getDialogTitle(newLayer));
+            spIsostep.setValue(Integer.valueOf(newLayer.getContourLineIsostep()));
+            spUpperCutoffValue.setValue(Integer.valueOf(newLayer.getUpperCutoffElevation()));
+            spLowerCutoffValue.setValue(Integer.valueOf(newLayer.getLowerCutoffElevation()));
+            spStrokeWidth.setValue(Double.valueOf(newLayer.getContourLineStrokeWidth()));
+            comboBoxColoring.setSelectedItem(newLayer.getContourLineColoringScheme());
+            btnStrokeColor.setSelectedColor(newLayer.getContourLineConstantColor());
+
+            elevationLayer = newLayer;
+        }
+        return true;
+    }
+
     @Override
     protected void buttonAction(int buttonIndex, ActionEvent evt) {
         // Refresh button
@@ -216,26 +265,28 @@ public class GeoTiffElevationLayerAdjustmentDialog extends ExtendedDialog {
     }
 
     private void refreshLayer() {
-        int isostep = (Integer) spIsostep.getValue();
-        short upperCutoff = ((Integer) spUpperCutoffValue.getValue()).shortValue();
-        short lowerCutoff = ((Integer) spLowerCutoffValue.getValue()).shortValue();
-        // Interchange values
-        if (upperCutoff < lowerCutoff) {
-            short temp = upperCutoff;
-            upperCutoff = lowerCutoff;
-            lowerCutoff = temp;
-            spUpperCutoffValue.setValue(Integer.valueOf(upperCutoff));
-            spLowerCutoffValue.setValue(Integer.valueOf(lowerCutoff));
+        synchronized (elevationLayerLock) {
+            int isostep = (Integer) spIsostep.getValue();
+            short upperCutoff = ((Integer) spUpperCutoffValue.getValue()).shortValue();
+            short lowerCutoff = ((Integer) spLowerCutoffValue.getValue()).shortValue();
+            // Interchange values
+            if (upperCutoff < lowerCutoff) {
+                short temp = upperCutoff;
+                upperCutoff = lowerCutoff;
+                lowerCutoff = temp;
+                spUpperCutoffValue.setValue(Integer.valueOf(upperCutoff));
+                spLowerCutoffValue.setValue(Integer.valueOf(lowerCutoff));
+            }
+            float strokeWidth = ((Double) spStrokeWidth.getValue()).floatValue();
+            Coloring.Scheme scheme = (Coloring.Scheme) comboBoxColoring.getSelectedItem();
+            Color color = btnStrokeColor.getSelectedColor();
+            elevationLayer.setContourLineIsostep(isostep);
+            elevationLayer.setLowerCutoffElevation(lowerCutoff);
+            elevationLayer.setUpperCutoffElevation(upperCutoff);
+            elevationLayer.setContourLineStrokeWidth(strokeWidth);
+            elevationLayer.setContourLineColoringScheme(scheme);
+            elevationLayer.setContourLineConstantColor(color);
+            elevationLayer.triggerRepaint();
         }
-        float strokeWidth = ((Double) spStrokeWidth.getValue()).floatValue();
-        Coloring.Scheme scheme = (Coloring.Scheme) comboBoxColoring.getSelectedItem();
-        Color color = btnStrokeColor.getSelectedColor();
-        elevationLayer.setContourLineIsostep(isostep);
-        elevationLayer.setLowerCutoffElevation(lowerCutoff);
-        elevationLayer.setUpperCutoffElevation(upperCutoff);
-        elevationLayer.setContourLineStrokeWidth(strokeWidth);
-        elevationLayer.setContourLineColoringScheme(scheme);
-        elevationLayer.setContourLineConstantColor(color);
-        elevationLayer.triggerRepaint();
     }
 }

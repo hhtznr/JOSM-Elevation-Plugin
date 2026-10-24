@@ -11,7 +11,9 @@ import java.awt.event.ActionEvent;
 import java.awt.image.BufferedImage;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Future;
 
 import javax.swing.Action;
@@ -24,7 +26,6 @@ import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.visitor.BoundingXYVisitor;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.MapView;
-import org.openstreetmap.josm.gui.layer.MainLayerManager;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Logging;
 
@@ -79,7 +80,9 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
     private Future<?> grayscaleImageFuture = null;
     private Bounds previousMapBounds;
 
-    private GeoTiffElevationLayerAdjustmentDialog layerAdjustmentDialog = null;
+    private static final CopyOnWriteArrayList<GeoTiffElevationLayer> geoTiffLayers = new CopyOnWriteArrayList<>();
+    private static GeoTiffElevationLayerAdjustmentDialog layerAdjustmentDialog = null;
+    private static final Object layerAdjustmentDialogLock = new Object();
 
     /**
      * Creates a new map layer for visualization of the elevation data provided by a
@@ -124,6 +127,8 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
         this.lowerCutoffElevation = lowerCutoffElevation;
         this.upperCutoffElevation = upperCutoffElevation;
 
+        geoTiffLayers.add(this);
+
         elevationGridFuture = ElevationPlugin.getParallelExecutor().submit(() -> {
             if (Thread.currentThread().isInterrupted()) {
                 elevationGridFuture = null;
@@ -139,6 +144,23 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
                 triggerRepaint();
             }
         });
+        acquireLayerAdjustmentDialog();
+    }
+
+    /**
+     * Makes this GeoTIFF elevation layer acquire the
+     * {@link GeoTiffElevationLayerAdjustmentDialog} if it is open, such that this
+     * layer can be adjusted via the dialog.
+     *
+     * @return {@code true} if the dialog was acquired, {@code false} otherwise.
+     */
+    public boolean acquireLayerAdjustmentDialog() {
+        synchronized (layerAdjustmentDialogLock) {
+            if (layerAdjustmentDialog != null) {
+                return layerAdjustmentDialog.setGeoTiffElevationLayer(this);
+            }
+            return false;
+        }
     }
 
     /**
@@ -456,6 +478,7 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
 
     @Override
     public synchronized void destroy() {
+        geoTiffLayers.remove(this);
         // Cancel any running background tasks of this layer
         invalidateContourLines();
         for (Future<?> future : new Future<?>[] { elevationGridFuture, elevationGridFuture, grayscaleImageFuture }) {
@@ -464,9 +487,20 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
             }
         }
 
-        if (layerAdjustmentDialog != null) {
-            layerAdjustmentDialog.dispose();
-            layerAdjustmentDialog = null;
+        synchronized (layerAdjustmentDialogLock) {
+            if (layerAdjustmentDialog != null) {
+                Iterator<GeoTiffElevationLayer> layerIterator = geoTiffLayers.iterator();
+                // Change dialog over to the next other GeoTIFF elevation layer
+                if (layerIterator.hasNext()) {
+                    GeoTiffElevationLayer layer = layerIterator.next();
+                    layerAdjustmentDialog.setGeoTiffElevationLayer(layer);
+                }
+                // If there is no other GeoTIFF layer, dispose the dialog
+                else {
+                    layerAdjustmentDialog.dispose();
+                    layerAdjustmentDialog = null;
+                }
+            }
         }
 
         grayscaleImage = null;
@@ -498,7 +532,7 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
     public static void addGeoTiffElevationLayer(GeoTiffImage geoTiffImage) {
         String layerName = deriveLayerName(geoTiffImage.getAbsolutePath());
 
-        if (geoTiffLayerAlreadyExists(layerName)) {
+        if (getGeoTiffLayer(layerName) != null) {
             Logging.info("Elevation: Not adding GeoTIFF layer for '" + geoTiffImage.getAbsolutePath()
                     + "' because a GeoTiFFLayer with the same name already exists");
             return;
@@ -509,70 +543,23 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
     }
 
     /**
-     * Checks whether a {@code GeoTiffElevationLayer} with the specified name is
-     * already on JOSM's layer list.
+     * Returns the {@code GeoTiffElevationLayer} with the specified name if it
+     * exists. already on JOSM's layer list.
      *
      * @param layerName The name of the GeoTIFF layer.
-     * @return {@code true} if a {@code GeoTiffElevationLayer} with the specified
-     *         name is already known to JOSM's layer manager, {@code false}
-     *         otherwise.
+     * @return The {@code GeoTiffElevationLayer} with the specified name or
+     *         {@code null} if no such layer exists.
      */
-    public static boolean geoTiffLayerAlreadyExists(String layerName) {
-        MainLayerManager layerManager = MainApplication.getLayerManager();
-        List<GeoTiffElevationLayer> geoTiffLayers = layerManager.getLayersOfType(GeoTiffElevationLayer.class);
+    public static GeoTiffElevationLayer getGeoTiffLayer(String layerName) {
+        Iterator<GeoTiffElevationLayer> layerIterator = geoTiffLayers.iterator();
 
-        for (GeoTiffElevationLayer geoTiffLayer : geoTiffLayers) {
+        while (layerIterator.hasNext()) {
+            GeoTiffElevationLayer geoTiffLayer = layerIterator.next();
             if (geoTiffLayer.getName().equals(layerName)) {
-                return true;
+                return geoTiffLayer;
             }
         }
-        return false;
-    }
-
-    /**
-     * Sets the {@code GeoTiffElevationLayer} with the provided name visible if it
-     * is not already visible.
-     *
-     * @param layerName The name of the GeoTIFF layer.
-     * @return {@code true} if a GeoTIFF layer with the specified name exists, it
-     *         was not previously visible and it was set visible, {@code false}
-     *         otherwise.
-     */
-    public static boolean setGeoTiffLayerVisible(String layerName) {
-        MainLayerManager layerManager = MainApplication.getLayerManager();
-        List<GeoTiffElevationLayer> geoTiffLayers = layerManager.getLayersOfType(GeoTiffElevationLayer.class);
-
-        for (GeoTiffElevationLayer geoTiffLayer : geoTiffLayers) {
-            if (geoTiffLayer.getName().equals(layerName)) {
-                if (geoTiffLayer.isVisible()) {
-                    return false;
-                }
-                geoTiffLayer.setVisible(true);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Sets the {@code GeoTiffElevationLayer} with the provided name as active
-     * layer.
-     *
-     * @param layerName The name of the GeoTIFF layer.
-     * @return {@code true} if a GeoTIFF layer with the specified name exists and it
-     *         was set active, {@code false} otherwise.
-     */
-    public static boolean setGeoTiffLayerActive(String layerName) {
-        MainLayerManager layerManager = MainApplication.getLayerManager();
-        List<GeoTiffElevationLayer> geoTiffLayers = layerManager.getLayersOfType(GeoTiffElevationLayer.class);
-
-        for (GeoTiffElevationLayer geoTiffLayer : geoTiffLayers) {
-            if (geoTiffLayer.getName().equals(layerName)) {
-                layerManager.setActiveLayer(geoTiffLayer);
-                return true;
-            }
-        }
-        return false;
+        return null;
     }
 
     private class ShowGrayscaleImageAction extends AbstractElevationLayerAction {
@@ -633,11 +620,15 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            if (layerAdjustmentDialog == null) {
-                layerAdjustmentDialog = new GeoTiffElevationLayerAdjustmentDialog(MainApplication.getMainFrame(),
-                        GeoTiffElevationLayer.this);
+            synchronized (layerAdjustmentDialogLock) {
+                if (layerAdjustmentDialog == null) {
+                    layerAdjustmentDialog = new GeoTiffElevationLayerAdjustmentDialog(MainApplication.getMainFrame(),
+                            GeoTiffElevationLayer.this);
+                } else {
+                    layerAdjustmentDialog.setGeoTiffElevationLayer(GeoTiffElevationLayer.this);
+                }
+                layerAdjustmentDialog.showDialog();
             }
-            layerAdjustmentDialog.showDialog();
         }
     }
 

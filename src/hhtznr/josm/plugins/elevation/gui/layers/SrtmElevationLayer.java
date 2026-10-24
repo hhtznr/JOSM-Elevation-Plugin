@@ -47,7 +47,7 @@ import hhtznr.josm.plugins.elevation.util.Coloring;
  */
 public class SrtmElevationLayer extends ElevationLayer implements SrtmElevationDataProviderListener {
 
-    private final ElevationDrawHelper layerPainter;
+    private final SrtmElevationDrawHelper layerPainter;
     private final ElevationDataProvider elevationDataProvider;
     private double renderingLimitArcDegrees;
 
@@ -89,7 +89,7 @@ public class SrtmElevationLayer extends ElevationLayer implements SrtmElevationD
         super("SRTM Elevation Layer", ImageProvider.get("layers", "elevation_srtm.svg"), contourLineIsostep,
                 contourLineStrokeWidth, contourLineColoringScheme, contourLineConstantColor, lowerCutoffElevation,
                 upperCutoffElevation);
-        this.layerPainter = new ElevationDrawHelper(this);
+        this.layerPainter = new SrtmElevationDrawHelper(this);
         this.renderingLimitArcDegrees = renderingLimitArcDegrees;
 
         this.hillshadeAltitude = hillshadeAltitude;

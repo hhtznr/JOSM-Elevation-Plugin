@@ -42,7 +42,7 @@ import hhtznr.josm.plugins.elevation.util.DrawUtils.NonOverlappingTextRenderer;
  *
  * @author Harald Hetzner
  */
-public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, PaintableInvalidationListener {
+public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, PaintableInvalidationListener {
 
     /**
      * Scale factor for bounds of new contour line and hillshade tiles so they do
@@ -83,7 +83,7 @@ public class ElevationDrawHelper implements MapViewPaintable.LayerPainter, Paint
      * @param layer The elevation layer for which this draw helper performs
      *              rendering.
      */
-    public ElevationDrawHelper(SrtmElevationLayer layer) {
+    public SrtmElevationDrawHelper(SrtmElevationLayer layer) {
         this.layer = layer;
         this.layer.addInvalidationListener(this);
         contourLineIsostep = layer.getContourLineIsostep();

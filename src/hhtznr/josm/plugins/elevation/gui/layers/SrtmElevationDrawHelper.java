@@ -28,10 +28,10 @@ import hhtznr.josm.plugins.elevation.data.coordinate.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.coordinate.LatLonLine;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmTile;
 import hhtznr.josm.plugins.elevation.gui.paintables.ContourLines;
+import hhtznr.josm.plugins.elevation.gui.paintables.ContourLines.IsolineSegments;
 import hhtznr.josm.plugins.elevation.gui.paintables.ElevationRaster;
 import hhtznr.josm.plugins.elevation.gui.paintables.HillshadeImageTile;
 import hhtznr.josm.plugins.elevation.gui.paintables.LowestAndHighestPoints;
-import hhtznr.josm.plugins.elevation.gui.paintables.ContourLines.IsolineSegments;
 import hhtznr.josm.plugins.elevation.util.Coloring;
 import hhtznr.josm.plugins.elevation.util.DrawUtils;
 import hhtznr.josm.plugins.elevation.util.DrawUtils.NonOverlappingTextRenderer;
@@ -184,7 +184,7 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
     private void drawZoomLevelDisabled(Graphics2D g, MapView mv) {
         int x = 10;
         int y = mv.getHeight() - 10;
-        String text = "Elevation layer disabled for this zoom level";
+        String text = "SRTM Elevation Layer rendering disabled for this zoom level";
         Font font = g.getFont().deriveFont(Font.BOLD, 16);
         DrawUtils.drawOutlinedText(g, x, y, font, Color.RED, Color.WHITE, 1.0f, text);
     }

@@ -350,7 +350,7 @@ public class GeoTiffElevationGrid implements ElevationGrid {
      * @param bounds The bounds, e.g. the bounds of the map view.
      * @return a candidate raster view, or {@code null} if there is no intersection
      *         or the bounds cross the 180th meridian
-     * @throws
+     * @throws if coordinate could not be transformed to the GeoTIFF envelope.
      */
     @Override
     public GeoTiffElevationGridView getView(Bounds bounds) throws ElevationGridException {
@@ -428,10 +428,38 @@ public class GeoTiffElevationGrid implements ElevationGrid {
         int rowSouth = (int) Math.max(0,
                 Math.min(height - 1, Math.floor(gridEnvelope[3] - minY + 0.5) + INTERSECTION_MARGIN_PIXELS));
 
+        // Convert from image row indices to latitude indices (south to north).
         int latIndexSouth = height - 1 - rowSouth;
         int latIndexNorth = height - 1 - rowNorth;
+        int lonIndexWest = colWest;
+        int lonIndexEast = colEast;
 
-        return new GeoTiffElevationGridView(this, latIndexSouth, latIndexNorth, colWest, colEast, bounds);
+        // Determine the geographic bounds of the view.
+        LatLon southWest = toLatLon(latIndexSouth, lonIndexWest);
+        LatLon southEast = toLatLon(latIndexSouth, lonIndexEast);
+        LatLon northEast = toLatLon(latIndexNorth, lonIndexEast);
+        LatLon northWest = toLatLon(latIndexNorth, lonIndexWest);
+        LatLon[] corners = { southWest, southEast, northEast, northWest };
+
+        // Reutilize the existing variables
+        minLat = Double.POSITIVE_INFINITY;
+        maxLat = Double.NEGATIVE_INFINITY;
+        minLon = Double.POSITIVE_INFINITY;
+        maxLon = Double.NEGATIVE_INFINITY;
+
+        // Since the corners of the GeoTIFF view may not be aligned with the latitude
+        // and longitude axes, we need to determine the minimum and maximum latitude and
+        // longitude values among the corners to define the bounds of the view.
+        for (LatLon corner : corners) {
+            minLat = Math.min(minLat, corner.lat());
+            maxLat = Math.max(maxLat, corner.lat());
+            minLon = Math.min(minLon, corner.lon());
+            maxLon = Math.max(maxLon, corner.lon());
+        }
+
+        Bounds viewBounds = new Bounds(minLat, minLon, maxLat, maxLon);
+
+        return new GeoTiffElevationGridView(this, latIndexSouth, latIndexNorth, lonIndexWest, lonIndexEast, viewBounds);
     }
 
     /**

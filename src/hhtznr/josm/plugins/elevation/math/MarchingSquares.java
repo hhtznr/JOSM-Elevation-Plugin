@@ -26,6 +26,8 @@ public class MarchingSquares {
 
     private final ElevationGridView elevationGridView;
     private final short[] isovalues;
+    private final int gridStepLat;
+    private final int gridStepLon;
     private final double[] edgeLatitudes;
     private final double[] edgeLongitudes;
 
@@ -45,8 +47,44 @@ public class MarchingSquares {
      *                          computation effort will be wasted.
      */
     public MarchingSquares(ElevationGridView elevationGridView, short[] isovalues) {
+        this(elevationGridView, isovalues, 1, 1);
+    }
+
+    /**
+     * Creates a new instance of the Marching Squares algorithm dedicated to
+     * computing contour lines from elevation raster data.
+     *
+     * @param elevationGridView The view on an elevation grid from which elevation
+     *                          data should be obtained.
+     * @param isovalues         An array of elevation values defining the isolevels,
+     *                          i.e. the elevation values for which contour lines
+     *                          should be generated, e.g.
+     *                          {@code { 650, 660, 670, 680 }}. The isovalues should
+     *                          be greater or equal to the minimum value of the
+     *                          elevation raster and less or equal to the maximum
+     *                          value of the elevation raster. Otherwise,
+     *                          computation effort will be wasted.
+     * @param gridStepLat       The step in latitude direction when iterating over
+     *                          the elevation grid upon computing the contour lines.
+     *                          If the step is {@code 1}, each grid point will be
+     *                          considered. If the step is {@code 2}, only each 2nd
+     *                          grid point will be conidered, etc. Value must be
+     *                          {@code >= 1}.
+     * @param gridStepLon       The step in longitude direction when iterating over
+     *                          the elevation grid upon computing the contour lines.
+     *                          Value must be {@code >= 1}.
+     */
+    public MarchingSquares(ElevationGridView elevationGridView, short[] isovalues, int gridStepLat, int gridStepLon) {
+        if (gridStepLat < 1) {
+            throw new IllegalArgumentException("Grid step in latitude direction must be >= 1! Given: " + gridStepLat);
+        }
+        if (gridStepLon < 1) {
+            throw new IllegalArgumentException("Grid step in longitude direction must be >= 1f! Given: " + gridStepLon);
+        }
         this.elevationGridView = elevationGridView;
         this.isovalues = isovalues;
+        this.gridStepLat = gridStepLat;
+        this.gridStepLon = gridStepLon;
         int gridWidth = elevationGridView.getWidth();
         int gridHeight = elevationGridView.getHeight();
         int gridSize = Math.multiplyExact(gridWidth, gridHeight);
@@ -112,11 +150,12 @@ public class MarchingSquares {
      * @return A list containing all computed isoline segments. The segments are
      *         ordered as computed. They are not sorted in a way that they could
      *         easily be joined.
-     * @throws InterruptedException If the computation is interrupted by another thread.
+     * @throws InterruptedException If the computation is interrupted by another
+     *                              thread.
      */
-    private ContourLines.IsolineSegments getIsolineSegments(short isovalue) throws InterruptedException{
+    private ContourLines.IsolineSegments getIsolineSegments(short isovalue) throws InterruptedException {
         if (Thread.currentThread().isInterrupted()) {
-           throw new InterruptedException("Isoline computation interrupted");
+            throw new InterruptedException("Isoline computation interrupted");
         }
 
         ArrayList<LatLonLine> isolineSegments = new ArrayList<>();
@@ -128,21 +167,27 @@ public class MarchingSquares {
         // reused in the next iteration
         Cell[] previousCellRowToSouth = new Cell[rasterWidth];
         // Iterate through the grid, accessing the data as "square" 2 x 2 cells
-        // Therefore, we stop to iterate at index "length - 2" in both dimensions
-        for (int latIndex = 0; latIndex < rasterHeight - 1; latIndex++) {
+        int lastLatIndex = rasterHeight - 1;
+        int latIndexNorth = 0;
+        for (int latIndexSouth = 0; latIndexSouth < lastLatIndex; latIndexSouth = latIndexNorth) {
+            latIndexNorth = (int) Math.min(lastLatIndex, (long) latIndexSouth + gridStepLat);
+
             // The cell to the west of the currently processed cell
             Cell cellToWest = null;
-            for (int lonIndex = 0; lonIndex < rasterWidth - 1; lonIndex++) {
+            int lastLonIndex = rasterWidth - 1;
+            int lonIndexEast = 0;
+            for (int lonIndexWest = 0; lonIndexWest < lastLonIndex; lonIndexWest = lonIndexEast) {
+                lonIndexEast = (int) Math.min(lastLonIndex, (long) lonIndexWest + gridStepLon);
                 // The cell to the south of the currently processed cell
-                Cell cellToSouth = previousCellRowToSouth[lonIndex];
+                Cell cellToSouth = previousCellRowToSouth[lonIndexWest];
                 // Get the elevation values and the edge coordinates
                 double eleNorthWest;
                 double eleNorthEast;
                 double eleSouthEast;
                 double eleSouthWest;
 
-                LatLon northWest = getLatLon(latIndex + 1, lonIndex);
-                LatLon southEast = getLatLon(latIndex, lonIndex + 1);
+                LatLon northWest = getLatLon(latIndexNorth, lonIndexWest);
+                LatLon southEast = getLatLon(latIndexSouth, lonIndexEast);
                 double latNorth = northWest.lat();
                 double lonWest = northWest.lon();
                 double latSouth = southEast.lat();
@@ -151,8 +196,8 @@ public class MarchingSquares {
                 // If there is no previous cell to the west,
                 // compute these values from the elevation raster
                 if (cellToWest == null) {
-                    eleNorthWest = elevationGridView.getElevation(latIndex + 1, lonIndex);
-                    eleSouthWest = elevationGridView.getElevation(latIndex, lonIndex);
+                    eleNorthWest = elevationGridView.getElevation(latIndexNorth, lonIndexWest);
+                    eleSouthWest = elevationGridView.getElevation(latIndexSouth, lonIndexWest);
                 }
                 // If there is a previous cell to the west,
                 // copy values of shared edge and vertices instead
@@ -162,7 +207,7 @@ public class MarchingSquares {
                 }
 
                 if (elevationGridView.isNoDataValue(eleNorthWest) || elevationGridView.isNoDataValue(eleSouthWest)) {
-                    previousCellRowToSouth[lonIndex] = null;
+                    previousCellRowToSouth[lonIndexWest] = null;
                     cellToWest = null;
                     continue;
                 }
@@ -179,22 +224,22 @@ public class MarchingSquares {
                  *                           +---+---+---+---+---+---+---+---+---+
                  * </pre>
                  */
-                eleNorthEast = elevationGridView.getElevation(latIndex + 1, lonIndex + 1);
+                eleNorthEast = elevationGridView.getElevation(latIndexNorth, lonIndexEast);
                 if (elevationGridView.isNoDataValue(eleNorthEast)) {
-                    previousCellRowToSouth[lonIndex] = null;
+                    previousCellRowToSouth[lonIndexWest] = null;
                     cellToWest = null;
                     continue;
                 }
 
                 // Same under consideration of a previous cell to the south
                 if (cellToSouth == null) {
-                    eleSouthEast = elevationGridView.getElevation(latIndex, lonIndex + 1);
+                    eleSouthEast = elevationGridView.getElevation(latIndexSouth, lonIndexEast);
                 } else {
                     eleSouthEast = cellToSouth.eleNorthEast;
                 }
 
                 if (elevationGridView.isNoDataValue(eleSouthEast)) {
-                    previousCellRowToSouth[lonIndex] = null;
+                    previousCellRowToSouth[lonIndexWest] = null;
                     cellToWest = null;
                     continue;
                 }
@@ -625,11 +670,13 @@ public class MarchingSquares {
                 }
                 // Remember the cell to reuse data
                 // when iterating over the next cell row to the north
-                previousCellRowToSouth[lonIndex] = currentCell;
+                previousCellRowToSouth[lonIndexWest] = currentCell;
                 // when handling the next cell to the east in the current row
                 cellToWest = currentCell;
+                // lonIndexWest = lonIndexEast;
             }
             cellToWest = null;
+            // latIndexSouth = latIndexNorth;
         }
         return new ContourLines.IsolineSegments(isovalue, isolineSegments);
     }

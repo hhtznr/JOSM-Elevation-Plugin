@@ -464,7 +464,7 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
     private void refreshContourLines(Bounds bounds) {
         // Create and dispose crosswise so that cached tiles are taken over if possible
         ContourLines oldContourlines = contourLines;
-        contourLines = layer.getElevationDataProvider().getContourLines(bounds, contourLineIsostep,
+        contourLines = layer.getElevationDataProvider().getSrtmContourLines(bounds, contourLineIsostep,
                 lowerCutoffElevation, upperCutoffElevation);
         if (oldContourlines != null) {
             oldContourlines.dispose();

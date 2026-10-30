@@ -59,6 +59,14 @@ import hhtznr.josm.plugins.elevation.util.DrawUtils.NonOverlappingTextRenderer;
  */
 public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElevationDataProviderListener {
 
+    /**
+     * Target ratio of screen pixels per elevation grid point considered in contour
+     * line computation. By skipping grid points, if zoomed out from the map,
+     * computation effort can be reduced. At the same time, lowered contour line
+     * accuracy is not of concern if zoomed out in the map view.
+     */
+    public static final int PIXELS_PER_CONTOUR_LINE_GRID_POINT = 4;
+
     private static final double MIN_CONTOUR_LINE_PIXELS = 100.0;
 
     private final GeoTiffImage geoTiffImage;
@@ -272,7 +280,6 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
     }
 
     private void drawContourLines(Graphics2D g, MapView mapView, GeoTiffElevationGridView gridView) {
-
         float layerContourLineStrokeWidth = getContourLineStrokeWidth();
         BasicStroke contourLineStroke = new BasicStroke(layerContourLineStrokeWidth, BasicStroke.CAP_ROUND,
                 BasicStroke.JOIN_ROUND);
@@ -297,8 +304,26 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
         if (currentContourLines == null || contourLineSettingsChanged) {
             Future<?> future = contourLinesFuture;
             if (future == null || future.isDone()) {
-                triggerContourLineComputation(gridView, newContourLineIsostep, newLowerCutoffElevation,
-                        newUpperCutoffElevation);
+                // Determine resolution of elevation grid relative to screen pixels
+                int gridViewWidth = gridView.getWidth();
+                int gridViewHeight = gridView.getHeight();
+                Bounds gridViewBounds = gridView.getBounds();
+                Point p1 = mapView.getPoint(gridViewBounds.getMin());
+                Point p2 = mapView.getPoint(gridViewBounds.getMax());
+                int gridViewPixelWidth = Math.abs(p2.x - p1.x);
+                int gridViewPixelHeight = Math.abs(p2.y - p1.y);
+                // Compute grid steps to skip grid points
+                // Skip more grid points if further zoomed out from the map
+                int gridStepLon = (int) Math.round(
+                        (double) gridViewWidth / (double) gridViewPixelWidth * PIXELS_PER_CONTOUR_LINE_GRID_POINT);
+                int gridStepLat = (int) Math.round(
+                        (double) gridViewHeight / (double) gridViewPixelHeight * PIXELS_PER_CONTOUR_LINE_GRID_POINT);
+                // Ensure that the steps are always at least 1
+                gridStepLon = Math.max(gridStepLon, 1);
+                gridStepLat = Math.max(gridStepLat, 1);
+
+                triggerContourLineComputation(gridView, newContourLineIsostep, gridStepLat, gridStepLon,
+                        newLowerCutoffElevation, newUpperCutoffElevation);
             }
         }
 
@@ -361,7 +386,7 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
     }
 
     private void triggerContourLineComputation(GeoTiffElevationGridView gridView, int contourLineIsostep,
-            short lowerCutoffElevation, short upperCutoffElevation) {
+            int gridStepLat, int gridStepLon, short lowerCutoffElevation, short upperCutoffElevation) {
         if (gridView == null) {
             return;
         }
@@ -371,8 +396,8 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
                 GeoTiffContourLines computedContourLines = null;
                 try {
                     if (!Thread.currentThread().isInterrupted()) {
-                        computedContourLines = new GeoTiffContourLines(gridView, contourLineIsostep,
-                                lowerCutoffElevation, upperCutoffElevation);
+                        computedContourLines = new GeoTiffContourLines(gridView, contourLineIsostep, gridStepLat,
+                                gridStepLon, lowerCutoffElevation, upperCutoffElevation);
                     }
                 } catch (AsyncOperationException e) {
                     synchronized (contourLinesLock) {

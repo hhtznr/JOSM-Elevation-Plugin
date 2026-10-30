@@ -272,6 +272,15 @@ public class SrtmTileGridView implements ElevationGridView {
      *
      * @param isostep              Step between two adjacent elevation contour
      *                             lines.
+     * @param gridStepLat          The step in latitude direction when iterating
+     *                             over the elevation grid upon computing the
+     *                             contour lines. If the step is {@code 1}, each
+     *                             grid point will be considered. If the step is
+     *                             {@code 2}, only each 2nd grid point will be
+     *                             conidered, etc. Value must be {@code >= 1}.
+     * @param gridStepLon          The step in longitude direction when iterating
+     *                             over the elevation grid upon computing the
+     *                             contour lines. Value must be {@code >= 1}.
      * @param lowerCutoffElevation The elevation value below which contour lines
      *                             will not be returned.
      * @param upperCutoffElevation The elevation value above which contour lines
@@ -284,12 +293,12 @@ public class SrtmTileGridView implements ElevationGridView {
      * @throws AsyncOperationException Thrown if asynchronous computation of the
      *                                 contour lines is rejected or interrupted.
      */
-    public ContourLines getContourLines(int isostep, int lowerCutoffElevation, int upperCutoffElevation)
-            throws AsyncOperationException {
+    public ContourLines getContourLines(int isostep, int gridStepLat, int gridStepLon, int lowerCutoffElevation,
+            int upperCutoffElevation) throws AsyncOperationException {
         if (!tileGrid.areAllTilesCached() || tileGrid.isDisposed()) {
             return null;
         }
-        return new ContourLines(this, isostep, lowerCutoffElevation, upperCutoffElevation);
+        return new ContourLines(this, isostep, gridStepLat, gridStepLon, lowerCutoffElevation, upperCutoffElevation);
     }
 
     /**

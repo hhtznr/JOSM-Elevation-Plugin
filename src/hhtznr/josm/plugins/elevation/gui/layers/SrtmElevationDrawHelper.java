@@ -126,11 +126,12 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
 
         // Disable drawing of contour lines if the map is zoomed out too much
         // This prevents high CPU and I/O usage
-        boolean zoomLevelDisabled = clipBounds.getMaxLat() - clipBounds.getMinLat() > layer.getRenderingLimit()
-                || clipBounds.getMaxLon() - clipBounds.getMinLon() > layer.getRenderingLimit();
+        boolean zoomLevelDisabled = Math.abs(clipBounds.getMaxLat() - clipBounds.getMinLat()) > layer
+                .getRenderingLimit()
+                || Math.abs(clipBounds.getMaxLon() - clipBounds.getMinLon()) > layer.getRenderingLimit();
 
         if (zoomLevelDisabled) {
-            drawZoomLevelDisabled(graphics.getDefaultGraphics(), graphics.getMapView());
+            drawZoomLevelDisabled(graphics);
         } else {
             if (previousClipBounds != null
                     && (previousClipBounds.getWidth() > SCALE_DISCARD_FACTOR * clipBounds.getWidth()
@@ -139,19 +140,19 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
             }
 
             if (isHillshadeEnabled) {
-                drawHillshade(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
+                drawHillshade(graphics, clipBounds);
             }
 
             if (isContourLinesEnabled) {
-                drawContourLines(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
+                drawContourLines(graphics, clipBounds);
             }
 
             if (isElevationRasterEnabled) {
-                drawElevationRaster(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
+                drawElevationRaster(graphics, clipBounds);
             }
 
             if (isLowestAndHighestPointsEnabled) {
-                drawLowestAndHighestPoints(graphics.getDefaultGraphics(), graphics.getMapView(), clipBounds);
+                drawLowestAndHighestPoints(graphics, clipBounds);
             }
 
             previousClipBounds = clipBounds;
@@ -181,15 +182,17 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
         }
     }
 
-    private void drawZoomLevelDisabled(Graphics2D g, MapView mv) {
+    private void drawZoomLevelDisabled(MapViewGraphics graphics) {
+        MapView mapView = graphics.getMapView();
+        Graphics2D g = graphics.getDefaultGraphics();
         int x = 10;
-        int y = mv.getHeight() - 10;
+        int y = mapView.getHeight() - 10;
         String text = "SRTM Elevation Layer rendering disabled for this zoom level";
         Font font = g.getFont().deriveFont(Font.BOLD, 16);
         DrawUtils.drawOutlinedText(g, x, y, font, Color.RED, Color.WHITE, 1.0f, text);
     }
 
-    private synchronized void drawHillshade(Graphics2D g, MapView mv, Bounds clipBounds) {
+    private synchronized void drawHillshade(MapViewGraphics graphics, Bounds clipBounds) {
         int layerHillshadeAltitude = layer.getHillshadeAltitude();
         int layerHillshadeAzimuth = layer.getHillshadeAzimuth();
 
@@ -211,6 +214,9 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
             return;
         }
 
+        MapView mapView = graphics.getMapView();
+        Graphics2D g = graphics.getDefaultGraphics();
+
         Point upperLeft = null;
         if (scaledHillshadeImage == null || clipBoundsNotCoveredByHillshade || hillshadeParametersChanged) {
 
@@ -219,8 +225,8 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
             LatLon hillshadeSouthEast = new LatLon(hillshadeRenderingBounds.getMinLat(),
                     hillshadeRenderingBounds.getMaxLon());
             // Bounds of the hillshade tile in screen coordinates (x, y)
-            upperLeft = mv.getPoint(hillshadeNorthWest);
-            Point lowerRight = mv.getPoint(hillshadeSouthEast);
+            upperLeft = mapView.getPoint(hillshadeNorthWest);
+            Point lowerRight = mapView.getPoint(hillshadeSouthEast);
             // The dimensions of the hillshade tile in screen coordinates
             int onScreenWidth = lowerRight.x - upperLeft.x;
             int onScreenHeight = lowerRight.y - upperLeft.y;
@@ -240,7 +246,7 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
                 return;
             }
         } else {
-            upperLeft = mv.getPoint(hillshadeNorthWest);
+            upperLeft = mapView.getPoint(hillshadeNorthWest);
         }
         g.setComposite(AlphaComposite.SrcOver); // default blending
         g.drawImage(scaledHillshadeImage, upperLeft.x, upperLeft.y, scaledHillshadeImage.getWidth(),
@@ -250,7 +256,9 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
         hillshadeAzimuth = layerHillshadeAzimuth;
     }
 
-    private synchronized void drawContourLines(Graphics2D g, MapView mv, Bounds clipBounds) {
+    private synchronized void drawContourLines(MapViewGraphics graphics, Bounds clipBounds) {
+        MapView mapView = graphics.getMapView();
+
         float layerContourLineStrokeWidth = layer.getContourLineStrokeWidth();
         if (contourLineStroke.getLineWidth() != layerContourLineStrokeWidth) {
             setContourLineStroke(layerContourLineStrokeWidth);
@@ -271,7 +279,7 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
             upperCutoffElevation = layerUpperCutoffElevation;
 
             Bounds scaledBounds = CoordinateUtil.getScaledBounds(clipBounds, BOUNDS_SCALE_FACTOR);
-            refreshContourLines(scaledBounds);
+            refreshContourLines(mapView, scaledBounds);
             if (contourLines == null) {
                 return;
             }
@@ -280,6 +288,8 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
         if (isolineSegments.length < 1) {
             return;
         }
+
+        Graphics2D g = graphics.getDefaultGraphics();
 
         Rectangle screenClip = g.getClipBounds();
 
@@ -310,8 +320,8 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
                 g.setColor(Coloring.getRainbowColor(ele, minEle, maxEle));
             }
             for (LatLonLine segment : isolineSegment.getLineSegments()) {
-                Point p1 = mv.getPoint(segment.getLatLon1());
-                Point p2 = mv.getPoint(segment.getLatLon2());
+                Point p1 = mapView.getPoint(segment.getLatLon1());
+                Point p2 = mapView.getPoint(segment.getLatLon2());
                 // Only draw if the line's bounding box intersects the map's bounding box
                 if (screenClip.intersectsLine(p1.x, p1.y, p2.x, p2.y)) {
                     g.drawLine(p1.x, p1.y, p2.x, p2.y);
@@ -324,7 +334,7 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
         contourLineStroke = new BasicStroke(width, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
     }
 
-    private synchronized void drawElevationRaster(Graphics2D g, MapView mv, Bounds clipBounds) {
+    private synchronized void drawElevationRaster(MapViewGraphics graphics, Bounds clipBounds) {
         if (elevationRaster == null || !CoordinateUtil.doBoundsContainWithExtraSpace(elevationRaster.getBounds(),
                 clipBounds, elevationRaster.getLatLonStep())) {
             Bounds scaledBounds = CoordinateUtil.getScaledBounds(clipBounds, BOUNDS_SCALE_FACTOR);
@@ -333,6 +343,9 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
                 return;
             }
         }
+
+        MapView mapView = graphics.getMapView();
+        Graphics2D g = graphics.getDefaultGraphics();
 
         // Set the font for elevation value strings
         Font font = g.getFont().deriveFont(Font.PLAIN, 10);
@@ -344,11 +357,11 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
         int eleStringDisplayWidth = metrics.stringWidth("000000");
         int eleStringDisplayHeight = metrics.getHeight() + 2;
         // Dimensions of the map view in screen coordinates
-        int mapViewDisplayWidth = mv.getWidth();
-        int mapViewDisplayHeight = mv.getHeight();
+        int mapViewDisplayWidth = mapView.getWidth();
+        int mapViewDisplayHeight = mapView.getHeight();
 
         // Dimensions of the map view in world coordinates
-        Bounds mapViewBounds = mv.getLatLonBounds(mv.getBounds());
+        Bounds mapViewBounds = mapView.getLatLonBounds(mapView.getBounds());
         double mapViewWidth = mapViewBounds.getWidth();
         double mapViewHeight = mapViewBounds.getHeight();
 
@@ -369,7 +382,7 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
             for (int lonIndex = 0; lonIndex < elevationRaster.getWidth(); lonIndex++) {
                 LatLonEle latLonEle = elevationRaster.getLatLonEle(latIndex, lonIndex);
 
-                Point p = mv.getPoint(latLonEle);
+                Point p = mapView.getPoint(latLonEle);
                 String eleText = Integer.toString((int) latLonEle.ele());
 
                 g.setColor(Color.RED);
@@ -390,7 +403,7 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
         }
     }
 
-    private synchronized void drawLowestAndHighestPoints(Graphics2D g, MapView mv, Bounds clipBounds) {
+    private synchronized void drawLowestAndHighestPoints(MapViewGraphics graphics, Bounds clipBounds) {
         if (lowestAndHighestPoints == null || !lowestAndHighestPoints.getBounds().equals(clipBounds)) {
             refreshLowestAndHighestPoints(clipBounds);
         }
@@ -398,13 +411,16 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
             return;
         }
 
+        MapView mapView = graphics.getMapView();
+        Graphics2D g = graphics.getDefaultGraphics();
+
         List<LatLonEle> lowestPoints = lowestAndHighestPoints.getLowestPoints();
         List<LatLonEle> highestPoints = lowestAndHighestPoints.getHighestPoints();
         int maxLowestPoints = Math.min(lowestPoints.size(), ElevationPreferences.MAX_RENDERED_LOWEST_OR_HIGHEST_POINTS);
         List<Point> lowestPixels = new ArrayList<>(maxLowestPoints);
         for (int i = 0; i < maxLowestPoints; i++) {
             LatLonEle latLonEle = lowestPoints.get(i);
-            Point p = mv.getPoint(latLonEle);
+            Point p = mapView.getPoint(latLonEle);
             lowestPixels.add(p);
         }
         String textLowestElevation = "";
@@ -417,7 +433,7 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
         List<Point> highestPixels = new ArrayList<>(maxHighestPoints);
         for (int i = 0; i < maxHighestPoints; i++) {
             LatLonEle latLonEle = highestPoints.get(i);
-            Point p = mv.getPoint(latLonEle);
+            Point p = mapView.getPoint(latLonEle);
             highestPixels.add(p);
         }
         String textHighestElevation = "";
@@ -461,10 +477,10 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
         }
     }
 
-    private void refreshContourLines(Bounds bounds) {
+    private void refreshContourLines(MapView mapView, Bounds bounds) {
         // Create and dispose crosswise so that cached tiles are taken over if possible
         ContourLines oldContourlines = contourLines;
-        contourLines = layer.getElevationDataProvider().getSrtmContourLines(bounds, contourLineIsostep,
+        contourLines = layer.getElevationDataProvider().getSrtmContourLines(mapView, bounds, contourLineIsostep,
                 lowerCutoffElevation, upperCutoffElevation);
         if (oldContourlines != null) {
             oldContourlines.dispose();

@@ -58,14 +58,6 @@ import hhtznr.josm.plugins.elevation.util.DrawUtils.NonOverlappingTextRenderer;
  */
 public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElevationDataProviderListener {
 
-    /**
-     * Target ratio of screen pixels per elevation grid point considered in contour
-     * line computation. By skipping grid points, if zoomed out from the map,
-     * computation effort can be reduced. At the same time, lowered contour line
-     * accuracy is not of concern if zoomed out in the map view.
-     */
-    public static final int PIXELS_PER_CONTOUR_LINE_GRID_POINT = 4;
-
     private static final double MIN_CONTOUR_LINE_PIXELS = 100.0;
 
     private final GeoTiffImage geoTiffImage;

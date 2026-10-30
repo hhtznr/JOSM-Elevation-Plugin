@@ -1,5 +1,6 @@
 package hhtznr.josm.plugins.elevation.data;
 
+import java.awt.Point;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -14,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.ILatLon;
 import org.openstreetmap.josm.gui.MapFrame;
+import org.openstreetmap.josm.gui.MapView;
 import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
@@ -30,6 +32,8 @@ import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileCacheListener;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileConsumer;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGrid;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGridLease;
+import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGridView;
+import hhtznr.josm.plugins.elevation.gui.layers.ElevationLayer;
 import hhtznr.josm.plugins.elevation.gui.layers.MapViewElevationDataConsumer;
 import hhtznr.josm.plugins.elevation.gui.paintables.ContourLines;
 import hhtznr.josm.plugins.elevation.gui.paintables.ElevationRaster;
@@ -379,6 +383,9 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SrtmTileCach
      * return {@code null}, the contour lines will always cover the bounds. However,
      * the method may return contour lines for a larger area as needed.
      *
+     * @param mapView              The map view used to determine the ratio of grid
+     *                             points to screen pixels to decide the appropriate
+     *                             grid step for computing the contour lines.
      * @param bounds               The bounds in latitude-longitude coordinate
      *                             space.
      * @param isostep              Step between adjacent elevation contour lines.
@@ -390,14 +397,34 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SrtmTileCach
      *         the bounds or {@code null} if no suitable elevation data is cached to
      *         compute the contour lines.
      */
-    public ContourLines getSrtmContourLines(Bounds bounds, int isostep, int lowerCutoffElevation,
+    public ContourLines getSrtmContourLines(MapView mapView, Bounds bounds, int isostep, int lowerCutoffElevation,
             int upperCutoffElevation) {
         Bounds renderingBounds = SrtmTileGrid.getRenderingBoundsScaledByRasterStep(bounds,
                 ContourLines.BOUNDS_SCALE_RASTER_STEP, getSRTMType());
         try (SrtmTileGridLease lease = getGridMatchingLease(renderingBounds)) {
             SrtmTileGrid tileGrid = lease.getTileGrid();
-            ContourLines contourLines = tileGrid.getView(renderingBounds).getContourLines(isostep, lowerCutoffElevation,
-                    upperCutoffElevation);
+            SrtmTileGridView gridView = tileGrid.getView(renderingBounds);
+
+            // Determine resolution of elevation grid relative to screen pixels
+            int gridViewWidth = gridView.getWidth();
+            int gridViewHeight = gridView.getHeight();
+            Bounds gridViewBounds = gridView.getBounds();
+            Point p1 = mapView.getPoint(gridViewBounds.getMin());
+            Point p2 = mapView.getPoint(gridViewBounds.getMax());
+            int gridViewPixelWidth = Math.abs(p2.x - p1.x);
+            int gridViewPixelHeight = Math.abs(p2.y - p1.y);
+            // Compute grid steps to skip grid points
+            // Skip more grid points if further zoomed out from the map
+            int gridStepLon = (int) Math.round((double) gridViewWidth / (double) gridViewPixelWidth
+                    * ElevationLayer.PIXELS_PER_CONTOUR_LINE_GRID_POINT);
+            int gridStepLat = (int) Math.round((double) gridViewHeight / (double) gridViewPixelHeight
+                    * ElevationLayer.PIXELS_PER_CONTOUR_LINE_GRID_POINT);
+            // Ensure that the steps are always at least 1
+            gridStepLon = Math.max(gridStepLon, 1);
+            gridStepLat = Math.max(gridStepLat, 1);
+
+            ContourLines contourLines = gridView.getContourLines(isostep, gridStepLat, gridStepLon,
+                    lowerCutoffElevation, upperCutoffElevation);
             return contourLines;
         } catch (AsyncOperationException | ElevationGridException e) {
             Logging.error("Elevation: Cannot create contour lines: " + e.toString());

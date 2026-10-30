@@ -179,9 +179,9 @@ public class ElevationPreferences {
     public static final double MIN_ELEVATION_LAYER_RENDERING_LIMIT = 0.01;
 
     /**
-     * Maximum value of the elevation layer rendering limit: {@code 2.0}.
+     * Maximum value of the elevation layer rendering limit: {@code 5.0}.
      */
-    public static final double MAX_ELEVATION_LAYER_RENDERING_LIMIT = 2.0;
+    public static final double MAX_ELEVATION_LAYER_RENDERING_LIMIT = 5.0;
 
     /**
      * Increment of the elevation layer rendering limit: {@code 0.01}.

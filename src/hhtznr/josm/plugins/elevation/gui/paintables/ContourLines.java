@@ -88,7 +88,9 @@ public class ContourLines extends AbstractElevationGridPaintable {
      *
      * @param elevationGridView The view on an elevation grid for which the contour
      *                          lines should be computed.
-     * @param isostep           The step in meters between adjacent contour lines.
+     * @param isovalues         An array of elevation values defining the isolevels.
+     *                          See
+     *                          {@link MarchingSquares#MarchingSquares(ElevationGridView, short[])}.
      * @throws AsyncOperationException Thrown if asynchronous computation of the
      *                                 contour lines is rejected or interrupted.
      */

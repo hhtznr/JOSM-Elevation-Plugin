@@ -44,7 +44,6 @@ import hhtznr.josm.plugins.elevation.gui.dialogs.GeoTiffElevationLayerAdjustment
 import hhtznr.josm.plugins.elevation.gui.dialogs.GeoTiffInfoDialog;
 import hhtznr.josm.plugins.elevation.gui.paintables.ContourLines;
 import hhtznr.josm.plugins.elevation.gui.paintables.ContourLines.IsolineSegments;
-import hhtznr.josm.plugins.elevation.gui.paintables.GeoTiffContourLines;
 import hhtznr.josm.plugins.elevation.gui.paintables.LowestAndHighestPoints;
 import hhtznr.josm.plugins.elevation.util.Coloring;
 import hhtznr.josm.plugins.elevation.util.DrawUtils;
@@ -73,7 +72,7 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
     private GeoTiffElevationGrid elevationGrid = null;
     private GeoTiffElevationGridView elevationGridView = null;
     private BufferedImage grayscaleImage = null;
-    private volatile GeoTiffContourLines contourLines = null;
+    private volatile ContourLines contourLines = null;
     private volatile Future<?> contourLinesFuture = null;
     private final Object contourLinesLock = new Object();
     private long contourLinesRequestId = 0L;
@@ -287,7 +286,7 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
         Coloring.Scheme layerContourLineColoringScheme = getContourLineColoringScheme();
         Color layerContourLineConstantColor = getContourLineConstantColor();
 
-        GeoTiffContourLines currentContourLines = contourLines;
+        ContourLines currentContourLines = contourLines;
 
         int newContourLineIsostep = getContourLineIsostep();
         short newLowerCutoffElevation = getLowerCutoffElevation();
@@ -327,7 +326,7 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
             }
         }
 
-        GeoTiffContourLines contourLinesRef = contourLines;
+        ContourLines contourLinesRef = contourLines;
         if (contourLinesRef == null) {
             return;
         }
@@ -393,10 +392,10 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
         synchronized (contourLinesLock) {
             long requestId = ++contourLinesRequestId;
             contourLinesFuture = ElevationPlugin.getParallelExecutor().submit(() -> {
-                GeoTiffContourLines computedContourLines = null;
+                ContourLines computedContourLines = null;
                 try {
                     if (!Thread.currentThread().isInterrupted()) {
-                        computedContourLines = new GeoTiffContourLines(gridView, contourLineIsostep, gridStepLat,
+                        computedContourLines = new ContourLines(gridView, contourLineIsostep, gridStepLat,
                                 gridStepLon, lowerCutoffElevation, upperCutoffElevation);
                     }
                 } catch (AsyncOperationException e) {

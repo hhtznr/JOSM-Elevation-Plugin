@@ -265,7 +265,7 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
                 || lowerCutoffElevation != layerLowerCutoffElevation
                 || upperCutoffElevation != layerUpperCutoffElevation
                 || !CoordinateUtil.doBoundsContainWithExtraSpace(contourLines.getBounds(), clipBounds,
-                        contourLines.getLatLonStep())) {
+                        contourLines.getSrtmLatLonStep())) {
             contourLineIsostep = layerContourLineIsostep;
             lowerCutoffElevation = layerLowerCutoffElevation;
             upperCutoffElevation = layerUpperCutoffElevation;

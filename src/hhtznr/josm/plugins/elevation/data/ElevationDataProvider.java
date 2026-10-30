@@ -390,7 +390,7 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SrtmTileCach
      *         the bounds or {@code null} if no suitable elevation data is cached to
      *         compute the contour lines.
      */
-    public ContourLines getContourLines(Bounds bounds, int isostep, int lowerCutoffElevation,
+    public ContourLines getSrtmContourLines(Bounds bounds, int isostep, int lowerCutoffElevation,
             int upperCutoffElevation) {
         Bounds renderingBounds = SrtmTileGrid.getRenderingBoundsScaledByRasterStep(bounds,
                 ContourLines.BOUNDS_SCALE_RASTER_STEP, getSRTMType());

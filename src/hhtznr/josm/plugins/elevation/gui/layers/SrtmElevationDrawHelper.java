@@ -287,22 +287,29 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
         int layerContourLineIsostep = layer.getContourLineIsostep();
         short layerLowerCutoffElevation = layer.getLowerCutoffElevation();
         short layerUpperCutoffElevation = layer.getUpperCutoffElevation();
-        if (contourLines == null || contourLineIsostep != layerContourLineIsostep
+        // Reference this draw helper's contour lines
+        // This prevents a change of the contour lines while working on them
+        // The pending contour lines task may update them asynchronously
+        ContourLines currentContourLines = contourLines;
+        if (currentContourLines == null || contourLineIsostep != layerContourLineIsostep
                 || lowerCutoffElevation != layerLowerCutoffElevation
                 || upperCutoffElevation != layerUpperCutoffElevation
-                || !CoordinateUtil.doBoundsContainWithExtraSpace(contourLines.getBounds(), clipBounds,
-                        contourLines.getSrtmLatLonStep())) {
+                || !CoordinateUtil.doBoundsContainWithExtraSpace(currentContourLines.getBounds(), clipBounds,
+                        currentContourLines.getSrtmLatLonStep())) {
             contourLineIsostep = layerContourLineIsostep;
             lowerCutoffElevation = layerLowerCutoffElevation;
             upperCutoffElevation = layerUpperCutoffElevation;
 
             Bounds scaledBounds = CoordinateUtil.getScaledBounds(clipBounds, BOUNDS_SCALE_FACTOR);
-            refreshContourLines(mapView, scaledBounds);
-            if (contourLines == null) {
+            ContourLines refreshedContourLines = refreshContourLines(mapView, scaledBounds);
+            if (refreshedContourLines != null) {
+                currentContourLines = refreshedContourLines;
+            }
+            if (currentContourLines == null) {
                 return;
             }
         }
-        IsolineSegments[] isolineSegments = contourLines.getIsolineSegments();
+        IsolineSegments[] isolineSegments = currentContourLines.getIsolineSegments();
         if (isolineSegments.length < 1) {
             return;
         }
@@ -495,10 +502,10 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
         }
     }
 
-    private void refreshContourLines(MapView mapView, Bounds bounds) {
+    private ContourLines refreshContourLines(MapView mapView, Bounds bounds) {
         synchronized (pendingContourLinesLock) {
             if (isDisposed) {
-                return;
+                return null;
             }
 
             Point p1 = mapView.getPoint(bounds.getMin());
@@ -517,9 +524,11 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
                 pendingContourLines = null;
             }
 
+            Bounds mapViewBounds = mapView.getLatLonBounds(mapView.getBounds());
+
             if (pendingContourLines == null) {
                 try {
-                    clearContourLines();
+                    clearContourLinesIfNotIntersects(mapViewBounds);
 
                     Runnable repaintTask = () -> layer.triggerRepaint();
 
@@ -528,8 +537,8 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
                 } catch (AsyncOperationException | ElevationGridException e) {
                     Logging.warn("Elevation: Exception while waiting for contour lines to be computed for drawing: "
                             + e.toString());
-                    clearContourLines();
-                    return;
+                    clearContourLinesIfNotIntersects(mapViewBounds);
+                    return null;
                 }
             }
 
@@ -537,8 +546,8 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
             if (future.isCancelled()) {
                 pendingContourLines.dispose();
                 pendingContourLines = null;
-                clearContourLines();
-                return;
+                clearContourLinesIfNotIntersects(mapViewBounds);
+                return null;
             }
 
             if (future.isDone()) {
@@ -549,7 +558,7 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
                     pendingContourLines = null;
 
                     if (newContourLines == null) {
-                        return; // It was discarded; do not install it.
+                        return null; // It was discarded; do not install it.
                     }
 
                     // Create and dispose crosswise so that cached tiles are taken over if possible
@@ -558,23 +567,30 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
                         oldContourLines.dispose();
                     }
                     contourLines = newContourLines;
+                    return newContourLines;
 
                 } catch (InterruptedException e) {
                     pendingContourLines.dispose();
                     pendingContourLines = null;
-                    clearContourLines();
+                    clearContourLinesIfNotIntersects(mapViewBounds);
                     Thread.currentThread().interrupt();
-                    return;
+                    return null;
                 } catch (ExecutionException | CancellationException e) {
                     Logging.warn("Elevation: Exception while waiting for contour lines to be computed for drawing: "
                             + e.toString());
                     pendingContourLines.dispose();
                     pendingContourLines = null;
-                    clearContourLines();
-                    return;
+                    clearContourLinesIfNotIntersects(mapViewBounds);
+                    return null;
                 }
-
             }
+            return null;
+        }
+    }
+
+    private void clearContourLinesIfNotIntersects(Bounds mapViewBounds) {
+        if (contourLines != null && !mapViewBounds.intersects(contourLines.getBounds())) {
+            clearContourLines();
         }
     }
 

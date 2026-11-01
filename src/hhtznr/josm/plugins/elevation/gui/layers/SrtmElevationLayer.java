@@ -1,30 +1,19 @@
 package hhtznr.josm.plugins.elevation.gui.layers;
 
-import static org.openstreetmap.josm.tools.I18n.tr;
-
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Graphics2D;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 import javax.swing.Action;
 import javax.swing.JCheckBoxMenuItem;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 
 import org.openstreetmap.josm.actions.JosmAction;
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.osm.visitor.BoundingXYVisitor;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.MapView;
-import org.openstreetmap.josm.gui.dialogs.LayerListPopup;
-import org.openstreetmap.josm.tools.GBC;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Logging;
 
@@ -33,7 +22,7 @@ import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.SrtmElevationDataProviderListener;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmTile;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGrid;
-import hhtznr.josm.plugins.elevation.gui.components.UIFactory;
+import hhtznr.josm.plugins.elevation.gui.dialogs.SrtmElevationDataInfoDialog;
 import hhtznr.josm.plugins.elevation.gui.dialogs.SrtmElevationLayerAdjustmentDialog;
 import hhtznr.josm.plugins.elevation.util.Coloring;
 
@@ -198,30 +187,7 @@ public class SrtmElevationLayer extends ElevationLayer implements SrtmElevationD
 
     @Override
     public Object getInfoComponent() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.add(new JLabel("SRTM Elevation Layer"), GBC.eol());
-        List<String[]> content = new ArrayList<>();
-        // Active tile grid
-        List<String[]> tileGridInfo = elevationDataProvider.getTileGridInfo();
-        for (String[] info : tileGridInfo) {
-            content.add(info);
-        }
-        // Cache size
-        content.add(new String[] { tr("SRTM tile cache"), "" + elevationDataProvider.getTileCacheInfo() });
-        // Info on tiles -> type, status, size, source
-        Map<String, String> cachedTilesInfo = elevationDataProvider.getCachedTilesInfo();
-        for (Map.Entry<String, String> entry : cachedTilesInfo.entrySet()) {
-            content.add(new String[] { entry.getKey(), entry.getValue() });
-        }
-        for (String[] entry : content) {
-            panel.add(new JLabel(entry[0] + ':'), GBC.std());
-            panel.add(GBC.glue(5, 0), GBC.std());
-            panel.add(UIFactory.createInfoTextField(entry[1]), GBC.eol().fill(GridBagConstraints.HORIZONTAL));
-        }
-        JScrollPane scrollPane = new JScrollPane(panel);
-        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        return scrollPane;
+        return null;
     }
 
     @Override
@@ -235,7 +201,7 @@ public class SrtmElevationLayer extends ElevationLayer implements SrtmElevationD
         actions.add(SeparatorLayerAction.INSTANCE);
         actions.add(new ShowLayerAdjustmentDialogAction());
         actions.add(SeparatorLayerAction.INSTANCE);
-        actions.add(new LayerListPopup.InfoAction(this));
+        actions.add(new ShowInfoDialogAction());
         return actions.toArray(new Action[0]);
     }
 
@@ -339,6 +305,24 @@ public class SrtmElevationLayer extends ElevationLayer implements SrtmElevationD
                         SrtmElevationLayer.this);
             }
             layerAdjustmentDialog.showDialog();
+        }
+    }
+
+    private class ShowInfoDialogAction extends JosmAction {
+
+        private static final long serialVersionUID = 1L;
+
+        public ShowInfoDialogAction() {
+            super("SRTM information", new ImageProvider("info"),
+                    "Information on cached SRTM tiles and data structures building on them", null, true,
+                    "srtm-layer-info", false);
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            SrtmElevationDataInfoDialog dialog = new SrtmElevationDataInfoDialog(MainApplication.getMainFrame(),
+                    SrtmElevationLayer.this.elevationDataProvider);
+            dialog.showDialog();
         }
     }
 }

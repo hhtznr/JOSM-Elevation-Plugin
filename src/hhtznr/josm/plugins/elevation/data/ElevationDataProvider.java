@@ -2,7 +2,6 @@ package hhtznr.josm.plugins.elevation.data;
 
 import java.awt.Point;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -104,28 +103,6 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SrtmTileCach
 
         Path indexCacheFile = ElevationPreferences.GEOTIFF_INDEX_CACHE_FILE;
         geoTiffIndex = new GeoTiffIndex(geoTiffDirectory, geoTiffDirectoryRecursive, indexCacheFile, this);
-    }
-
-    /**
-     * Returns a list with textual information on the currently active SRTM tile
-     * grids.
-     *
-     * @return A list with string array of length {@code 2}. The list will contain a
-     *         string array item for each active tile grid. Each string array will
-     *         contain the name of the grid at index {@code 0} and information onf
-     *         the grid at index {@code 1}.
-     */
-    public List<String[]> getTileGridInfo() {
-        List<String[]> infoList = new ArrayList<>();
-        synchronized (activeTileGrids) {
-            for (SrtmTileGrid tileGrid : activeTileGrids) {
-                String[] tileGridInfo = new String[2];
-                tileGridInfo[0] = tileGrid.getName();
-                tileGridInfo[1] = tileGrid.getInfoString();
-                infoList.add(tileGridInfo);
-            }
-        }
-        return infoList;
     }
 
     /**

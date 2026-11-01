@@ -606,10 +606,10 @@ public class SrtmTileGrid extends SrtmTileConsumer implements ElevationGrid, Srt
      * </p>
      *
      * @throws AsyncOperationException if the {@code CompletableFuture} was
-     *                                 completed exceptionally or canceled or the
-     *                                 thread was interrupted.
+     *                                 completed exceptionally or canceled
+     * @throws InterruptedException    if the thread was interrupted.
      */
-    public void waitForTilesCached() throws AsyncOperationException {
+    public void waitForTilesCached() throws AsyncOperationException, InterruptedException {
         List<SrtmTileCacheEntry> cacheEntries = getCacheEntryList();
         if (cacheEntries == null) {
             return;

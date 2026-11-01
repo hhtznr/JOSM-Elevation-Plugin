@@ -6,6 +6,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.MainMenu;
@@ -73,6 +75,8 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
     private final SetPeakProminenceAction setPeakProminenceAction;
 
     private static final ParallelExecutorService PARALLEL_EXECUTOR_SERVICE = new ParallelExecutorService();
+
+    private static final ExecutorService SERIAL_FILE_READ_EXECUTOR_SERVICE = Executors.newFixedThreadPool(1);
 
     /**
      * Initializes the plugin.
@@ -172,6 +176,17 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
      */
     public static ParallelExecutorService getParallelExecutor() {
         return PARALLEL_EXECUTOR_SERVICE;
+    }
+
+    /**
+     * Returns the common serial file read executor service of this plugin. The
+     * executor processes one file read at a time.
+     *
+     * @return The serial file read executor service for execution of file read
+     *         threads.
+     */
+    public static ExecutorService getSerialFileReadExecutor() {
+        return SERIAL_FILE_READ_EXECUTOR_SERVICE;
     }
 
     /**

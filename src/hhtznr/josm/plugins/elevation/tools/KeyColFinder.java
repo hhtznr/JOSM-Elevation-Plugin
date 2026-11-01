@@ -229,13 +229,16 @@ public class KeyColFinder extends AbstractElevationTool {
             return null;
         }
         informListenersAboutStatus("Waiting for SRTM tiles to be cached");
-        // May throw AsyncOperationException
-        tileGridView.waitForTilesCached();
-        if (Thread.currentThread().isInterrupted()) {
+        // May throw AsyncOperationException or InterruptedException
+        try {
+            tileGridView.waitForTilesCached();
+        }
+        catch (InterruptedException e){
+            Thread.currentThread().interrupt();
             String message = "Interrupted while waiting for tiles to be cached";
             informListenersAboutStatus(message);
             Logging.info("Elevation: Key col finder: " + message);
-            throw new AsyncOperationException(new InterruptedException("Key col finder: " + message));
+            throw new AsyncOperationException(e);
         }
         informListenersAboutStatus("All needed SRTM tiles cached");
 

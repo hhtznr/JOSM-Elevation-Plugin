@@ -12,10 +12,12 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.openstreetmap.josm.tools.Logging;
 
+import hhtznr.josm.plugins.elevation.ElevationPlugin;
 import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.io.InvalidSrtmDataException;
 import hhtznr.josm.plugins.elevation.io.SrtmFileDownloader;
@@ -172,14 +174,14 @@ public class SrtmTileCacheEntry {
      * entry. Returns immediately if loading is already completed.
      *
      * @throws AsyncOperationException if the {@code CompletableFuture} was
-     *                                 completed exceptionally or canceled or the
-     *                                 thread was interrupted.
+     *                                 completed exceptionally or canceled
+     * @throws InterruptedException    if the thread was interrupted.
      */
-    public void waitUntilLoadingCompleted() throws AsyncOperationException {
+    public void waitUntilLoadingCompleted() throws AsyncOperationException, InterruptedException {
         try {
             // May throw CancellationException, ExecutionException or InterruptedException
             tileFuture.get();
-        } catch (CancellationException | ExecutionException | InterruptedException e) {
+        } catch (CancellationException | ExecutionException e) {
             Logging.info("Loading of SRTM tile " + srtmTileID + " canceled while waiting for it.");
             throw new AsyncOperationException(e);
         }
@@ -193,17 +195,22 @@ public class SrtmTileCacheEntry {
      *
      * @return The SRTM tile of this cache entry.
      * @throws AsyncOperationException if the {@code CompletableFuture} was
-     *                                 completed exceptionally or canceled or the
-     *                                 thread was interrupted.
+     *                                 completed exceptionally or canceled.
+     * @throws InterruptedException    if the thread was interrupted.
      */
-    public SrtmTile getTileOrWait() throws AsyncOperationException {
+    public SrtmTile getTileOrWait() throws AsyncOperationException, InterruptedException {
         synchronized (this) {
             this.accessTime = System.currentTimeMillis();
         }
         try {
             // May throw CancellationException, ExecutionException or InterruptedException
             return tileFuture.get();
-        } catch (CancellationException | ExecutionException | InterruptedException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            Logging.info(
+                    "Loading of SRTM tile " + srtmTileID + " interrupted while waiting for it in order to get it.");
+            throw e;
+        } catch (CancellationException | ExecutionException e) {
             Logging.info("Loading of SRTM tile " + srtmTileID + " canceled while waiting for it in order to get it.");
             throw new AsyncOperationException(e);
         }
@@ -478,12 +485,34 @@ public class SrtmTileCacheEntry {
     }
 
     private Future<SrtmTile> readSRTMFile(Path srtmFile, SrtmDataSource dataSource, SrtmFileReader srtmFileReader)
-            throws InterruptedException, ExecutionException {
+            throws InterruptedException, AsyncOperationException {
         Callable<SrtmTile> fileReadTask = () -> {
+            if (Thread.currentThread().isInterrupted()) {
+                status = SrtmTileCacheEntry.Status.LOADING_CANCELED;
+                throw new InterruptedException("Reading of SRTM file '" + srtmFile.toAbsolutePath().toString()
+                        + "' interrupted prior to execution");
+            }
             status = SrtmTileCacheEntry.Status.READING;
-            return srtmFileReader.readSRTMFile(srtmFile, dataSource);
+            try {
+                return srtmFileReader.readSRTMFile(srtmFile, dataSource);
+            } catch (InterruptedException e) {
+                status = SrtmTileCacheEntry.Status.LOADING_CANCELED;
+                Thread.currentThread().interrupt();
+                throw e;
+            } catch (IOException | InvalidSrtmDataException e) {
+                Logging.error("Elevation: Exception reading SRTM file '" + srtmFile.toAbsolutePath().toString() + "': "
+                        + e.toString());
+                status = SrtmTileCacheEntry.Status.DATA_INVALID;
+                throw new AsyncOperationException(e);
+            }
         };
-        return SrtmTileCache.fileReadExecutor.submit(fileReadTask);
+        try {
+            status = SrtmTileCacheEntry.Status.READING_SCHEDULED;
+            return ElevationPlugin.getSerialFileReadExecutor().submit(fileReadTask);
+        } catch (RejectedExecutionException e) {
+            status = SrtmTileCacheEntry.Status.LOADING_CANCELED;
+            throw new AsyncOperationException(e);
+        }
     }
 
     private Future<Optional<Path>> downloadSRTMFile(SrtmDataSource elevationDataSource,

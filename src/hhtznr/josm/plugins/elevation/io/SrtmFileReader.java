@@ -76,8 +76,8 @@ public class SrtmFileReader {
     public SrtmTile readSRTMFile(Path srtmFile, SrtmDataSource dataSource)
             throws IOException, InterruptedException, InvalidSrtmDataException {
         if (Thread.currentThread().isInterrupted()) {
-            throw new InterruptedException(
-                    "Reading SRTM file '" + srtmFile.toAbsolutePath().toString() + "' was interrupted.");
+            throw new InterruptedException("Reading SRTM file '" + srtmFile.toAbsolutePath().toString()
+                    + "' was interrupted before it started.");
         }
         String srtmTileID = SrtmFiles.getSRTMTileIDFromFileName(srtmFile.getFileName().toString());
         SrtmTile.Type type = dataSource.getSRTMTileType();

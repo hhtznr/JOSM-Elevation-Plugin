@@ -113,13 +113,15 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
 
         informListenersAboutStatus("Waiting for all needed SRTM tiles to be cached");
         // Wait for the tiles being cached
-        // May throw CancellationException or InterruptedException
-        tileGridView.waitForTilesCached();
-        if (Thread.currentThread().isInterrupted()) {
+        // May throw AsyncOperationException or InterruptedException
+        try {
+            tileGridView.waitForTilesCached();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             String message = "Interrupted while waiting for tiles to be cached";
             informListenersAboutStatus(message);
             Logging.info("Elevation: Topographic isolation finder: " + message);
-            throw new AsyncOperationException(new InterruptedException("Topographic isolation finder: " + message));
+            throw new AsyncOperationException(e);
         }
         informListenersAboutStatus("All needed SRTM tiles cached");
 

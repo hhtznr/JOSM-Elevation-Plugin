@@ -50,8 +50,6 @@ public class SrtmTileCache {
 
     private final SrtmFileReader srtmFileReader;
 
-    protected static ExecutorService fileReadExecutor = Executors.newFixedThreadPool(1);
-
     private boolean autoDownloadEnabled = false;
     private SrtmFileDownloader srtmFileDownloader = null;
     protected static ExecutorService fileDownloadExecutor = Executors.newFixedThreadPool(2);
@@ -274,10 +272,11 @@ public class SrtmTileCache {
      * @return The SRTM tile as a valid tile with data if the tile exists and the
      *         data is valid or otherwise as an invalid tile without data.
      * @throws AsyncOperationException if the {@code CompletableFuture} was
-     *                                 completed exceptionally or canceled or the
-     *                                 thread was interrupted.
+     *                                 completed exceptionally or canceled.
+     * @throws InterruptedException    if the thread was interrupted.
      */
-    public SrtmTile getTileOrWait(String srtmTileID, SrtmTileConsumer consumer) throws AsyncOperationException {
+    public SrtmTile getTileOrWait(String srtmTileID, SrtmTileConsumer consumer)
+            throws AsyncOperationException, InterruptedException {
         // Map editing is often done in the very same place for a while.
         // Therefore consider the previous tile first of all.
         synchronized (previousTileLock) {
@@ -367,9 +366,6 @@ public class SrtmTileCache {
         // Cancel all currently running/queued file download tasks
         fileDownloadExecutor.shutdownNow();
         fileDownloadExecutor = Executors.newFixedThreadPool(2);
-        // Cancel all currently running/queued file read tasks
-        fileReadExecutor.shutdownNow();
-        fileReadExecutor = Executors.newFixedThreadPool(1);
         synchronized (cache) {
             ArrayList<SrtmTileCacheEntry> allEntries = new ArrayList<>(cache.values());
             for (SrtmTileCacheEntry entry : allEntries) {
@@ -533,24 +529,19 @@ public class SrtmTileCache {
 
     /**
      * Removes the provided SRTM tile consumer from the provided tile cache entry.
-     * Empty entries are removed when they have no consumers. In-flight entries
-     * remain cached so that a subsequent consumer can reuse the pending load.
-     * Loaded tiles remain cached until the cache size limit requires eviction.
+     * Empty entries are removed when they have no consumers.
      *
      * @param entry    The cache entry from which to remove the consumer.
      * @param consumer The consumer to remove.
      */
     public synchronized void removeSRTMTileConsumer(SrtmTileCacheEntry entry, SrtmTileConsumer consumer) {
-        boolean removeEntry;
         synchronized (entry) {
             if (!entry.removeTileConsumer(consumer) || entry.getTileConsumerCount() != 0) {
                 return;
             }
-            removeEntry = entry.isLoadingCompleted() && entry.getDataSize() == 0;
         }
-        if (removeEntry) {
-            considerRemoveEntry(entry);
-        } else if (cacheSize > cacheSizeLimit) {
+        boolean entryRemoved = considerRemoveEntry(entry);
+        if (!entryRemoved && cacheSize > cacheSizeLimit) {
             clean();
         }
     }

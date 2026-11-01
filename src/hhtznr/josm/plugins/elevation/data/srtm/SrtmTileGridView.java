@@ -365,10 +365,11 @@ public class SrtmTileGridView implements ElevationGridView {
      * been cached. See {@link SrtmTileGrid#waitForTilesCached}.
      *
      * @throws AsyncOperationException if the {@code CompletableFuture} was
-     *                                 completed exceptionally or canceled or the
-     *                                 thread was interrupted.
+     *                                 completed exceptionally or canceled
+     *
+     * @throws InterruptedException    if the thread was interrupted.
      */
-    public void waitForTilesCached() throws AsyncOperationException {
+    public void waitForTilesCached() throws AsyncOperationException, InterruptedException {
         tileGrid.waitForTilesCached();
     }
 

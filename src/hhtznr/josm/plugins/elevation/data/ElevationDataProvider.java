@@ -249,10 +249,10 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SrtmTileCach
      * @return The coordinate (interpolation enabled) or the closest raster
      *         coordinate (interpolation disabled) and the corresponding elevation.
      * @throws AsyncOperationException if the {@code CompletableFuture} was
-     *                                 completed exceptionally or canceled or the
-     *                                 thread was interrupted.
+     *                                 completed exceptionally or canceled
+     * @throws InterruptedException    if the thread was interrupted.
      */
-    public LatLonEle getLatLonEleOrWait(ILatLon latLon) throws AsyncOperationException {
+    public LatLonEle getLatLonEleOrWait(ILatLon latLon) throws AsyncOperationException, InterruptedException {
         // Calls ElevationDataProvider.getTileCacheEntryFor()
         // May throw CancellationException
         SingleSrtmTileConsumer tileConsumer = new SingleSrtmTileConsumer(this, latLon);
@@ -543,10 +543,11 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SrtmTileCach
      * @return The SRTM tile as a valid tile with data if the tile exists and the
      *         data is valid or otherwise as an invalid tile without data.
      * @throws AsyncOperationException if the {@code CompletableFuture} was
-     *                                 completed exceptionally or canceled or the
-     *                                 thread was interrupted.
+     *                                 completed exceptionally or canceled.
+     * @throws InterruptedException    if the thread was interrupted.
      */
-    public SrtmTile getSRTMTileOrWait(String srtmTileID, SrtmTileConsumer consumer) throws AsyncOperationException {
+    public SrtmTile getSRTMTileOrWait(String srtmTileID, SrtmTileConsumer consumer)
+            throws AsyncOperationException, InterruptedException {
         return tileCache.getTileOrWait(srtmTileID, consumer);
     }
 

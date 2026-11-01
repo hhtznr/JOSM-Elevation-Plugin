@@ -7,6 +7,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.openstreetmap.josm.tools.Logging;
 
+import hhtznr.josm.plugins.elevation.data.DummyElevationDataConsumer;
 import hhtznr.josm.plugins.elevation.data.ElevationDataConsumer;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 
@@ -33,7 +34,8 @@ public abstract class SrtmTileConsumer {
 
     private final Object lifecycleLock = new Object();
     private State state = State.ACTIVE;
-    private int activeUsers;
+
+    private DummyElevationDataConsumer dummyConsumer = null;
 
     /**
      * Creates a new SRMT tile consumer.
@@ -95,17 +97,44 @@ public abstract class SrtmTileConsumer {
 
     /**
      * Adds an elevation data consumer to the list of consumers using this SRTM tile
-     * consumer.
+     * consumer. <br>
+     * If the provided consumer is an instance of
+     * {@link DummyElevationDataConsumer}, it will be registered as such if no dummy
+     * consumer was registered previously. A dummy elevation data consumer that will
+     * prevent disposal of this SRTM tile consumer prior to the first real elevation
+     * data consumer having been added. The dummy consumer will be removed when the
+     * first real elevation data consumer is added.
      *
      * @param consumer The elevation data consumer to add.
-     * @return {@code true} if the consumer was added, {@code false} if
+     * @return {@code true} if the consumer was added, {@code false} otherwise. In
+     *         the special case of a {@link DummyElevationDataConsumer} being added,
+     *         {@code true} is also returned if the grid is already protected by
+     *         another dummy consumer.
      */
     public boolean addElevationDataConsumer(ElevationDataConsumer consumer) {
         synchronized (lifecycleLock) {
             if (state != State.ACTIVE) {
                 return false;
             }
-            return elevationDataConsumers.addIfAbsent(consumer);
+            if (consumer instanceof DummyElevationDataConsumer) {
+                // The tile consumer is already protected from disposal
+                if (dummyConsumer != null) {
+                    return true;
+                }
+                if (elevationDataConsumers.addIfAbsent(consumer)) {
+                    dummyConsumer = (DummyElevationDataConsumer) consumer;
+                    return true;
+                }
+                return false;
+            }
+
+            boolean added = elevationDataConsumers.addIfAbsent(consumer);
+            if (added && dummyConsumer != null) {
+                if (elevationDataConsumers.remove(dummyConsumer)) {
+                    dummyConsumer = null;
+                }
+            }
+            return added;
         }
     }
 
@@ -136,7 +165,7 @@ public abstract class SrtmTileConsumer {
 
     // Only call within synchronized block on lifecycleLock
     private boolean beginDisposalIfUnused() {
-        if (state == State.ACTIVE && elevationDataConsumers.isEmpty() && activeUsers == 0) {
+        if (state == State.ACTIVE && elevationDataConsumers.isEmpty()) {
             state = State.DISPOSING;
             return true;
         }
@@ -154,35 +183,18 @@ public abstract class SrtmTileConsumer {
     }
 
     /**
-     * Blocks disposal of this {@code SRTMTileConsumer} until {@link #release()} is
-     * called. Can be called multiple times, but {@link #release()} needs to be
-     * called the same number of times.
-     *
-     * @return {@code true} if disposal could be blocked; {@code false} if this
-     *         {@code SRTMTileConsumer} is already disposed.
-     */
-    public boolean acquire() {
-        synchronized (lifecycleLock) {
-            if (state != State.ACTIVE) {
-                return false;
-            }
-            activeUsers++;
-            return true;
-        }
-    }
-
-    /**
-     * Unblocks disposal of this {@code SRTMTileConsumer}. Needs to be called the
-     * number of times that {@link #acquire()} has been called.
+     * Unblocks disposal of this {@code SRTMTileConsumer} by removing the
+     * {@link DummyElevationDataConsumer}, which protects the grid from disposal if
+     * not other consumer is registered.
      */
     public void release() {
         boolean shouldDispose;
         synchronized (lifecycleLock) {
-            if (activeUsers == 0) {
-                throw new IllegalStateException("Release called more than acquire");
+            if (dummyConsumer != null) {
+                elevationDataConsumers.remove(dummyConsumer);
+                dummyConsumer = null;
             }
 
-            activeUsers--;
             shouldDispose = beginDisposalIfUnused();
         }
 

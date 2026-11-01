@@ -60,14 +60,16 @@ public class MapViewElevationDataConsumer extends ElevationDataConsumer implemen
                 elevationDataProvider.getGridMatching(mapFrame.mapView.getLatLonBounds(mapFrame.mapView.getBounds())));
         // TODO: Resolve this temporary compatibility workaround
         ElevationGrid elevationGrid = getElevationGrid();
+        String tileGridInfo = "NONE";
         if (elevationGrid instanceof SrtmTileGrid) {
             SrtmTileGrid srtmTileGrid = (SrtmTileGrid) elevationGrid;
+            tileGridInfo = srtmTileGrid.toString();
             srtmTileGrid.release();
         }
         this.elevationDataProvider = elevationDataProvider;
         this.switchOffMapDimension = switchOffMapDimension;
         addToMapFrame(mapFrame);
-        Logging.info("Elevation: Created map view elevation data consumer for map view " + mapFrame.toString());
+        Logging.info("Elevation: Created new map view elevation data consumer with " + tileGridInfo);
     }
 
     /**
@@ -132,7 +134,9 @@ public class MapViewElevationDataConsumer extends ElevationDataConsumer implemen
 
         if (elevationZoomLevelEnabled && !srtmTileGrid.matchesGridBounds(bounds)) {
             try (SrtmTileGridLease lease = elevationDataProvider.getGridMatchingLease(bounds)) {
-                setElevationGrid(lease.getTileGrid());
+                SrtmTileGrid tileGrid = lease.getTileGrid();
+                setElevationGrid(tileGrid);
+                Logging.info("Elevation: Map view elevation data provider changed SRTM tile grid to " + tileGrid.toString());
             } catch (AsyncOperationException e) {
                 return;
             }

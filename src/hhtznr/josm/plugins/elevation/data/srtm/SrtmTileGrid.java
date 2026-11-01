@@ -9,6 +9,7 @@ import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
+import hhtznr.josm.plugins.elevation.data.DummyElevationDataConsumer;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.ElevationGrid;
 import hhtznr.josm.plugins.elevation.data.ElevationGridException;
@@ -59,7 +60,12 @@ public class SrtmTileGrid extends SrtmTileConsumer implements ElevationGrid, Srt
      */
     public SrtmTileGrid(ElevationDataProvider elevationDataProvider, Bounds bounds) throws AsyncOperationException {
         super(namer.nextName(), elevationDataProvider);
-        elevationDataProvider.cacheSRTMTiles(bounds, this);
+
+        // Set a dummy consumer to prevent disposal of this grid
+        // prior to the first real consumer being added
+        // Constructor will automatically add the dummy consumer to this grid
+        new DummyElevationDataConsumer(this);
+
         srtmType = elevationDataProvider.getSRTMType();
         if (srtmType == SrtmTile.Type.SRTM1) {
             latLonStep = SrtmTile.SRTM1_ANGULAR_STEP;

@@ -242,6 +242,7 @@ public class SrtmElevationLayer extends ElevationLayer implements SrtmElevationD
     @Override
     public synchronized void destroy() {
         elevationDataProvider.removeSrtmElevationDataProviderListener(this);
+        layerPainter.dispose();
         if (layerAdjustmentDialog != null) {
             layerAdjustmentDialog.setVisible(false);
             layerAdjustmentDialog.dispose();
@@ -252,6 +253,8 @@ public class SrtmElevationLayer extends ElevationLayer implements SrtmElevationD
 
     @Override
     public void elevationDataAvailable(SrtmTileGrid tileGrid) {
+        // TODO: We should only repaint if the grid is of relevance to us
+        // But consider that contour line bounds are slightly larger than the map view
         triggerRepaint();
     }
 

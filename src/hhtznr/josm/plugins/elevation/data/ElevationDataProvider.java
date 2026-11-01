@@ -33,12 +33,12 @@ import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileConsumer;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGrid;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGridLease;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGridView;
-import hhtznr.josm.plugins.elevation.gui.layers.ElevationLayer;
 import hhtznr.josm.plugins.elevation.gui.layers.MapViewElevationDataConsumer;
 import hhtznr.josm.plugins.elevation.gui.paintables.ContourLines;
 import hhtznr.josm.plugins.elevation.gui.paintables.ElevationRaster;
 import hhtznr.josm.plugins.elevation.gui.paintables.HillshadeImageTile;
 import hhtznr.josm.plugins.elevation.gui.paintables.LowestAndHighestPoints;
+import hhtznr.josm.plugins.elevation.gui.paintables.PendingSrtmContourLines;
 import hhtznr.josm.plugins.elevation.io.SrtmFileDownloader;
 
 /**
@@ -283,14 +283,18 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SrtmTileCach
      * matching the bounds, which is already used by other consumers, is returned.
      * <br>
      * Note: An {@link ElevationDataConsumer} needs to register itself to the
-     * returned grid. This method calls {@link SrtmTileGrid#acquire()} to protect
-     * the {@link SrtmTileGrid} from disposal. The code receiving the returned
-     * {@link SrtmTileGrid} needs to call {@link SrtmTileGrid#release()} after
-     * adding the {@link ElevationDataConsumer}.
+     * returned grid. This method creates a new {@link DummyElevationDataConsumer},
+     * which registers itself with the grid. This protects the {@link SrtmTileGrid}
+     * from preliminary disposal. As soon as an {@link ElevationDataConsumer} is
+     * added to the grid, it will remove the {@link DummyElevationDataConsumer}. The
+     * code receiving the returned {@link SrtmTileGrid} needs to call
+     * {@link SrtmTileGrid#release()} if no real consumer is added in order to
+     * remove the {@link DummyElevationDataConsumer} permitting disposal of the
+     * grid.
      *
-     * This method should only be used if {@link #getGridMatching(Bounds)} cannot be
-     * used, e.g. when passing this method in a constructor to its superclass
-     * constructor.
+     * This method should only be used direcly if
+     * {@link #getGridMatchingLease(Bounds)} cannot be used, e.g. when passing this
+     * method in a constructor to its superclass constructor.
      *
      * @param bounds The bounds.
      * @return An SRTM tile grid covering the bounds, but not bigger than needed.
@@ -305,16 +309,18 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SrtmTileCach
             Iterator<SrtmTileGrid> iterator = activeTileGrids.iterator();
             while (iterator.hasNext()) {
                 nextGrid = iterator.next();
-                // Successfully calling acquire() blocks grid disposal until release() is called
-                if (nextGrid.matchesGridBounds(bounds) && nextGrid.acquire()) {
+                // Creating a dummy consumer for the grid ensures that it is not disposed before
+                // the actual consumer has been added
+                if (nextGrid.matchesGridBounds(bounds)) {
+                    new DummyElevationDataConsumer(nextGrid);
                     return nextGrid;
                 }
             }
             if (tileGrid == null) {
                 // May throw AsyncOperationException
+                // The new tile grid will protect itself from preliminary disposal by creating a
+                // dummy consumer
                 tileGrid = new SrtmTileGrid(this, bounds);
-                // Successfully calling acquire() blocks grid disposal until release() is called
-                tileGrid.acquire();
                 activeTileGrids.add(tileGrid);
             }
             return tileGrid;
@@ -378,10 +384,8 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SrtmTileCach
     }
 
     /**
-     * Returns a list of isoline segments defining elevation contour lines within
-     * the bounds. The segments do not have a useful order. If this method does not
-     * return {@code null}, the contour lines will always cover the bounds. However,
-     * the method may return contour lines for a larger area as needed.
+     * Returns a task, which can be executed to compute SRTM contour lines and
+     * retrieve a future for obtaining the contour line result.
      *
      * @param mapView              The map view used to determine the ratio of grid
      *                             points to screen pixels to decide the appropriate
@@ -393,42 +397,44 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SrtmTileCach
      *                             will not be drawn.
      * @param upperCutoffElevation The elevation value above which contour lines
      *                             will not be drawn.
-     * @return A list of isoline segments defining elevation contour lines within
-     *         the bounds or {@code null} if no suitable elevation data is cached to
-     *         compute the contour lines.
+     * @param repaintTask          A task executed after successful computation of
+     *                             the contour lines. This task should be used to
+     *                             initiate a repaint of the map view.
+     * @return A contour line computation task from which the contour lines can be
+     *         retrieved as soon as these have been computed and which executed the
+     *         repaint task upon successful computation.
+     * @throws AsyncOperationException if it should not be possible to obtain an
+     *                                 SRTM tile grid lease.
+     * @throws ElevationGridException  if it was not possible to retrieve a view for
+     *                                 the used bounds from the used SRTM tile grid
+     *                                 (theoretical case).
      */
-    public ContourLines getSrtmContourLines(MapView mapView, Bounds bounds, int isostep, int lowerCutoffElevation,
-            int upperCutoffElevation) {
+    public PendingSrtmContourLines getPendingSrtmContourLines(MapView mapView, Bounds bounds, int isostep,
+            int lowerCutoffElevation, int upperCutoffElevation, Runnable repaintTask)
+            throws AsyncOperationException, ElevationGridException {
         Bounds renderingBounds = SrtmTileGrid.getRenderingBoundsScaledByRasterStep(bounds,
                 ContourLines.BOUNDS_SCALE_RASTER_STEP, getSRTMType());
+        // getGridMatchingLease() may throw AsyncOperationException
         try (SrtmTileGridLease lease = getGridMatchingLease(renderingBounds)) {
             SrtmTileGrid tileGrid = lease.getTileGrid();
+            // May throw ElevationGridException
             SrtmTileGridView gridView = tileGrid.getView(renderingBounds);
 
-            // Determine resolution of elevation grid relative to screen pixels
-            int gridViewWidth = gridView.getWidth();
-            int gridViewHeight = gridView.getHeight();
+            Point requestP1 = mapView.getPoint(bounds.getMin());
+            Point requestP2 = mapView.getPoint(bounds.getMax());
+            int requestPixelWidth = Math.abs(requestP2.x - requestP1.x);
+            int requestPixelHeight = Math.abs(requestP2.y - requestP1.y);
+
             Bounds gridViewBounds = gridView.getBounds();
             Point p1 = mapView.getPoint(gridViewBounds.getMin());
             Point p2 = mapView.getPoint(gridViewBounds.getMax());
             int gridViewPixelWidth = Math.abs(p2.x - p1.x);
             int gridViewPixelHeight = Math.abs(p2.y - p1.y);
-            // Compute grid steps to skip grid points
-            // Skip more grid points if further zoomed out from the map
-            int gridStepLon = (int) Math.round((double) gridViewWidth / (double) gridViewPixelWidth
-                    * ElevationLayer.PIXELS_PER_CONTOUR_LINE_GRID_POINT);
-            int gridStepLat = (int) Math.round((double) gridViewHeight / (double) gridViewPixelHeight
-                    * ElevationLayer.PIXELS_PER_CONTOUR_LINE_GRID_POINT);
-            // Ensure that the steps are always at least 1
-            gridStepLon = Math.max(gridStepLon, 1);
-            gridStepLat = Math.max(gridStepLat, 1);
 
-            ContourLines contourLines = gridView.getContourLines(isostep, gridStepLat, gridStepLon,
-                    lowerCutoffElevation, upperCutoffElevation);
-            return contourLines;
-        } catch (AsyncOperationException | ElevationGridException e) {
-            Logging.error("Elevation: Cannot create contour lines: " + e.toString());
-            return null;
+            PendingSrtmContourLines pendingContourLines = new PendingSrtmContourLines(tileGrid, bounds, renderingBounds,
+                    requestPixelWidth, requestPixelHeight, gridViewPixelWidth, gridViewPixelHeight, isostep,
+                    lowerCutoffElevation, upperCutoffElevation, repaintTask);
+            return pendingContourLines;
         }
     }
 

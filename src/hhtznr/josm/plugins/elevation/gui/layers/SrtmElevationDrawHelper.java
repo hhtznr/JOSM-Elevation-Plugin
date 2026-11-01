@@ -11,6 +11,9 @@ import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
@@ -23,6 +26,8 @@ import org.openstreetmap.josm.gui.layer.MapViewPaintable.PaintableInvalidationLi
 import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
+import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
+import hhtznr.josm.plugins.elevation.data.ElevationGridException;
 import hhtznr.josm.plugins.elevation.data.coordinate.CoordinateUtil;
 import hhtznr.josm.plugins.elevation.data.coordinate.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.coordinate.LatLonLine;
@@ -32,6 +37,7 @@ import hhtznr.josm.plugins.elevation.gui.paintables.ContourLines.IsolineSegments
 import hhtznr.josm.plugins.elevation.gui.paintables.ElevationRaster;
 import hhtznr.josm.plugins.elevation.gui.paintables.HillshadeImageTile;
 import hhtznr.josm.plugins.elevation.gui.paintables.LowestAndHighestPoints;
+import hhtznr.josm.plugins.elevation.gui.paintables.PendingSrtmContourLines;
 import hhtznr.josm.plugins.elevation.util.Coloring;
 import hhtznr.josm.plugins.elevation.util.DrawUtils;
 import hhtznr.josm.plugins.elevation.util.DrawUtils.NonOverlappingTextRenderer;
@@ -64,7 +70,8 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
     private short lowerCutoffElevation;
     private short upperCutoffElevation;
     private ContourLines contourLines = null;
-
+    private PendingSrtmContourLines pendingContourLines = null;
+    private final Object pendingContourLinesLock = new Object();
     private int hillshadeAltitude;
     private int hillshadeAzimuth;
     private HillshadeImageTile hillshadeImageTile = null;
@@ -76,6 +83,8 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
     private Bounds previousClipBounds = null;
 
     private LowestAndHighestPoints lowestAndHighestPoints = null;
+
+    private boolean isDisposed = false;
 
     /**
      * Creates a new elevation draw helper.
@@ -168,14 +177,24 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
             hillshadeImageTile = null;
         }
         scaledHillshadeImage = null;
+
+        synchronized (pendingContourLinesLock) {
+            if (pendingContourLines != null) {
+                pendingContourLines.dispose();
+                pendingContourLines = null;
+            }
+        }
+
         if (contourLines != null) {
             contourLines.dispose();
             contourLines = null;
         }
+
         if (elevationRaster != null) {
             elevationRaster.dispose();
             elevationRaster = null;
         }
+
         if (lowestAndHighestPoints != null) {
             lowestAndHighestPoints.dispose();
             lowestAndHighestPoints = null;
@@ -478,13 +497,86 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
     }
 
     private void refreshContourLines(MapView mapView, Bounds bounds) {
-        // Create and dispose crosswise so that cached tiles are taken over if possible
-        ContourLines oldContourlines = contourLines;
-        contourLines = layer.getElevationDataProvider().getSrtmContourLines(mapView, bounds, contourLineIsostep,
-                lowerCutoffElevation, upperCutoffElevation);
-        if (oldContourlines != null) {
-            oldContourlines.dispose();
-            oldContourlines = null;
+        synchronized (pendingContourLinesLock) {
+            if (isDisposed) {
+                return;
+            }
+
+            Point p1 = mapView.getPoint(bounds.getMin());
+            Point p2 = mapView.getPoint(bounds.getMax());
+            int requestPixelWidth = Math.abs(p2.x - p1.x);
+            int requestPixelHeight = Math.abs(p2.y - p1.y);
+
+            // Dispose pending contour lines that are no longer appropriate for current view
+            if (pendingContourLines != null && (!pendingContourLines.getRequestBounds().equals(bounds)
+                    || pendingContourLines.getIsostep() != contourLineIsostep
+                    || pendingContourLines.getRequestPixelWidth() != requestPixelWidth
+                    || pendingContourLines.getRequestPixelHeight() != requestPixelHeight
+                    || pendingContourLines.getLowerCutoffElevation() != lowerCutoffElevation
+                    || pendingContourLines.getUpperCutoffElevation() != upperCutoffElevation)) {
+                pendingContourLines.dispose();
+                pendingContourLines = null;
+            }
+
+            if (pendingContourLines == null) {
+                try {
+                    contourLines = null;
+
+                    Runnable repaintTask = () -> layer.triggerRepaint();
+
+                    pendingContourLines = layer.getElevationDataProvider().getPendingSrtmContourLines(mapView, bounds,
+                            contourLineIsostep, lowerCutoffElevation, upperCutoffElevation, repaintTask);
+                } catch (AsyncOperationException | ElevationGridException e) {
+                    Logging.warn("Elevation: Exception while waiting for contour lines to be computed for drawing: "
+                            + e.toString());
+                    contourLines = null;
+                    return;
+                }
+            }
+
+            Future<ContourLines> future = pendingContourLines.getContourLines();
+            if (future.isCancelled()) {
+                pendingContourLines.dispose();
+                pendingContourLines = null;
+                contourLines = null;
+                return;
+            }
+
+            if (future.isDone()) {
+                try {
+                    ContourLines computedContourLines = future.get();
+                    ContourLines newContourLines = pendingContourLines.claimContourLines(computedContourLines);
+                    pendingContourLines.dispose();
+                    pendingContourLines = null;
+
+                    if (newContourLines == null) {
+                        // contourLines = null;
+                        return; // It was discarded; do not install it.
+                    }
+
+                    // Create and dispose crosswise so that cached tiles are taken over if possible
+                    ContourLines oldContourLines = contourLines;
+                    if (oldContourLines != null) {
+                        oldContourLines.dispose();
+                    }
+                    contourLines = newContourLines;
+
+                } catch (InterruptedException e) {
+                    pendingContourLines.dispose();
+                    pendingContourLines = null;
+                    contourLines = null;
+                    Thread.currentThread().interrupt();
+                    return;
+                } catch (ExecutionException | CancellationException e) {
+                    Logging.warn("Elevation: Exception while waiting for contour lines to be computed for drawing: "
+                            + e.toString());
+                    pendingContourLines.dispose();
+                    pendingContourLines = null;
+                    contourLines = null;
+                    return;
+                }
+
+            }
         }
     }
 
@@ -505,6 +597,16 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
         if (oldLowestAndHighestPoints != null) {
             oldLowestAndHighestPoints.dispose();
             oldLowestAndHighestPoints = null;
+        }
+    }
+
+    public void dispose() {
+        synchronized (pendingContourLinesLock) {
+            if (pendingContourLines != null) {
+                pendingContourLines.dispose();
+                pendingContourLines = null;
+            }
+            isDisposed = true;
         }
     }
 

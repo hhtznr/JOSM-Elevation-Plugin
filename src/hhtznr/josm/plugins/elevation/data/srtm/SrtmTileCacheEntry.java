@@ -458,7 +458,7 @@ public class SrtmTileCacheEntry {
                     status = SrtmTileCacheEntry.Status.VALID;
                 }
                 complete(srtmTile); // Wakes up all waiters
-                cache.srtmTileCached(srtmTile, status);
+                cache.srtmTileCached(this);
                 Logging.info("Elevation: SRTM tile " + srtmTileID + " loaded with status " + status.toString());
             } catch (Exception e) {
                 if (e instanceof CancellationException) {
@@ -466,13 +466,12 @@ public class SrtmTileCacheEntry {
                 } else {
                     status = SrtmTileCacheEntry.Status.DATA_INVALID;
                 }
-                SrtmTile srtmTile = SrtmTile.createInvalidTile(srtmTileID, srtmType);
                 completeExceptionally(e);
                 if (!(e instanceof CancellationException)) {
                     Logging.error("Elevation: Exception retrieving SRTM tile " + srtmTileID + ": " + e.toString());
                     e.printStackTrace();
                 }
-                cache.srtmTileCached(srtmTile, status);
+                cache.srtmTileCached(this);
             }
             asyncLoadFuture = null;
         });

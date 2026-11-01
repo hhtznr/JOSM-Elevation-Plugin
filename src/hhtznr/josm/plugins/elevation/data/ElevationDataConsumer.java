@@ -109,7 +109,7 @@ public abstract class ElevationDataConsumer {
         }
 
         Logging.info("Elevation: Set new elevation grid for " + name + ": Replace " + oldElevationGrid + " by "
-                + oldElevationGrid);
+                + newElevationGrid);
     }
 
     /**

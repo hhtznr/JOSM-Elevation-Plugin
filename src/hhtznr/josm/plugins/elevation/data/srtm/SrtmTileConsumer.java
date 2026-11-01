@@ -96,6 +96,18 @@ public abstract class SrtmTileConsumer {
     }
 
     /**
+     *  Returns a copy of the list of elevation data consumers.
+     * @return The registered elevation data consumers at the time of requesting them.
+     */
+    public List<ElevationDataConsumer> getElevationDataConsumers() {
+        synchronized (lifecycleLock) {
+            ArrayList<ElevationDataConsumer> result = new ArrayList<>(elevationDataConsumers.size());
+            result.addAll(elevationDataConsumers);
+            return result;
+        }
+    }
+
+    /**
      * Adds an elevation data consumer to the list of consumers using this SRTM tile
      * consumer. <br>
      * If the provided consumer is an instance of

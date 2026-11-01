@@ -8,6 +8,7 @@ import java.awt.GridBagLayout;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -16,7 +17,9 @@ import javax.swing.JScrollPane;
 import org.openstreetmap.josm.gui.ExtendedDialog;
 import org.openstreetmap.josm.tools.GBC;
 
+import hhtznr.josm.plugins.elevation.data.ElevationDataConsumer;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
+import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGrid;
 import hhtznr.josm.plugins.elevation.gui.components.UIFactory;
 
 /**
@@ -45,7 +48,8 @@ public class SrtmElevationDataInfoDialog extends ExtendedDialog {
         panel.add(new JLabel("SRTM Elevation Layer"), GBC.eol());
         List<String[]> content = new ArrayList<>();
         // Active tile grid
-        List<String[]> tileGridInfo = elevationDataProvider.getTileGridInfo();
+        Set<SrtmTileGrid> activeTileGrids = elevationDataProvider.getActiveSrtmTileGrids();
+        List<String[]> tileGridInfo = getTileGridInfo(activeTileGrids);
         for (String[] info : tileGridInfo) {
             content.add(info);
         }
@@ -66,5 +70,36 @@ public class SrtmElevationDataInfoDialog extends ExtendedDialog {
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
         setContent(scrollPane);
+    }
+
+    /**
+     * Returns a list with textual information on the currently active SRTM tile
+     * grids.
+     *
+     * @return A list with string array of length {@code 2}. The list will contain a
+     *         string array item for each active tile grid. Each string array will
+     *         contain the name of the grid at index {@code 0} and information onf
+     *         the grid at index {@code 1}.
+     */
+    private static List<String[]> getTileGridInfo(Set<SrtmTileGrid> activeTileGrids) {
+        List<String[]> infoList = new ArrayList<>();
+        synchronized (activeTileGrids) {
+            for (SrtmTileGrid tileGrid : activeTileGrids) {
+                String[] tileGridInfo = new String[2];
+                tileGridInfo[0] = tileGrid.getName();
+                tileGridInfo[1] = tileGrid.getInfoString();
+                infoList.add(tileGridInfo);
+
+                int consumerNumber = 1;
+                for (ElevationDataConsumer dataConsumer : tileGrid.getElevationDataConsumers()) {
+                    String[] dataConsumerInfo = new String[2];
+                    dataConsumerInfo[0] = "  Consumer " + consumerNumber;
+                    dataConsumerInfo[1] = dataConsumer.getName();
+                    consumerNumber++;
+                    infoList.add(dataConsumerInfo);
+                }
+            }
+        }
+        return infoList;
     }
 }

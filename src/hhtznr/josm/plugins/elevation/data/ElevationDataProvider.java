@@ -3,6 +3,7 @@ package hhtznr.josm.plugins.elevation.data;
 import java.awt.Point;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -125,6 +126,17 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SrtmTileCach
             }
         }
         return infoList;
+    }
+
+    /**
+     * Returns a copy of the list of active SRTM tile grids.
+     *
+     * @return The active SRTM tile grids at the time of requesting them.
+     */
+    public Set<SrtmTileGrid> getActiveSrtmTileGrids() {
+        Set<SrtmTileGrid> grids = new HashSet<SrtmTileGrid>();
+        grids.addAll(activeTileGrids);
+        return grids;
     }
 
     /**

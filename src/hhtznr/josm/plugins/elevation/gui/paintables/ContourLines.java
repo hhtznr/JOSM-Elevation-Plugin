@@ -53,10 +53,12 @@ public class ContourLines extends AbstractElevationGridPaintable {
      *                             over the elevation grid upon computing the
      *                             contour lines. Value must be {@code >= 1}.
      * @throws AsyncOperationException if asynchronous computation of the contour
-     *                                 lines is rejected or interrupted.
+     *                                 lines is rejected
+     * @throws InterruptedException    if asynchronous computation of the contour
+     *                                 lines is interrupted.
      */
     public ContourLines(ElevationGridView elevationGridView, int isostep, int gridStepLat, int gridStepLon,
-            int lowerCutoffElevation, int upperCutoffElevation) throws AsyncOperationException {
+            int lowerCutoffElevation, int upperCutoffElevation) throws AsyncOperationException, InterruptedException {
         this(elevationGridView, elevationGridView.getIsovalues(isostep, lowerCutoffElevation, upperCutoffElevation),
                 isostep, gridStepLat, gridStepLon);
     }
@@ -73,11 +75,13 @@ public class ContourLines extends AbstractElevationGridPaintable {
      *                             will not be generated.
      * @param upperCutoffElevation The elevation value above which contour lines
      *                             will not be generated.
-     * @throws AsyncOperationException Thrown if asynchronous computation of the
-     *                                 contour lines is rejected or interrupted.
+     * @throws AsyncOperationException if asynchronous computation of the contour
+     *                                 lines is rejected
+     * @throws InterruptedException    if asynchronous computation of the contour
+     *                                 lines is interrupted.
      */
     public ContourLines(ElevationGridView elevationGridView, int isostep, int lowerCutoffElevation,
-            int upperCutoffElevation) throws AsyncOperationException {
+            int upperCutoffElevation) throws AsyncOperationException, InterruptedException {
         this(elevationGridView, elevationGridView.getIsovalues(isostep, lowerCutoffElevation, upperCutoffElevation),
                 isostep, MINIMUM_GRID_STEP, MINIMUM_GRID_STEP);
     }
@@ -91,15 +95,18 @@ public class ContourLines extends AbstractElevationGridPaintable {
      * @param isovalues         An array of elevation values defining the isolevels.
      *                          See
      *                          {@link MarchingSquares#MarchingSquares(ElevationGridView, short[])}.
-     * @throws AsyncOperationException Thrown if asynchronous computation of the
-     *                                 contour lines is rejected or interrupted.
+     * @throws AsyncOperationException if asynchronous computation of the contour
+     *                                 lines is rejected
+     * @throws InterruptedException    if asynchronous computation of the contour
+     *                                 lines is interrupted.
      */
-    public ContourLines(ElevationGridView elevationGridView, short[] isovalues) throws AsyncOperationException {
+    public ContourLines(ElevationGridView elevationGridView, short[] isovalues)
+            throws AsyncOperationException, InterruptedException {
         this(elevationGridView, isovalues, UNDEFINED_ISOSTEP, MINIMUM_GRID_STEP, MINIMUM_GRID_STEP);
     }
 
     private ContourLines(ElevationGridView elevationGridView, short[] isovalues, int isostep, int gridStepLat,
-            int gridStepLon) throws AsyncOperationException {
+            int gridStepLon) throws AsyncOperationException, InterruptedException {
         super(namer.nextName(), elevationGridView);
         try {
             if (isostep == UNDEFINED_ISOSTEP) {
@@ -114,7 +121,10 @@ public class ContourLines extends AbstractElevationGridPaintable {
             MarchingSquares marchingSquares = new MarchingSquares(this.elevationGridView, isovalues, gridStepLat,
                     gridStepLon);
             this.isolineSegments = marchingSquares.getIsolineSegments();
-        } catch (AsyncOperationException | RuntimeException | Error e) {
+        } catch (AsyncOperationException | InterruptedException | RuntimeException | Error e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
             super.dispose();
             throw e;
         }

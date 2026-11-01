@@ -290,11 +290,13 @@ public class SrtmTileGridView implements ElevationGridView {
      *         type (i.e. different raster dimensions) or if at least one of the
      *         tiles is not valid (i.e. the data was not loaded yet or is not
      *         available at all).
-     * @throws AsyncOperationException Thrown if asynchronous computation of the
-     *                                 contour lines is rejected or interrupted.
+     * @throws AsyncOperationException if asynchronous computation of the contour
+     *                                 lines is rejected
+     * @throws InterruptedException    if the thread computing the contour lines is
+     *                                 interrupted.
      */
     public ContourLines getContourLines(int isostep, int gridStepLat, int gridStepLon, int lowerCutoffElevation,
-            int upperCutoffElevation) throws AsyncOperationException {
+            int upperCutoffElevation) throws AsyncOperationException, InterruptedException {
         if (!tileGrid.areAllTilesCached() || tileGrid.isDisposed()) {
             return null;
         }

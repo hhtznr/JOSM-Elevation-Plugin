@@ -391,7 +391,11 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
                         computedContourLines = new ContourLines(gridView, contourLineIsostep, gridStepLat, gridStepLon,
                                 lowerCutoffElevation, upperCutoffElevation);
                     }
-                } catch (AsyncOperationException e) {
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+                catch (AsyncOperationException e) {
                     synchronized (contourLinesLock) {
                         if (requestId == contourLinesRequestId) {
                             Logging.error("Elevation: Cannot create contour lines for GeoTIFF file with path '"

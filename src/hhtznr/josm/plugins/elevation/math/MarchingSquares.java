@@ -112,10 +112,12 @@ public class MarchingSquares {
      * Returns the array of isoline segments for the isovalues.
      *
      * @return The isoline segments.
-     * @throws AsyncOperationException If the computation of the isoline segments is
-     *                                 interrupted or fails for any reason.
+     * @throws AsyncOperationException If the computation of the isoline segments
+     *                                 fails for any reason.
+     * @throws InterruptedException    If the computation of the isoline segments is
+     *                                 interrupted.
      */
-    public ContourLines.IsolineSegments[] getIsolineSegments() throws AsyncOperationException {
+    public ContourLines.IsolineSegments[] getIsolineSegments() throws AsyncOperationException, InterruptedException {
         List<Callable<ContourLines.IsolineSegments>> tasks = new ArrayList<>(isovalues.length);
         for (short isovalue : isovalues) {
             tasks.add(() -> getIsolineSegments(isovalue));
@@ -132,7 +134,7 @@ public class MarchingSquares {
         } catch (InterruptedException e) {
             futures.forEach(future -> future.cancel(true));
             Thread.currentThread().interrupt();
-            throw new AsyncOperationException(e);
+            throw e;
         } catch (ExecutionException | CancellationException e) {
             futures.forEach(future -> future.cancel(true));
             throw new AsyncOperationException(e instanceof ExecutionException ? e.getCause() : e);

@@ -88,11 +88,11 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
      *         computation. An empty list is returned, if no (higher) reference
      *         point could be determined within the specified bounds.
      * @throws AsyncOperationException if the {@code CompletableFuture} was
-     *                                 completed exceptionally or canceled or the
-     *                                 thread was interrupted.
+     *                                 completed exceptionally or canceled
+     * @throws InterruptedException    if the thread was interrupted.
      */
     public List<LatLonEle> determineReferencePoints(LatLonEle peak, double searchDistance, double distanceTolerance,
-            double deadZoneRadius) throws AsyncOperationException {
+            double deadZoneRadius) throws AsyncOperationException, InterruptedException {
         Bounds searchBounds = getBounds();
         // TODO: Resolve this temporary compatibility workaround
         ElevationGrid elevationGrid = getElevationGrid();
@@ -121,7 +121,7 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
             String message = "Interrupted while waiting for tiles to be cached";
             informListenersAboutStatus(message);
             Logging.info("Elevation: Topographic isolation finder: " + message);
-            throw new AsyncOperationException(e);
+            throw e;
         }
         informListenersAboutStatus("All needed SRTM tiles cached");
 
@@ -129,7 +129,14 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
         short[] isovalues = new short[] { isolationReferenceElevation };
 
         informListenersAboutStatus("Creating contour lines");
-        ContourLines contourLines = new ContourLines(tileGridView, isovalues);
+        ContourLines contourLines;
+        try {
+            contourLines = new ContourLines(tileGridView, isovalues);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            informListenersAboutStatus("Creating contour lines interrupted");
+            throw e;
+        }
         ContourLines.IsolineSegments[] allIsoLineSegments = contourLines.getIsolineSegments();
         contourLines.dispose();
         contourLines = null;
@@ -155,7 +162,7 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
                 isolineSegments = null;
                 String message = "Interrupted while determining closest points from isoline segments";
                 Logging.info("Elevation: Topographic isolation finder: " + message);
-                throw new AsyncOperationException(new InterruptedException("Topographic isolation finder: " + message));
+                throw new InterruptedException("Topographic isolation finder: " + message);
             }
             LatLon closestPoint = isolineSegment.getClosestPointTo(peak);
             double distance = peak.greatCircleDistance((ILatLon) closestPoint);

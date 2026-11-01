@@ -81,4 +81,30 @@ public class ParallelExecutorService {
     public Future<?> submit(Runnable task) throws RejectedExecutionException {
         return executorService.submit(task);
     }
+
+    /**
+     * Submits a list of tasks, which do not return a result. to the executor
+     * service.
+     *
+     * @param tasks The list of tasks.
+     * @return A list of futures for keeping track of the state of task execution.
+     * @throws RejectedExecutionException If the underlying fixed thread pool
+     *                                    rejects execution of a task.
+     */
+    public List<Future<?>> submitRunnables(List<Runnable> tasks) throws RejectedExecutionException {
+        List<Future<?>> futures = new ArrayList<Future<?>>(tasks.size());
+        try {
+            for (Runnable task : tasks) {
+                Future<?> future = executorService.submit(task);
+                futures.add(future);
+            }
+        } catch (RejectedExecutionException e) {
+            // Cancel already submitted tasks if not all tasks can be submitted
+            for (Future<?> future : futures) {
+                future.cancel(true);
+            }
+            throw e;
+        }
+        return futures;
+    }
 }

@@ -446,9 +446,13 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SrtmTileCach
      *                      columns will be omitted.
      * @return An image with the computed hillshade values or {@code null} if no
      *         suitable elevation data is cached to compute the hillshades.
+     * @throws AsyncOperationException if an exception occured during asynchronous
+     *                                 computation of the hillshade image.
+     * @throws InterruptedException    if computation of the hillshade image was
+     *                                 interrupted.
      */
     public HillshadeImageTile getHillshadeImageTile(Bounds bounds, double altitudeDeg, double azimuthDeg,
-            boolean withPerimeter) {
+            boolean withPerimeter) throws AsyncOperationException, InterruptedException {
         Bounds renderingBounds = SrtmTileGrid.getRenderingBoundsScaledByRasterStep(bounds,
                 ContourLines.BOUNDS_SCALE_RASTER_STEP, getSRTMType());
         try (SrtmTileGridLease lease = getGridMatchingLease(renderingBounds)) {
@@ -456,7 +460,7 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SrtmTileCach
             HillshadeImageTile hillshade = tileGrid.getView(renderingBounds).getHillshadeImageTile(altitudeDeg,
                     azimuthDeg, withPerimeter);
             return hillshade;
-        } catch (AsyncOperationException | ElevationGridException e) {
+        } catch (ElevationGridException e) {
             Logging.error("Elevation: Cannot create hillshade: " + e.toString());
             return null;
         }

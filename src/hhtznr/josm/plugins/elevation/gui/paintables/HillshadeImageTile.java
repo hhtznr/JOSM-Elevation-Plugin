@@ -6,6 +6,7 @@ import java.awt.image.BufferedImage;
 
 import org.openstreetmap.josm.data.Bounds;
 
+import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGridView;
 import hhtznr.josm.plugins.elevation.math.Hillshade;
 import hhtznr.josm.plugins.elevation.util.IncrementalNumberedNameCreator;
@@ -18,7 +19,8 @@ import hhtznr.josm.plugins.elevation.util.IncrementalNumberedNameCreator;
  */
 public class HillshadeImageTile extends AbstractElevationGridPaintable {
 
-    private static final IncrementalNumberedNameCreator namer = new IncrementalNumberedNameCreator("Hillshade image tile");
+    private static final IncrementalNumberedNameCreator namer = new IncrementalNumberedNameCreator(
+            "Hillshade image tile");
 
     public static final int BOUNDS_SCALE_RASTER_STEP = 3;
 
@@ -45,9 +47,13 @@ public class HillshadeImageTile extends AbstractElevationGridPaintable {
      *                      added such that the size of the 2D array corresponds to
      *                      that of the input data. If {@code false}, these rows and
      *                      columns will be omitted.
+     * @throws AsyncOpationException if an exception occured during asynchronous
+     *                               computation of the hillshade image.
+     * @throws InterruptedException  if computation of the hillshade image was
+     *                               interrupted.
      */
     public HillshadeImageTile(SrtmTileGridView tileGridView, double altitudeDeg, double azimuthDeg,
-            boolean withPerimeter) {
+            boolean withPerimeter) throws AsyncOperationException, InterruptedException {
         super(namer.nextName(), tileGridView);
         Hillshade hillshade = new Hillshade(tileGridView, altitudeDeg, azimuthDeg);
         image = hillshade.getHillshadeImage(withPerimeter);

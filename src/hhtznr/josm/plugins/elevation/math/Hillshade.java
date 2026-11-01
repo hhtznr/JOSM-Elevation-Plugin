@@ -3,10 +3,7 @@ package hhtznr.josm.plugins.elevation.math;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 
@@ -15,6 +12,8 @@ import org.openstreetmap.josm.data.coor.ILatLon;
 import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.tools.Logging;
 
+import hhtznr.josm.plugins.elevation.ElevationPlugin;
+import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGridView;
 
 /**
@@ -46,12 +45,7 @@ public class Hillshade {
     private double cosZenithRad;
     private double azimuthRad;
 
-    private static final ExecutorService executor;
-    static {
-        int cores = Runtime.getRuntime().availableProcessors();
-        int threads = Math.min(1, cores - 1);
-        executor = Executors.newFixedThreadPool(threads);
-    }
+    private List<Future<?>> hillshadeRowFutures = null;
 
     /**
      * Creates a new hillshade instance.
@@ -169,9 +163,9 @@ public class Hillshade {
                 return Math.PI / 2.0;
             } else if (changeRateInY < 0.0) {
                 return 2 * Math.PI - Math.PI / 2;
-            // We cannot compute the direction of the steepest downhill descent
-            // if the slope in x direction and the slope in y direction are both zero
             } else {
+                // We cannot compute the direction of the steepest downhill descent
+                // if the slope in x direction and the slope in y direction are both zero
                 return azimuthRad;
             }
         }
@@ -248,8 +242,8 @@ public class Hillshade {
         double lonDistanceInDegrees;
         if (lonWest < lonEast) {
             lonDistanceInDegrees = lonEast - lonWest;
-        // Across 180th meridian
         } else {
+            // Across 180th meridian
             lonDistanceInDegrees = 180.0 - lonEast + lonWest + 180.0;
         }
 
@@ -285,8 +279,14 @@ public class Hillshade {
      * @return An image with the computed hillshade values or {@code null} if the
      *         SRTM tile grid cannot deliver elevation values or there are less than
      *         3 elevation values in one of the two dimensions.
+     * @throws AsyncOperationException if submitting a compute task to the thread
+     *                                 executor is rejected or if an exception
+     *                                 occured during computation of the hillshade
+     *                                 image.
+     * @throws InterruptedException    if the thread was interrupted while computing
+     *                                 the hillshade image.
      */
-    public BufferedImage getHillshadeImage(boolean withPerimeter) {
+    public BufferedImage getHillshadeImage(boolean withPerimeter) throws AsyncOperationException, InterruptedException {
 
         int latHeight = tileGridView.getHeight();
         int lonWidth = tileGridView.getWidth();
@@ -307,7 +307,7 @@ public class Hillshade {
 
         // List of tasks to be executed by the thread executor service
         // Each task will compute one row of the hillshade image
-        ArrayList<Callable<BufferedImage>> hillshadeRowTasks = new ArrayList<>(latHeight - 2);
+        ArrayList<Runnable> hillshadeRowTasks = new ArrayList<>(latHeight - 2);
 
         // Iterate over the grid of elevation data processing 3 x 3 subgrids
         // As we copy 3 values in each direction in each iteration, we have to stop 2
@@ -316,7 +316,7 @@ public class Hillshade {
             // Final copy of the current latIndex for internal reference in the task
             final int taskLatIndex = latIndex;
             // Create a task for computing each of the rows of the image
-            Callable<BufferedImage> task = () -> {
+            Runnable task = () -> {
                 // Array to collect the alpha values of the pixel row
                 int[] pixels = new int[width];
                 short[] ele3x3 = new short[3 * 3];
@@ -325,7 +325,8 @@ public class Hillshade {
                     for (int deltaLat = 0; deltaLat < 3; deltaLat++) {
                         int latOffset = deltaLat * 3;
                         // Get elevation from taskLatIndex + 2 (north) down to taskLatIndex + 0 (south)
-                        // Hillshade change rate algorithm expects y coordinate oriented from top to bottom
+                        // Hillshade change rate algorithm expects y coordinate oriented from top to
+                        // bottom
                         int viewLatIndex = taskLatIndex + (2 - deltaLat);
                         for (int deltaLon = 0; deltaLon < 3; deltaLon++) {
                             int viewLonIndex = lonIndex + deltaLon;
@@ -348,8 +349,6 @@ public class Hillshade {
                  * gray/semi-transparent (alpha = 1...254) or fully transparent (alpha = 0)
                  */
                 image.getAlphaRaster().setPixels(x, y, width, 1, pixels);
-                // This is just because Callable needs to return some object
-                return image;
             };
             // Add the task for the current row to the list of compute tasks
             hillshadeRowTasks.add(task);
@@ -357,24 +356,31 @@ public class Hillshade {
 
         // Submit all tasks to the thread executor and get a list of Futures to
         // synchronize on the tasks
-        List<Future<BufferedImage>> futures;
+        // TODO: Interrupt hillshade computation if the requestor is no longer
+        // interested in the result
         try {
-            futures = executor.invokeAll(hillshadeRowTasks);
-        } catch (InterruptedException | RejectedExecutionException e) {
+            hillshadeRowFutures = ElevationPlugin.getParallelExecutor().submitRunnables(hillshadeRowTasks);
+        } catch (RejectedExecutionException e) {
             Logging.error("ELEVATION: Error while computing hillshade: " + e.toString());
-            return null;
+            throw new AsyncOperationException(e);
         }
 
         // Iterate over the Futures and wait for each task to complete if it has not
         // completed yet
-        for (Future<BufferedImage> future : futures) {
+        for (Future<?> future : hillshadeRowFutures) {
             try {
                 future.get();
-            } catch (InterruptedException | ExecutionException e) {
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                hillshadeRowFutures = null;
+                throw e;
+            } catch (ExecutionException e) {
                 Logging.error("ELEVATION: Error while computing hillshade: " + e.toString());
-                return null;
+                hillshadeRowFutures = null;
+                throw new AsyncOperationException(e);
             }
         }
+        hillshadeRowFutures = null;
 
         // The shade bounds are 1/2 of the cell size wider in each direction than the
         // raster bounds

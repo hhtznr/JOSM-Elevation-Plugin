@@ -337,8 +337,13 @@ public class SrtmTileGridView implements ElevationGridView {
      * @return An image with the computed hillshade values or {@code null} if this
      *         SRTM tile grid cannot deliver elevation values or there are less than
      *         3 elevation values in one of the two dimensions.
+     * @throws AsyncOperationException if an exception occured during asynchronous
+     *                                 computation of the hillshade image.
+     * @throws InterruptedException    if computation of the hillshade image was
+     *                                 interrupted.
      */
-    public HillshadeImageTile getHillshadeImageTile(double altitudeDeg, double azimuthDeg, boolean withPerimeter) {
+    public HillshadeImageTile getHillshadeImageTile(double altitudeDeg, double azimuthDeg, boolean withPerimeter)
+            throws AsyncOperationException, InterruptedException {
         if (!tileGrid.areAllTilesCached() || tileGrid.isDisposed()) {
             return null;
         }

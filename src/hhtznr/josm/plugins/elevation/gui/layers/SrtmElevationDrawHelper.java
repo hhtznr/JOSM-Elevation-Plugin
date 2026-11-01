@@ -495,7 +495,12 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
     private void refreshHillshadeImageTile(Bounds bounds, double altitude, double azimuth) {
         // Create and dispose crosswise so that cached tiles are taken over if possible
         HillshadeImageTile oldHillshadeImageTile = hillshadeImageTile;
-        hillshadeImageTile = layer.getElevationDataProvider().getHillshadeImageTile(bounds, altitude, azimuth, false);
+        try {
+            hillshadeImageTile = layer.getElevationDataProvider().getHillshadeImageTile(bounds, altitude, azimuth, false);
+        } catch (AsyncOperationException | InterruptedException e) {
+            Logging.error("Elevation: Exception during hillshade computation: " + e.toString());
+            hillshadeImageTile = null;
+        }
         if (oldHillshadeImageTile != null) {
             oldHillshadeImageTile.dispose();
             oldHillshadeImageTile = null;

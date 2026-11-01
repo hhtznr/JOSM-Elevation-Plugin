@@ -417,7 +417,7 @@ public class SrtmTileCacheEntry {
                             continue;
                         }
                         status = SrtmTileCacheEntry.Status.DOWNLOAD_SCHEDULED;
-                        Future<Optional<Path>> downloadFuture = downloadSRTMFile(dataSource, downloader);
+                        Future<Optional<Path>> downloadFuture = downloadSrtmFile(dataSource, downloader);
                         fileFetchFuture.set(downloadFuture);
                         Optional<Path> optionalFile = downloadFuture.get();
                         fileFetchFuture.set(null);
@@ -515,8 +515,8 @@ public class SrtmTileCacheEntry {
         }
     }
 
-    private Future<Optional<Path>> downloadSRTMFile(SrtmDataSource elevationDataSource,
-            SrtmFileDownloader srtmFileDownloader) throws InterruptedException, ExecutionException {
+    private Future<Optional<Path>> downloadSrtmFile(SrtmDataSource elevationDataSource,
+            SrtmFileDownloader srtmFileDownloader) throws InterruptedException, RejectedExecutionException {
         Callable<Optional<Path>> downloadTask = () -> {
             status = SrtmTileCacheEntry.Status.DOWNLOADING;
             return srtmFileDownloader.download(srtmTileID, elevationDataSource);

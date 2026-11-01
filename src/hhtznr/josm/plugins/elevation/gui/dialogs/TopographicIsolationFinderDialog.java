@@ -626,6 +626,8 @@ public class TopographicIsolationFinderDialog extends ExtendedDialog implements 
             isolationFinder.dispose();
             isolationFinder = null;
         }
+        executor.shutdown();
+        elevationDataProvider.cleanCache();
         super.dispose();
     }
 

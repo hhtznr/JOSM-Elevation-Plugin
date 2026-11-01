@@ -812,7 +812,7 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
             keyColFinder.dispose();
             keyColFinder = null;
         }
-
+        executor.shutdown();
         elevationDataProvider.cleanCache();
         super.dispose();
     }

@@ -112,9 +112,8 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
                 hillshadeImageTile = null;
                 scaledHillshadeImage = null;
             }
-            if (!isContourLinesEnabled && contourLines != null) {
-                contourLines.dispose();
-                contourLines = null;
+            if (!isContourLinesEnabled) {
+                clearContourLines();
             }
             if (!isElevationRasterEnabled && elevationRaster != null) {
                 elevationRaster.dispose();
@@ -520,7 +519,7 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
 
             if (pendingContourLines == null) {
                 try {
-                    contourLines = null;
+                    clearContourLines();
 
                     Runnable repaintTask = () -> layer.triggerRepaint();
 
@@ -529,7 +528,7 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
                 } catch (AsyncOperationException | ElevationGridException e) {
                     Logging.warn("Elevation: Exception while waiting for contour lines to be computed for drawing: "
                             + e.toString());
-                    contourLines = null;
+                    clearContourLines();
                     return;
                 }
             }
@@ -538,7 +537,7 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
             if (future.isCancelled()) {
                 pendingContourLines.dispose();
                 pendingContourLines = null;
-                contourLines = null;
+                clearContourLines();
                 return;
             }
 
@@ -550,7 +549,6 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
                     pendingContourLines = null;
 
                     if (newContourLines == null) {
-                        // contourLines = null;
                         return; // It was discarded; do not install it.
                     }
 
@@ -564,7 +562,7 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
                 } catch (InterruptedException e) {
                     pendingContourLines.dispose();
                     pendingContourLines = null;
-                    contourLines = null;
+                    clearContourLines();
                     Thread.currentThread().interrupt();
                     return;
                 } catch (ExecutionException | CancellationException e) {
@@ -572,11 +570,18 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
                             + e.toString());
                     pendingContourLines.dispose();
                     pendingContourLines = null;
-                    contourLines = null;
+                    clearContourLines();
                     return;
                 }
 
             }
+        }
+    }
+
+    private void clearContourLines() {
+        if (contourLines != null) {
+            contourLines.dispose();
+            contourLines = null;
         }
     }
 

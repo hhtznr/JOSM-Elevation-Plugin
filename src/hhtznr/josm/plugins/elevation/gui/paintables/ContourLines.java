@@ -101,18 +101,23 @@ public class ContourLines extends AbstractElevationGridPaintable {
     private ContourLines(ElevationGridView elevationGridView, short[] isovalues, int isostep, int gridStepLat,
             int gridStepLon) throws AsyncOperationException {
         super(namer.nextName(), elevationGridView);
-        if (isostep == UNDEFINED_ISOSTEP) {
-            if (isovalues.length < 2) {
-                this.isostep = 1;
+        try {
+            if (isostep == UNDEFINED_ISOSTEP) {
+                if (isovalues.length < 2) {
+                    this.isostep = 1;
+                } else {
+                    this.isostep = isovalues[1] - isovalues[0];
+                }
             } else {
-                this.isostep = isovalues[1] - isovalues[0];
+                this.isostep = isostep;
             }
-        } else {
-            this.isostep = isostep;
+            MarchingSquares marchingSquares = new MarchingSquares(this.elevationGridView, isovalues, gridStepLat,
+                    gridStepLon);
+            this.isolineSegments = marchingSquares.getIsolineSegments();
+        } catch (AsyncOperationException | RuntimeException | Error e) {
+            super.dispose();
+            throw e;
         }
-        MarchingSquares marchingSquares = new MarchingSquares(this.elevationGridView, isovalues, gridStepLat,
-                gridStepLon);
-        this.isolineSegments = marchingSquares.getIsolineSegments();
     }
 
     /**

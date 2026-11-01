@@ -381,9 +381,9 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
                         // Compute grid steps to skip grid points
                         // Skip more grid points if further zoomed out from the map
                         int gridStepLon = (int) Math.round((double) gridViewWidth / (double) gridViewPixelWidth
-                                * PIXELS_PER_CONTOUR_LINE_GRID_POINT);
+                                * PIXELS_PER_GRID_POINT);
                         int gridStepLat = (int) Math.round((double) gridViewHeight / (double) gridViewPixelHeight
-                                * PIXELS_PER_CONTOUR_LINE_GRID_POINT);
+                                * PIXELS_PER_GRID_POINT);
                         // Ensure that the steps are always at least 1
                         gridStepLon = Math.max(gridStepLon, 1);
                         gridStepLat = Math.max(gridStepLat, 1);

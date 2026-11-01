@@ -30,11 +30,11 @@ public abstract class ElevationLayer extends Layer {
 
     /**
      * Target ratio of screen pixels per elevation grid point considered in contour
-     * line computation. By skipping grid points, if zoomed out from the map,
-     * computation effort can be reduced. At the same time, lowered contour line
-     * accuracy is not of concern if zoomed out in the map view.
+     * line and elevation raster computation. By skipping grid points, if zoomed out
+     * from the map, computation effort can be reduced. At the same time, lowered
+     * contour line accuracy is not of concern if zoomed out in the map view.
      */
-    public static final int PIXELS_PER_CONTOUR_LINE_GRID_POINT = 4;
+    public static final int PIXELS_PER_GRID_POINT = 4;
 
     private final Icon icon;
 

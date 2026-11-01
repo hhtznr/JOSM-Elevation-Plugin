@@ -390,6 +390,22 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
         double mapViewWidth = mapViewBounds.getWidth();
         double mapViewHeight = mapViewBounds.getHeight();
 
+        // Screen pixel width and height of the elevation raster
+        Point p1 = mapView.getPoint(elevationRaster.getBounds().getMin());
+        Point p2 = mapView.getPoint(elevationRaster.getBounds().getMax());
+        int rasterPixelWidth = Math.abs(p2.x - p1.x);
+        int rasterPixelHeight = Math.abs(p2.y - p1.y);
+
+        // Compute grid steps to skip grid points
+        // Skip more grid points if further zoomed out from the map
+        int gridStepLon = (int) Math.round(elevationRaster.getWidth() / (double) rasterPixelWidth
+                * ElevationLayer.PIXELS_PER_GRID_POINT);
+        int gridStepLat = (int) Math.round(elevationRaster.getHeight() / (double) rasterPixelHeight
+                * ElevationLayer.PIXELS_PER_GRID_POINT);
+        // Ensure that the steps are always at least 1
+        gridStepLon = Math.max(gridStepLon, 1);
+        gridStepLat = Math.max(gridStepLat, 1);
+
         // Dimensions of the elevation value string in world coordinates
         double eleStringWidth = (double) eleStringDisplayWidth / (double) mapViewDisplayWidth * mapViewWidth;
         double eleStringHeight = (double) eleStringDisplayHeight / (double) mapViewDisplayHeight * mapViewHeight;
@@ -402,9 +418,9 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
         final int markerSize = 3;
 
         double latDist = 0.0;
-        for (int latIndex = 0; latIndex < elevationRaster.getHeight(); latIndex++) {
+        for (int latIndex = 0; latIndex < elevationRaster.getHeight(); latIndex += gridStepLat) {
             double lonDist = 0.0;
-            for (int lonIndex = 0; lonIndex < elevationRaster.getWidth(); lonIndex++) {
+            for (int lonIndex = 0; lonIndex < elevationRaster.getWidth(); lonIndex += gridStepLon) {
                 LatLonEle latLonEle = elevationRaster.getLatLonEle(latIndex, lonIndex);
 
                 Point p = mapView.getPoint(latLonEle);

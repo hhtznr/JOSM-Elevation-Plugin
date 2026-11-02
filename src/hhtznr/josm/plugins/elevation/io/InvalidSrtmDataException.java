@@ -8,15 +8,14 @@ package hhtznr.josm.plugins.elevation.io;
  */
 public class InvalidSrtmDataException extends Exception {
 
-    private static final long serialVersionUID = 3824874362059457494L;
+    private static final long serialVersionUID = 1L;
 
     /**
      * Creates a new exception regarding invalid SRTM data in an SRTM file.
      *
-     * @param message    The exception message.
+     * @param message The exception message.
      */
     public InvalidSrtmDataException(String message) {
         super(message);
     }
-
 }

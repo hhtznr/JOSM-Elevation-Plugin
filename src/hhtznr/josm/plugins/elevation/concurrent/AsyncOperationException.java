@@ -10,7 +10,7 @@ package hhtznr.josm.plugins.elevation.concurrent;
  */
 public class AsyncOperationException extends Exception {
 
-    private static final long serialVersionUID = 1684867797524862202L;
+    private static final long serialVersionUID = 1L;
 
     /**
      * Creates a new asynchronous operation exception.

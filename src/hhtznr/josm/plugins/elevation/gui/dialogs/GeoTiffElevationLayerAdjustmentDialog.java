@@ -33,7 +33,7 @@ import hhtznr.josm.plugins.elevation.util.Coloring;
  */
 public class GeoTiffElevationLayerAdjustmentDialog extends ExtendedDialog {
 
-    private static final long serialVersionUID = -1L;
+    private static final long serialVersionUID = 1L;
 
     private GeoTiffElevationLayer elevationLayer = null;
     private final Object elevationLayerLock = new Object();

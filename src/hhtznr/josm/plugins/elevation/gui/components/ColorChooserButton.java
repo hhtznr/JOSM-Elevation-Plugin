@@ -17,7 +17,7 @@ import org.openstreetmap.josm.tools.ColorHelper;
  */
 public class ColorChooserButton extends JButton {
 
-    private static final long serialVersionUID = 2450565742850315454L;
+    private static final long serialVersionUID = 1L;
 
     /**
      * Constructs a new color chooser button.

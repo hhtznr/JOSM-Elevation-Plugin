@@ -7,7 +7,7 @@ package hhtznr.josm.plugins.elevation.data;
  */
 public class ElevationGridException extends Exception {
 
-    private static final long serialVersionUID = -6622597162143549590L;
+    private static final long serialVersionUID = 1L;
 
     /**
      * Creates a new elevation grid exception.

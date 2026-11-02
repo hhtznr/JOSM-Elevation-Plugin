@@ -15,9 +15,10 @@ public class AsyncOperationException extends Exception {
     /**
      * Creates a new asynchronous operation exception.
      *
-     * @param cause The throwable that caused asynchronous operation to fail.
+     * @param message Context message.
+     * @param cause   The throwable that caused the asynchronous operation to fail.
      */
-    public AsyncOperationException(Throwable cause) {
-        super(cause);
+    public AsyncOperationException(String message, Throwable cause) {
+        super(message, cause);
     }
 }

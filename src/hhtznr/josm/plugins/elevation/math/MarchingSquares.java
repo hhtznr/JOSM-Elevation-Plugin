@@ -132,12 +132,16 @@ public class MarchingSquares {
                 isolineSegments[i] = futures.get(i).get();
             }
         } catch (InterruptedException e) {
-            futures.forEach(future -> future.cancel(true));
             Thread.currentThread().interrupt();
             throw e;
-        } catch (ExecutionException | CancellationException e) {
+        } catch (CancellationException e) {
+            String message = "Marching squares was cancelled while computing contour lines";
+            throw new AsyncOperationException(message, e);
+        } catch (ExecutionException e) {
+            String message = "Error in marching squares when computing contour lines";
+            throw new AsyncOperationException(message, e.getCause());
+        } finally {
             futures.forEach(future -> future.cancel(true));
-            throw new AsyncOperationException(e instanceof ExecutionException ? e.getCause() : e);
         }
 
         return isolineSegments;

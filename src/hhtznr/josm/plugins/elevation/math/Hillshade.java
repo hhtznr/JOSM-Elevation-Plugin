@@ -361,8 +361,9 @@ public class Hillshade {
         try {
             hillshadeRowFutures = ElevationPlugin.getParallelExecutor().submitRunnables(hillshadeRowTasks);
         } catch (RejectedExecutionException e) {
-            Logging.error("ELEVATION: Error while computing hillshade: " + e.toString());
-            throw new AsyncOperationException(e);
+            String message = "Hillshade computation task rejected by thread executor";
+            Logging.error("Elevation: " + message + ": " + e.toString());
+            throw new AsyncOperationException(message, e);
         }
 
         // Iterate over the Futures and wait for each task to complete if it has not
@@ -375,9 +376,10 @@ public class Hillshade {
                 hillshadeRowFutures = null;
                 throw e;
             } catch (ExecutionException e) {
-                Logging.error("ELEVATION: Error while computing hillshade: " + e.toString());
+                String message = "An error occurred when computing hillshade";
+                Logging.error("Elevation: " + message + ": " + e.getCause().toString());
                 hillshadeRowFutures = null;
-                throw new AsyncOperationException(e);
+                throw new AsyncOperationException(message, e.getCause());
             }
         }
         hillshadeRowFutures = null;

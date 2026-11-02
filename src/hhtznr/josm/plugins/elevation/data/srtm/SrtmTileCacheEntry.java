@@ -181,9 +181,14 @@ public class SrtmTileCacheEntry {
         try {
             // May throw CancellationException, ExecutionException or InterruptedException
             tileFuture.get();
-        } catch (CancellationException | ExecutionException e) {
-            Logging.info("Loading of SRTM tile " + srtmTileID + " canceled while waiting for it.");
-            throw new AsyncOperationException(e);
+        } catch (CancellationException e) {
+            String message = "Loading of SRTM tile " + srtmTileID + " canceled while waiting for it.";
+            Logging.info("Elevation: " + message);
+            throw new AsyncOperationException(message, e);
+        } catch (ExecutionException e) {
+            String message = "An exception occurred while loading SRTM tile " + srtmTileID;
+            Logging.warn("Elevation: " + message);
+            throw new AsyncOperationException(message, e);
         }
     }
 
@@ -210,9 +215,14 @@ public class SrtmTileCacheEntry {
             Logging.info(
                     "Loading of SRTM tile " + srtmTileID + " interrupted while waiting for it in order to get it.");
             throw e;
-        } catch (CancellationException | ExecutionException e) {
-            Logging.info("Loading of SRTM tile " + srtmTileID + " canceled while waiting for it in order to get it.");
-            throw new AsyncOperationException(e);
+        } catch (CancellationException e) {
+            String message = "Loading of SRTM tile " + srtmTileID + " canceled while waiting for it.";
+            Logging.info("Elevation: " + message);
+            throw new AsyncOperationException(message, e);
+        } catch (ExecutionException e) {
+            String message = "An exception occurred while loading SRTM tile " + srtmTileID;
+            Logging.warn("Elevation: " + message);
+            throw new AsyncOperationException(message, e);
         }
     }
 
@@ -500,10 +510,10 @@ public class SrtmTileCacheEntry {
                 Thread.currentThread().interrupt();
                 throw e;
             } catch (IOException | InvalidSrtmDataException e) {
-                Logging.error("Elevation: Exception reading SRTM file '" + srtmFile.toAbsolutePath().toString() + "': "
-                        + e.toString());
+                String message = "Exception reading SRTM file '" + srtmFile.toAbsolutePath().toString() + "'";
+                Logging.error("Elevation: " + message + ": " + e.toString());
                 status = SrtmTileCacheEntry.Status.DATA_INVALID;
-                throw new AsyncOperationException(e);
+                throw new AsyncOperationException(message, e);
             }
         };
         try {
@@ -511,7 +521,8 @@ public class SrtmTileCacheEntry {
             return ElevationPlugin.getSerialFileReadExecutor().submit(fileReadTask);
         } catch (RejectedExecutionException e) {
             status = SrtmTileCacheEntry.Status.LOADING_CANCELED;
-            throw new AsyncOperationException(e);
+            String message = "Task for reading SRTM file " + srtmFile.toAbsolutePath().toString() + "' rejected by thread executor";
+            throw new AsyncOperationException(message, e);
         }
     }
 

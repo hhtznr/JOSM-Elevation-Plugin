@@ -739,7 +739,7 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
                 keyColFinder.addElevationToolListener(this);
                 // May throw AsyncOperationException
                 keyCol = keyColFinder.findKeyCol(unionFindNeighbors);
-            } catch (AsyncOperationException e) {
+            } catch (AsyncOperationException | InterruptedException e) {
                 stopSearch();
                 textAreaFeedback
                         .setText("Loading of SRTM tile was canceled while dermining key col" + System.lineSeparator());

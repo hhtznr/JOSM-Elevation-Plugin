@@ -206,10 +206,10 @@ public class KeyColFinder extends AbstractElevationTool {
      * @return The coordinates and elevation of the determined key col, or
      *         {@code null} if no key col could be determined.
      * @throws AsyncOperationException if the {@code CompletableFuture} was
-     *                                 completed exceptionally or canceled or the
-     *                                 thread was interrupted.
+     *                                 completed exceptionally or canceled
+     * @throws InterruptedException    if the thread was interrupted.
      */
-    public LatLonEle findKeyCol(UnionFindNeighbors nNeighbors) throws AsyncOperationException {
+    public LatLonEle findKeyCol(UnionFindNeighbors nNeighbors) throws AsyncOperationException, InterruptedException {
         informListenersAboutStatus("Key col finder running");
 
         // TODO: Resolve this temporary compatibility workaround
@@ -232,13 +232,12 @@ public class KeyColFinder extends AbstractElevationTool {
         // May throw AsyncOperationException or InterruptedException
         try {
             tileGridView.waitForTilesCached();
-        }
-        catch (InterruptedException e){
+        } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            String message = "Interrupted while waiting for tiles to be cached";
+            String message = "Key col finder interrupted while waiting for tiles to be cached";
             informListenersAboutStatus(message);
-            Logging.info("Elevation: Key col finder: " + message);
-            throw new AsyncOperationException(e);
+            Logging.info("Elevation: " + message);
+            throw e;
         }
         informListenersAboutStatus("All needed SRTM tiles cached");
 
@@ -256,10 +255,10 @@ public class KeyColFinder extends AbstractElevationTool {
         for (int latIndex = 0; latIndex < height; latIndex++) {
             // Check thread interruption occasionally.
             if ((latIndex & 31) == 0 && Thread.currentThread().isInterrupted()) {
-                String message = "Interrupted while scanning elevations";
+                String message = "Key col finder interrupted while scanning elevations";
                 informListenersAboutStatus(message);
-                Logging.info("Elevation: Key col finder: " + message);
-                throw new AsyncOperationException(new InterruptedException("Key col finder: " + message));
+                Logging.info("Elevation: " + message);
+                throw new InterruptedException(message);
             }
             for (int lonIndex = 0; lonIndex < width; lonIndex++) {
                 short elevation = tileGridView.getElevationAsShort(latIndex, lonIndex);
@@ -292,10 +291,10 @@ public class KeyColFinder extends AbstractElevationTool {
         int[] histogramCounts = new int[elevationRange];
         for (int latIndex = 0; latIndex < height; latIndex++) {
             if ((latIndex & 31) == 0 && Thread.currentThread().isInterrupted()) {
-                String message = "Interrupted while building elevation histogram";
+                String message = "Key col finder interrupted while building elevation histogram";
                 informListenersAboutStatus(message);
-                Logging.info("Elevation: Key col finder: " + message);
-                throw new AsyncOperationException(new InterruptedException("Key col finder: " + message));
+                Logging.info("Elevation: " + message);
+                throw new InterruptedException(message);
             }
             for (int lonIndex = 0; lonIndex < width; lonIndex++) {
                 short elevation = tileGridView.getElevationAsShort(latIndex, lonIndex);
@@ -344,10 +343,10 @@ public class KeyColFinder extends AbstractElevationTool {
         // 5. Initialize union-find parents
         for (int index = 0; index < parent.length; index++) {
             if ((index & 31) == 0 && Thread.currentThread().isInterrupted()) {
-                String message = "Interrupted while initalizing union-find";
+                String message = "Key col finder interrupted while initalizing union-find";
                 informListenersAboutStatus(message);
-                Logging.info("Elevation: Key col finder: " + message);
-                throw new AsyncOperationException(new InterruptedException("Key col finder: " + message));
+                Logging.info("Elevation: " + message);
+                throw new InterruptedException(message);
             }
             // Initially, all cells reference to themselves as parent
             parent[index] = index;
@@ -392,10 +391,10 @@ public class KeyColFinder extends AbstractElevationTool {
         informListenersAboutStatus("Iterate over elevation cells to find key col");
         for (int linearIndex : sortedIndices) {
             if ((linearIndex & 31) == 0 && Thread.currentThread().isInterrupted()) {
-                String message = "Interrupted while iterating over elevation cells";
+                String message = "Key col finder interrupted while iterating over elevation cells";
                 informListenersAboutStatus(message);
-                Logging.info("Elevation: Key col finder: " + message);
-                throw new AsyncOperationException(new InterruptedException("Key col finder: " + message));
+                Logging.info("Elevation: " + message);
+                throw new InterruptedException(message);
             }
             int latIndex = linearIndex / width;
             int lonIndex = linearIndex - latIndex * width;

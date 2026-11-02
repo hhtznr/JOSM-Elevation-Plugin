@@ -27,7 +27,7 @@ import hhtznr.josm.plugins.elevation.concurrent.ParallelExecutorService;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmDataSource;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmTile;
-import hhtznr.josm.plugins.elevation.gui.actions.AddElevationLayerAction;
+import hhtznr.josm.plugins.elevation.gui.actions.AddSrtmElevationLayerAction;
 import hhtznr.josm.plugins.elevation.gui.actions.AddGeoTiffEnvelopeLayerAction;
 import hhtznr.josm.plugins.elevation.gui.actions.GeoTiffSyncIndexFromDiskAction;
 import hhtznr.josm.plugins.elevation.gui.actions.KeyColFinderAction;
@@ -61,7 +61,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
 
     private final OpenGeoTiffAction openGeoTiffAction;
     private final GeoTiffSyncIndexFromDiskAction geoTiffSyncIndexAction;
-    private final AddElevationLayerAction addElevationLayerAction;
+    private final AddSrtmElevationLayerAction addElevationLayerAction;
     private final AddGeoTiffEnvelopeLayerAction addGeoTiffEnvelopeLayerAction;
     private final TopographicIsolationFinderAction isolationFinderAction;
     private final KeyColFinderAction keyColFinderAction;
@@ -101,7 +101,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
         openGeoTiffAction.setEnabled(false);
         MainMenu.add(MainApplication.getMenu().fileMenu, openGeoTiffAction, MainMenu.WINDOW_MENU_GROUP.ALWAYS);
 
-        addElevationLayerAction = new AddElevationLayerAction(this);
+        addElevationLayerAction = new AddSrtmElevationLayerAction(this);
         addElevationLayerAction.setEnabled(false);
         MainMenu.add(MainApplication.getMenu().imagerySubMenu, addElevationLayerAction,
                 MainMenu.WINDOW_MENU_GROUP.ALWAYS);

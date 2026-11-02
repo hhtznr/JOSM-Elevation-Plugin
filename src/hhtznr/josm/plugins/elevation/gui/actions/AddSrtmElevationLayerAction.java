@@ -7,12 +7,12 @@ import org.openstreetmap.josm.actions.JosmAction;
 import hhtznr.josm.plugins.elevation.ElevationPlugin;
 
 /**
- * A menu action for re-adding the elevation layer if it is enabled, but was
- * deleted.
+ * A menu action for re-adding the SRTM elevation layer if it is enabled, but
+ * was deleted.
  *
  * @author Harald Hetzner
  */
-public class AddElevationLayerAction extends JosmAction {
+public class AddSrtmElevationLayerAction extends JosmAction {
 
     private static final long serialVersionUID = 1L;
 
@@ -23,7 +23,7 @@ public class AddElevationLayerAction extends JosmAction {
      *
      * @param plugin The elevation plugin.
      */
-    public AddElevationLayerAction(ElevationPlugin plugin) {
+    public AddSrtmElevationLayerAction(ElevationPlugin plugin) {
         super("Add SRTM elevation layer", "layers/elevation_srtm.svg",
                 "(Re-)add the elevation layer which displays contour lines and hillshade", null, true,
                 "elevation-add-layer", false);

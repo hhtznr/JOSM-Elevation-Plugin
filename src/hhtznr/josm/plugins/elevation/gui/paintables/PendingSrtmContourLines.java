@@ -215,8 +215,7 @@ public class PendingSrtmContourLines extends ElevationDataConsumer {
 
             tileGrid.waitForTilesCached();
             if (Thread.currentThread().isInterrupted()) {
-                throw new AsyncOperationException(
-                        new InterruptedException(getName() + " interrupted while waiting for SRTM tiles to be cached"));
+                throw new InterruptedException(getName() + " interrupted while waiting for SRTM tiles to be cached");
             }
             SrtmTileGridView gridView = tileGrid.getView(renderingBounds);
 

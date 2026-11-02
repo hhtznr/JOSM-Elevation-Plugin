@@ -271,7 +271,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
             openGeoTiffAction.setEnabled(false);
         } else {
             if (mapViewElevationDataConsumer == null) {
-                double renderingLimit = ElevationPreferences.getElevationLayerRenderingLimit();
+                double renderingLimit = ElevationPreferences.getSrtmElevationLayerRenderingLimit();
                 try {
                     mapViewElevationDataConsumer = elevationDataProvider.getMapViewElevationDataConsumer(newFrame,
                             renderingLimit);
@@ -286,7 +286,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
         addLocalElevationLabel(newFrame);
         // newFrame is null if the map was active and the last layer is closed
         if (newFrame != null) {
-            setSrtmElevationLayerEnabled(ElevationPreferences.getElevationLayerEnabled());
+            setSrtmElevationLayerEnabled(ElevationPreferences.getSrtmElevationLayerEnabled());
             setGeoTiffEnvelopeLayerEnabled(ElevationPreferences.getGeoTiffEnvelopeLayerEnabled(), false);
         }
     }
@@ -316,7 +316,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
         // Maximum size of the SRTM tile cache
         int cacheSizeLimit = ElevationPreferences.getRAMCacheSizeLimit();
         // Auto-download of SRTM files
-        boolean elevationAutoDownloadEnabled = ElevationPreferences.getAutoDownloadEnabled();
+        boolean elevationAutoDownloadEnabled = ElevationPreferences.getSrtmAutoDownloadEnabled();
         // Configure the elevation data provider
         // Setting the SRTM type also sets the appropriate SRTM data sources and flushes
         // the cache
@@ -324,7 +324,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
             // Renew or delete the map view elevation data consumer
             MapFrame mapFrame = MainApplication.getMap();
             if (mapFrame != null) {
-                double renderingLimit = ElevationPreferences.getElevationLayerRenderingLimit();
+                double renderingLimit = ElevationPreferences.getSrtmElevationLayerRenderingLimit();
                 try {
                     mapViewElevationDataConsumer = elevationDataProvider.getMapViewElevationDataConsumer(mapFrame,
                             renderingLimit);
@@ -339,7 +339,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
         elevationDataProvider.setCacheSizeLimit(cacheSizeLimit);
         elevationDataProvider.setAutoDownloadEnabled(elevationAutoDownloadEnabled);
         if (elevationAutoDownloadEnabled) {
-            SrtmFileDownloader.AuthType authType = ElevationPreferences.getElevationServerAuthType();
+            SrtmFileDownloader.AuthType authType = ElevationPreferences.getSrtmServerAuthType();
             if (authType == SrtmFileDownloader.AuthType.BASIC) {
                 elevationDataProvider.getSRTMFileDownloader().setPasswordAuthentication(
                         ElevationPreferences.lookupEarthdataCredentials(), ElevationPreferences.EARTHDATA_SSO_HOST);
@@ -373,25 +373,25 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
             synchronized (elevationLayerLock) {
                 // Initialize and registers the layer, if it is null
                 if (elevationLayer == null) {
-                    double renderingLimit = ElevationPreferences.getElevationLayerRenderingLimit();
-                    int isostep = ElevationPreferences.getContourLineIsostep();
-                    float strokeWidth = ElevationPreferences.getContourLineStrokeWidth();
-                    Coloring.Scheme coloringScheme = ElevationPreferences.getContourLineColoringScheme();
-                    Color color = ElevationPreferences.getContourLineColor();
-                    int altitude = ElevationPreferences.getHillshadeAltitude();
-                    int azimuth = ElevationPreferences.getHillshadeAzimuth();
+                    double renderingLimit = ElevationPreferences.getSrtmElevationLayerRenderingLimit();
+                    int isostep = ElevationPreferences.getSrtmContourLineIsostep();
+                    float strokeWidth = ElevationPreferences.getSrtmContourLineStrokeWidth();
+                    Coloring.Scheme coloringScheme = ElevationPreferences.getSrtmContourLineColoringScheme();
+                    Color color = ElevationPreferences.getSrtmContourLineColor();
+                    int altitude = ElevationPreferences.getSrtmHillshadeAltitude();
+                    int azimuth = ElevationPreferences.getSrtmHillshadeAzimuth();
                     short lowerCutoff = ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION;
                     short upperCutoff = ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION;
                     elevationLayer = new SrtmElevationLayer(elevationDataProvider, renderingLimit, isostep, strokeWidth,
                             coloringScheme, color, altitude, azimuth, lowerCutoff, upperCutoff);
                 } else {
-                    elevationLayer.setRenderingLimit(ElevationPreferences.getElevationLayerRenderingLimit());
-                    elevationLayer.setContourLineIsostep(ElevationPreferences.getContourLineIsostep());
-                    elevationLayer.setContourLineStrokeWidth(ElevationPreferences.getContourLineStrokeWidth());
-                    elevationLayer.setContourLineColoringScheme(ElevationPreferences.getContourLineColoringScheme());
-                    elevationLayer.setContourLineConstantColor(ElevationPreferences.getContourLineColor());
-                    elevationLayer.setHillshadeIllumination(ElevationPreferences.getHillshadeAltitude(),
-                            ElevationPreferences.getHillshadeAzimuth());
+                    elevationLayer.setRenderingLimit(ElevationPreferences.getSrtmElevationLayerRenderingLimit());
+                    elevationLayer.setContourLineIsostep(ElevationPreferences.getSrtmContourLineIsostep());
+                    elevationLayer.setContourLineStrokeWidth(ElevationPreferences.getSrtmContourLineStrokeWidth());
+                    elevationLayer.setContourLineColoringScheme(ElevationPreferences.getSrtmContourLineColoringScheme());
+                    elevationLayer.setContourLineConstantColor(ElevationPreferences.getSrtmContourLineColor());
+                    elevationLayer.setHillshadeIllumination(ElevationPreferences.getSrtmHillshadeAltitude(),
+                            ElevationPreferences.getSrtmHillshadeAzimuth());
                 }
 
             }
@@ -407,7 +407,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
             removeElevationLayer();
             // Allow re-adding the elevation layer if enabled in the preferences
             // i.e. the layer was (temporarily) removed by the user
-            if (ElevationPreferences.getElevationLayerEnabled()) {
+            if (ElevationPreferences.getSrtmElevationLayerEnabled()) {
                 addElevationLayerAction.setEnabled(true);
             }
         }

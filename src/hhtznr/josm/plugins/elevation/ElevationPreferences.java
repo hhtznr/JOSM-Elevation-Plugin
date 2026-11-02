@@ -113,126 +113,128 @@ public class ElevationPreferences {
     /**
      * Property key for defining the elevation interpolation method.
      */
-    public static final String ELEVATION_INTERPOLATION = "elevation.interpolation";
+    public static final String SRTM_ELEVATION_INTERPOLATION = "elevation.interpolation";
 
     /**
      * Default property value of the elevation interpolation method.
      */
-    private static final SrtmTile.Interpolation DEFAULT_ELEVATION_INTERPOLATION = SrtmTile.Interpolation.BILINEAR;
+    private static final SrtmTile.Interpolation DEFAULT_SRTM_ELEVATION_INTERPOLATION = SrtmTile.Interpolation.BILINEAR;
 
     /**
      * Property key for size limit of the in-memory SRTM tile cache.
      */
-    public static final String RAM_CACHE_SIZE_LIMIT = "elevation.cache.ram.size.limit";
+    public static final String SRTM_CACHE_SIZE_LIMIT = "elevation.cache.ram.size.limit";
 
     /**
      * Default property value for the size limit of the in-memory SRTM tile cache in
      * MiB: 128.
      */
-    private static final int DEFAULT_RAM_CACHE_SIZE_LIMIT = 128;
+    private static final int DEFAULT_SRTM_CACHE_SIZE_LIMIT = 128;
 
     /**
      * Minimum size limit of the in-memory SRTM tile cache in MiB: 32.
      */
-    public static final int MIN_RAM_CACHE_SIZE_LIMIT = 32;
+    public static final int MIN_SRTM_CACHE_SIZE_LIMIT = 32;
 
     /**
      * Maximum size limit of the in-memory SRTM tile cache in MiB: 8192.
      */
-    public static final int MAX_RAM_CACHE_SIZE_LIMIT = 8192;
+    public static final int MAX_SRTM_CACHE_SIZE_LIMIT = 8192;
 
     /**
      * Increment of the size limit of the in-memory SRTM tile cache used by the
      * spinner in the elevation preferences in MiB: 1.
      */
-    public static final int INCR_RAM_CACHE_SIZE_LIMIT = 1;
+    public static final int INCR_SRTM_CACHE_SIZE_LIMIT = 1;
 
     /**
-     * Property key for enabling or disabling elevation visualization layer.
+     * Property key for enabling or disabling SRTM elevation visualization layer.
      */
-    public static final String ELEVATION_LAYER_ENABLED = "elevation.layer.enabled";
+    public static final String SRTM_ELEVATION_LAYER_ENABLED = "elevation.layer.enabled";
 
     /**
-     * Default property value for enabling the elevation visualization layer:
+     * Default property value for enabling the SRTM elevation visualization layer:
      * {@code true}.
      */
-    private static final boolean DEFAULT_ELEVATION_LAYER_ENABLED = true;
+    private static final boolean DEFAULT_SRTM_ELEVATION_LAYER_ENABLED = true;
 
     /**
      * Property key for the limit value of arc degrees in latitude or longitude
-     * covered by the map view, where, if exceeded, elevation data caching as well
-     * as contour line and hillshade rendering will be temporarily switched off.
+     * covered by the map view, where, if exceeded, SRTM elevation data caching as
+     * well as contour line and hillshade rendering will be temporarily switched
+     * off.
      */
-    public static final String ELEVATION_LAYER_RENDERING_LIMIT = "elevation.layer.rendering.limit";
+    public static final String SRTM_ELEVATION_LAYER_RENDERING_LIMIT = "elevation.layer.rendering.limit";
 
     /**
      * Default property value for the limit value of arc degrees in latitude or
-     * longitude covered by the map view, where, if exceeded, elevation data caching
-     * as well as contour line and hillshade rendering will be temporarily switched
-     * off: {@code 0.1}.
+     * longitude covered by the map view, where, if exceeded, SRTM elevation data
+     * caching as well as contour line and hillshade rendering will be temporarily
+     * switched off: {@code 0.1}.
      */
-    private static final double DEFAULT_ELEVATION_LAYER_RENDERING_LIMIT = 0.1;
+    private static final double DEFAULT_SRTM_ELEVATION_LAYER_RENDERING_LIMIT = 0.1;
 
     /**
-     * Minimum value of the elevation layer rendering limit: {@code 0.01}.
+     * Minimum value of the SRTM elevation layer rendering limit: {@code 0.01}.
      */
-    public static final double MIN_ELEVATION_LAYER_RENDERING_LIMIT = 0.01;
+    public static final double MIN_SRTM_LAYER_RENDERING_LIMIT = 0.01;
 
     /**
-     * Maximum value of the elevation layer rendering limit: {@code 5.0}.
+     * Maximum value of the SRTM elevation layer rendering limit: {@code 5.0}.
      */
-    public static final double MAX_ELEVATION_LAYER_RENDERING_LIMIT = 5.0;
+    public static final double MAX_SRTM_LAYER_RENDERING_LIMIT = 5.0;
 
     /**
-     * Increment of the elevation layer rendering limit: {@code 0.01}.
+     * Increment of the SRTM elevation layer rendering limit: {@code 0.01}.
      */
-    public static final double INCR_ELEVATION_LAYER_RENDERING_LIMIT = 0.01;
+    public static final double INCR_SRTM_LAYER_RENDERING_LIMIT = 0.01;
 
     /**
-     * Property key for enabling or disabling contour line rendering.
+     * Property key for enabling or disabling SRTM contour line rendering.
      */
-    public static final String ELEVATION_CONTOUR_LINES_ENABLED = "elevation.layer.contour-lines.enabled";
+    public static final String SRTM_CONTOUR_LINES_ENABLED = "elevation.layer.contour-lines.enabled";
 
     /**
-     * Default property value for enabling contour line rendering: {@code true}.
+     * Default property value for enabling SRTM contour line rendering:
+     * {@code true}.
      */
-    private static final boolean DEFAULT_ELEVATION_CONTOUR_LINES_ENABLED = true;
+    private static final boolean DEFAULT_SRTM_CONTOUR_LINES_ENABLED = true;
 
     /**
-     * Property key for step between adjacent elevation contour lines.
+     * Property key for step between adjacent SRTM contour lines.
      */
-    public static final String CONTOUR_LINE_ISOSTEP = "elevation.contour-line.isostep";
+    public static final String SRTM_CONTOUR_LINE_ISOSTEP = "elevation.contour-line.isostep";
 
     /**
-     * Default property value of the isostep between two adjacent elevation contour
+     * Default property value of the isostep between two adjacent SRTM contour
      * lines: {@code 10}.
      */
-    private static final int DEFAULT_CONTOUR_LINE_ISOSTEP = 10;
+    private static final int DEFAULT_SRTM_CONTOUR_LINE_ISOSTEP = 10;
 
     /**
-     * Minimum value of the contour line isostep: {@code 5}.
+     * Minimum value of the contour line isostep: {@code 1}.
      */
-    public static final int MIN_CONTOUR_LINE_ISOSTEP = 5;
+    public static final int MIN_CONTOUR_LINE_ISOSTEP = 1;
 
     /**
-     * Maximum value of the contour line isostep: {@code 200}.
+     * Maximum value of the contour line isostep: {@code 500}.
      */
-    public static final int MAX_CONTOUR_LINE_ISOSTEP = 200;
+    public static final int MAX_CONTOUR_LINE_ISOSTEP = 500;
 
     /**
      * Increment of the contour line isostep: {@code 5}.
      */
-    public static final int INCR_CONTOUR_LINE_ISOSTEP = 5;
+    public static final int INCR_CONTOUR_LINE_ISOSTEP = 1;
 
     /**
-     * Property key for width of the stroke for drawing of contour lines.
+     * Property key for width of the stroke for drawing of SRTM contour lines.
      */
-    public static final String CONTOUR_LINE_STROKE_WIDTH = "elevation.contour-line.stroke.width";
+    public static final String SRTM_CONTOUR_LINE_STROKE_WIDTH = "elevation.contour-line.stroke.width";
 
     /*
-     * Default property value of the contour line stroke width.
+     * Default property value of the SRTM contour line stroke width.
      */
-    private static final float DEFAULT_CONTOUR_LINE_STROKE_WIDTH = 1.0f;
+    private static final float DEFAULT_SRTM_CONTOUR_LINE_STROKE_WIDTH = 1.0f;
 
     /**
      * Minimum value of the contour line stroke width: {@code 0.1}.
@@ -250,46 +252,46 @@ public class ElevationPreferences {
     public static final float INCR_CONTOUR_LINE_STROKE_WIDTH = 0.05f;
 
     /**
-     * Property key for color of contour lines.
+     * Property key for color of SRTM contour lines.
      */
-    public static final String CONTOUR_LINE_COLOR = "elevation.contour-line.color";
+    public static final String SRTM_CONTOUR_LINE_COLOR = "elevation.contour-line.color";
 
     /*
-     * Default property value of the contour line color as HTML color.
+     * Default property value of the SRTM contour line color as HTML color.
      */
-    private static final String DEFAULT_CONTOUR_LINE_COLOR = "#D2B473";
+    private static final String DEFAULT_SRTM_CONTOUR_LINE_COLOR = "#D2B473";
 
     /**
-     * Property key for coloring scheme of contour lines.
+     * Property key for coloring scheme of SRTM contour lines.
      */
-    public static final String CONTOUR_LINE_COLORING = "elevation.contour-line.coloring";
+    public static final String SRTM_CONTOUR_LINE_COLORING = "elevation.contour-line.coloring";
 
     /**
-     * Default property value of the contour line coloring scheme..
+     * Default property value of the SRTM contour line coloring scheme.
      */
-    private static final Coloring.Scheme DEFAULT_CONTOUR_LINE_COLORING = Coloring.Scheme.CONSTANT_COLOR;
+    private static final Coloring.Scheme DEFAULT_SRTM_CONTOUR_LINE_COLORING = Coloring.Scheme.CONSTANT_COLOR;
 
     /**
-     * Property key for enabling or disabling hillshade rendering.
+     * Property key for enabling or disabling SRTM hillshade rendering.
      */
-    public static final String ELEVATION_HILLSHADE_ENABLED = "elevation.layer.hillshade.enabled";
+    public static final String SRTM_HILLSHADE_ENABLED = "elevation.layer.hillshade.enabled";
 
     /**
-     * Default property value for enabling hillshade rendering: {@code true}.
+     * Default property value for enabling SRTM hillshade rendering: {@code true}.
      */
-    private static final boolean DEFAULT_ELEVATION_HILLSHADE_ENABLED = true;
+    private static final boolean DEFAULT_SRTM_HILLSHADE_ENABLED = true;
 
     /**
-     * Property key for the altitude of the illumination source in hillshade
+     * Property key for the altitude of the illumination source in SRTM hillshade
      * computation.
      */
-    public static final String HILLSHADE_ALTITUDE = "elevation.hillshade.altitude";
+    public static final String SRTM_HILLSHADE_ALTITUDE = "elevation.hillshade.altitude";
 
     /**
      * Default property value of the altitude (degrees) of the illumination source
-     * in hillshade computation: {@code 45}.
+     * in SRTM hillshade computation: {@code 45}.
      */
-    private static final int DEFAULT_HILLSHADE_ALTITUDE = 45;
+    private static final int DEFAULT_SRTM_HILLSHADE_ALTITUDE = 45;
 
     /**
      * Minimum value of the hillshade illumination source altitude: {@code 0}.
@@ -307,16 +309,16 @@ public class ElevationPreferences {
     public static final int INCR_HILLSHADE_ALTITUDE = 1;
 
     /**
-     * Property key for the azimuth of the illumination source in hillshade
+     * Property key for the azimuth of the illumination source in SRTM hillshade
      * computation.
      */
-    public static final String HILLSHADE_AZIMUTH = "elevation.hillshade.azimuth";
+    public static final String SRTM_HILLSHADE_AZIMUTH = "elevation.hillshade.azimuth";
 
     /**
      * Default property value of the azimuth (degrees) of the illumination source in
-     * hillshade computation: {@code 315} (NW).
+     * SRTM hillshade computation: {@code 315} (NW).
      */
-    private static final int DEFAULT_HILLSHADE_AZIMUTH = 315;
+    private static final int DEFAULT_SRTM_HILLSHADE_AZIMUTH = 315;
 
     /**
      * Minimum value of the hillshade illumination source azimuth: {@code 0}.
@@ -344,45 +346,46 @@ public class ElevationPreferences {
     public static final short DEFAULT_UPPER_CUTOFF_ELEVATION = 9999;
 
     /**
-     * Property key for enabling or disabling rendering of the elevation data point
-     * raster.
+     * Property key for enabling or disabling rendering of the SRTM elevation data
+     * point raster.
      */
-    public static final String ELEVATION_RASTER_ENABLED = "elevation.layer.raster.enabled";
+    public static final String SRTM_ELEVATION_RASTER_ENABLED = "elevation.layer.raster.enabled";
 
     /**
-     * Default property value for enabling rendering of the elevation data point
-     * raster: {@code false}.
+     * Default property value for enabling rendering of the SRTM elevation data
+     * point raster: {@code false}.
      */
-    private static final boolean DEFAULT_ELEVATION_RASTER_ENABLED = false;
+    private static final boolean DEFAULT_SRTM_ELEVATION_RASTER_ENABLED = false;
 
     /**
-     * Property key for enabling or disabling rendering of the lowest and highest
-     * points within the map view
+     * Property key for enabling or disabling rendering of the SRTM lowest and
+     * highest points within the map view
      */
-    public static final String LOWEST_AND_HIGHEST_POINTS_ENABLED = "elevation.layer.lowest_highest_points.enabled";
+    public static final String SRTM_LOWEST_AND_HIGHEST_POINTS_ENABLED = "elevation.layer.lowest_highest_points.enabled";
 
     /**
-     * Default property value for enabling rendering of the lowest and highest
-     * points within the map view: {@code false}.
+     * Default property value for enabling rendering of the SRTM lowest and highest
+     * points within the map view: {@code true}.
      */
-    private static final boolean DEFAULT_LOWEST_AND_HIGHEST_POINTS_ENABLED = false;
+    private static final boolean DEFAULT_SRTM_LOWEST_AND_HIGHEST_POINTS_ENABLED = true;
 
     /**
      * The maximum number of lowest points and highest points, respectively, that is
-     * rendered in a map view.
+     * rendered for an elevation layer in a map view.
      */
     public static final int MAX_RENDERED_LOWEST_OR_HIGHEST_POINTS = 10;
 
     /**
-     * Property key for enabling or disabling automatic download of elevation data.
+     * Property key for enabling or disabling automatic download of SRTM elevation
+     * data.
      */
-    public static final String ELEVATION_AUTO_DOWNLOAD_ENABLED = "elevation.autodownload";
+    public static final String SRTM_AUTO_DOWNLOAD_ENABLED = "elevation.autodownload";
 
     /**
-     * Default property value for enabling automatic download of elevation data:
-     * {@code false}.
+     * Default property value for enabling automatic download of SRTM elevation
+     * data: {@code false}.
      */
-    private static final boolean DEFAULT_ELEVATION_AUTO_DOWNLOAD_ENABLED = false;
+    private static final boolean DEFAULT_SRTM_AUTO_DOWNLOAD_ENABLED = false;
 
     /**
      * Legacy property key for authentication bearer token for Earthdata SRTM
@@ -391,16 +394,16 @@ public class ElevationPreferences {
     public static final String ELEVATION_SERVER_AUTH_BEARER = "elevation.srtm.server.auth.bearer";
 
     /**
-     * Property key for the type of authentication at the elevation data download
-     * server.
-     */
-    public static final String ELEVATION_SERVER_AUTH_TYPE = "elevation.srtm.server.auth.type";
-
-    /**
-     * Default property value of the type of authentication at the elevation data
+     * Property key for the type of authentication at the SRTM elevation data
      * download server.
      */
-    public static final SrtmFileDownloader.AuthType DEFAULT_ELEVATION_SERVER_AUTH_TYPE = SrtmFileDownloader.AuthType.BEARER_TOKEN;
+    public static final String SRTM_SERVER_AUTH_TYPE = "elevation.srtm.server.auth.type";
+
+    /**
+     * Default property value of the type of authentication at the SRTM elevation
+     * data download server.
+     */
+    public static final SrtmFileDownloader.AuthType DEFAULT_SRTM_SERVER_AUTH_TYPE = SrtmFileDownloader.AuthType.BEARER_TOKEN;
 
     /**
      * Host name of the NASA Earthdata single sign-on server.
@@ -607,6 +610,81 @@ public class ElevationPreferences {
     public static final String GEOTIFF_ENVELOPE_LAYER_ENABLED = "elevation.geotiff.envelope-layer.enabled";
 
     /**
+     * Property key for enabling or disabling GeoTIFF contour line rendering.
+     */
+    public static final String GEOTIFF_CONTOUR_LINES_ENABLED = "elevation.geotiff.layer.contour-lines.enabled";
+
+    /**
+     * Default property value for enabling GeoTIFF contour line rendering:
+     * {@code true}.
+     */
+    private static final boolean DEFAULT_GEOTIFF_CONTOUR_LINES_ENABLED = true;
+
+    /**
+     * Property key for step between adjacent GeoTIFF contour lines.
+     */
+    public static final String GEOTIFF_CONTOUR_LINE_ISOSTEP = "elevation.geotiff.contour-line.isostep";
+
+    /**
+     * Default property value of the isostep between two adjacent GeoTIFF contour
+     * lines: {@code 5}.
+     */
+    private static final int DEFAULT_GEOTIFF_CONTOUR_LINE_ISOSTEP = 5;
+
+    /**
+     * Property key for width of the stroke for drawing of GeoTIFF contour lines.
+     */
+    public static final String GEOTIFF_CONTOUR_LINE_STROKE_WIDTH = "elevation.geotiff.contour-line.stroke.width";
+
+    /*
+     * Default property value of the GeoTIFF contour line stroke width.
+     */
+    private static final float DEFAULT_GEOTIFF_CONTOUR_LINE_STROKE_WIDTH = 1.0f;
+
+    /**
+     * Property key for color of GeoTIFF contour lines.
+     */
+    public static final String GEOTIFF_CONTOUR_LINE_COLOR = "elevation.geotiff.contour-line.color";
+
+    /*
+     * Default property value of the GeoTIFF contour line color as HTML color.
+     */
+    private static final String DEFAULT_GEOTIFF_CONTOUR_LINE_COLOR = "#D2B473";
+
+    /**
+     * Property key for coloring scheme of GeoTiff contour lines.
+     */
+    public static final String GEOTIFF_CONTOUR_LINE_COLORING = "elevation.geotiff.contour-line.coloring";
+
+    /**
+     * Default property value of the GeoTiff contour line coloring scheme.
+     */
+    private static final Coloring.Scheme DEFAULT_GEOTIFF_CONTOUR_LINE_COLORING = Coloring.Scheme.FALSE_COLOR;
+
+    /**
+     * Property key for enabling or disabling rendering of the GeoTIFF lowest and
+     * highest points within the map view
+     */
+    public static final String GEOTIFF_LOWEST_AND_HIGHEST_POINTS_ENABLED = "elevation.geotiff.layer.lowest_highest_points.enabled";
+
+    /**
+     * Default property value for enabling rendering of the GeoTIFF lowest and
+     * highest points within the map view: {@code true}.
+     */
+    private static final boolean DEFAULT_GEOTIFF_LOWEST_AND_HIGHEST_POINTS_ENABLED = true;
+
+    /**
+     * Property key for enabling or disabling GeoTIFF grayscale image rendering.
+     */
+    public static final String GEOTIFF_GRAYSCALE_IMAGE_ENABLED = "elevation.geotiff.layer.grayscale-image.enabled";
+
+    /**
+     * Default property value for enabling GeoTIFF grayscale image rendering:
+     * {@code true}.
+     */
+    private static final boolean DEFAULT_GEOTIFF_GRAYSCALE_IMAGE_ENABLED = true;
+
+    /**
      * Removes the legacy 'elevation enabled' preference from the settings.
      *
      * @return {@code true} if the value has changed.
@@ -640,8 +718,8 @@ public class ElevationPreferences {
      * @return The method for interpolation of elevation values.
      */
     public static SrtmTile.Interpolation getElevationInterpolation() {
-        return SrtmTile.Interpolation
-                .fromString(Config.getPref().get(ELEVATION_INTERPOLATION, DEFAULT_ELEVATION_INTERPOLATION.toString()));
+        return SrtmTile.Interpolation.fromString(
+                Config.getPref().get(SRTM_ELEVATION_INTERPOLATION, DEFAULT_SRTM_ELEVATION_INTERPOLATION.toString()));
     }
 
     /**
@@ -651,7 +729,7 @@ public class ElevationPreferences {
      * @return {@code true} if the interpolation type has changed.
      */
     public static boolean setElevationInterpolation(SrtmTile.Interpolation interpolation) {
-        return Config.getPref().put(ELEVATION_INTERPOLATION, interpolation.toString());
+        return Config.getPref().put(SRTM_ELEVATION_INTERPOLATION, interpolation.toString());
     }
 
     /**
@@ -660,7 +738,7 @@ public class ElevationPreferences {
      * @return Size limit of the in-memory SRTM tile cache in MiB.
      */
     public static int getRAMCacheSizeLimit() {
-        return Config.getPref().getInt(RAM_CACHE_SIZE_LIMIT, DEFAULT_RAM_CACHE_SIZE_LIMIT);
+        return Config.getPref().getInt(SRTM_CACHE_SIZE_LIMIT, DEFAULT_SRTM_CACHE_SIZE_LIMIT);
     }
 
     /**
@@ -670,16 +748,17 @@ public class ElevationPreferences {
      * @return {@code true} if the limit value has changed.
      */
     public static boolean setRAMCacheSizeLimit(int limit) {
-        return Config.getPref().putInt(RAM_CACHE_SIZE_LIMIT, limit);
+        return Config.getPref().putInt(SRTM_CACHE_SIZE_LIMIT, limit);
     }
 
     /**
-     * Returns whether the elevation visualization layer is enabled or disabled.
+     * Returns whether the SRTM elevation visualization layer is enabled or
+     * disabled.
      *
      * @return {@code true} if enabled.
      */
-    public static boolean getElevationLayerEnabled() {
-        return Config.getPref().getBoolean(ELEVATION_LAYER_ENABLED, DEFAULT_ELEVATION_LAYER_ENABLED);
+    public static boolean getSrtmElevationLayerEnabled() {
+        return Config.getPref().getBoolean(SRTM_ELEVATION_LAYER_ENABLED, DEFAULT_SRTM_ELEVATION_LAYER_ENABLED);
     }
 
     /**
@@ -689,25 +768,27 @@ public class ElevationPreferences {
      * @param enabled If {@code true}, the elevation layer is enabled.
      * @return {@code true} if the enabled state has changed.
      */
-    public static boolean setElevationLayerEnabled(boolean enabled) {
-        return Config.getPref().putBoolean(ELEVATION_LAYER_ENABLED, enabled);
+    public static boolean setSrtmElevationLayerEnabled(boolean enabled) {
+        return Config.getPref().putBoolean(SRTM_ELEVATION_LAYER_ENABLED, enabled);
     }
 
     /**
-     * Returns the limit value for rendering of the elevation visualization layer.
+     * Returns the limit value for rendering of the SRTM elevation visualization
+     * layer.
      *
      * @return The limit value of arc degrees in latitude or longitude covered by
      *         the map view, where, if exceeded, elevation data caching as well as
      *         contour line and hillshade rendering will be temporarily switched
      *         off.
      */
-    public static double getElevationLayerRenderingLimit() {
-        return Config.getPref().getDouble(ELEVATION_LAYER_RENDERING_LIMIT, DEFAULT_ELEVATION_LAYER_RENDERING_LIMIT);
+    public static double getSrtmElevationLayerRenderingLimit() {
+        return Config.getPref().getDouble(SRTM_ELEVATION_LAYER_RENDERING_LIMIT,
+                DEFAULT_SRTM_ELEVATION_LAYER_RENDERING_LIMIT);
     }
 
     /**
-     * Sets the limit value for rendering of the elevation visualization layer in
-     * the settings.
+     * Sets the limit value for rendering of the SRTM elevation visualization layer
+     * in the settings.
      *
      * @param arcDegrees The limit value of arc degrees in latitude or longitude
      *                   covered by the map view, where, if exceeded, elevation data
@@ -715,212 +796,216 @@ public class ElevationPreferences {
      *                   will be temporarily switched off.
      * @return {@code true} if the limit value has changed.
      */
-    public static boolean setElevationLayerRenderingLimit(double arcDegrees) {
-        return Config.getPref().putDouble(ELEVATION_LAYER_RENDERING_LIMIT, arcDegrees);
+    public static boolean setSrtmElevationLayerRenderingLimit(double arcDegrees) {
+        return Config.getPref().putDouble(SRTM_ELEVATION_LAYER_RENDERING_LIMIT, arcDegrees);
     }
 
     /**
-     * Returns whether rendering of elevation contour lines is enabled.
+     * Returns whether rendering of SRTM contour lines is enabled.
      *
      * @return {@code true} if enabled.
      */
-    public static boolean getContourLinesEnabled() {
-        return Config.getPref().getBoolean(ELEVATION_CONTOUR_LINES_ENABLED, DEFAULT_ELEVATION_CONTOUR_LINES_ENABLED);
+    public static boolean getSrtmContourLinesEnabled() {
+        return Config.getPref().getBoolean(SRTM_CONTOUR_LINES_ENABLED, DEFAULT_SRTM_CONTOUR_LINES_ENABLED);
     }
 
     /**
-     * Sets rendering of elevation contour lines to the specified state.
+     * Sets rendering of SRTM contour lines to the specified state.
      *
-     * @param enabled If {@code true}, contour line rendering is enabled.
+     * @param enabled If {@code true}, SRTM contour line rendering is enabled.
      * @return {@code true} if the enabled state has changed.
      */
-    public static boolean setContourLinesEnabled(boolean enabled) {
-        return Config.getPref().putBoolean(ELEVATION_CONTOUR_LINES_ENABLED, enabled);
+    public static boolean setSrtmContourLinesEnabled(boolean enabled) {
+        return Config.getPref().putBoolean(SRTM_CONTOUR_LINES_ENABLED, enabled);
     }
 
     /**
-     * Returns the step between adjacent elevation contour lines.
+     * Returns the step between adjacent SRTM contour lines.
      *
-     * @return The step between adjacent elevation contour lines.
+     * @return The step between adjacent SRTM contour lines.
      */
-    public static int getContourLineIsostep() {
-        return Config.getPref().getInt(CONTOUR_LINE_ISOSTEP, DEFAULT_CONTOUR_LINE_ISOSTEP);
+    public static int getSrtmContourLineIsostep() {
+        return Config.getPref().getInt(SRTM_CONTOUR_LINE_ISOSTEP, DEFAULT_SRTM_CONTOUR_LINE_ISOSTEP);
     }
 
     /**
-     * Sets the step between adjacent elevation contour lines to the specified value
-     * in the settings.
+     * Sets the step between adjacent SRTM contour lines to the specified value in
+     * the settings.
      *
-     * @param isostep The step between adjacent elevation contour lines.
+     * @param isostep The step between adjacent SRTM contour lines.
      * @return {@code true} if the isostep value has changed.
      */
-    public static boolean setContourLineIsostep(int isostep) {
-        return Config.getPref().putInt(CONTOUR_LINE_ISOSTEP, isostep);
+    public static boolean setSrtmContourLineIsostep(int isostep) {
+        return Config.getPref().putInt(SRTM_CONTOUR_LINE_ISOSTEP, isostep);
     }
 
     /**
-     * Returns the contour line stroke width.
+     * Returns the SRTM contour line stroke width.
      *
-     * @return The width of the stroke for drawing of contour lines in px.
+     * @return The width of the stroke for drawing of SRTM contour lines in px.
      */
-    public static float getContourLineStrokeWidth() {
-        return (float) Config.getPref().getDouble(CONTOUR_LINE_STROKE_WIDTH, DEFAULT_CONTOUR_LINE_STROKE_WIDTH);
+    public static float getSrtmContourLineStrokeWidth() {
+        return (float) Config.getPref().getDouble(SRTM_CONTOUR_LINE_STROKE_WIDTH,
+                DEFAULT_SRTM_CONTOUR_LINE_STROKE_WIDTH);
     }
 
     /**
-     * Sets the contour line stroke width to the specified value in the settings.
+     * Sets the SRTM contour line stroke width to the specified value in the
+     * settings.
      *
-     * @param width The width of the stroke for drawing of contour lines in px.
+     * @param width The width of the stroke for drawing of SRTM contour lines in px.
      * @return {@code true} if the stroke width value has changed.
      */
-    public static boolean setContourLineStrokeWidth(double width) {
-        return Config.getPref().putDouble(CONTOUR_LINE_STROKE_WIDTH, width);
+    public static boolean setSrtmContourLineStrokeWidth(double width) {
+        return Config.getPref().putDouble(SRTM_CONTOUR_LINE_STROKE_WIDTH, width);
     }
 
     /**
-     * Returns the contour line color.
+     * Returns the SRTM contour line color.
      *
-     * @return The color of contour lines.
+     * @return The color of SRTM contour lines.
      */
-    public static Color getContourLineColor() {
-        String htmlColor = Config.getPref().get(CONTOUR_LINE_COLOR, DEFAULT_CONTOUR_LINE_COLOR);
+    public static Color getSrtmContourLineColor() {
+        String htmlColor = Config.getPref().get(SRTM_CONTOUR_LINE_COLOR, DEFAULT_SRTM_CONTOUR_LINE_COLOR);
         return ColorHelper.html2color(htmlColor);
     }
 
     /**
-     * Sets the value of the contour line color in the settings.
+     * Sets the value of the SRTM contour line color in the settings.
      *
-     * @param color The color to set as contour line color in the settings.
+     * @param color The color to set as SRTM contour line color in the settings.
      * @return {@code true} if the color value has changed.
      */
-    public static boolean setContourLineColor(Color color) {
+    public static boolean setSrtmContourLineColor(Color color) {
         String htmlColor = ColorHelper.color2html(color, false);
-        return Config.getPref().put(CONTOUR_LINE_COLOR, htmlColor);
+        return Config.getPref().put(SRTM_CONTOUR_LINE_COLOR, htmlColor);
     }
 
     /**
-     * Returns the contour line coloring scheme.
+     * Returns the SRTM contour line coloring scheme.
      *
-     * @return The contour line coloring scheme.
+     * @return The coloring scheme for SRTM contour lines.
      */
-    public static Coloring.Scheme getContourLineColoringScheme() {
-        return Coloring.Scheme
-                .fromString(Config.getPref().get(CONTOUR_LINE_COLORING, DEFAULT_CONTOUR_LINE_COLORING.toString()));
+    public static Coloring.Scheme getSrtmContourLineColoringScheme() {
+        return Coloring.Scheme.fromString(
+                Config.getPref().get(SRTM_CONTOUR_LINE_COLORING, DEFAULT_SRTM_CONTOUR_LINE_COLORING.toString()));
     }
 
     /**
-     * Sets the value of the contour line coloring scheme in the settings.
+     * Sets the value of the SRTM contour line coloring scheme in the settings.
      *
-     * @param scheme The coloring scheme to set as contour line coloring scheme in
-     *               the settings.
+     * @param scheme The coloring scheme to set as SRTM contour line coloring scheme
+     *               in the settings.
      * @return {@code true} if the value has changed.
      */
-    public static boolean setContourLineColoringScheme(Coloring.Scheme scheme) {
-        return Config.getPref().put(CONTOUR_LINE_COLORING, scheme.toString());
+    public static boolean setSrtmContourLineColoringScheme(Coloring.Scheme scheme) {
+        return Config.getPref().put(SRTM_CONTOUR_LINE_COLORING, scheme.toString());
     }
 
     /**
-     * Returns whether rendering of elevation hillshade is enabled.
+     * Returns whether rendering of SRTM hillshade is enabled.
      *
      * @return {@code true} if enabled.
      */
-    public static boolean getHillshadeEnabled() {
-        return Config.getPref().getBoolean(ELEVATION_HILLSHADE_ENABLED, DEFAULT_ELEVATION_HILLSHADE_ENABLED);
+    public static boolean getSrtmHillshadeEnabled() {
+        return Config.getPref().getBoolean(SRTM_HILLSHADE_ENABLED, DEFAULT_SRTM_HILLSHADE_ENABLED);
     }
 
     /**
-     * Sets rendering of hillshade to the specified state in the settings.
+     * Sets rendering of SRTM hillshade to the specified state in the settings.
      *
-     * @param enabled If {@code true}, hillshade rendering is enabled.
+     * @param enabled If {@code true}, SRTM hillshade rendering is enabled.
      * @return {@code true} if the enabled state has changed.
      */
-    public static boolean setHillshadeEnabled(boolean enabled) {
-        return Config.getPref().putBoolean(ELEVATION_HILLSHADE_ENABLED, enabled);
+    public static boolean setSrtmHillshadeEnabled(boolean enabled) {
+        return Config.getPref().putBoolean(SRTM_HILLSHADE_ENABLED, enabled);
     }
 
     /**
-     * Returns the altitude of the hillshade illumination source.
+     * Returns the altitude of the SRTM hillshade illumination source.
      *
-     * @return The altitude of the illumination source in hillshade computation.
+     * @return The altitude of the illumination source in SRTM hillshade
+     *         computation.
      */
-    public static int getHillshadeAltitude() {
-        return Config.getPref().getInt(HILLSHADE_ALTITUDE, DEFAULT_HILLSHADE_ALTITUDE);
+    public static int getSrtmHillshadeAltitude() {
+        return Config.getPref().getInt(SRTM_HILLSHADE_ALTITUDE, DEFAULT_SRTM_HILLSHADE_ALTITUDE);
     }
 
     /**
-     * Sets the altitude of the illumination source in hillshade computation to the
-     * specified value in the settings.
+     * Sets the altitude of the illumination source in SRTM hillshade computation to
+     * the specified value in the settings.
      *
-     * @param altitude The altitude of the illumination source in hillshade
+     * @param altitude The altitude of the illumination source in SRTM hillshade
      *                 computation.
      * @return {@code true} if the altitude value has changed.
      */
-    public static boolean setHillshadeAltitude(int altitude) {
-        return Config.getPref().putInt(HILLSHADE_ALTITUDE, altitude);
+    public static boolean setSrtmHillshadeAltitude(int altitude) {
+        return Config.getPref().putInt(SRTM_HILLSHADE_ALTITUDE, altitude);
     }
 
     /**
-     * Returns the azimuth of the hillshade illumination source.
+     * Returns the azimuth of the SRTM hillshade illumination source.
      *
-     * @return The azimuth of the illumination source in hillshade computation.
+     * @return The azimuth of the illumination source in SRTM hillshade computation.
      */
-    public static int getHillshadeAzimuth() {
-        return Config.getPref().getInt(HILLSHADE_AZIMUTH, DEFAULT_HILLSHADE_AZIMUTH);
+    public static int getSrtmHillshadeAzimuth() {
+        return Config.getPref().getInt(SRTM_HILLSHADE_AZIMUTH, DEFAULT_SRTM_HILLSHADE_AZIMUTH);
     }
 
     /**
-     * Sets the azimuth of the illumination source in hillshade computation to the
-     * specified value in the settings.
+     * Sets the azimuth of the illumination source in SRTM hillshade computation to
+     * the specified value in the settings.
      *
-     * @param azimuth The azimuth of the illumination source in hillshade
+     * @param azimuth The azimuth of the illumination source in SRTM hillshade
      *                computation.
      * @return {@code true} if the azimuth value has changed.
      */
-    public static boolean setHillshadeAzimuth(int azimuth) {
-        return Config.getPref().putInt(HILLSHADE_AZIMUTH, azimuth);
+    public static boolean setSrtmHillshadeAzimuth(int azimuth) {
+        return Config.getPref().putInt(SRTM_HILLSHADE_AZIMUTH, azimuth);
     }
 
     /**
-     * Returns whether rendering of the elevation raster is enabled.
+     * Returns whether rendering of the SRTM elevation raster is enabled.
      *
      * @return {@code true} if enabled.
      */
-    public static boolean getElevationRasterEnabled() {
-        return Config.getPref().getBoolean(ELEVATION_RASTER_ENABLED, DEFAULT_ELEVATION_RASTER_ENABLED);
+    public static boolean getSrtmElevationRasterEnabled() {
+        return Config.getPref().getBoolean(SRTM_ELEVATION_RASTER_ENABLED, DEFAULT_SRTM_ELEVATION_RASTER_ENABLED);
     }
 
     /**
-     * Sets rendering of the elevation raster to the specified state in the
+     * Sets rendering of the SRTM elevation raster to the specified state in the
      * settings.
      *
-     * @param enabled If {@code true}, rendering of the elevation raster is enabled.
+     * @param enabled If {@code true}, rendering of the SRTM elevation raster is
+     *                enabled.
      * @return {@code true} if the enabled state has changed.
      */
-    public static boolean setElevationRasterEnabled(boolean enabled) {
-        return Config.getPref().putBoolean(ELEVATION_HILLSHADE_ENABLED, enabled);
+    public static boolean setSrtmElevationRasterEnabled(boolean enabled) {
+        return Config.getPref().putBoolean(SRTM_HILLSHADE_ENABLED, enabled);
     }
 
     /**
-     * Returns whether rendering of the lowest and highest points within the map
-     * view is enabled.
+     * Returns whether rendering of the SRTM lowest and highest points within the
+     * map view is enabled.
      *
      * @return {@code true} if enabled.
      */
-    public static boolean getLowestAndHighestPointsEnabled() {
-        return Config.getPref().getBoolean(LOWEST_AND_HIGHEST_POINTS_ENABLED,
-                DEFAULT_LOWEST_AND_HIGHEST_POINTS_ENABLED);
+    public static boolean getSrtmLowestAndHighestPointsEnabled() {
+        return Config.getPref().getBoolean(SRTM_LOWEST_AND_HIGHEST_POINTS_ENABLED,
+                DEFAULT_SRTM_LOWEST_AND_HIGHEST_POINTS_ENABLED);
     }
 
     /**
-     * Sets rendering of the lowest and highest points within the map view to the
-     * specified state in the settings.
+     * Sets rendering of the SRTM lowest and highest points within the map view to
+     * the specified state in the settings.
      *
-     * @param enabled If {@code true}, rendering of the lowest and highest points
-     *                within the map view is enabled.
+     * @param enabled If {@code true}, rendering of the SRTM lowest and highest
+     *                points within the map view is enabled.
      * @return {@code true} if the enabled state has changed.
      */
-    public static boolean setLowestAndHighestPointsEnabled(boolean enabled) {
-        return Config.getPref().putBoolean(LOWEST_AND_HIGHEST_POINTS_ENABLED, enabled);
+    public static boolean setSrtmLowestAndHighestPointsEnabled(boolean enabled) {
+        return Config.getPref().putBoolean(SRTM_LOWEST_AND_HIGHEST_POINTS_ENABLED, enabled);
     }
 
     /**
@@ -928,8 +1013,8 @@ public class ElevationPreferences {
      *
      * @return {@code true} if enabled.
      */
-    public static boolean getAutoDownloadEnabled() {
-        return Config.getPref().getBoolean(ELEVATION_AUTO_DOWNLOAD_ENABLED, DEFAULT_ELEVATION_AUTO_DOWNLOAD_ENABLED);
+    public static boolean getSrtmAutoDownloadEnabled() {
+        return Config.getPref().getBoolean(SRTM_AUTO_DOWNLOAD_ENABLED, DEFAULT_SRTM_AUTO_DOWNLOAD_ENABLED);
     }
 
     /**
@@ -938,30 +1023,29 @@ public class ElevationPreferences {
      * @param enabled If {@code true}, auto-download of SRTM tiles is enabled.
      * @return {@code true} if the enabled state has changed.
      */
-    public static boolean setAutoDownloadEnabled(boolean enabled) {
-        return Config.getPref().putBoolean(ELEVATION_AUTO_DOWNLOAD_ENABLED, enabled);
+    public static boolean setSrtmAutoDownloadEnabled(boolean enabled) {
+        return Config.getPref().putBoolean(SRTM_AUTO_DOWNLOAD_ENABLED, enabled);
     }
 
     /**
-     * Returns the type of authentication at the elevation data download server.
+     * Returns the type of authentication at the SRTM data download server.
      *
-     * @return The type of authentication at the elevation data download server.
+     * @return The type of authentication at the SRTM data download server.
      */
-    public static SrtmFileDownloader.AuthType getElevationServerAuthType() {
-        return SrtmFileDownloader.AuthType.fromString(
-                Config.getPref().get(ELEVATION_SERVER_AUTH_TYPE, DEFAULT_ELEVATION_SERVER_AUTH_TYPE.toString()));
+    public static SrtmFileDownloader.AuthType getSrtmServerAuthType() {
+        return SrtmFileDownloader.AuthType
+                .fromString(Config.getPref().get(SRTM_SERVER_AUTH_TYPE, DEFAULT_SRTM_SERVER_AUTH_TYPE.toString()));
     }
 
     /**
-     * Sets the type of authentication at the elevation data download server to the
+     * Sets the type of authentication at the SRTM data download server to the
      * specified type in the settings.
      *
-     * @param authType The type of authentication at the elevation data download
-     *                 server.
+     * @param authType The type of authentication at the SRTM data download server.
      * @return {@code true} if the value has changed.
      */
-    public static boolean setElevationServerAuthType(SrtmFileDownloader.AuthType authType) {
-        return Config.getPref().put(ELEVATION_SERVER_AUTH_TYPE, authType.toString());
+    public static boolean setSrtmServerAuthType(SrtmFileDownloader.AuthType authType) {
+        return Config.getPref().put(SRTM_SERVER_AUTH_TYPE, authType.toString());
     }
 
     /**
@@ -1268,6 +1352,151 @@ public class ElevationPreferences {
      */
     public static boolean setGeoTiffEnvelopeLayerEnabled(boolean enabled) {
         return Config.getPref().putBoolean(GEOTIFF_ENVELOPE_LAYER_ENABLED, enabled);
+    }
+
+    /**
+     * Returns whether rendering of GeoTIFF contour lines is enabled.
+     *
+     * @return {@code true} if enabled.
+     */
+    public static boolean getGeoTiffContourLinesEnabled() {
+        return Config.getPref().getBoolean(GEOTIFF_CONTOUR_LINES_ENABLED, DEFAULT_GEOTIFF_CONTOUR_LINES_ENABLED);
+    }
+
+    /**
+     * Sets rendering of GeoTIFF contour lines to the specified state.
+     *
+     * @param enabled If {@code true}, GeoTIFF contour line rendering is enabled.
+     * @return {@code true} if the enabled state has changed.
+     */
+    public static boolean setGeoTiffContourLinesEnabled(boolean enabled) {
+        return Config.getPref().putBoolean(GEOTIFF_CONTOUR_LINES_ENABLED, enabled);
+    }
+
+    /**
+     * Returns the step between adjacent GeoTIFF contour lines.
+     *
+     * @return The step between adjacent GeoTIFF contour lines.
+     */
+    public static int getGeoTiffContourLineIsostep() {
+        return Config.getPref().getInt(GEOTIFF_CONTOUR_LINE_ISOSTEP, DEFAULT_GEOTIFF_CONTOUR_LINE_ISOSTEP);
+    }
+
+    /**
+     * Sets the step between adjacent GeoTIFF contour lines to the specified value
+     * in the settings.
+     *
+     * @param isostep The step between adjacent GeoTIFF contour lines.
+     * @return {@code true} if the isostep value has changed.
+     */
+    public static boolean setGeoTiffContourLineIsostep(int isostep) {
+        return Config.getPref().putInt(GEOTIFF_CONTOUR_LINE_ISOSTEP, isostep);
+    }
+
+    /**
+     * Returns the GeoTIFF contour line stroke width.
+     *
+     * @return The width of the stroke for drawing of GeoTIFF contour lines in px.
+     */
+    public static float getGeoTiffContourLineStrokeWidth() {
+        return (float) Config.getPref().getDouble(GEOTIFF_CONTOUR_LINE_STROKE_WIDTH,
+                DEFAULT_GEOTIFF_CONTOUR_LINE_STROKE_WIDTH);
+    }
+
+    /**
+     * Sets the GeoTIFF contour line stroke width to the specified value in the
+     * settings.
+     *
+     * @param width The width of the stroke for drawing of GeoTIFF contour lines in
+     *              px.
+     * @return {@code true} if the stroke width value has changed.
+     */
+    public static boolean setGeoTiffContourLineStrokeWidth(double width) {
+        return Config.getPref().putDouble(GEOTIFF_CONTOUR_LINE_STROKE_WIDTH, width);
+    }
+
+    /**
+     * Returns the GeoTIFF contour line color.
+     *
+     * @return The color of GeoTIFF contour lines.
+     */
+    public static Color getGeoTiffContourLineColor() {
+        String htmlColor = Config.getPref().get(GEOTIFF_CONTOUR_LINE_COLOR, DEFAULT_GEOTIFF_CONTOUR_LINE_COLOR);
+        return ColorHelper.html2color(htmlColor);
+    }
+
+    /**
+     * Sets the value of the GeoTIFF contour line color in the settings.
+     *
+     * @param color The color to set as GeoTIFF contour line color in the settings.
+     * @return {@code true} if the color value has changed.
+     */
+    public static boolean setGeoTiffContourLineColor(Color color) {
+        String htmlColor = ColorHelper.color2html(color, false);
+        return Config.getPref().put(GEOTIFF_CONTOUR_LINE_COLOR, htmlColor);
+    }
+
+    /**
+     * Returns the GeoTIFF contour line coloring scheme.
+     *
+     * @return The coloring scheme for GeoTIFF contour lines.
+     */
+    public static Coloring.Scheme getGeoTiffContourLineColoringScheme() {
+        return Coloring.Scheme.fromString(
+                Config.getPref().get(GEOTIFF_CONTOUR_LINE_COLORING, DEFAULT_GEOTIFF_CONTOUR_LINE_COLORING.toString()));
+    }
+
+    /**
+     * Sets the value of the GeoTIFF contour line coloring scheme in the settings.
+     *
+     * @param scheme The coloring scheme to set as GeoTIFF contour line coloring
+     *               scheme in the settings.
+     * @return {@code true} if the value has changed.
+     */
+    public static boolean setGeoTiffContourLineColoringScheme(Coloring.Scheme scheme) {
+        return Config.getPref().put(GEOTIFF_CONTOUR_LINE_COLORING, scheme.toString());
+    }
+
+    /**
+     * Returns whether rendering of GeoTIFF lowest and highest points within the map
+     * view is enabled.
+     *
+     * @return {@code true} if enabled.
+     */
+    public static boolean getGeoTiffLowestAndHighestPointsEnabled() {
+        return Config.getPref().getBoolean(GEOTIFF_LOWEST_AND_HIGHEST_POINTS_ENABLED,
+                DEFAULT_GEOTIFF_LOWEST_AND_HIGHEST_POINTS_ENABLED);
+    }
+
+    /**
+     * Sets rendering of GeoTIFF lowest and highest points within the map view to
+     * the specified state in the settings.
+     *
+     * @param enabled If {@code true}, rendering of the GeoTIFF lowest and highest
+     *                points within the map view is enabled.
+     * @return {@code true} if the enabled state has changed.
+     */
+    public static boolean setGeoTiffLowestAndHighestPointsEnabled(boolean enabled) {
+        return Config.getPref().putBoolean(GEOTIFF_LOWEST_AND_HIGHEST_POINTS_ENABLED, enabled);
+    }
+
+    /**
+     * Returns whether rendering of GeoTIFF grayscale images is enabled.
+     *
+     * @return {@code true} if enabled.
+     */
+    public static boolean getGeoTiffGrayscaleImageEnabled() {
+        return Config.getPref().getBoolean(GEOTIFF_GRAYSCALE_IMAGE_ENABLED, DEFAULT_GEOTIFF_GRAYSCALE_IMAGE_ENABLED);
+    }
+
+    /**
+     * Sets rendering of GeoTIFF grayscale images to the specified state.
+     *
+     * @param enabled If {@code true}, GeoTIFF grayscale image rendering is enabled.
+     * @return {@code true} if the enabled state has changed.
+     */
+    public static boolean setGeoTiffGrayscaleImagesEnabled(boolean enabled) {
+        return Config.getPref().putBoolean(GEOTIFF_GRAYSCALE_IMAGE_ENABLED, enabled);
     }
 
     private ElevationPreferences() {

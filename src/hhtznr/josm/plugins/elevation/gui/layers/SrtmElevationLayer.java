@@ -4,7 +4,6 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
-import java.util.ArrayList;
 
 import javax.swing.Action;
 import javax.swing.JCheckBoxMenuItem;
@@ -14,6 +13,7 @@ import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.osm.visitor.BoundingXYVisitor;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.MapView;
+import org.openstreetmap.josm.gui.dialogs.LayerListDialog;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Logging;
 
@@ -77,7 +77,8 @@ public class SrtmElevationLayer extends ElevationLayer implements SrtmElevationD
             short upperCutoffElevation) {
         super("SRTM Elevation Layer", ImageProvider.get("layers", "elevation_srtm.svg"), contourLineIsostep,
                 contourLineStrokeWidth, contourLineColoringScheme, contourLineConstantColor, lowerCutoffElevation,
-                upperCutoffElevation);
+                upperCutoffElevation, ElevationPreferences.getSrtmContourLinesEnabled(),
+                ElevationPreferences.getSrtmLowestAndHighestPointsEnabled());
         this.layerPainter = new SrtmElevationDrawHelper(this);
         this.renderingLimitArcDegrees = renderingLimitArcDegrees;
 
@@ -85,8 +86,8 @@ public class SrtmElevationLayer extends ElevationLayer implements SrtmElevationD
         this.hillshadeAzimuth = hillshadeAzimuth;
         this.elevationDataProvider = elevationDataProvider;
         elevationDataProvider.addSrtmElevationDataProviderListener(this);
-        hillshadeEnabled = ElevationPreferences.getHillshadeEnabled();
-        elevationRasterEnabled = ElevationPreferences.getElevationRasterEnabled();
+        hillshadeEnabled = ElevationPreferences.getSrtmHillshadeEnabled();
+        elevationRasterEnabled = ElevationPreferences.getSrtmElevationRasterEnabled();
     }
 
     /**
@@ -192,17 +193,18 @@ public class SrtmElevationLayer extends ElevationLayer implements SrtmElevationD
 
     @Override
     public Action[] getMenuEntries() {
-        ArrayList<Action> actions = new ArrayList<>();
-        for (Action action : super.getMenuEntries()) {
-            actions.add(action);
-        }
-        actions.add(new ShowHillshadeAction());
-        actions.add(new ShowElevationRasterAction());
-        actions.add(SeparatorLayerAction.INSTANCE);
-        actions.add(new ShowLayerAdjustmentDialogAction());
-        actions.add(SeparatorLayerAction.INSTANCE);
-        actions.add(new ShowInfoDialogAction());
-        return actions.toArray(new Action[0]);
+        Action[] actions = new Action[10];
+        actions[0] = LayerListDialog.getInstance().createShowHideLayerAction();
+        actions[1] = SeparatorLayerAction.INSTANCE;
+        actions[2] = new ShowLowestAndHighestPointsAction();
+        actions[3] = new ShowContourLinesAction();
+        actions[4] = new ShowElevationRasterAction();
+        actions[5] = new ShowHillshadeAction();
+        actions[6] = SeparatorLayerAction.INSTANCE;
+        actions[7] = new ShowLayerAdjustmentDialogAction();
+        actions[8] = SeparatorLayerAction.INSTANCE;
+        actions[9] = new ShowInfoDialogAction();
+        return actions;
     }
 
     @Override
@@ -230,6 +232,62 @@ public class SrtmElevationLayer extends ElevationLayer implements SrtmElevationD
         invalidate();
     }
 
+    private class ShowContourLinesAction extends AbstractElevationLayerAction {
+
+        private static final long serialVersionUID = 1L;
+
+        public ShowContourLinesAction() {
+            super("Enable/disable contour lines", "contour_lines");
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            boolean enabled = SrtmElevationLayer.this.toggleContourLinesEnabled();
+            ElevationPreferences.setSrtmContourLinesEnabled(enabled);
+            if (enabled) {
+                Logging.info("Elevation: SRTM contour lines enabled");
+            } else {
+                Logging.info("Elevation: SRTM contour lines disabled");
+            }
+            SrtmElevationLayer.this.triggerRepaint();
+        }
+
+        @Override
+        public Component createMenuComponent() {
+            JCheckBoxMenuItem item = new JCheckBoxMenuItem(this);
+            item.setSelected(SrtmElevationLayer.this.isContourLinesEnabled());
+            return item;
+        }
+    }
+
+    private class ShowLowestAndHighestPointsAction extends AbstractElevationLayerAction {
+
+        private static final long serialVersionUID = 1L;
+
+        public ShowLowestAndHighestPointsAction() {
+            super("Enable/disable lowest and highest points", "lowest_highest_points");
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            boolean enabled = SrtmElevationLayer.this.toggleLowestAndHighestPointsEnabled();
+            ElevationPreferences.setSrtmLowestAndHighestPointsEnabled(enabled);
+            if (enabled) {
+                Logging.info("Elevation: SRTM lowest and highest points enabled");
+            } else {
+                Logging.info("Elevation: SRTM Lowest and highest points disabled");
+            }
+            SrtmElevationLayer.this.triggerRepaint();
+        }
+
+        @Override
+        public Component createMenuComponent() {
+            JCheckBoxMenuItem item = new JCheckBoxMenuItem(this);
+            item.setSelected(SrtmElevationLayer.this.isLowestAndHighestPointsEnabled());
+            return item;
+        }
+    }
+
     private class ShowHillshadeAction extends AbstractElevationLayerAction {
 
         private static final long serialVersionUID = 1L;
@@ -242,7 +300,7 @@ public class SrtmElevationLayer extends ElevationLayer implements SrtmElevationD
         public void actionPerformed(ActionEvent e) {
             SrtmElevationLayer layer = SrtmElevationLayer.this;
             layer.hillshadeEnabled = !layer.hillshadeEnabled;
-            ElevationPreferences.setHillshadeEnabled(layer.hillshadeEnabled);
+            ElevationPreferences.setSrtmHillshadeEnabled(layer.hillshadeEnabled);
             if (layer.hillshadeEnabled) {
                 Logging.info("Elevation: Hillshade enabled");
             } else {
@@ -271,7 +329,7 @@ public class SrtmElevationLayer extends ElevationLayer implements SrtmElevationD
         public void actionPerformed(ActionEvent e) {
             SrtmElevationLayer layer = SrtmElevationLayer.this;
             layer.elevationRasterEnabled = !layer.elevationRasterEnabled;
-            ElevationPreferences.setElevationRasterEnabled(layer.elevationRasterEnabled);
+            ElevationPreferences.setSrtmElevationRasterEnabled(layer.elevationRasterEnabled);
             if (layer.elevationRasterEnabled) {
                 Logging.info("Elevation: Elevation raster points enabled");
             } else {

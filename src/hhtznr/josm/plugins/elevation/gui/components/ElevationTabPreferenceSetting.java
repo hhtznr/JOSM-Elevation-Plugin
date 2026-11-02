@@ -49,7 +49,7 @@ public final class ElevationTabPreferenceSetting extends DefaultTabPreferenceSet
         // Save to preferences file
         pnlElevationPreferences.saveToPreferences();
         // Apply preferences
-        boolean srtmElevationLayerEnabled = ElevationPreferences.getElevationLayerEnabled();
+        boolean srtmElevationLayerEnabled = ElevationPreferences.getSrtmElevationLayerEnabled();
         // If the elevation layer is to be enabled, but was previously disabled
         if (srtmElevationLayerEnabled && !plugin.isElevationLayerEnabled()) {
             // Reconfigure the data provider (can include change of SRTM type)

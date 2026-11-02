@@ -80,27 +80,27 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
     private final JLabel lblCacheSize = new JLabel("Max. Size of In-Memory Tile Cache:");
     private final JSpinner spCacheSize = UIFactory.createSpinner(ElevationPreferences.getRAMCacheSizeLimit(),
-            ElevationPreferences.MIN_RAM_CACHE_SIZE_LIMIT, ElevationPreferences.MAX_RAM_CACHE_SIZE_LIMIT,
-            ElevationPreferences.INCR_RAM_CACHE_SIZE_LIMIT);
+            ElevationPreferences.MIN_SRTM_CACHE_SIZE_LIMIT, ElevationPreferences.MAX_SRTM_CACHE_SIZE_LIMIT,
+            ElevationPreferences.INCR_SRTM_CACHE_SIZE_LIMIT);
 
     private final JCheckBox cbEnableSrtmElevationLayer = new JCheckBox("Enable SRTM Elevation Visualization Layer");
 
     private final JLabel lblRenderingLimit = new JLabel("Layer Rendering Map Size Limit:");
     private final JSpinner spRenderingLimit = UIFactory.createSpinner(
-            ElevationPreferences.getElevationLayerRenderingLimit(),
-            ElevationPreferences.MIN_ELEVATION_LAYER_RENDERING_LIMIT,
-            ElevationPreferences.MAX_ELEVATION_LAYER_RENDERING_LIMIT,
-            ElevationPreferences.INCR_ELEVATION_LAYER_RENDERING_LIMIT);
+            ElevationPreferences.getSrtmElevationLayerRenderingLimit(),
+            ElevationPreferences.MIN_SRTM_LAYER_RENDERING_LIMIT,
+            ElevationPreferences.MAX_SRTM_LAYER_RENDERING_LIMIT,
+            ElevationPreferences.INCR_SRTM_LAYER_RENDERING_LIMIT);
     private final JLabel lblRenderingLimitUnit = new JLabel("°");
     private final JLabel lblIsostep = new JLabel("Contour Line Isostep:");
-    private final JSpinner spIsostep = UIFactory.createSpinner(ElevationPreferences.getContourLineIsostep(),
+    private final JSpinner spIsostep = UIFactory.createSpinner(ElevationPreferences.getSrtmContourLineIsostep(),
             ElevationPreferences.MIN_CONTOUR_LINE_ISOSTEP, ElevationPreferences.MAX_CONTOUR_LINE_ISOSTEP,
             ElevationPreferences.INCR_CONTOUR_LINE_ISOSTEP);
     private final JLabel lblIsostepUnit = new JLabel("m");
 
     private final JLabel lblStrokeWidth = new JLabel("Contour Line Stroke Width:");
 
-    private final JSpinner spStrokeWidth = UIFactory.createSpinner(ElevationPreferences.getContourLineStrokeWidth(),
+    private final JSpinner spStrokeWidth = UIFactory.createSpinner(ElevationPreferences.getSrtmContourLineStrokeWidth(),
             ElevationPreferences.MIN_CONTOUR_LINE_STROKE_WIDTH, ElevationPreferences.MAX_CONTOUR_LINE_STROKE_WIDTH,
             ElevationPreferences.INCR_CONTOUR_LINE_STROKE_WIDTH);
 
@@ -116,13 +116,13 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
     private final ColorChooserButton btnStrokeColor;
 
     private final JLabel lblHillshadeAltitude = new JLabel("Hillshade Illumination Source Altitude:");
-    private final JSpinner spHillshadeAltitude = UIFactory.createSpinner(ElevationPreferences.getHillshadeAltitude(),
+    private final JSpinner spHillshadeAltitude = UIFactory.createSpinner(ElevationPreferences.getSrtmHillshadeAltitude(),
             ElevationPreferences.MIN_HILLSHADE_ALTITUDE, ElevationPreferences.MAX_HILLSHADE_ALTITUDE,
             ElevationPreferences.INCR_HILLSHADE_ALTITUDE);
     private final JLabel lblHillshadeAltitudeUnit = new JLabel("°");
 
     private final JLabel lblHillshadeAzimuth = new JLabel("Hillshade Illumination Source Azimuth:");
-    private final JSpinner spHillshadeAzimuth = UIFactory.createSpinner(ElevationPreferences.getHillshadeAzimuth(),
+    private final JSpinner spHillshadeAzimuth = UIFactory.createSpinner(ElevationPreferences.getSrtmHillshadeAzimuth(),
             ElevationPreferences.MIN_HILLSHADE_AZIMUTH, ElevationPreferences.MAX_HILLSHADE_AZIMUTH,
             ElevationPreferences.INCR_HILLSHADE_AZIMUTH);
     private final JLabel lblHillshadeAzimuthUnit = new JLabel("°");
@@ -162,7 +162,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
      */
     public ElevationPreferencePanel() {
         btnStrokeColor = new ColorChooserButton(this, "Choose Color of Contour Lines",
-                ElevationPreferences.getContourLineColor());
+                ElevationPreferences.getSrtmContourLineColor());
 
         setLayout(new GridBagLayout());
         setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
@@ -687,11 +687,11 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
     private final void initFromPreferences() {
         cbSRTMType.setSelectedItem(ElevationPreferences.getSRTMType());
         cbInterpolation.setSelectedItem(ElevationPreferences.getElevationInterpolation());
-        cbEnableSrtmElevationLayer.setSelected(ElevationPreferences.getElevationLayerEnabled());
-        cbContourLineColoring.setSelectedItem(ElevationPreferences.getContourLineColoringScheme());
-        cbEnableAutoDownload.setSelected(ElevationPreferences.getAutoDownloadEnabled());
+        cbEnableSrtmElevationLayer.setSelected(ElevationPreferences.getSrtmElevationLayerEnabled());
+        cbContourLineColoring.setSelectedItem(ElevationPreferences.getSrtmContourLineColoringScheme());
+        cbEnableAutoDownload.setSelected(ElevationPreferences.getSrtmAutoDownloadEnabled());
 
-        if (ElevationPreferences.getElevationServerAuthType() == SrtmFileDownloader.AuthType.BEARER_TOKEN) {
+        if (ElevationPreferences.getSrtmServerAuthType() == SrtmFileDownloader.AuthType.BEARER_TOKEN) {
             rbAuthBearer.setSelected(true);
         } else {
             rbPasswordAuth.setSelected(true);
@@ -795,24 +795,24 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         ElevationPreferences.setSRTMType((SrtmTile.Type) cbSRTMType.getSelectedItem());
         ElevationPreferences.setElevationInterpolation((SrtmTile.Interpolation) cbInterpolation.getSelectedItem());
         ElevationPreferences.setRAMCacheSizeLimit((Integer) spCacheSize.getValue());
-        ElevationPreferences.setElevationLayerEnabled(cbEnableSrtmElevationLayer.isSelected());
-        ElevationPreferences.setElevationLayerRenderingLimit((Double) spRenderingLimit.getValue());
-        ElevationPreferences.setContourLineIsostep((Integer) spIsostep.getValue());
-        ElevationPreferences.setContourLineStrokeWidth((Double) spStrokeWidth.getValue());
-        ElevationPreferences.setContourLineColoringScheme((Coloring.Scheme) cbContourLineColoring.getSelectedItem());
-        ElevationPreferences.setContourLineColor(btnStrokeColor.getSelectedColor());
-        ElevationPreferences.setHillshadeAltitude((Integer) spHillshadeAltitude.getValue());
-        ElevationPreferences.setHillshadeAzimuth((Integer) spHillshadeAzimuth.getValue());
-        ElevationPreferences.setAutoDownloadEnabled(cbEnableAutoDownload.isSelected());
+        ElevationPreferences.setSrtmElevationLayerEnabled(cbEnableSrtmElevationLayer.isSelected());
+        ElevationPreferences.setSrtmElevationLayerRenderingLimit((Double) spRenderingLimit.getValue());
+        ElevationPreferences.setSrtmContourLineIsostep((Integer) spIsostep.getValue());
+        ElevationPreferences.setSrtmContourLineStrokeWidth((Double) spStrokeWidth.getValue());
+        ElevationPreferences.setSrtmContourLineColoringScheme((Coloring.Scheme) cbContourLineColoring.getSelectedItem());
+        ElevationPreferences.setSrtmContourLineColor(btnStrokeColor.getSelectedColor());
+        ElevationPreferences.setSrtmHillshadeAltitude((Integer) spHillshadeAltitude.getValue());
+        ElevationPreferences.setSrtmHillshadeAzimuth((Integer) spHillshadeAzimuth.getValue());
+        ElevationPreferences.setSrtmAutoDownloadEnabled(cbEnableAutoDownload.isSelected());
 
         if (rbPasswordAuth.isSelected()) {
             String userName = tfUserName.getText();
             char[] password = tfPassword.getPassword();
             ElevationPreferences.storeEarthdataCredentials(userName, password);
-            ElevationPreferences.setElevationServerAuthType(SrtmFileDownloader.AuthType.BASIC);
+            ElevationPreferences.setSrtmServerAuthType(SrtmFileDownloader.AuthType.BASIC);
         } else if (rbAuthBearer.isSelected()) {
             ElevationPreferences.storeEarthdataOAuthToken(tfAuthBearer.getText());
-            ElevationPreferences.setElevationServerAuthType(SrtmFileDownloader.AuthType.BEARER_TOKEN);
+            ElevationPreferences.setSrtmServerAuthType(SrtmFileDownloader.AuthType.BEARER_TOKEN);
         }
 
         ElevationPreferences.setGeoTiffEnvelopeLayerEnabled(cbEnableGeoTiffEnvelopeLayer.isSelected());

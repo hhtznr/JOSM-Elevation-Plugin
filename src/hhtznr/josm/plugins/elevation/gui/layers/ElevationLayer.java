@@ -1,23 +1,15 @@
 package hhtznr.josm.plugins.elevation.gui.layers;
 
 import java.awt.Color;
-import java.awt.Component;
-import java.awt.event.ActionEvent;
-import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.AbstractAction;
-import javax.swing.Action;
 import javax.swing.Icon;
-import javax.swing.JCheckBoxMenuItem;
 
 import org.openstreetmap.josm.gui.MainApplication;
-import org.openstreetmap.josm.gui.dialogs.LayerListDialog;
 import org.openstreetmap.josm.gui.layer.Layer;
 import org.openstreetmap.josm.tools.ImageProvider;
-import org.openstreetmap.josm.tools.Logging;
 
-import hhtznr.josm.plugins.elevation.ElevationPreferences;
 import hhtznr.josm.plugins.elevation.util.Coloring;
 
 /**
@@ -52,25 +44,31 @@ public abstract class ElevationLayer extends Layer {
     /**
      * Creates a new abstract elevation layer for visualizing elevation data.
      *
-     * @param name                      The name of the layer. This name will be
-     *                                  displayed to the JOSM user in the layer
-     *                                  list.
-     * @param icon                      The image icon of the layer. This icon will
-     *                                  be displayed to the JOSM user in the layer
-     *                                  list.
-     * @param contourLineIsostep        Step between neighboring elevation contour
-     *                                  lines.
-     * @param contourLineStrokeWidth    Width of the contour line stroke in px.
-     * @param contourLineColoringScheme The coloring scheme of the contour lines.
-     * @param contourLineConstantColor  Constant color of the contour lines.
-     * @param lowerCutoffElevation      The elevation value below which elevation
-     *                                  should not be visualized.
-     * @param upperCutoffElevation      The elevation value above which elevation
-     *                                  should not be visualized.
+     * @param name                          The name of the layer. This name will be
+     *                                      displayed to the JOSM user in the layer
+     *                                      list.
+     * @param icon                          The image icon of the layer. This icon
+     *                                      will be displayed to the JOSM user in
+     *                                      the layer list.
+     * @param contourLineIsostep            Step between neighboring elevation
+     *                                      contour lines.
+     * @param contourLineStrokeWidth        Width of the contour line stroke in px.
+     * @param contourLineColoringScheme     The coloring scheme of the contour
+     *                                      lines.
+     * @param contourLineConstantColor      Constant color of the contour lines.
+     * @param lowerCutoffElevation          The elevation value below which
+     *                                      elevation should not be visualized.
+     * @param upperCutoffElevation          The elevation value above which
+     *                                      elevation should not be visualized.
+     * @param contourLinesEnabled           Whether contour lines are initially
+     *                                      enabled. Enabled if {@code true}.
+     * @param lowestAndHighestPointsEnabled Whether lowest and highest points are
+     *                                      initially enabled. Enabled if
+     *                                      {@code true}.
      */
     public ElevationLayer(String name, Icon icon, int contourLineIsostep, float contourLineStrokeWidth,
             Coloring.Scheme contourLineColoringScheme, Color contourLineConstantColor, short lowerCutoffElevation,
-            short upperCutoffElevation) {
+            short upperCutoffElevation, boolean contourLinesEnabled, boolean lowestAndHighestPointsEnabled) {
         super(name);
         this.icon = icon;
         this.contourLineIsostep = contourLineIsostep;
@@ -80,8 +78,8 @@ public abstract class ElevationLayer extends Layer {
         this.lowerCutoffElevation = lowerCutoffElevation;
         this.upperCutoffElevation = upperCutoffElevation;
 
-        contourLinesEnabled = ElevationPreferences.getContourLinesEnabled();
-        lowestAndHighestPointsEnabled = ElevationPreferences.getLowestAndHighestPointsEnabled();
+        this.contourLinesEnabled = contourLinesEnabled;
+        this.lowestAndHighestPointsEnabled = lowestAndHighestPointsEnabled;
     }
 
     /**
@@ -94,6 +92,16 @@ public abstract class ElevationLayer extends Layer {
     }
 
     /**
+     * Toggles the contour lines enabled state.
+     *
+     * @return The new contour lines enabled state.
+     */
+    public boolean toggleContourLinesEnabled() {
+        contourLinesEnabled = !contourLinesEnabled;
+        return contourLinesEnabled;
+    }
+
+    /**
      * Returns whether displaying of the lowest and highest points within the map
      * view is enabled.
      *
@@ -101,6 +109,16 @@ public abstract class ElevationLayer extends Layer {
      *         the map view is enabled.
      */
     public boolean isLowestAndHighestPointsEnabled() {
+        return lowestAndHighestPointsEnabled;
+    }
+
+    /**
+     * Toggles the lowest and highest points enabled state.
+     *
+     * @return The new lowest and highest points enabled state.
+     */
+    public boolean toggleLowestAndHighestPointsEnabled() {
+        lowestAndHighestPointsEnabled = !lowestAndHighestPointsEnabled;
         return lowestAndHighestPointsEnabled;
     }
 
@@ -229,16 +247,6 @@ public abstract class ElevationLayer extends Layer {
     }
 
     @Override
-    public Action[] getMenuEntries() {
-        ArrayList<Action> actions = new ArrayList<>();
-        actions.add(LayerListDialog.getInstance().createShowHideLayerAction());
-        actions.add(SeparatorLayerAction.INSTANCE);
-        actions.add(new ShowContourLinesAction());
-        actions.add(new ShowLowestAndHighestPointsAction());
-        return actions.toArray(new Action[0]);
-    }
-
-    @Override
     public Icon getIcon() {
         return icon;
     }
@@ -277,64 +285,6 @@ public abstract class ElevationLayer extends Layer {
                 }
             }
             return true;
-        }
-    }
-
-    private class ShowContourLinesAction extends AbstractElevationLayerAction {
-
-        private static final long serialVersionUID = 1L;
-
-        public ShowContourLinesAction() {
-            super("Enable/disable contour lines", "contour_lines");
-        }
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            ElevationLayer layer = ElevationLayer.this;
-            layer.contourLinesEnabled = !layer.contourLinesEnabled;
-            ElevationPreferences.setContourLinesEnabled(layer.contourLinesEnabled);
-            if (layer.contourLinesEnabled) {
-                Logging.info("Elevation: Contour lines enabled");
-            } else {
-                Logging.info("Elevation: Contour lines disabled");
-            }
-            layer.triggerRepaint();
-        }
-
-        @Override
-        public Component createMenuComponent() {
-            JCheckBoxMenuItem item = new JCheckBoxMenuItem(this);
-            item.setSelected(ElevationLayer.this.contourLinesEnabled);
-            return item;
-        }
-    }
-
-    private class ShowLowestAndHighestPointsAction extends AbstractElevationLayerAction {
-
-        private static final long serialVersionUID = 1L;
-
-        public ShowLowestAndHighestPointsAction() {
-            super("Enable/disable lowest and highest points", "lowest_highest_points");
-        }
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            ElevationLayer layer = ElevationLayer.this;
-            layer.lowestAndHighestPointsEnabled = !layer.lowestAndHighestPointsEnabled;
-            ElevationPreferences.setLowestAndHighestPointsEnabled(layer.lowestAndHighestPointsEnabled);
-            if (layer.lowestAndHighestPointsEnabled) {
-                Logging.info("Elevation: Lowest and highest points enabled");
-            } else {
-                Logging.info("Elevation: Lowest and highest points disabled");
-            }
-            layer.triggerRepaint();
-        }
-
-        @Override
-        public Component createMenuComponent() {
-            JCheckBoxMenuItem item = new JCheckBoxMenuItem(this);
-            item.setSelected(ElevationLayer.this.lowestAndHighestPointsEnabled);
-            return item;
         }
     }
 }

@@ -39,7 +39,7 @@ public class GeoTiffElevationLayerAdjustmentDialog extends ExtendedDialog {
     private final Object elevationLayerLock = new Object();
 
     // Contour lines
-    private final JSpinner spIsostep = UIFactory.createSpinner(ElevationPreferences.getContourLineIsostep(), 1,
+    private final JSpinner spIsostep = UIFactory.createSpinner(ElevationPreferences.getGeoTiffContourLineIsostep(), 1,
             ElevationPreferences.MAX_CONTOUR_LINE_ISOSTEP, 1);
 
     private final JSpinner spUpperCutoffValue = UIFactory.createSpinner(
@@ -50,7 +50,7 @@ public class GeoTiffElevationLayerAdjustmentDialog extends ExtendedDialog {
             ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION, ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION,
             ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION, 1);
 
-    private final JSpinner spStrokeWidth = UIFactory.createSpinner(ElevationPreferences.getContourLineStrokeWidth(),
+    private final JSpinner spStrokeWidth = UIFactory.createSpinner(ElevationPreferences.getGeoTiffContourLineStrokeWidth(),
             ElevationPreferences.MIN_CONTOUR_LINE_STROKE_WIDTH, ElevationPreferences.MAX_CONTOUR_LINE_STROKE_WIDTH,
             ElevationPreferences.INCR_CONTOUR_LINE_STROKE_WIDTH);
 
@@ -58,7 +58,7 @@ public class GeoTiffElevationLayerAdjustmentDialog extends ExtendedDialog {
             new Coloring.Scheme[] { Coloring.Scheme.CONSTANT_COLOR, Coloring.Scheme.FALSE_COLOR });
 
     private final ColorChooserButton btnStrokeColor = new ColorChooserButton(this, "Choose Color of Contour Lines",
-            ElevationPreferences.getContourLineColor());
+            ElevationPreferences.getGeoTiffContourLineColor());
 
     /**
      * Constructs a dialog that allows to dynamically adjust rendering parameters of
@@ -75,10 +75,10 @@ public class GeoTiffElevationLayerAdjustmentDialog extends ExtendedDialog {
         // Sets the layer and sets the values of the components accordingly
         setGeoTiffElevationLayer(layer);
 
-        spUpperCutoffValue.setToolTipText(ElevationPluginTexts.TOOL_TIP_HILLSHADE_ALTITUDE);
+        spUpperCutoffValue.setToolTipText(ElevationPluginTexts.TOOL_TIP_UPPER_CUTOFF_ELEVATION);
         spLowerCutoffValue.setToolTipText(ElevationPluginTexts.TOOL_TIP_LOWER_CUTOFF_ELEVATION);
 
-        comboBoxColoring.setSelectedItem(ElevationPreferences.getContourLineColoringScheme());
+        comboBoxColoring.setSelectedItem(ElevationPreferences.getGeoTiffContourLineColoringScheme());
 
         JLabel labelSectionGeneral = new JLabel("General Layer Settings");
         labelSectionGeneral.setFont(labelSectionGeneral.getFont().deriveFont(Font.BOLD));

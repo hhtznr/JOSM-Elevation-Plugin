@@ -38,7 +38,7 @@ import hhtznr.josm.plugins.elevation.util.Coloring;
  */
 public class SrtmElevationLayerAdjustmentDialog extends ExtendedDialog {
 
-    private static final long serialVersionUID = 2722645568569947314L;
+    private static final long serialVersionUID = 1L;
 
     private final SrtmElevationLayer elevationLayer;
 
@@ -46,13 +46,13 @@ public class SrtmElevationLayerAdjustmentDialog extends ExtendedDialog {
     private final JosmComboBox<SrtmTile.Type> comboBoxSRTMType = new JosmComboBox<>(
             new SrtmTile.Type[] { SrtmTile.Type.SRTM1, SrtmTile.Type.SRTM3 });
     private final JSpinner spRenderingLimit = UIFactory.createSpinner(
-            ElevationPreferences.getElevationLayerRenderingLimit(),
-            ElevationPreferences.MIN_ELEVATION_LAYER_RENDERING_LIMIT,
-            ElevationPreferences.MAX_ELEVATION_LAYER_RENDERING_LIMIT,
-            ElevationPreferences.INCR_ELEVATION_LAYER_RENDERING_LIMIT);
+            ElevationPreferences.getSrtmElevationLayerRenderingLimit(),
+            ElevationPreferences.MIN_SRTM_LAYER_RENDERING_LIMIT,
+            ElevationPreferences.MAX_SRTM_LAYER_RENDERING_LIMIT,
+            ElevationPreferences.INCR_SRTM_LAYER_RENDERING_LIMIT);
 
     // Contour lines
-    private final JSpinner spIsostep = UIFactory.createSpinner(ElevationPreferences.getContourLineIsostep(), 1,
+    private final JSpinner spIsostep = UIFactory.createSpinner(ElevationPreferences.getSrtmContourLineIsostep(), 1,
             ElevationPreferences.MAX_CONTOUR_LINE_ISOSTEP, 1);
 
     private final JSpinner spUpperCutoffValue = UIFactory.createSpinner(
@@ -63,7 +63,7 @@ public class SrtmElevationLayerAdjustmentDialog extends ExtendedDialog {
             ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION, ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION,
             ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION, 1);
 
-    private final JSpinner spStrokeWidth = UIFactory.createSpinner(ElevationPreferences.getContourLineStrokeWidth(),
+    private final JSpinner spStrokeWidth = UIFactory.createSpinner(ElevationPreferences.getSrtmContourLineStrokeWidth(),
             ElevationPreferences.MIN_CONTOUR_LINE_STROKE_WIDTH, ElevationPreferences.MAX_CONTOUR_LINE_STROKE_WIDTH,
             ElevationPreferences.INCR_CONTOUR_LINE_STROKE_WIDTH);
 
@@ -73,11 +73,11 @@ public class SrtmElevationLayerAdjustmentDialog extends ExtendedDialog {
     private final ColorChooserButton btnStrokeColor;
 
     // Hillshade
-    private final JSpinner spHillshadeAltitude = UIFactory.createSpinner(ElevationPreferences.getHillshadeAltitude(),
+    private final JSpinner spHillshadeAltitude = UIFactory.createSpinner(ElevationPreferences.getSrtmHillshadeAltitude(),
             ElevationPreferences.MIN_HILLSHADE_ALTITUDE, ElevationPreferences.MAX_HILLSHADE_ALTITUDE,
             ElevationPreferences.INCR_HILLSHADE_ALTITUDE);
 
-    private final JSpinner spHillshadeAzimuth = UIFactory.createSpinner(ElevationPreferences.getHillshadeAzimuth(),
+    private final JSpinner spHillshadeAzimuth = UIFactory.createSpinner(ElevationPreferences.getSrtmHillshadeAzimuth(),
             ElevationPreferences.MIN_HILLSHADE_AZIMUTH, ElevationPreferences.MAX_HILLSHADE_AZIMUTH,
             ElevationPreferences.INCR_HILLSHADE_AZIMUTH);
 
@@ -98,12 +98,12 @@ public class SrtmElevationLayerAdjustmentDialog extends ExtendedDialog {
         comboBoxSRTMType.setSelectedItem(ElevationPreferences.getSRTMType());
 
         spRenderingLimit.setToolTipText(ElevationPluginTexts.TOOL_TIP_LAYER_RENDERING_LIMIT);
-        spUpperCutoffValue.setToolTipText(ElevationPluginTexts.TOOL_TIP_HILLSHADE_ALTITUDE);
+        spUpperCutoffValue.setToolTipText(ElevationPluginTexts.TOOL_TIP_UPPER_CUTOFF_ELEVATION);
         spLowerCutoffValue.setToolTipText(ElevationPluginTexts.TOOL_TIP_LOWER_CUTOFF_ELEVATION);
 
-        comboBoxColoring.setSelectedItem(ElevationPreferences.getContourLineColoringScheme());
+        comboBoxColoring.setSelectedItem(ElevationPreferences.getSrtmContourLineColoringScheme());
         btnStrokeColor = new ColorChooserButton(this, "Choose Color of Contour Lines",
-                ElevationPreferences.getContourLineColor());
+                ElevationPreferences.getSrtmContourLineColor());
 
         spHillshadeAltitude.setToolTipText(ElevationPluginTexts.TOOL_TIP_HILLSHADE_ALTITUDE);
         spHillshadeAzimuth.setToolTipText(ElevationPluginTexts.TOOL_TIP_HILLSHADE_AZIMUTH);

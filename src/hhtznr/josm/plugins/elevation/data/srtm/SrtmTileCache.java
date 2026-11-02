@@ -197,10 +197,10 @@ public class SrtmTileCache {
         if (limit == cacheSizeLimit) {
             return;
         }
-        if (limit < ElevationPreferences.MIN_RAM_CACHE_SIZE_LIMIT) {
-            limit = ElevationPreferences.MIN_RAM_CACHE_SIZE_LIMIT;
-        } else if (limit > ElevationPreferences.MAX_RAM_CACHE_SIZE_LIMIT) {
-            limit = ElevationPreferences.MAX_RAM_CACHE_SIZE_LIMIT;
+        if (limit < ElevationPreferences.MIN_SRTM_CACHE_SIZE_LIMIT) {
+            limit = ElevationPreferences.MIN_SRTM_CACHE_SIZE_LIMIT;
+        } else if (limit > ElevationPreferences.MAX_SRTM_CACHE_SIZE_LIMIT) {
+            limit = ElevationPreferences.MAX_SRTM_CACHE_SIZE_LIMIT;
         }
         cacheSizeLimit = limit * 1024 * 1024;
         Logging.info("Elevation: Maximum size of the SRTM tile cache set to " + getSizeString(cacheSizeLimit));

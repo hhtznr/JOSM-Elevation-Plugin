@@ -158,11 +158,12 @@ public class GeoTiffEnvelopeLayer extends Layer implements GeoTiffElevationDataP
 
     @Override
     public Action[] getMenuEntries() {
-        Action[] actions = new Action[4];
+        Action[] actions = new Action[5];
         actions[0] = LayerListDialog.getInstance().createActivateLayerAction(this);
         actions[1] = LayerListDialog.getInstance().createShowHideLayerAction();
-        actions[2] = SeparatorLayerAction.INSTANCE;
-        actions[3] = new GeoTiffSyncIndexFromDiskAction(elevationDataProvider.getGeoTiffIndex());
+        actions[2] = LayerListDialog.getInstance().createDeleteLayerAction();
+        actions[3] = SeparatorLayerAction.INSTANCE;
+        actions[4] = new GeoTiffSyncIndexFromDiskAction(elevationDataProvider.getGeoTiffIndex());
         return actions;
     }
 

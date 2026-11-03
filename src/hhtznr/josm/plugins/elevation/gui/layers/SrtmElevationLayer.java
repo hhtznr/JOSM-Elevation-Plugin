@@ -193,17 +193,18 @@ public class SrtmElevationLayer extends ElevationLayer implements SrtmElevationD
 
     @Override
     public Action[] getMenuEntries() {
-        Action[] actions = new Action[10];
+        Action[] actions = new Action[11];
         actions[0] = LayerListDialog.getInstance().createShowHideLayerAction();
-        actions[1] = SeparatorLayerAction.INSTANCE;
-        actions[2] = new ShowLowestAndHighestPointsAction();
-        actions[3] = new ShowContourLinesAction();
-        actions[4] = new ShowElevationRasterAction();
-        actions[5] = new ShowHillshadeAction();
-        actions[6] = SeparatorLayerAction.INSTANCE;
-        actions[7] = new ShowLayerAdjustmentDialogAction();
-        actions[8] = SeparatorLayerAction.INSTANCE;
-        actions[9] = new ShowInfoDialogAction();
+        actions[1] = LayerListDialog.getInstance().createDeleteLayerAction();
+        actions[2] = SeparatorLayerAction.INSTANCE;
+        actions[3] = new ShowLowestAndHighestPointsAction();
+        actions[4] = new ShowContourLinesAction();
+        actions[5] = new ShowElevationRasterAction();
+        actions[6] = new ShowHillshadeAction();
+        actions[7] = SeparatorLayerAction.INSTANCE;
+        actions[8] = new ShowLayerAdjustmentDialogAction();
+        actions[9] = SeparatorLayerAction.INSTANCE;
+        actions[10] = new ShowInfoDialogAction();
         return actions;
     }
 

@@ -1,5 +1,6 @@
 package hhtznr.josm.plugins.elevation.gui.layers;
 
+import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Component;
@@ -65,6 +66,7 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
     private GeoTiffElevationGrid elevationGrid = null;
     private GeoTiffElevationGridView elevationGridView = null;
     private BufferedImage grayscaleImage = null;
+    private float grayscaleImageOpacity;
     private volatile ContourLines contourLines = null;
     private volatile Future<?> contourLinesFuture = null;
     private final Object contourLinesLock = new Object();
@@ -108,6 +110,7 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
         this.upperCutoffElevation = getUpperCutoffElevation();
 
         grayscaleImageEnabled = ElevationPreferences.getGeoTiffGrayscaleImageEnabled();
+        grayscaleImageOpacity = ElevationPreferences.getGeoTiffGrayscaleImageOpacity();
 
         geoTiffLayers.add(this);
 
@@ -153,6 +156,32 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
     public boolean toggleGrayscaleImageEnabled() {
         grayscaleImageEnabled = !grayscaleImageEnabled;
         return grayscaleImageEnabled;
+    }
+
+    /**
+     * Returns the opacity of the grayscale image.
+     *
+     * @return The opacity of the grayscale image (range: 0.0 to 1.0).
+     */
+    public float getGrayscaleImageOpacity() {
+        return grayscaleImageOpacity;
+    }
+
+    /**
+     * Sets the opacity of the grayscale image.
+     *
+     * @param opacity The opacity to set (range: 0.0 to 1.0).
+     */
+    public void setGrayscaleImageOpacity(float opacity) {
+        if (opacity < ElevationPreferences.MIN_IMAGE_OPACITY) {
+            opacity = ElevationPreferences.MIN_IMAGE_OPACITY;
+        } else if (opacity > ElevationPreferences.MAX_IMAGE_OPACITY) {
+            opacity = ElevationPreferences.MAX_IMAGE_OPACITY;
+        }
+        if (opacity == grayscaleImageOpacity) {
+            return;
+        }
+        grayscaleImageOpacity = opacity;
     }
 
     /**
@@ -238,7 +267,14 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
         int width = bottomRightScreen.x - topLeftScreen.x;
         int height = bottomRightScreen.y - topLeftScreen.y;
         if (width > 0 && height > 0 && grayscaleImageEnabled && grayscaleImage != null) {
-            g.drawImage(grayscaleImage, topLeftScreen.x, topLeftScreen.y, width, height, null);
+            Graphics2D imageGraphics = (Graphics2D) g.create();
+            try {
+                imageGraphics.setComposite(
+                    AlphaComposite.getInstance(AlphaComposite.SRC_OVER, grayscaleImageOpacity));
+                imageGraphics.drawImage(grayscaleImage, topLeftScreen.x, topLeftScreen.y, width, height, null);
+            } finally {
+                imageGraphics.dispose();
+            }
         }
     }
 

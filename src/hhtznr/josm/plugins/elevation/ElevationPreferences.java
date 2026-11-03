@@ -685,6 +685,32 @@ public class ElevationPreferences {
     private static final boolean DEFAULT_GEOTIFF_GRAYSCALE_IMAGE_ENABLED = true;
 
     /**
+     * Property key for width of the opacity of GeoTIFF grayscale images.
+     */
+    public static final String GEOTIFF_GRAYSCALE_IMAGE_OPACITY = "elevation.geotiff.layer.grayscale-image.opacity";
+
+    /*
+     * Default property value of the opacity of GeoTIFF grayscale images: {@code
+     * 1.0} (fully opaque).
+     */
+    private static final float DEFAULT_GEOTIFF_GRAYSCALE_IMAGE_OPACITY = 1.0f;
+
+    /**
+     * Minimum value of image opacity: {@code 0.0} (fully transparent).
+     */
+    public static final float MIN_IMAGE_OPACITY = 0.0f;
+
+    /**
+     * Maximum value of image opacity: {@code 1.0} (fully opaque).
+     */
+    public static final float MAX_IMAGE_OPACITY = 1.0f;
+
+    /**
+     * Increment of image opacity: {@code 0.01}.
+     */
+    public static final float INCR_IMAGE_OPACITY = 0.01f;
+
+    /**
      * Removes the legacy 'elevation enabled' preference from the settings.
      *
      * @return {@code true} if the value has changed.
@@ -1497,6 +1523,32 @@ public class ElevationPreferences {
      */
     public static boolean setGeoTiffGrayscaleImagesEnabled(boolean enabled) {
         return Config.getPref().putBoolean(GEOTIFF_GRAYSCALE_IMAGE_ENABLED, enabled);
+    }
+
+    /**
+     * Returns the opacity of GeoTIFF grayscale images.
+     *
+     * @return The opacity of GeoTIFF grayscale images (range: 0 to 1.0).
+     */
+    public static float getGeoTiffGrayscaleImageOpacity() {
+        return (float) Config.getPref().getDouble(GEOTIFF_GRAYSCALE_IMAGE_OPACITY,
+                DEFAULT_GEOTIFF_GRAYSCALE_IMAGE_OPACITY);
+    }
+
+    /**
+     * Sets the opacity of GeoTIFF grayscale images to the specified value in the
+     * settings.
+     *
+     * @param opacity The opacity of GeoTIFF grayscale images (range: 0 to 1.0).
+     * @return {@code true} if the opacity value has changed.
+     */
+    public static boolean setGeoTiffGrayscaleImageOpacity(double opacity) {
+        if (opacity < MIN_IMAGE_OPACITY) {
+            opacity = MIN_IMAGE_OPACITY;
+        } else if (opacity > MAX_IMAGE_OPACITY) {
+            opacity = MAX_IMAGE_OPACITY;
+        }
+        return Config.getPref().putDouble(GEOTIFF_GRAYSCALE_IMAGE_OPACITY, opacity);
     }
 
     private ElevationPreferences() {

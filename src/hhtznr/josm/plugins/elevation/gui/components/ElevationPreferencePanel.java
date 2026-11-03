@@ -47,6 +47,7 @@ import hhtznr.josm.plugins.elevation.ElevationPreferences;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmTile;
 import hhtznr.josm.plugins.elevation.io.SrtmFileDownloader;
 import hhtznr.josm.plugins.elevation.util.Coloring;
+import hhtznr.josm.plugins.elevation.util.DrawUtils;
 
 /**
  * Component allowing to enable or disable the plugin functionality, define the
@@ -183,6 +184,10 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
     private final ColorChooserButton btnGeoTiffStrokeColor = new ColorChooserButton(this, "Choose Color of Contour Lines",
             ElevationPreferences.getGeoTiffContourLineColor());
+
+    private final JSpinner spGeoTiffGrayscaleImageOpacity = UIFactory.createSpinner(
+            DrawUtils.toPercent(ElevationPreferences.getGeoTiffGrayscaleImageOpacity()), DrawUtils.toPercent(ElevationPreferences.MIN_IMAGE_OPACITY),
+            DrawUtils.toPercent(ElevationPreferences.MAX_IMAGE_OPACITY), DrawUtils.toPercent(ElevationPreferences.INCR_IMAGE_OPACITY));
 
     /**
      * Constructs a new {@code ElevationPreferencePanel}.
@@ -623,6 +628,23 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.weightx = 1.0;
         pnl.add(new JPanel(), gc);
 
+
+        // Row "Grayscale image opacity
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnl.add(new JLabel("Grayscale Image Opacity:"), gc);
+
+        gc.gridx++;
+        pnl.add(spGeoTiffGrayscaleImageOpacity, gc);
+
+        gc.gridx++;
+        gc.fill = GBC.HORIZONTAL;
+        gc.gridwidth = GBC.REMAINDER;
+        gc.weightx = 1.0;
+        pnl.add(new JLabel("%"), gc);
+
         // add an extra spacer, otherwise the layout is broken
         pnl.add(Box.createVerticalGlue(), GBC.eol().fill());
         return pnl;
@@ -945,6 +967,9 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         ElevationPreferences
                 .setGeoTiffContourLineColoringScheme((Coloring.Scheme) cbGeoTiffContourLineColoring.getSelectedItem());
         ElevationPreferences.setGeoTiffContourLineColor(btnGeoTiffStrokeColor.getSelectedColor());
+
+        int opacityPercent = (Integer) spGeoTiffGrayscaleImageOpacity.getValue();
+        ElevationPreferences.setGeoTiffGrayscaleImageOpacity(DrawUtils.fromPercent(opacityPercent));
     }
 
     private class RemoveCredentialsAction extends AbstractAction {

@@ -25,6 +25,7 @@ import hhtznr.josm.plugins.elevation.gui.components.ColorChooserButton;
 import hhtznr.josm.plugins.elevation.gui.components.UIFactory;
 import hhtznr.josm.plugins.elevation.gui.layers.GeoTiffElevationLayer;
 import hhtznr.josm.plugins.elevation.util.Coloring;
+import hhtznr.josm.plugins.elevation.util.DrawUtils;
 
 /**
  * Dialog to dynamically adjust rendering options of a GeoTIFF elevation layer.
@@ -50,15 +51,22 @@ public class GeoTiffElevationLayerAdjustmentDialog extends ExtendedDialog {
             ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION, ElevationPreferences.DEFAULT_LOWER_CUTOFF_ELEVATION,
             ElevationPreferences.DEFAULT_UPPER_CUTOFF_ELEVATION, 1);
 
-    private final JSpinner spStrokeWidth = UIFactory.createSpinner(ElevationPreferences.getGeoTiffContourLineStrokeWidth(),
-            ElevationPreferences.MIN_CONTOUR_LINE_STROKE_WIDTH, ElevationPreferences.MAX_CONTOUR_LINE_STROKE_WIDTH,
-            ElevationPreferences.INCR_CONTOUR_LINE_STROKE_WIDTH);
+    private final JSpinner spStrokeWidth = UIFactory.createSpinner(
+            ElevationPreferences.getGeoTiffContourLineStrokeWidth(), ElevationPreferences.MIN_CONTOUR_LINE_STROKE_WIDTH,
+            ElevationPreferences.MAX_CONTOUR_LINE_STROKE_WIDTH, ElevationPreferences.INCR_CONTOUR_LINE_STROKE_WIDTH);
 
     private final JosmComboBox<Coloring.Scheme> comboBoxColoring = new JosmComboBox<>(
             new Coloring.Scheme[] { Coloring.Scheme.CONSTANT_COLOR, Coloring.Scheme.FALSE_COLOR });
 
     private final ColorChooserButton btnStrokeColor = new ColorChooserButton(this, "Choose Color of Contour Lines",
             ElevationPreferences.getGeoTiffContourLineColor());
+
+    // Grayscale image
+    private final JSpinner spGrayscaleImageOpacity = UIFactory.createSpinner(
+            DrawUtils.toPercent(ElevationPreferences.getGeoTiffGrayscaleImageOpacity()),
+            DrawUtils.toPercent(ElevationPreferences.MIN_IMAGE_OPACITY),
+            DrawUtils.toPercent(ElevationPreferences.MAX_IMAGE_OPACITY),
+            DrawUtils.toPercent(ElevationPreferences.INCR_IMAGE_OPACITY));
 
     /**
      * Constructs a dialog that allows to dynamically adjust rendering parameters of
@@ -194,6 +202,22 @@ public class GeoTiffElevationLayerAdjustmentDialog extends ExtendedDialog {
         gc.weightx = 1.0;
         pnl.add(new JPanel(), gc);
 
+        // Row "Grayscale image opacity"
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnl.add(new JLabel("Grayscale Image Opacity:"), gc);
+
+        gc.gridx++;
+        pnl.add(spGrayscaleImageOpacity, gc);
+
+        gc.gridx++;
+        gc.fill = GBC.HORIZONTAL;
+        gc.gridwidth = GBC.REMAINDER;
+        gc.weightx = 1.0;
+        pnl.add(new JLabel("%"), gc);
+
         // add an extra spacer, otherwise the layout is broken
         pnl.add(Box.createVerticalGlue(), GBC.eol().fill());
 
@@ -240,12 +264,15 @@ public class GeoTiffElevationLayerAdjustmentDialog extends ExtendedDialog {
             }
 
             setTitle(getDialogTitle(newLayer));
+
             spIsostep.setValue(Integer.valueOf(newLayer.getContourLineIsostep()));
             spUpperCutoffValue.setValue(Integer.valueOf(newLayer.getUpperCutoffElevation()));
             spLowerCutoffValue.setValue(Integer.valueOf(newLayer.getLowerCutoffElevation()));
             spStrokeWidth.setValue(Double.valueOf(newLayer.getContourLineStrokeWidth()));
             comboBoxColoring.setSelectedItem(newLayer.getContourLineColoringScheme());
             btnStrokeColor.setSelectedColor(newLayer.getContourLineConstantColor());
+
+            spGrayscaleImageOpacity.setValue(Integer.valueOf(DrawUtils.toPercent(newLayer.getGrayscaleImageOpacity())));
 
             elevationLayer = newLayer;
         }
@@ -280,12 +307,17 @@ public class GeoTiffElevationLayerAdjustmentDialog extends ExtendedDialog {
             float strokeWidth = ((Double) spStrokeWidth.getValue()).floatValue();
             Coloring.Scheme scheme = (Coloring.Scheme) comboBoxColoring.getSelectedItem();
             Color color = btnStrokeColor.getSelectedColor();
+
+            int opacityPercent = (Integer) spGrayscaleImageOpacity.getValue();
+            float opacity = DrawUtils.fromPercent(opacityPercent);
+
             elevationLayer.setContourLineIsostep(isostep);
             elevationLayer.setLowerCutoffElevation(lowerCutoff);
             elevationLayer.setUpperCutoffElevation(upperCutoff);
             elevationLayer.setContourLineStrokeWidth(strokeWidth);
             elevationLayer.setContourLineColoringScheme(scheme);
             elevationLayer.setContourLineConstantColor(color);
+            elevationLayer.setGrayscaleImageOpacity(opacity);
             elevationLayer.triggerRepaint();
         }
     }

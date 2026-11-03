@@ -24,6 +24,26 @@ public class DrawUtils {
     }
 
     /**
+     * Converts a float value to a percentage represented as integer.
+     *
+     * @param value The float value.
+     * @return The corresponding integer percentage.
+     */
+    public static int toPercent(float value) {
+        return Math.round(value * 100);
+    }
+
+    /**
+     * Converts a percentage represented as integer to a float value.
+     *
+     * @param percentage The integer percentage.
+     * @return The corresponding float value.
+     */
+    public static float fromPercent(int percentage) {
+        return (float) (percentage / 100.0);
+    }
+
+    /**
      * Draws and equilateral triangle.
      *
      * @param g            The 2D graphics context on which to draw.

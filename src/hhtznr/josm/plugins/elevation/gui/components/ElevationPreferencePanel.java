@@ -72,6 +72,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         }
     }
 
+    // SRTM Elevation Layer
     private final JosmComboBox<SrtmTile.Type> cbSrtmType = new JosmComboBox<>(
             new SrtmTile.Type[] { SrtmTile.Type.SRTM1, SrtmTile.Type.SRTM3 });
 
@@ -112,7 +113,8 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
     private final JLabel lblSrtmStrokeColor = new JLabel("Contour Line Constant Color:");
 
-    private final ColorChooserButton btnSrtmStrokeColor;
+    private final ColorChooserButton btnSrtmStrokeColor = new ColorChooserButton(this, "Choose Color of Contour Lines",
+            ElevationPreferences.getSrtmContourLineColor());;
 
     private final JLabel lblSrtmHillshadeAltitude = new JLabel("Hillshade Illumination Source Altitude:");
     private final JSpinner spSrtmHillshadeAltitude = UIFactory.createSpinner(
@@ -150,19 +152,42 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
     private final JosmTextField tfSrtmAuthBearer = new JosmTextField(70);
     private final JButton btnSrtmRemoveAuthBearer = new JButton(new RemoveAuthBearerAction());
 
+    // GeoTIFF Overview Layer
     private final JCheckBox cbEnableGeoTiffEnvelopeLayer = new JCheckBox("Enable GeoTIFF Overview Layer");
     private final JLabel lblGeoTiffDirectory = new JLabel("GeoTIFF Directory:");
     private final JTextField tfGeoTiffDirectory = new JosmTextField(70);;
     private final JButton btSelectGeoTiffDirectory = new JButton("Select");
     private final JCheckBox cbGeoTiffRecursive = new JCheckBox("Recursive");
 
+    // GeoTIFF Elevation Layers
+    private final JLabel lblGeoTiffIsostep = new JLabel("Contour Line Isostep:");
+    private final JSpinner spGeoTiffIsostep = UIFactory.createSpinner(ElevationPreferences.getGeoTiffContourLineIsostep(),
+            ElevationPreferences.MIN_CONTOUR_LINE_ISOSTEP, ElevationPreferences.MAX_CONTOUR_LINE_ISOSTEP,
+            ElevationPreferences.INCR_CONTOUR_LINE_ISOSTEP);
+    private final JLabel lblGeoTiffIsostepUnit = new JLabel("m");
+
+    private final JLabel lblGeoTiffStrokeWidth = new JLabel("Contour Line Stroke Width:");
+
+    private final JSpinner spGeoTiffStrokeWidth = UIFactory.createSpinner(
+            ElevationPreferences.getSrtmContourLineStrokeWidth(), ElevationPreferences.MIN_CONTOUR_LINE_STROKE_WIDTH,
+            ElevationPreferences.MAX_CONTOUR_LINE_STROKE_WIDTH, ElevationPreferences.INCR_CONTOUR_LINE_STROKE_WIDTH);
+
+    private final JLabel lblGeoTiffStrokeWidthUnit = new JLabel("px");
+
+    private final JLabel lblGeoTiffContourLineColoring = new JLabel("Contour Line Coloring Scheme:");
+
+    private final JosmComboBox<Coloring.Scheme> cbGeoTiffContourLineColoring = new JosmComboBox<>(
+            new Coloring.Scheme[] { Coloring.Scheme.CONSTANT_COLOR, Coloring.Scheme.FALSE_COLOR });
+
+    private final JLabel lblGeoTiffStrokeColor = new JLabel("Contour Line Constant Color:");
+
+    private final ColorChooserButton btnGeoTiffStrokeColor = new ColorChooserButton(this, "Choose Color of Contour Lines",
+            ElevationPreferences.getGeoTiffContourLineColor());
+
     /**
      * Constructs a new {@code ElevationPreferencePanel}.
      */
     public ElevationPreferencePanel() {
-        btnSrtmStrokeColor = new ColorChooserButton(this, "Choose Color of Contour Lines",
-                ElevationPreferences.getSrtmContourLineColor());
-
         setLayout(new GridBagLayout());
         setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
         add(buildPreferencePanel(), GBC.eop().anchor(GBC.NORTHWEST).fill(GBC.BOTH));
@@ -199,8 +224,6 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
                 ElevationPreferences.DEFAULT_SONNY_LIDAR_DTM3_DIRECTORY.toAbsolutePath().toString()));
         sb.append("</body>");
         sb.append("</html>");
-
-        JLabel labelSrtmSourceInfo = new JLabel("Information on SRTM Data Sources");
 
         JMultilineLabel labelSRTMSources = new JMultilineLabel(sb.toString());
         labelSRTMSources.addHyperlinkListener(event -> {
@@ -267,13 +290,14 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         // Elevation preferences panel
         JPanel pnl = new AutoSizePanel();
 
+        // SRTM Elevation Layer
         // Row "SRTM source info"
         gc.gridy = 0;
         gc.gridx = 0;
         gc.fill = GBC.HORIZONTAL;
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
-        pnl.add(labelSrtmSourceInfo, gc);
+        pnl.add(new JLabel("Information on SRTM Data Sources"), gc);
 
         // Row "SRTM sources"
         gc.gridy++;
@@ -505,16 +529,99 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.weightx = 1.0;
         pnl.add(new JSeparator(SwingConstants.HORIZONTAL), gc);
 
-        // Row "Enable GeoTIFF layer"
+        // GeoTIFF Overview Layer
+        // Row "Enable GeoTIFF Overview Layer"
         gc.gridy++;
         gc.gridx = 0;
         gc.fill = GBC.NONE;
         pnl.add(cbEnableGeoTiffEnvelopeLayer, gc);
 
-        // Row "GeoTiff layer panel"
+        // Row "GeoTiff Overview Layer panel"
         gc.gridy++;
         gc.fill = GBC.BOTH;
-        pnl.add(buildGeoTiffLayerPanel(), gc);
+        pnl.add(buildGeoTiffEnvelopeLayerPanel(), gc);
+
+        // Separator before next section
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.fill = GBC.HORIZONTAL;
+        gc.gridwidth = GBC.REMAINDER;
+        gc.weightx = 1.0;
+        pnl.add(new JSeparator(SwingConstants.HORIZONTAL), gc);
+
+        // GeoTIFF Elevation Layers
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.fill = GBC.HORIZONTAL;
+        gc.gridwidth = GBC.REMAINDER;
+        gc.weightx = 1.0;
+        pnl.add(new JLabel("GeoTIFF Elevation Layers"), gc);
+
+        // Row "Contour line isostep"
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnl.add(lblGeoTiffIsostep, gc);
+
+        gc.gridx++;
+        pnl.add(spGeoTiffIsostep, gc);
+
+        gc.gridx++;
+        gc.fill = GBC.HORIZONTAL;
+        gc.gridwidth = GBC.REMAINDER;
+        gc.weightx = 1.0;
+        pnl.add(lblGeoTiffIsostepUnit, gc);
+
+        // Row "Contour line stroke width"
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnl.add(lblGeoTiffStrokeWidth, gc);
+
+        gc.gridx++;
+        pnl.add(spGeoTiffStrokeWidth, gc);
+
+        gc.gridx++;
+        gc.fill = GBC.HORIZONTAL;
+        gc.gridwidth = GBC.REMAINDER;
+        gc.weightx = 1.0;
+        pnl.add(lblGeoTiffStrokeWidthUnit, gc);
+
+        // Row "Contour line coloring scheme"
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnl.add(lblGeoTiffContourLineColoring, gc);
+
+        gc.gridx++;
+        gc.fill = GBC.BOTH;
+        pnl.add(cbGeoTiffContourLineColoring, gc);
+
+        gc.gridx++;
+        gc.fill = GBC.HORIZONTAL;
+        gc.gridwidth = GBC.REMAINDER;
+        gc.weightx = 1.0;
+        pnl.add(new JPanel(), gc);
+
+        // Row "Contour line constant color"
+        gc.gridy++;
+        gc.gridx = 0;
+        gc.gridwidth = 1;
+        gc.weightx = 0.0;
+        pnl.add(lblGeoTiffStrokeColor, gc);
+
+        gc.gridx++;
+        gc.fill = GBC.BOTH;
+        pnl.add(btnGeoTiffStrokeColor, gc);
+
+        gc.gridx++;
+        gc.fill = GBC.HORIZONTAL;
+        gc.gridwidth = GBC.REMAINDER;
+        gc.weightx = 1.0;
+        pnl.add(new JPanel(), gc);
 
         // add an extra spacer, otherwise the layout is broken
         pnl.add(Box.createVerticalGlue(), GBC.eol().fill());
@@ -617,7 +724,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         pnlSrtmAuthBearer.add(new JPanel(), gc);
     }
 
-    public JPanel buildGeoTiffLayerPanel() {
+    public JPanel buildGeoTiffEnvelopeLayerPanel() {
         JScrollPane geoTiffDirectoryScrollPane = new JScrollPane(tfGeoTiffDirectory,
                 JScrollPane.VERTICAL_SCROLLBAR_NEVER, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
@@ -684,6 +791,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
      * Initializes the panel with the values from the preferences.
      */
     private final void initFromPreferences() {
+        // SRTM Elevation Layer
         cbSrtmType.setSelectedItem(ElevationPreferences.getSrtmType());
         cbSrtmInterpolation.setSelectedItem(ElevationPreferences.getSrtmElevationInterpolation());
         cbEnableSrtmElevationLayer.setSelected(ElevationPreferences.getSrtmElevationLayerEnabled());
@@ -713,12 +821,16 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
             tfSrtmAuthBearer.setText(oAuthToken.getBearerToken());
         }
 
+        // GeoTIFF Overview Layer
         cbEnableGeoTiffEnvelopeLayer.setSelected(ElevationPreferences.getGeoTiffEnvelopeLayerEnabled());
         Path path = ElevationPreferences.getGeoTiffIndexDirectory();
         if (path != null) {
             tfGeoTiffDirectory.setText(path.toAbsolutePath().toString());
         }
         cbGeoTiffRecursive.setSelected(ElevationPreferences.getGeoTiffIndexDirectoryRecursive());
+
+        // GeoTIFF Elevation Layers
+        cbGeoTiffContourLineColoring.setSelectedItem(ElevationPreferences.getGeoTiffContourLineColoringScheme());
     }
 
     private final void updateSrtmLayerEnabledState() {
@@ -791,6 +903,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
      * Saves the current values to the preferences.
      */
     public void saveToPreferences() {
+        // SRTM Elevation Layer
         ElevationPreferences.setSrtmType((SrtmTile.Type) cbSrtmType.getSelectedItem());
         ElevationPreferences
                 .setSrtmElevationInterpolation((SrtmTile.Interpolation) cbSrtmInterpolation.getSelectedItem());
@@ -816,6 +929,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
             ElevationPreferences.setSrtmServerAuthType(SrtmFileDownloader.AuthType.BEARER_TOKEN);
         }
 
+        // GeoTIFF Overview Layer
         ElevationPreferences.setGeoTiffEnvelopeLayerEnabled(cbEnableGeoTiffEnvelopeLayer.isSelected());
         String pathString = tfGeoTiffDirectory.getText();
         Path path = null;
@@ -824,6 +938,13 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         }
         ElevationPreferences.setGeoTiffIndexDirectory(path);
         ElevationPreferences.setGeoTiffIndexDirectoryRecursive(cbGeoTiffRecursive.isSelected());
+
+        // GeoTIFF Elevation Layers
+        ElevationPreferences.setGeoTiffContourLineIsostep((Integer) spGeoTiffIsostep.getValue());
+        ElevationPreferences.setGeoTiffContourLineStrokeWidth((Double) spGeoTiffStrokeWidth.getValue());
+        ElevationPreferences
+                .setGeoTiffContourLineColoringScheme((Coloring.Scheme) cbGeoTiffContourLineColoring.getSelectedItem());
+        ElevationPreferences.setGeoTiffContourLineColor(btnGeoTiffStrokeColor.getSelectedColor());
     }
 
     private class RemoveCredentialsAction extends AbstractAction {

@@ -310,11 +310,11 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
      */
     public void reconfigureElevationDataProvider() {
         // SRTM file type to read and download
-        SrtmTile.Type srtmType = ElevationPreferences.getSRTMType();
+        SrtmTile.Type srtmType = ElevationPreferences.getSrtmType();
         // Elevation interpolation method
-        SrtmTile.Interpolation elevationInterpolation = ElevationPreferences.getElevationInterpolation();
+        SrtmTile.Interpolation elevationInterpolation = ElevationPreferences.getSrtmElevationInterpolation();
         // Maximum size of the SRTM tile cache
-        int cacheSizeLimit = ElevationPreferences.getRAMCacheSizeLimit();
+        int cacheSizeLimit = ElevationPreferences.getSrtmCacheSizeLimit();
         // Auto-download of SRTM files
         boolean elevationAutoDownloadEnabled = ElevationPreferences.getSrtmAutoDownloadEnabled();
         // Configure the elevation data provider

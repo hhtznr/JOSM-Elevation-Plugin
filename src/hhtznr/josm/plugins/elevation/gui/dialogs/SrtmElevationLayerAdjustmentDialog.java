@@ -95,7 +95,7 @@ public class SrtmElevationLayerAdjustmentDialog extends ExtendedDialog {
 
         elevationLayer = layer;
 
-        comboBoxSRTMType.setSelectedItem(ElevationPreferences.getSRTMType());
+        comboBoxSRTMType.setSelectedItem(ElevationPreferences.getSrtmType());
 
         spRenderingLimit.setToolTipText(ElevationPluginTexts.TOOL_TIP_LAYER_RENDERING_LIMIT);
         spUpperCutoffValue.setToolTipText(ElevationPluginTexts.TOOL_TIP_UPPER_CUTOFF_ELEVATION);

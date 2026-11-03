@@ -30,7 +30,7 @@ public final class ElevationTabPreferenceSetting extends DefaultTabPreferenceSet
      */
     public ElevationTabPreferenceSetting(ElevationPlugin plugin) {
         super("elevation", I18n.tr("Elevation Data"),
-                I18n.tr("Elevation preferences and connection settings for the SRTM server."));
+                I18n.tr("Elevation preferences and connection settings for the NASA Earthdata SRTM server."));
         this.plugin = plugin;
     }
 

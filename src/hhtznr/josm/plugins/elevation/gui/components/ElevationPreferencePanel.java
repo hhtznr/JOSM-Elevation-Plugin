@@ -72,84 +72,83 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         }
     }
 
-    private final JosmComboBox<SrtmTile.Type> cbSRTMType = new JosmComboBox<>(
+    private final JosmComboBox<SrtmTile.Type> cbSrtmType = new JosmComboBox<>(
             new SrtmTile.Type[] { SrtmTile.Type.SRTM1, SrtmTile.Type.SRTM3 });
 
-    private final JosmComboBox<SrtmTile.Interpolation> cbInterpolation = new JosmComboBox<>(
+    private final JosmComboBox<SrtmTile.Interpolation> cbSrtmInterpolation = new JosmComboBox<>(
             SrtmTile.Interpolation.values());
 
-    private final JLabel lblCacheSize = new JLabel("Max. Size of In-Memory Tile Cache:");
-    private final JSpinner spCacheSize = UIFactory.createSpinner(ElevationPreferences.getRAMCacheSizeLimit(),
+    private final JLabel lblSrtmCacheSize = new JLabel("Target Size of In-Memory SRTM Tile Cache:");
+    private final JSpinner spSrtmCacheSize = UIFactory.createSpinner(ElevationPreferences.getSrtmCacheSizeLimit(),
             ElevationPreferences.MIN_SRTM_CACHE_SIZE_LIMIT, ElevationPreferences.MAX_SRTM_CACHE_SIZE_LIMIT,
             ElevationPreferences.INCR_SRTM_CACHE_SIZE_LIMIT);
 
     private final JCheckBox cbEnableSrtmElevationLayer = new JCheckBox("Enable SRTM Elevation Visualization Layer");
 
-    private final JLabel lblRenderingLimit = new JLabel("Layer Rendering Map Size Limit:");
-    private final JSpinner spRenderingLimit = UIFactory.createSpinner(
+    private final JLabel lblSrtmRenderingLimit = new JLabel("SRTM Layer Rendering Map Size Limit:");
+    private final JSpinner spSrtmRenderingLimit = UIFactory.createSpinner(
             ElevationPreferences.getSrtmElevationLayerRenderingLimit(),
-            ElevationPreferences.MIN_SRTM_LAYER_RENDERING_LIMIT,
-            ElevationPreferences.MAX_SRTM_LAYER_RENDERING_LIMIT,
+            ElevationPreferences.MIN_SRTM_LAYER_RENDERING_LIMIT, ElevationPreferences.MAX_SRTM_LAYER_RENDERING_LIMIT,
             ElevationPreferences.INCR_SRTM_LAYER_RENDERING_LIMIT);
-    private final JLabel lblRenderingLimitUnit = new JLabel("°");
-    private final JLabel lblIsostep = new JLabel("Contour Line Isostep:");
-    private final JSpinner spIsostep = UIFactory.createSpinner(ElevationPreferences.getSrtmContourLineIsostep(),
+    private final JLabel lblSrtmRenderingLimitUnit = new JLabel("°");
+    private final JLabel lblSrtmIsostep = new JLabel("Contour Line Isostep:");
+    private final JSpinner spSrtmIsostep = UIFactory.createSpinner(ElevationPreferences.getSrtmContourLineIsostep(),
             ElevationPreferences.MIN_CONTOUR_LINE_ISOSTEP, ElevationPreferences.MAX_CONTOUR_LINE_ISOSTEP,
             ElevationPreferences.INCR_CONTOUR_LINE_ISOSTEP);
-    private final JLabel lblIsostepUnit = new JLabel("m");
+    private final JLabel lblSrtmIsostepUnit = new JLabel("m");
 
-    private final JLabel lblStrokeWidth = new JLabel("Contour Line Stroke Width:");
+    private final JLabel lblSrtmStrokeWidth = new JLabel("Contour Line Stroke Width:");
 
-    private final JSpinner spStrokeWidth = UIFactory.createSpinner(ElevationPreferences.getSrtmContourLineStrokeWidth(),
-            ElevationPreferences.MIN_CONTOUR_LINE_STROKE_WIDTH, ElevationPreferences.MAX_CONTOUR_LINE_STROKE_WIDTH,
-            ElevationPreferences.INCR_CONTOUR_LINE_STROKE_WIDTH);
+    private final JSpinner spSrtmStrokeWidth = UIFactory.createSpinner(
+            ElevationPreferences.getSrtmContourLineStrokeWidth(), ElevationPreferences.MIN_CONTOUR_LINE_STROKE_WIDTH,
+            ElevationPreferences.MAX_CONTOUR_LINE_STROKE_WIDTH, ElevationPreferences.INCR_CONTOUR_LINE_STROKE_WIDTH);
 
-    private final JLabel lblStrokeWidthUnit = new JLabel("px");
+    private final JLabel lblSrtmStrokeWidthUnit = new JLabel("px");
 
-    private final JLabel lblContourLineColoring = new JLabel("Contour Line Coloring Scheme:");
+    private final JLabel lblSrtmContourLineColoring = new JLabel("Contour Line Coloring Scheme:");
 
-    private final JosmComboBox<Coloring.Scheme> cbContourLineColoring = new JosmComboBox<>(
+    private final JosmComboBox<Coloring.Scheme> cbSrtmContourLineColoring = new JosmComboBox<>(
             new Coloring.Scheme[] { Coloring.Scheme.CONSTANT_COLOR, Coloring.Scheme.FALSE_COLOR });
 
-    private final JLabel lblStrokeColor = new JLabel("Contour Line Constant Color:");
+    private final JLabel lblSrtmStrokeColor = new JLabel("Contour Line Constant Color:");
 
-    private final ColorChooserButton btnStrokeColor;
+    private final ColorChooserButton btnSrtmStrokeColor;
 
-    private final JLabel lblHillshadeAltitude = new JLabel("Hillshade Illumination Source Altitude:");
-    private final JSpinner spHillshadeAltitude = UIFactory.createSpinner(ElevationPreferences.getSrtmHillshadeAltitude(),
-            ElevationPreferences.MIN_HILLSHADE_ALTITUDE, ElevationPreferences.MAX_HILLSHADE_ALTITUDE,
-            ElevationPreferences.INCR_HILLSHADE_ALTITUDE);
-    private final JLabel lblHillshadeAltitudeUnit = new JLabel("°");
+    private final JLabel lblSrtmHillshadeAltitude = new JLabel("Hillshade Illumination Source Altitude:");
+    private final JSpinner spSrtmHillshadeAltitude = UIFactory.createSpinner(
+            ElevationPreferences.getSrtmHillshadeAltitude(), ElevationPreferences.MIN_HILLSHADE_ALTITUDE,
+            ElevationPreferences.MAX_HILLSHADE_ALTITUDE, ElevationPreferences.INCR_HILLSHADE_ALTITUDE);
+    private final JLabel lblSrtmHillshadeAltitudeUnit = new JLabel("°");
 
-    private final JLabel lblHillshadeAzimuth = new JLabel("Hillshade Illumination Source Azimuth:");
-    private final JSpinner spHillshadeAzimuth = UIFactory.createSpinner(ElevationPreferences.getSrtmHillshadeAzimuth(),
-            ElevationPreferences.MIN_HILLSHADE_AZIMUTH, ElevationPreferences.MAX_HILLSHADE_AZIMUTH,
-            ElevationPreferences.INCR_HILLSHADE_AZIMUTH);
-    private final JLabel lblHillshadeAzimuthUnit = new JLabel("°");
+    private final JLabel lblSrtmHillshadeAzimuth = new JLabel("Hillshade Illumination Source Azimuth:");
+    private final JSpinner spSrtmHillshadeAzimuth = UIFactory.createSpinner(
+            ElevationPreferences.getSrtmHillshadeAzimuth(), ElevationPreferences.MIN_HILLSHADE_AZIMUTH,
+            ElevationPreferences.MAX_HILLSHADE_AZIMUTH, ElevationPreferences.INCR_HILLSHADE_AZIMUTH);
+    private final JLabel lblSrtmHillshadeAzimuthUnit = new JLabel("°");
 
-    private final JCheckBox cbEnableAutoDownload = new JCheckBox(
+    private final JCheckBox cbSrtmEnableAutoDownload = new JCheckBox(
             "Enable Automatic Downloading of SRTM Elevation Data from NASA Earthdata");
 
-    private final JRadioButton rbPasswordAuth = new JRadioButton("Use Password Authentication");
-    private final JRadioButton rbAuthBearer = new JRadioButton("Use Authorization Bearer Token");
+    private final JRadioButton rbSrtmPasswordAuth = new JRadioButton("Use Password Authentication");
+    private final JRadioButton rbSrtmAuthBearer = new JRadioButton("Use Authorization Bearer Token");
 
-    private final JMultilineLabel lblEarthdataNotes = new JMultilineLabel(I18n.tr(
+    private final JMultilineLabel lblSrtmEarthdataNotes = new JMultilineLabel(I18n.tr(
             "You need to register as Earthdata user at <a href=\"{0}\">{0}</a> and optionally create an authorization bearer token",
             ElevationPreferences.SRTM_SERVER_REGISTRATION_URL));
 
-    private final JPanel pnlAuthData = new JPanel(new BorderLayout());
+    private final JPanel pnlSrtmAuthData = new JPanel(new BorderLayout());
 
-    private final JPanel pnlPasswordAuth = new AutoSizePanel();
-    private final JLabel lblUserName = new JLabel("Earthdata User Name:");
-    private final JosmTextField tfUserName = new JosmTextField();
-    private final JLabel lblPassword = new JLabel("Earthdata Password:");
-    private final JosmPasswordField tfPassword = new JosmPasswordField();
-    private final JButton btnRemoveCredentials = new JButton(new RemoveCredentialsAction());
+    private final JPanel pnlSrtmPasswordAuth = new AutoSizePanel();
+    private final JLabel lblSrtmUserName = new JLabel("Earthdata User Name:");
+    private final JosmTextField tfSrtmUserName = new JosmTextField();
+    private final JLabel lblSrtmPassword = new JLabel("Earthdata Password:");
+    private final JosmPasswordField tfSrtmPassword = new JosmPasswordField();
+    private final JButton btnSrtmRemoveCredentials = new JButton(new RemoveCredentialsAction());
 
-    private final JPanel pnlAuthBearer = new AutoSizePanel();
-    private final JLabel lblAuthBearer = new JLabel("Earthdata Authorization Bearer Token:");
-    private final JosmTextField tfAuthBearer = new JosmTextField(70);
-    private final JButton btnRemoveAuthBearer = new JButton(new RemoveAuthBearerAction());
+    private final JPanel pnlSrtmAuthBearer = new AutoSizePanel();
+    private final JLabel lblSrtmAuthBearer = new JLabel("Earthdata Authorization Bearer Token:");
+    private final JosmTextField tfSrtmAuthBearer = new JosmTextField(70);
+    private final JButton btnSrtmRemoveAuthBearer = new JButton(new RemoveAuthBearerAction());
 
     private final JCheckBox cbEnableGeoTiffEnvelopeLayer = new JCheckBox("Enable GeoTIFF Overview Layer");
     private final JLabel lblGeoTiffDirectory = new JLabel("GeoTIFF Directory:");
@@ -161,7 +160,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
      * Constructs a new {@code ElevationPreferencePanel}.
      */
     public ElevationPreferencePanel() {
-        btnStrokeColor = new ColorChooserButton(this, "Choose Color of Contour Lines",
+        btnSrtmStrokeColor = new ColorChooserButton(this, "Choose Color of Contour Lines",
                 ElevationPreferences.getSrtmContourLineColor());
 
         setLayout(new GridBagLayout());
@@ -212,45 +211,45 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
         cbEnableSrtmElevationLayer.addItemListener(event -> updateSrtmLayerEnabledState());
 
-        spRenderingLimit.setToolTipText(ElevationPluginTexts.TOOL_TIP_LAYER_RENDERING_LIMIT);
+        spSrtmRenderingLimit.setToolTipText(ElevationPluginTexts.TOOL_TIP_LAYER_RENDERING_LIMIT);
 
-        spHillshadeAltitude.setToolTipText(ElevationPluginTexts.TOOL_TIP_HILLSHADE_ALTITUDE);
-        spHillshadeAzimuth.setToolTipText(ElevationPluginTexts.TOOL_TIP_HILLSHADE_AZIMUTH);
+        spSrtmHillshadeAltitude.setToolTipText(ElevationPluginTexts.TOOL_TIP_HILLSHADE_ALTITUDE);
+        spSrtmHillshadeAzimuth.setToolTipText(ElevationPluginTexts.TOOL_TIP_HILLSHADE_AZIMUTH);
 
-        cbEnableAutoDownload.setToolTipText(I18n.tr("SRTM files will be downloaded from {0} or {1}",
+        cbSrtmEnableAutoDownload.setToolTipText(I18n.tr("SRTM files will be downloaded from {0} or {1}",
                 ElevationPreferences.SRTM1_SERVER_BASE_URL, ElevationPreferences.SRTM3_SERVER_BASE_URL));
-        cbEnableAutoDownload.addItemListener(event -> updateSrtmLayerEnabledState());
+        cbSrtmEnableAutoDownload.addItemListener(event -> updateSrtmLayerEnabledState());
 
         JPanel pnlAuthButtons = new JPanel(new FlowLayout(FlowLayout.LEADING));
-        pnlAuthButtons.add(rbPasswordAuth);
-        pnlAuthButtons.add(rbAuthBearer);
+        pnlAuthButtons.add(rbSrtmPasswordAuth);
+        pnlAuthButtons.add(rbSrtmAuthBearer);
 
         ItemListener authChangeListener = new ItemListener() {
             @Override
             public void itemStateChanged(ItemEvent e) {
-                pnlAuthData.removeAll();
-                if (rbPasswordAuth.isSelected()) {
-                    pnlAuthData.add(pnlPasswordAuth, BorderLayout.CENTER);
-                    pnlAuthData.revalidate();
-                } else if (rbAuthBearer.isSelected()) {
-                    pnlAuthData.add(pnlAuthBearer, BorderLayout.CENTER);
-                    pnlAuthBearer.revalidate();
+                pnlSrtmAuthData.removeAll();
+                if (rbSrtmPasswordAuth.isSelected()) {
+                    pnlSrtmAuthData.add(pnlSrtmPasswordAuth, BorderLayout.CENTER);
+                    pnlSrtmAuthData.revalidate();
+                } else if (rbSrtmAuthBearer.isSelected()) {
+                    pnlSrtmAuthData.add(pnlSrtmAuthBearer, BorderLayout.CENTER);
+                    pnlSrtmAuthBearer.revalidate();
                 }
                 repaint();
             }
         };
 
-        rbPasswordAuth.setToolTipText("Select to use your Earthdata user name and password for authentication");
-        rbPasswordAuth.addItemListener(authChangeListener);
-        rbAuthBearer.setToolTipText("Select to use an Earthdata authorization bearer token for authentication");
-        rbAuthBearer.addItemListener(authChangeListener);
+        rbSrtmPasswordAuth.setToolTipText("Select to use your Earthdata user name and password for authentication");
+        rbSrtmPasswordAuth.addItemListener(authChangeListener);
+        rbSrtmAuthBearer.setToolTipText("Select to use an Earthdata authorization bearer token for authentication");
+        rbSrtmAuthBearer.addItemListener(authChangeListener);
 
         ButtonGroup bg = new ButtonGroup();
-        bg.add(rbPasswordAuth);
-        bg.add(rbAuthBearer);
+        bg.add(rbSrtmPasswordAuth);
+        bg.add(rbSrtmAuthBearer);
 
-        lblEarthdataNotes.setEditable(false);
-        lblEarthdataNotes.addHyperlinkListener(event -> {
+        lblSrtmEarthdataNotes.setEditable(false);
+        lblSrtmEarthdataNotes.addHyperlinkListener(event -> {
             if (event.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
                 OpenBrowser.displayUrl(event.getURL().toString());
             }
@@ -302,7 +301,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.gridx++;
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
-        pnl.add(cbSRTMType, gc);
+        pnl.add(cbSrtmType, gc);
 
         // Row "Interpolation"
         gc.gridy++;
@@ -314,17 +313,17 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.gridx++;
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
-        pnl.add(cbInterpolation, gc);
+        pnl.add(cbSrtmInterpolation, gc);
 
         // Row "Cache size"
         gc.gridy++;
         gc.gridx = 0;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
-        pnl.add(lblCacheSize, gc);
+        pnl.add(lblSrtmCacheSize, gc);
 
         gc.gridx++;
-        pnl.add(spCacheSize, gc);
+        pnl.add(spSrtmCacheSize, gc);
 
         gc.gridx++;
         gc.fill = GBC.HORIZONTAL;
@@ -352,59 +351,59 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.fill = GBC.NONE;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
-        pnl.add(lblRenderingLimit, gc);
+        pnl.add(lblSrtmRenderingLimit, gc);
 
         gc.gridx++;
         gc.fill = GBC.HORIZONTAL;
-        pnl.add(spRenderingLimit, gc);
+        pnl.add(spSrtmRenderingLimit, gc);
 
         gc.gridx++;
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
-        pnl.add(lblRenderingLimitUnit, gc);
+        pnl.add(lblSrtmRenderingLimitUnit, gc);
 
         // Row "Contour line isostep"
         gc.gridy++;
         gc.gridx = 0;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
-        pnl.add(lblIsostep, gc);
+        pnl.add(lblSrtmIsostep, gc);
 
         gc.gridx++;
-        pnl.add(spIsostep, gc);
+        pnl.add(spSrtmIsostep, gc);
 
         gc.gridx++;
         gc.fill = GBC.HORIZONTAL;
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
-        pnl.add(lblIsostepUnit, gc);
+        pnl.add(lblSrtmIsostepUnit, gc);
 
         // Row "Contour line stroke width"
         gc.gridy++;
         gc.gridx = 0;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
-        pnl.add(lblStrokeWidth, gc);
+        pnl.add(lblSrtmStrokeWidth, gc);
 
         gc.gridx++;
-        pnl.add(spStrokeWidth, gc);
+        pnl.add(spSrtmStrokeWidth, gc);
 
         gc.gridx++;
         gc.fill = GBC.HORIZONTAL;
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
-        pnl.add(lblStrokeWidthUnit, gc);
+        pnl.add(lblSrtmStrokeWidthUnit, gc);
 
         // Row "Contour line coloring scheme"
         gc.gridy++;
         gc.gridx = 0;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
-        pnl.add(lblContourLineColoring, gc);
+        pnl.add(lblSrtmContourLineColoring, gc);
 
         gc.gridx++;
         gc.fill = GBC.BOTH;
-        pnl.add(cbContourLineColoring, gc);
+        pnl.add(cbSrtmContourLineColoring, gc);
 
         gc.gridx++;
         gc.fill = GBC.HORIZONTAL;
@@ -417,11 +416,11 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.gridx = 0;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
-        pnl.add(lblStrokeColor, gc);
+        pnl.add(lblSrtmStrokeColor, gc);
 
         gc.gridx++;
         gc.fill = GBC.BOTH;
-        pnl.add(btnStrokeColor, gc);
+        pnl.add(btnSrtmStrokeColor, gc);
 
         gc.gridx++;
         gc.fill = GBC.HORIZONTAL;
@@ -442,32 +441,32 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.gridx = 0;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
-        pnl.add(lblHillshadeAltitude, gc);
+        pnl.add(lblSrtmHillshadeAltitude, gc);
 
         gc.gridx++;
-        pnl.add(spHillshadeAltitude, gc);
+        pnl.add(spSrtmHillshadeAltitude, gc);
 
         gc.gridx++;
         gc.fill = GBC.HORIZONTAL;
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
-        pnl.add(lblHillshadeAltitudeUnit, gc);
+        pnl.add(lblSrtmHillshadeAltitudeUnit, gc);
 
         // Row "Hillshade azimuth"
         gc.gridy++;
         gc.gridx = 0;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
-        pnl.add(lblHillshadeAzimuth, gc);
+        pnl.add(lblSrtmHillshadeAzimuth, gc);
 
         gc.gridx++;
-        pnl.add(spHillshadeAzimuth, gc);
+        pnl.add(spSrtmHillshadeAzimuth, gc);
 
         gc.gridx++;
         gc.fill = GBC.HORIZONTAL;
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
-        pnl.add(lblHillshadeAzimuthUnit, gc);
+        pnl.add(lblSrtmHillshadeAzimuthUnit, gc);
 
         // Separator before next section
         gc.gridy++;
@@ -482,7 +481,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.gridx = 0;
         gc.fill = GBC.NONE;
         gc.gridwidth = GBC.REMAINDER;
-        pnl.add(cbEnableAutoDownload, gc);
+        pnl.add(cbSrtmEnableAutoDownload, gc);
 
         // Row "Auth type radio buttons"
         gc.gridy++;
@@ -491,12 +490,12 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         // Row "Earthdata notes"
         gc.gridy++;
         gc.fill = GBC.HORIZONTAL;
-        pnl.add(lblEarthdataNotes, gc);
+        pnl.add(lblSrtmEarthdataNotes, gc);
 
         // Row "Auth data panel"
         gc.gridy++;
         gc.fill = GBC.BOTH;
-        pnl.add(pnlAuthData, gc);
+        pnl.add(pnlSrtmAuthData, gc);
 
         // Separator before next section
         gc.gridy++;
@@ -533,13 +532,13 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.fill = GBC.NONE;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
-        pnlPasswordAuth.add(lblUserName, gc);
+        pnlSrtmPasswordAuth.add(lblSrtmUserName, gc);
 
         gc.gridx++;
         gc.fill = GBC.HORIZONTAL;
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
-        pnlPasswordAuth.add(tfUserName, gc);
+        pnlSrtmPasswordAuth.add(tfSrtmUserName, gc);
 
         // Row "Password"
         gc.gridy++;
@@ -547,13 +546,13 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.fill = GBC.NONE;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
-        pnlPasswordAuth.add(lblPassword, gc);
+        pnlSrtmPasswordAuth.add(lblSrtmPassword, gc);
 
         gc.gridx++;
         gc.fill = GBC.HORIZONTAL;
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
-        pnlPasswordAuth.add(tfPassword, gc);
+        pnlSrtmPasswordAuth.add(tfSrtmPassword, gc);
 
         // Button "Remove credentials"
         gc.gridy++;
@@ -561,17 +560,17 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.fill = GBC.NONE;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
-        pnlPasswordAuth.add(new JPanel(), gc);
+        pnlSrtmPasswordAuth.add(new JPanel(), gc);
 
         gc.gridx++;
         gc.fill = GBC.NONE;
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
-        pnlPasswordAuth.add(btnRemoveCredentials, gc);
+        pnlSrtmPasswordAuth.add(btnSrtmRemoveCredentials, gc);
     }
 
     public void buildAuthBearerPanel() {
-        JScrollPane authBearerScrollPane = new JScrollPane(tfAuthBearer, JScrollPane.VERTICAL_SCROLLBAR_NEVER,
+        JScrollPane authBearerScrollPane = new JScrollPane(tfSrtmAuthBearer, JScrollPane.VERTICAL_SCROLLBAR_NEVER,
                 JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
         GBC gc = GBC.std();
@@ -584,19 +583,19 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.fill = GBC.NONE;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
-        pnlAuthBearer.add(lblAuthBearer, gc);
+        pnlSrtmAuthBearer.add(lblSrtmAuthBearer, gc);
 
         gc.gridx++;
         gc.fill = GBC.NONE;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
-        pnlAuthBearer.add(authBearerScrollPane, gc);
+        pnlSrtmAuthBearer.add(authBearerScrollPane, gc);
 
         gc.gridx++;
         gc.fill = GBC.HORIZONTAL;
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
-        pnlAuthBearer.add(new JPanel(), gc);
+        pnlSrtmAuthBearer.add(new JPanel(), gc);
 
         // Button "Remove auth bearer"
         gc.gridy++;
@@ -604,18 +603,18 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         gc.fill = GBC.NONE;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
-        pnlAuthBearer.add(new JPanel(), gc);
+        pnlSrtmAuthBearer.add(new JPanel(), gc);
 
         gc.gridx++;
         gc.gridwidth = 1;
         gc.weightx = 0.0;
-        pnlAuthBearer.add(btnRemoveAuthBearer, gc);
+        pnlSrtmAuthBearer.add(btnSrtmRemoveAuthBearer, gc);
 
         gc.gridx++;
         gc.fill = GBC.HORIZONTAL;
         gc.gridwidth = GBC.REMAINDER;
         gc.weightx = 1.0;
-        pnlAuthBearer.add(new JPanel(), gc);
+        pnlSrtmAuthBearer.add(new JPanel(), gc);
     }
 
     public JPanel buildGeoTiffLayerPanel() {
@@ -685,16 +684,16 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
      * Initializes the panel with the values from the preferences.
      */
     private final void initFromPreferences() {
-        cbSRTMType.setSelectedItem(ElevationPreferences.getSRTMType());
-        cbInterpolation.setSelectedItem(ElevationPreferences.getElevationInterpolation());
+        cbSrtmType.setSelectedItem(ElevationPreferences.getSrtmType());
+        cbSrtmInterpolation.setSelectedItem(ElevationPreferences.getSrtmElevationInterpolation());
         cbEnableSrtmElevationLayer.setSelected(ElevationPreferences.getSrtmElevationLayerEnabled());
-        cbContourLineColoring.setSelectedItem(ElevationPreferences.getSrtmContourLineColoringScheme());
-        cbEnableAutoDownload.setSelected(ElevationPreferences.getSrtmAutoDownloadEnabled());
+        cbSrtmContourLineColoring.setSelectedItem(ElevationPreferences.getSrtmContourLineColoringScheme());
+        cbSrtmEnableAutoDownload.setSelected(ElevationPreferences.getSrtmAutoDownloadEnabled());
 
         if (ElevationPreferences.getSrtmServerAuthType() == SrtmFileDownloader.AuthType.BEARER_TOKEN) {
-            rbAuthBearer.setSelected(true);
+            rbSrtmAuthBearer.setSelected(true);
         } else {
-            rbPasswordAuth.setSelected(true);
+            rbSrtmPasswordAuth.setSelected(true);
         }
 
         PasswordAuthentication passwordAuth = ElevationPreferences.lookupEarthdataCredentials();
@@ -702,16 +701,16 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
             String userName = passwordAuth.getUserName();
             char[] password = passwordAuth.getPassword();
             if (userName != null) {
-                tfUserName.setText(userName);
+                tfSrtmUserName.setText(userName);
             }
             if (password != null) {
-                tfPassword.setText(String.valueOf(password));
+                tfSrtmPassword.setText(String.valueOf(password));
             }
         }
 
         OAuth20Token oAuthToken = ElevationPreferences.lookupEarthdataOAuthToken();
         if (oAuthToken != null && oAuthToken.getBearerToken() != null) {
-            tfAuthBearer.setText(oAuthToken.getBearerToken());
+            tfSrtmAuthBearer.setText(oAuthToken.getBearerToken());
         }
 
         cbEnableGeoTiffEnvelopeLayer.setSelected(ElevationPreferences.getGeoTiffEnvelopeLayerEnabled());
@@ -724,36 +723,36 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
 
     private final void updateSrtmLayerEnabledState() {
         boolean elevationLayerEnabled = cbEnableSrtmElevationLayer.isSelected();
-        boolean autoDownloadEnabled = elevationLayerEnabled && cbEnableAutoDownload.isSelected();
-        lblRenderingLimit.setEnabled(elevationLayerEnabled);
-        spRenderingLimit.setEnabled(elevationLayerEnabled);
-        lblRenderingLimitUnit.setEnabled(elevationLayerEnabled);
-        lblIsostep.setEnabled(elevationLayerEnabled);
-        spIsostep.setEnabled(elevationLayerEnabled);
-        lblIsostepUnit.setEnabled(elevationLayerEnabled);
-        lblStrokeWidth.setEnabled(elevationLayerEnabled);
-        spStrokeWidth.setEnabled(elevationLayerEnabled);
-        lblStrokeWidthUnit.setEnabled(elevationLayerEnabled);
-        lblContourLineColoring.setEnabled(elevationLayerEnabled);
-        cbContourLineColoring.setEnabled(elevationLayerEnabled);
-        lblStrokeColor.setEnabled(elevationLayerEnabled);
-        btnStrokeColor.setEnabled(elevationLayerEnabled);
-        lblHillshadeAltitude.setEnabled(elevationLayerEnabled);
-        spHillshadeAltitude.setEnabled(elevationLayerEnabled);
-        lblHillshadeAltitudeUnit.setEnabled(elevationLayerEnabled);
-        lblHillshadeAzimuth.setEnabled(elevationLayerEnabled);
-        spHillshadeAzimuth.setEnabled(elevationLayerEnabled);
-        lblHillshadeAzimuthUnit.setEnabled(elevationLayerEnabled);
-        rbPasswordAuth.setEnabled(autoDownloadEnabled);
-        rbAuthBearer.setEnabled(autoDownloadEnabled);
-        lblEarthdataNotes.setEnabled(autoDownloadEnabled);
-        for (Component component : pnlPasswordAuth.getComponents()) {
+        boolean autoDownloadEnabled = elevationLayerEnabled && cbSrtmEnableAutoDownload.isSelected();
+        lblSrtmRenderingLimit.setEnabled(elevationLayerEnabled);
+        spSrtmRenderingLimit.setEnabled(elevationLayerEnabled);
+        lblSrtmRenderingLimitUnit.setEnabled(elevationLayerEnabled);
+        lblSrtmIsostep.setEnabled(elevationLayerEnabled);
+        spSrtmIsostep.setEnabled(elevationLayerEnabled);
+        lblSrtmIsostepUnit.setEnabled(elevationLayerEnabled);
+        lblSrtmStrokeWidth.setEnabled(elevationLayerEnabled);
+        spSrtmStrokeWidth.setEnabled(elevationLayerEnabled);
+        lblSrtmStrokeWidthUnit.setEnabled(elevationLayerEnabled);
+        lblSrtmContourLineColoring.setEnabled(elevationLayerEnabled);
+        cbSrtmContourLineColoring.setEnabled(elevationLayerEnabled);
+        lblSrtmStrokeColor.setEnabled(elevationLayerEnabled);
+        btnSrtmStrokeColor.setEnabled(elevationLayerEnabled);
+        lblSrtmHillshadeAltitude.setEnabled(elevationLayerEnabled);
+        spSrtmHillshadeAltitude.setEnabled(elevationLayerEnabled);
+        lblSrtmHillshadeAltitudeUnit.setEnabled(elevationLayerEnabled);
+        lblSrtmHillshadeAzimuth.setEnabled(elevationLayerEnabled);
+        spSrtmHillshadeAzimuth.setEnabled(elevationLayerEnabled);
+        lblSrtmHillshadeAzimuthUnit.setEnabled(elevationLayerEnabled);
+        rbSrtmPasswordAuth.setEnabled(autoDownloadEnabled);
+        rbSrtmAuthBearer.setEnabled(autoDownloadEnabled);
+        lblSrtmEarthdataNotes.setEnabled(autoDownloadEnabled);
+        for (Component component : pnlSrtmPasswordAuth.getComponents()) {
             component.setEnabled(autoDownloadEnabled);
         }
-        for (Component component : pnlAuthBearer.getComponents()) {
+        for (Component component : pnlSrtmAuthBearer.getComponents()) {
             component.setEnabled(autoDownloadEnabled);
         }
-        lblEarthdataNotes.setEnabled(autoDownloadEnabled);
+        lblSrtmEarthdataNotes.setEnabled(autoDownloadEnabled);
     }
 
     private final void updateGeoTiffLayerEnabledState() {
@@ -792,26 +791,28 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
      * Saves the current values to the preferences.
      */
     public void saveToPreferences() {
-        ElevationPreferences.setSRTMType((SrtmTile.Type) cbSRTMType.getSelectedItem());
-        ElevationPreferences.setElevationInterpolation((SrtmTile.Interpolation) cbInterpolation.getSelectedItem());
-        ElevationPreferences.setRAMCacheSizeLimit((Integer) spCacheSize.getValue());
+        ElevationPreferences.setSrtmType((SrtmTile.Type) cbSrtmType.getSelectedItem());
+        ElevationPreferences
+                .setSrtmElevationInterpolation((SrtmTile.Interpolation) cbSrtmInterpolation.getSelectedItem());
+        ElevationPreferences.setSrtmCacheSizeLimit((Integer) spSrtmCacheSize.getValue());
         ElevationPreferences.setSrtmElevationLayerEnabled(cbEnableSrtmElevationLayer.isSelected());
-        ElevationPreferences.setSrtmElevationLayerRenderingLimit((Double) spRenderingLimit.getValue());
-        ElevationPreferences.setSrtmContourLineIsostep((Integer) spIsostep.getValue());
-        ElevationPreferences.setSrtmContourLineStrokeWidth((Double) spStrokeWidth.getValue());
-        ElevationPreferences.setSrtmContourLineColoringScheme((Coloring.Scheme) cbContourLineColoring.getSelectedItem());
-        ElevationPreferences.setSrtmContourLineColor(btnStrokeColor.getSelectedColor());
-        ElevationPreferences.setSrtmHillshadeAltitude((Integer) spHillshadeAltitude.getValue());
-        ElevationPreferences.setSrtmHillshadeAzimuth((Integer) spHillshadeAzimuth.getValue());
-        ElevationPreferences.setSrtmAutoDownloadEnabled(cbEnableAutoDownload.isSelected());
+        ElevationPreferences.setSrtmElevationLayerRenderingLimit((Double) spSrtmRenderingLimit.getValue());
+        ElevationPreferences.setSrtmContourLineIsostep((Integer) spSrtmIsostep.getValue());
+        ElevationPreferences.setSrtmContourLineStrokeWidth((Double) spSrtmStrokeWidth.getValue());
+        ElevationPreferences
+                .setSrtmContourLineColoringScheme((Coloring.Scheme) cbSrtmContourLineColoring.getSelectedItem());
+        ElevationPreferences.setSrtmContourLineColor(btnSrtmStrokeColor.getSelectedColor());
+        ElevationPreferences.setSrtmHillshadeAltitude((Integer) spSrtmHillshadeAltitude.getValue());
+        ElevationPreferences.setSrtmHillshadeAzimuth((Integer) spSrtmHillshadeAzimuth.getValue());
+        ElevationPreferences.setSrtmAutoDownloadEnabled(cbSrtmEnableAutoDownload.isSelected());
 
-        if (rbPasswordAuth.isSelected()) {
-            String userName = tfUserName.getText();
-            char[] password = tfPassword.getPassword();
+        if (rbSrtmPasswordAuth.isSelected()) {
+            String userName = tfSrtmUserName.getText();
+            char[] password = tfSrtmPassword.getPassword();
             ElevationPreferences.storeEarthdataCredentials(userName, password);
             ElevationPreferences.setSrtmServerAuthType(SrtmFileDownloader.AuthType.BASIC);
-        } else if (rbAuthBearer.isSelected()) {
-            ElevationPreferences.storeEarthdataOAuthToken(tfAuthBearer.getText());
+        } else if (rbSrtmAuthBearer.isSelected()) {
+            ElevationPreferences.storeEarthdataOAuthToken(tfSrtmAuthBearer.getText());
             ElevationPreferences.setSrtmServerAuthType(SrtmFileDownloader.AuthType.BEARER_TOKEN);
         }
 
@@ -839,8 +840,8 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         @Override
         public void actionPerformed(ActionEvent e) {
             if (ElevationPreferences.removeEarthdataCredentials()) {
-                tfUserName.setText("");
-                tfPassword.setText("");
+                tfSrtmUserName.setText("");
+                tfSrtmPassword.setText("");
             }
         }
     }
@@ -858,7 +859,7 @@ public class ElevationPreferencePanel extends VerticallyScrollablePanel {
         @Override
         public void actionPerformed(ActionEvent e) {
             if (ElevationPreferences.removeEarthdataOAuthToken()) {
-                tfAuthBearer.setText("");
+                tfSrtmAuthBearer.setText("");
             }
         }
     }

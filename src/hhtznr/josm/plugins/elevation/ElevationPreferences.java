@@ -698,7 +698,7 @@ public class ElevationPreferences {
      *
      * @return The SRTM type, {@code SRTM1} or {@code SRTM3}.
      */
-    public static SrtmTile.Type getSRTMType() {
+    public static SrtmTile.Type getSrtmType() {
         return SrtmTile.Type.fromString(Config.getPref().get(SRTM_TYPE, DEFAULT_SRTM_TYPE.toString()));
     }
 
@@ -708,27 +708,27 @@ public class ElevationPreferences {
      * @param type The SRTM type.
      * @return {@code true} if the SRTM type has changed.
      */
-    public static boolean setSRTMType(SrtmTile.Type type) {
+    public static boolean setSrtmType(SrtmTile.Type type) {
         return Config.getPref().put(SRTM_TYPE, type.toString());
     }
 
     /**
-     * Returns the elevation interpolation method.
+     * Returns the SRTM elevation interpolation method.
      *
-     * @return The method for interpolation of elevation values.
+     * @return The method for interpolation of SRTM elevation values.
      */
-    public static SrtmTile.Interpolation getElevationInterpolation() {
+    public static SrtmTile.Interpolation getSrtmElevationInterpolation() {
         return SrtmTile.Interpolation.fromString(
                 Config.getPref().get(SRTM_ELEVATION_INTERPOLATION, DEFAULT_SRTM_ELEVATION_INTERPOLATION.toString()));
     }
 
     /**
-     * Sets the specified elevation interpolation in the settings.
+     * Sets the specified SRTM elevation interpolation in the settings.
      *
      * @param interpolation The interpolation type.
      * @return {@code true} if the interpolation type has changed.
      */
-    public static boolean setElevationInterpolation(SrtmTile.Interpolation interpolation) {
+    public static boolean setSrtmElevationInterpolation(SrtmTile.Interpolation interpolation) {
         return Config.getPref().put(SRTM_ELEVATION_INTERPOLATION, interpolation.toString());
     }
 
@@ -737,7 +737,7 @@ public class ElevationPreferences {
      *
      * @return Size limit of the in-memory SRTM tile cache in MiB.
      */
-    public static int getRAMCacheSizeLimit() {
+    public static int getSrtmCacheSizeLimit() {
         return Config.getPref().getInt(SRTM_CACHE_SIZE_LIMIT, DEFAULT_SRTM_CACHE_SIZE_LIMIT);
     }
 
@@ -747,7 +747,7 @@ public class ElevationPreferences {
      * @param limit Size limit of the in-memory SRTM tile cache in MiB.
      * @return {@code true} if the limit value has changed.
      */
-    public static boolean setRAMCacheSizeLimit(int limit) {
+    public static boolean setSrtmCacheSizeLimit(int limit) {
         return Config.getPref().putInt(SRTM_CACHE_SIZE_LIMIT, limit);
     }
 
@@ -1247,7 +1247,7 @@ public class ElevationPreferences {
      * @return The elevation data sources.
      */
     public static List<SrtmDataSource> getElevationDataSources() {
-        if (getSRTMType() == SrtmTile.Type.SRTM1) {
+        if (getSrtmType() == SrtmTile.Type.SRTM1) {
             return ELEVATION_DATA_SOURCES_SRTM1;
         }
         return ELEVATION_DATA_SOURCES_SRTM3;

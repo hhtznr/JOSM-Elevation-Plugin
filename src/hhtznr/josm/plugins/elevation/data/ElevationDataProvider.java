@@ -69,8 +69,8 @@ public class ElevationDataProvider implements GeoTiffIndexListener, SrtmTileCach
      * Creates a new elevation data provider based on preferences or defaults.
      */
     public ElevationDataProvider() {
-        this(ElevationPreferences.getElevationDataSources(), ElevationPreferences.getRAMCacheSizeLimit(),
-                ElevationPreferences.getSRTMType(), ElevationPreferences.getElevationInterpolation(),
+        this(ElevationPreferences.getElevationDataSources(), ElevationPreferences.getSrtmCacheSizeLimit(),
+                ElevationPreferences.getSrtmType(), ElevationPreferences.getSrtmElevationInterpolation(),
                 ElevationPreferences.getSrtmAutoDownloadEnabled(), ElevationPreferences.getGeoTiffIndexDirectory(),
                 ElevationPreferences.getGeoTiffIndexDirectoryRecursive());
     }

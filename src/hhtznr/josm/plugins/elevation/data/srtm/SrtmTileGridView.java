@@ -127,17 +127,16 @@ public class SrtmTileGridView implements ElevationGridView {
 
     @Override
     public LatLon toLatLon(int latIndex, int lonIndex) {
-        double lat = bounds.getMinLat() + latIndex * bounds.getHeight() / (height - 1);
-        double lon = bounds.getMinLon() + lonIndex * bounds.getWidth() / (width - 1);
-        return new LatLon(lat, lon);
+        int gridRasterLatIndex = gridRasterLatIndexSouth + latIndex;
+        int gridRasterLonIndex = gridRasterLonIndexWest + lonIndex;
+        return tileGrid.toLatLon(gridRasterLatIndex, gridRasterLonIndex);
     }
 
     @Override
     public LatLonEle toLatLonEle(int latIndex, int lonIndex) {
-        double lat = bounds.getMinLat() + latIndex * bounds.getHeight() / (height - 1);
-        double lon = bounds.getMinLon() + lonIndex * bounds.getWidth() / (width - 1);
-        short ele = getElevationAsShort(latIndex, lonIndex);
-        return new LatLonEle(lat, lon, ele);
+        int gridRasterLatIndex = gridRasterLatIndexSouth + latIndex;
+        int gridRasterLonIndex = gridRasterLonIndexWest + lonIndex;
+        return tileGrid.toLatLonEle(gridRasterLatIndex, gridRasterLonIndex);
     }
 
     /**
@@ -148,24 +147,6 @@ public class SrtmTileGridView implements ElevationGridView {
     @Override
     public Bounds getBounds() {
         return bounds;
-    }
-
-    /**
-     * Returns the coordinates, which correspond to the point at the given raster
-     * indices, and its elevation value.
-     *
-     * @param latIndex The index of the point in latitude direction within this tile
-     *                 grid view's elevation raster spanning across all included
-     *                 SRTM tiles.
-     * @param lonIndex The index of the point in longitude direction within this
-     *                 tile grid view's elevation raster spanning across all
-     *                 included SRTM tiles.
-     * @return The coordinates of the raster point and its elevation.
-     */
-    public LatLonEle getLatLonEle(int latIndex, int lonIndex) {
-        int gridRasterLatIndex = gridRasterLatIndexSouth + latIndex;
-        int gridRasterLonIndex = gridRasterLonIndexWest + lonIndex;
-        return tileGrid.toLatLonEle(gridRasterLatIndex, gridRasterLonIndex);
     }
 
     /**

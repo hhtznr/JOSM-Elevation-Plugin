@@ -104,7 +104,7 @@ public class ElevationRaster extends AbstractElevationGridPaintable {
         // TODO: Resolve this temporary compatibility workaround
         // This is safe as long as the constructor requires SRTMTileGridView
         SrtmTileGridView srtmTileGridView = (SrtmTileGridView) elevationGridView;
-        return srtmTileGridView.getLatLonEle(latIndex, lonIndex);
+        return srtmTileGridView.toLatLonEle(latIndex, lonIndex);
     }
 
     /**

@@ -416,7 +416,7 @@ public class KeyColFinder extends AbstractElevationTool {
             int root = findParent(cellIndex);
             if (hasPeakA.get(root) && hasPeakB.get(root)) {
                 // This elevation is the key col elevation
-                LatLonEle keyColLatLonEle = tileGridView.getLatLonEle(latIndex, lonIndex);
+                LatLonEle keyColLatLonEle = tileGridView.toLatLonEle(latIndex, lonIndex);
                 return keyColLatLonEle;
             }
         }

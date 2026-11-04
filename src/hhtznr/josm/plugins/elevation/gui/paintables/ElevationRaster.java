@@ -1,5 +1,6 @@
 package hhtznr.josm.plugins.elevation.gui.paintables;
 
+import hhtznr.josm.plugins.elevation.data.ElevationGridView;
 import hhtznr.josm.plugins.elevation.data.coordinate.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGridView;
 import hhtznr.josm.plugins.elevation.util.IncrementalNumberedNameCreator;
@@ -20,11 +21,11 @@ public class ElevationRaster extends AbstractElevationGridPaintable {
      * Creates a new elevation raster which covers the specified bounds with
      * elevation data points.
      *
-     * @param tileGridView The SRTM tile grid view from which elevation data should
-     *                     be obtained.
+     * @param elevationGridView The view on an elevation grid from which elevation
+     *                          data should be obtained.
      */
-    public ElevationRaster(SrtmTileGridView tileGridView) {
-        super(namer.nextName(), tileGridView);
+    public ElevationRaster(ElevationGridView elevationGridView) {
+        super(namer.nextName(), elevationGridView);
     }
 
     /**
@@ -36,9 +37,11 @@ public class ElevationRaster extends AbstractElevationGridPaintable {
     public int getHeight() {
         // TODO: Resolve this temporary compatibility workaround
         // This is safe as long as the constructor requires SRTMTileGridView
-        SrtmTileGridView srtmTileGridView = (SrtmTileGridView) elevationGridView;
-        if (!srtmTileGridView.areAllTilesCached() || srtmTileGridView.getTileGrid().isDisposed()) {
-            return 0;
+        if (elevationGridView instanceof SrtmTileGridView) {
+            SrtmTileGridView srtmTileGridView = (SrtmTileGridView) elevationGridView;
+            if (!srtmTileGridView.areAllTilesCached() || srtmTileGridView.getTileGrid().isDisposed()) {
+                return 0;
+            }
         }
         return elevationGridView.getHeight();
     }
@@ -52,9 +55,11 @@ public class ElevationRaster extends AbstractElevationGridPaintable {
     public int getWidth() {
         // TODO: Resolve this temporary compatibility workaround
         // This is safe as long as the constructor requires SRTMTileGridView
-        SrtmTileGridView srtmTileGridView = (SrtmTileGridView) elevationGridView;
-        if (!srtmTileGridView.areAllTilesCached() || srtmTileGridView.getTileGrid().isDisposed()) {
-            return 0;
+        if (elevationGridView instanceof SrtmTileGridView) {
+            SrtmTileGridView srtmTileGridView = (SrtmTileGridView) elevationGridView;
+            if (!srtmTileGridView.areAllTilesCached() || srtmTileGridView.getTileGrid().isDisposed()) {
+                return 0;
+            }
         }
         return elevationGridView.getWidth();
     }
@@ -72,8 +77,12 @@ public class ElevationRaster extends AbstractElevationGridPaintable {
         }
         // TODO: Resolve this temporary compatibility workaround
         // This is safe as long as the constructor requires SRTMTileGridView
-        SrtmTileGridView srtmTileGridView = (SrtmTileGridView) elevationGridView;
-        return srtmTileGridView.getLatLonStep();
+        if (elevationGridView instanceof SrtmTileGridView) {
+            SrtmTileGridView srtmTileGridView = (SrtmTileGridView) elevationGridView;
+            return srtmTileGridView.getLatLonStep();
+        }
+        throw new IllegalStateException(
+                "Method is only applicable to an instance of " + SrtmTileGridView.class.toString());
     }
 
     /**
@@ -89,8 +98,12 @@ public class ElevationRaster extends AbstractElevationGridPaintable {
         }
         // TODO: Resolve this temporary compatibility workaround
         // This is safe as long as the constructor requires SRTMTileGridView
-        SrtmTileGridView srtmTileGridView = (SrtmTileGridView) elevationGridView;
-        return srtmTileGridView.getLatLonStep();
+        if (elevationGridView instanceof SrtmTileGridView) {
+            SrtmTileGridView srtmTileGridView = (SrtmTileGridView) elevationGridView;
+            return srtmTileGridView.getLatLonStep();
+        }
+        throw new IllegalStateException(
+                "Method is only applicable to an instance of " + SrtmTileGridView.class.toString());
     }
 
     /**
@@ -101,10 +114,7 @@ public class ElevationRaster extends AbstractElevationGridPaintable {
      * @return The latitude-longitude-elevation point of interest.
      */
     public LatLonEle getLatLonEle(int latIndex, int lonIndex) {
-        // TODO: Resolve this temporary compatibility workaround
-        // This is safe as long as the constructor requires SRTMTileGridView
-        SrtmTileGridView srtmTileGridView = (SrtmTileGridView) elevationGridView;
-        return srtmTileGridView.toLatLonEle(latIndex, lonIndex);
+        return elevationGridView.toLatLonEle(latIndex, lonIndex);
     }
 
     /**
@@ -117,7 +127,13 @@ public class ElevationRaster extends AbstractElevationGridPaintable {
     public double getLatLonStep() {
         // TODO: Resolve this temporary compatibility workaround
         // This is safe as long as the constructor requires SRTMTileGridView
-        SrtmTileGridView srtmTileGridView = (SrtmTileGridView) elevationGridView;
-        return srtmTileGridView.getLatLonStep();
+        if (elevationGridView instanceof SrtmTileGridView) {
+            // TODO: Resolve this temporary compatibility workaround
+            // This is safe as long as the constructor requires SRTMTileGridView
+            SrtmTileGridView srtmTileGridView = (SrtmTileGridView) elevationGridView;
+            return srtmTileGridView.getLatLonStep();
+        }
+        throw new IllegalStateException(
+                "Method is only applicable to an instance of " + SrtmTileGridView.class.toString());
     }
 }

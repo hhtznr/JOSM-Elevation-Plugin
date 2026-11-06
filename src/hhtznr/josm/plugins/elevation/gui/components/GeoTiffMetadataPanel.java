@@ -19,6 +19,7 @@ import java.util.Locale;
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JTextArea;
 import javax.swing.SwingConstants;
 
 import org.geotools.api.geometry.Bounds;
@@ -230,11 +231,15 @@ public class GeoTiffMetadataPanel extends JPanel {
         gbc.anchor = GridBagConstraints.NORTHWEST;
         gbc.insets = new Insets(3, 4, 3, 4);
 
-        JLabel valueLabel = new JLabel(
-                "<html><div style='width: 320px;'>" + Utils.escapeReservedCharactersHTML(value) + "</div></html>");
-
-        valueLabel.setToolTipText(value);
-        panel.add(valueLabel, gbc);
+        JTextArea valueArea = new JTextArea(value);
+        valueArea.setEditable(false);
+        valueArea.setLineWrap(true);
+        valueArea.setWrapStyleWord(true);
+        valueArea.setOpaque(false);
+        valueArea.setBorder(BorderFactory.createEmptyBorder());
+        valueArea.setFont(keyLabel.getFont().deriveFont(Font.PLAIN));
+        valueArea.setColumns(40);
+        panel.add(valueArea, gbc);
     }
 
     private static String getAsciiTag(GeoTiffIIOMetadataDecoder metadata, String tagId) {

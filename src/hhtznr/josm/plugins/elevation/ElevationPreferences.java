@@ -711,6 +711,18 @@ public class ElevationPreferences {
     public static final float INCR_IMAGE_OPACITY = 0.01f;
 
     /**
+     * Property key for enabling or disabling rendering of the GeoTIFF elevation
+     * data point raster.
+     */
+    public static final String GEOTIFF_ELEVATION_RASTER_ENABLED = "elevation.geotiff.layer.raster.enabled";
+
+    /**
+     * Default property value for enabling rendering of the GeoTIFF elevation data
+     * point raster: {@code false}.
+     */
+    private static final boolean DEFAULT_GEOTIFF_ELEVATION_RASTER_ENABLED = false;
+
+    /**
      * Removes the legacy 'elevation enabled' preference from the settings.
      *
      * @return {@code true} if the value has changed.
@@ -1008,7 +1020,7 @@ public class ElevationPreferences {
      * @return {@code true} if the enabled state has changed.
      */
     public static boolean setSrtmElevationRasterEnabled(boolean enabled) {
-        return Config.getPref().putBoolean(SRTM_HILLSHADE_ENABLED, enabled);
+        return Config.getPref().putBoolean(SRTM_ELEVATION_RASTER_ENABLED, enabled);
     }
 
     /**
@@ -1549,6 +1561,27 @@ public class ElevationPreferences {
             opacity = MAX_IMAGE_OPACITY;
         }
         return Config.getPref().putDouble(GEOTIFF_GRAYSCALE_IMAGE_OPACITY, opacity);
+    }
+
+    /**
+     * Returns whether rendering of the GeoTIFF elevation raster is enabled.
+     *
+     * @return {@code true} if enabled.
+     */
+    public static boolean getGeoTiffElevationRasterEnabled() {
+        return Config.getPref().getBoolean(GEOTIFF_ELEVATION_RASTER_ENABLED, DEFAULT_GEOTIFF_ELEVATION_RASTER_ENABLED);
+    }
+
+    /**
+     * Sets rendering of the GeoTIFF elevation raster to the specified state in the
+     * settings.
+     *
+     * @param enabled If {@code true}, rendering of the GeoTIFF elevation raster is
+     *                enabled.
+     * @return {@code true} if the enabled state has changed.
+     */
+    public static boolean setGeoTiffElevationRasterEnabled(boolean enabled) {
+        return Config.getPref().putBoolean(GEOTIFF_ELEVATION_RASTER_ENABLED, enabled);
     }
 
     private ElevationPreferences() {

@@ -303,9 +303,9 @@ public class SrtmElevationLayer extends ElevationLayer implements SrtmElevationD
             layer.hillshadeEnabled = !layer.hillshadeEnabled;
             ElevationPreferences.setSrtmHillshadeEnabled(layer.hillshadeEnabled);
             if (layer.hillshadeEnabled) {
-                Logging.info("Elevation: Hillshade enabled");
+                Logging.info("Elevation: SRTM hillshade enabled");
             } else {
-                Logging.info("Elevation: Hillshade disabled");
+                Logging.info("Elevation: SRTM hillshade disabled");
             }
             layer.triggerRepaint();
         }
@@ -332,9 +332,9 @@ public class SrtmElevationLayer extends ElevationLayer implements SrtmElevationD
             layer.elevationRasterEnabled = !layer.elevationRasterEnabled;
             ElevationPreferences.setSrtmElevationRasterEnabled(layer.elevationRasterEnabled);
             if (layer.elevationRasterEnabled) {
-                Logging.info("Elevation: Elevation raster points enabled");
+                Logging.info("Elevation: SRTM elevation raster points enabled");
             } else {
-                Logging.info("Elevation: Elevation raster points disabled");
+                Logging.info("Elevation: SRTM elevation raster points disabled");
             }
             layer.triggerRepaint();
         }

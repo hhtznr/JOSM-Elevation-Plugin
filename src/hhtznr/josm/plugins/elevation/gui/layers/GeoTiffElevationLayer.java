@@ -46,6 +46,7 @@ import hhtznr.josm.plugins.elevation.gui.dialogs.GeoTiffElevationLayerAdjustment
 import hhtznr.josm.plugins.elevation.gui.dialogs.GeoTiffInfoDialog;
 import hhtznr.josm.plugins.elevation.gui.paintables.ContourLines;
 import hhtznr.josm.plugins.elevation.gui.paintables.ContourLines.IsolineSegments;
+import hhtznr.josm.plugins.elevation.gui.paintables.ElevationRaster;
 import hhtznr.josm.plugins.elevation.gui.paintables.LowestAndHighestPoints;
 import hhtznr.josm.plugins.elevation.util.Coloring;
 import hhtznr.josm.plugins.elevation.util.DrawUtils;
@@ -67,6 +68,8 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
     private GeoTiffElevationGridView elevationGridView = null;
     private BufferedImage grayscaleImage = null;
     private float grayscaleImageOpacity;
+    private ElevationRaster elevationRaster = null;
+    private final Object elevationRasterLock = new Object();
     private volatile ContourLines contourLines = null;
     private volatile Future<?> contourLinesFuture = null;
     private final Object contourLinesLock = new Object();
@@ -78,6 +81,7 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
     private short upperCutoffElevation;
 
     private boolean grayscaleImageEnabled;
+    private boolean elevationRasterEnabled;
     private Future<?> elevationGridFuture = null;
     private Future<?> grayscaleImageFuture = null;
     private Bounds previousMapBounds;
@@ -111,6 +115,7 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
 
         grayscaleImageEnabled = ElevationPreferences.getGeoTiffGrayscaleImageEnabled();
         grayscaleImageOpacity = ElevationPreferences.getGeoTiffGrayscaleImageOpacity();
+        elevationRasterEnabled = ElevationPreferences.getGeoTiffElevationRasterEnabled();
 
         geoTiffLayers.add(this);
 
@@ -185,6 +190,16 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
     }
 
     /**
+     * Toggles the elevation raster enabled state.
+     *
+     * @return The new elevation raster enabled state.
+     */
+    public boolean toggleElevationRasterEnabled() {
+        elevationRasterEnabled = !elevationRasterEnabled;
+        return elevationRasterEnabled;
+    }
+
+    /**
      * Returns the GeoTIFF elevation grid used by this layer.
      *
      * @return The GeoTiff elevation grid or {@code null} if the grid has not been
@@ -210,6 +225,9 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
                 return;
             }
             invalidateContourLines();
+            synchronized (elevationRasterLock) {
+                elevationRaster = null;
+            }
             previousMapBounds = mapBounds;
         }
 
@@ -232,6 +250,10 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
         if (widthPixels < MIN_CONTOUR_LINE_PIXELS && heightPixels < MIN_CONTOUR_LINE_PIXELS) {
             invalidateContourLines();
             return;
+        }
+
+        if (elevationRasterEnabled) {
+            drawElevationRater(g, mapView, elevationGridView);
         }
 
         if (isContourLinesEnabled()) {
@@ -269,8 +291,7 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
         if (width > 0 && height > 0 && grayscaleImageEnabled && grayscaleImage != null) {
             Graphics2D imageGraphics = (Graphics2D) g.create();
             try {
-                imageGraphics.setComposite(
-                    AlphaComposite.getInstance(AlphaComposite.SRC_OVER, grayscaleImageOpacity));
+                imageGraphics.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, grayscaleImageOpacity));
                 imageGraphics.drawImage(grayscaleImage, topLeftScreen.x, topLeftScreen.y, width, height, null);
             } finally {
                 imageGraphics.dispose();
@@ -297,6 +318,58 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
         g.setColor(Color.BLUE);
         g.drawRect(x, y, width, height);
 
+    }
+
+    private void drawElevationRater(Graphics2D g, MapView mapView, GeoTiffElevationGridView gridView) {
+        ElevationRaster currentElevationRaster;
+        synchronized (elevationRasterLock) {
+            currentElevationRaster = elevationRaster;
+        }
+
+        if (currentElevationRaster == null) {
+            currentElevationRaster = new ElevationRaster(gridView);
+            synchronized (elevationRasterLock) {
+                elevationRaster = currentElevationRaster;
+            }
+        }
+
+        // Set the font for elevation value strings
+        Font font = g.getFont().deriveFont(Font.PLAIN, 10);
+        g.setFont(font);
+
+        // Screen pixel width and height of the elevation raster
+        Point p1 = mapView.getPoint(currentElevationRaster.getBounds().getMin());
+        Point p2 = mapView.getPoint(currentElevationRaster.getBounds().getMax());
+        int rasterPixelWidth = Math.abs(p2.x - p1.x);
+        int rasterPixelHeight = Math.abs(p2.y - p1.y);
+
+        // Compute grid steps to skip grid points
+        // Skip more grid points if further zoomed out from the map
+        int gridStepLon = (int) Math
+                .round(currentElevationRaster.getWidth() / (double) rasterPixelWidth * PIXELS_PER_GRID_POINT);
+        int gridStepLat = (int) Math
+                .round(currentElevationRaster.getHeight() / (double) rasterPixelHeight * PIXELS_PER_GRID_POINT);
+        // Ensure that the steps are always at least 1
+        gridStepLon = Math.max(gridStepLon, 1);
+        gridStepLat = Math.max(gridStepLat, 1);
+
+        // The size of the marker of an elevation data point in display coordinates
+        final int markerSize = 3;
+
+        DrawUtils.NonOverlappingTextRenderer textRenderer = new DrawUtils.NonOverlappingTextRenderer();
+        for (int latIndex = 0; latIndex < currentElevationRaster.getHeight(); latIndex += gridStepLat) {
+            for (int lonIndex = 0; lonIndex < currentElevationRaster.getWidth(); lonIndex += gridStepLon) {
+                LatLonEle latLonEle = currentElevationRaster.getLatLonEle(latIndex, lonIndex);
+
+                Point p = mapView.getPoint(latLonEle);
+                String eleText = String.format("%.2f", latLonEle.ele());
+
+                g.setColor(Color.RED);
+                g.fillOval(p.x - markerSize / 2, p.y - markerSize / 2, markerSize, markerSize);
+
+                textRenderer.drawTextSafely(g, p.x + markerSize, p.y, Color.BLUE, Color.WHITE, eleText);
+            }
+        }
     }
 
     private void drawContourLines(Graphics2D g, MapView mapView, GeoTiffElevationGridView gridView) {
@@ -513,18 +586,19 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
 
     @Override
     public Action[] getMenuEntries() {
-        Action[] actions = new Action[11];
+        Action[] actions = new Action[12];
         actions[0] = LayerListDialog.getInstance().createActivateLayerAction(this);
         actions[1] = LayerListDialog.getInstance().createShowHideLayerAction();
         actions[2] = LayerListDialog.getInstance().createDeleteLayerAction();
         actions[3] = SeparatorLayerAction.INSTANCE;
         actions[4] = new ShowLowestAndHighestPointsAction();
         actions[5] = new ShowContourLinesAction();
-        actions[6] = new ShowGrayscaleImageAction();
-        actions[7] = SeparatorLayerAction.INSTANCE;
-        actions[8] = new ShowLayerAdjustmentDialogAction();
-        actions[9] = SeparatorLayerAction.INSTANCE;
-        actions[10] = new ShowInfoDialogAction();
+        actions[6] = new ShowElevationRasterAction();
+        actions[7] = new ShowGrayscaleImageAction();
+        actions[8] = SeparatorLayerAction.INSTANCE;
+        actions[9] = new ShowLayerAdjustmentDialogAction();
+        actions[10] = SeparatorLayerAction.INSTANCE;
+        actions[11] = new ShowInfoDialogAction();
         return actions;
     }
 
@@ -538,6 +612,9 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
                 future.cancel(true);
             }
         }
+        elevationGridFuture = null;
+        elevationGridFuture = null;
+        grayscaleImageFuture = null;
 
         synchronized (layerAdjustmentDialogLock) {
             if (layerAdjustmentDialog != null) {
@@ -556,6 +633,12 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
         }
 
         grayscaleImage = null;
+        synchronized (contourLinesLock) {
+            contourLines = null;
+        }
+        synchronized (elevationRasterLock) {
+            elevationRaster = null;
+        }
         elevationGridView = null;
         elevationGrid = null;
 
@@ -694,6 +777,34 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
         public Component createMenuComponent() {
             JCheckBoxMenuItem item = new JCheckBoxMenuItem(this);
             item.setSelected(GeoTiffElevationLayer.this.grayscaleImageEnabled);
+            return item;
+        }
+    }
+
+    private class ShowElevationRasterAction extends AbstractElevationLayerAction {
+
+        private static final long serialVersionUID = 1L;
+
+        public ShowElevationRasterAction() {
+            super("Enable/disable elevation raster", "elevation_raster");
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            boolean enabled = GeoTiffElevationLayer.this.toggleElevationRasterEnabled();
+            ElevationPreferences.setGeoTiffElevationRasterEnabled(enabled);
+            if (enabled) {
+                Logging.info("Elevation: GeoTIFF elevation raster points enabled");
+            } else {
+                Logging.info("Elevation: GeoTIFF elevation raster points disabled");
+            }
+            GeoTiffElevationLayer.this.triggerRepaint();
+        }
+
+        @Override
+        public Component createMenuComponent() {
+            JCheckBoxMenuItem item = new JCheckBoxMenuItem(this);
+            item.setSelected(GeoTiffElevationLayer.this.elevationRasterEnabled);
             return item;
         }
     }

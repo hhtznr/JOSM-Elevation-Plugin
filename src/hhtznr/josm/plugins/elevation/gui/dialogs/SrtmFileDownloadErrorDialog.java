@@ -8,6 +8,7 @@ import java.util.List;
 import javax.swing.JOptionPane;
 
 import org.openstreetmap.josm.gui.MainApplication;
+import org.openstreetmap.josm.tools.Utils;
 
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmDataSource;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmTile;
@@ -66,7 +67,8 @@ public class SrtmFileDownloadErrorDialog implements SrtmFileDownloadListener {
             SrtmFileDownloader.HTTPException httpException = (SrtmFileDownloader.HTTPException) exception;
             String advice = httpException.getAdvice();
             if (advice != null) {
-                message = "<html>" + message + "<br><br>" + advice + "</html>";
+                message = "<html>" + Utils.escapeReservedCharactersHTML(message) + "<br><br>"
+                        + Utils.escapeReservedCharactersHTML(advice) + "</html>";
             }
             if (httpException.getResponse().getResponseCode() == HttpURLConnection.HTTP_NOT_FOUND) {
                 optionsList.add(optionRememberMissing);

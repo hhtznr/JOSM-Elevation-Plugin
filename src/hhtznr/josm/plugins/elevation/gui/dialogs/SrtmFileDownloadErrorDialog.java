@@ -2,8 +2,6 @@ package hhtznr.josm.plugins.elevation.gui.dialogs;
 
 import java.net.HttpURLConnection;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 
 import javax.swing.JOptionPane;
 
@@ -56,10 +54,7 @@ public class SrtmFileDownloadErrorDialog implements SrtmFileDownloadListener {
         final String optionOK = "OK";
         final String optionIgnore = "Ignore errors";
         final String optionRememberMissing = "Remember tile as permanently missing";
-
-        List<String> optionsList = new ArrayList<>(3);
-        optionsList.add(optionOK);
-        optionsList.add(optionIgnore);
+        String[] options = null;
 
         String title = "Error downloading SRTM tile " + srtmTileID;
         String message = exception.getMessage();
@@ -71,10 +66,17 @@ public class SrtmFileDownloadErrorDialog implements SrtmFileDownloadListener {
                         + Utils.escapeReservedCharactersHTML(advice) + "</html>";
             }
             if (httpException.getResponse().getResponseCode() == HttpURLConnection.HTTP_NOT_FOUND) {
-                optionsList.add(optionRememberMissing);
+                options = new String[3];
+                options[2] = optionRememberMissing;
             }
         }
-        Object[] options = optionsList.toArray();
+
+        if (options == null) {
+            options = new String[2];
+        }
+        options[0] = optionOK;
+        options[1] = optionIgnore;
+
         int choice = JOptionPane.showOptionDialog(MainApplication.getMainFrame(), message, title,
                 JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE, null, options, options[1]);
 
@@ -82,7 +84,7 @@ public class SrtmFileDownloadErrorDialog implements SrtmFileDownloadListener {
             return;
         }
 
-        String selectedOption = (String) options[choice];
+        String selectedOption = options[choice];
 
         switch (selectedOption) {
         case optionIgnore:

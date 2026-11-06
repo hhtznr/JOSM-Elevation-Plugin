@@ -65,48 +65,6 @@ public class ElevationRaster extends AbstractElevationGridPaintable {
     }
 
     /**
-     * Returns the step between two adjacent raster data points in latitude
-     * dimension.
-     *
-     * @return The distance in latitude in between two adjacent raster data points
-     *         in arc degrees.
-     */
-    public double getLatStep() {
-        if (getHeight() < 2 || getWidth() < 1) {
-            return Double.POSITIVE_INFINITY;
-        }
-        // TODO: Resolve this temporary compatibility workaround
-        // This is safe as long as the constructor requires SRTMTileGridView
-        if (elevationGridView instanceof SrtmTileGridView) {
-            SrtmTileGridView srtmTileGridView = (SrtmTileGridView) elevationGridView;
-            return srtmTileGridView.getLatLonStep();
-        }
-        throw new IllegalStateException(
-                "Method is only applicable to an instance of " + SrtmTileGridView.class.toString());
-    }
-
-    /**
-     * Returns the step between two adjacent raster data points in longitude
-     * dimension.
-     *
-     * @return The distance in longitude in between two adjacent raster data points
-     *         in arc degrees.
-     */
-    public double getLonStep() {
-        if (getWidth() < 2 || getHeight() < 1) {
-            return Double.POSITIVE_INFINITY;
-        }
-        // TODO: Resolve this temporary compatibility workaround
-        // This is safe as long as the constructor requires SRTMTileGridView
-        if (elevationGridView instanceof SrtmTileGridView) {
-            SrtmTileGridView srtmTileGridView = (SrtmTileGridView) elevationGridView;
-            return srtmTileGridView.getLatLonStep();
-        }
-        throw new IllegalStateException(
-                "Method is only applicable to an instance of " + SrtmTileGridView.class.toString());
-    }
-
-    /**
      * Returns a latitude-longitude-elevation point of this raster.
      *
      * @param latIndex The index of the data point in latitude dimension.

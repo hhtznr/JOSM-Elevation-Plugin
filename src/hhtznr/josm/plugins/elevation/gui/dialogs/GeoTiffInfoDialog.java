@@ -30,12 +30,12 @@ public class GeoTiffInfoDialog extends ExtendedDialog {
         super(parent, "Information on GeoTIFF " + geoTiffImage.getAbsolutePath().getFileName().toString(),
                 new String[] { "Close" }, false, true);
 
-        GeoTiffMetadataPanel panel = new GeoTiffMetadataPanel(geoTiffImage);
+        GeoTiffMetadataPanel metadataPanel = new GeoTiffMetadataPanel(geoTiffImage);
 
-        JScrollPane scrollPane = new JScrollPane(panel);
+        JScrollPane scrollPane = new JScrollPane(metadataPanel);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
-        setContent(scrollPane);
+        setContent(scrollPane, false);
     }
 }

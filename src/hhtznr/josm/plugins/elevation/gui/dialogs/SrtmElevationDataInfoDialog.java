@@ -69,7 +69,7 @@ public class SrtmElevationDataInfoDialog extends ExtendedDialog {
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
-        setContent(scrollPane);
+        setContent(scrollPane, false);
     }
 
     /**

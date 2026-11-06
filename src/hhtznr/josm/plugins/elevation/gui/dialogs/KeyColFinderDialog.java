@@ -602,7 +602,7 @@ public class KeyColFinderDialog extends ExtendedDialog implements ElevationToolL
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
-        setContent(scrollPane);
+        setContent(scrollPane, false);
     }
 
     private void setDialogState(DialogState state) {

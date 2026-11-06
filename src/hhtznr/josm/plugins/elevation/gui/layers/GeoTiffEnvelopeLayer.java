@@ -10,6 +10,7 @@ import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Path2D;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -32,6 +33,7 @@ import org.openstreetmap.josm.tools.Logging;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.GeoTiffElevationDataProviderListener;
 import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffImage;
+import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffImageException;
 import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffIndex;
 import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffRecord;
 import hhtznr.josm.plugins.elevation.gui.actions.GeoTiffSyncIndexFromDiskAction;
@@ -273,13 +275,19 @@ public class GeoTiffEnvelopeLayer extends Layer implements GeoTiffElevationDataP
                             return;
                         }
 
-                        GeoTiffImage geoTiffImage = GeoTiffImage.readGeoTiffFile(path);
-                        Logging.info("Elevation: GeoTIFF file read: " + path.toAbsolutePath().toString());
-                        if (geoTiffImage == null) {
-                            Logging.error("Elevation: Failed to read GeoTIFF file '" + path.toAbsolutePath().toString()
-                                    + "'");
+                        try {
+                            // May throw GeoTiffImageException, IOException
+                            GeoTiffImage geoTiffImage = GeoTiffImage.readGeoTiffFile(path);
+                            Logging.info("Elevation: GeoTIFF file read: " + path.toAbsolutePath().toString());
+                            GeoTiffElevationLayer.addGeoTiffElevationLayer(geoTiffImage);
+                        } catch (IOException ex) {
+                            Logging.error("Elevation: Cannot read GeoTIFF file '" + path.toAbsolutePath().toString()
+                                    + " due to " + ex.toString());
+                        } catch (GeoTiffImageException ex) {
+                            Logging.error("Elevation: Cannot create GeoTiffImage for file '"
+                                    + path.toAbsolutePath().toString() + " due to " + e.toString() + " with cause: "
+                                    + ex.getCause());
                         }
-                        GeoTiffElevationLayer.addGeoTiffElevationLayer(geoTiffImage);
                     }
                 }
             }

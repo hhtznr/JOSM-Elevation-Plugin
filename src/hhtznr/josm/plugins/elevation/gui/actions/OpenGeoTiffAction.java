@@ -4,6 +4,7 @@ import static org.openstreetmap.josm.tools.I18n.tr;
 
 import java.awt.event.ActionEvent;
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -16,6 +17,7 @@ import org.openstreetmap.josm.tools.Logging;
 
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
 import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffImage;
+import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffImageException;
 import hhtznr.josm.plugins.elevation.gui.layers.GeoTiffElevationLayer;
 
 /**
@@ -82,12 +84,19 @@ public class OpenGeoTiffAction extends DiskAccessAction {
         Logging.info("Elevation: User selected " + files.length + " GeoTIFF files");
         for (File file : files) {
             Logging.info("Elevation: GeoTIFF file opened: " + file.getAbsolutePath());
-            GeoTiffImage geoTiffImage = GeoTiffImage.readGeoTiffFile(file.toPath());
-            if (geoTiffImage == null) {
-                Logging.error("Elevation: Failed to read GeoTIFF file '" + file.getAbsolutePath() + "'");
-                continue;
+            try {
+                // May throw GeoTiffImageException, IOException
+                GeoTiffImage geoTiffImage = GeoTiffImage.readGeoTiffFile(file.toPath());
+                Logging.info("Elevation: GeoTIFF file read: " + file.getAbsolutePath());
+                GeoTiffElevationLayer.addGeoTiffElevationLayer(geoTiffImage);
+            } catch (IOException ex) {
+                Logging.error(
+                        "Elevation: Cannot read GeoTIFF file '" + file.getAbsolutePath() + " due to " + ex.toString());
+            } catch (GeoTiffImageException ex) {
+                Logging.error("Elevation: Cannot create GeoTiffImage for file '" + file.getAbsolutePath() + " due to "
+                        + e.toString() + " with cause: " + ex.getCause());
             }
-            GeoTiffElevationLayer.addGeoTiffElevationLayer(geoTiffImage);
+
         }
     }
 }

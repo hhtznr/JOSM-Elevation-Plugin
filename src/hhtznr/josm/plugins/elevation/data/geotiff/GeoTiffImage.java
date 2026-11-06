@@ -289,36 +289,26 @@ public class GeoTiffImage {
      * @param path The path from which to read the GeoTIFF image.
      * @return The GeoTIFF image or {@code null} if an error occurs reading the
      *         file.
+     * @throws GeoTiffImageException if creating a GeoTIFF image from the file fails
+     * @throws IOException           if reading of the GeoTIFF file fails
      */
-    public static GeoTiffImage readGeoTiffFile(Path path) {
+    public static GeoTiffImage readGeoTiffFile(Path path) throws GeoTiffImageException, IOException {
         GeoTiffReader reader = null;
         try {
+            // May throw DataSourceException (subclass of IOException)
             reader = new GeoTiffReader(path.toFile());
-        } catch (DataSourceException e) {
-            Logging.error("Elevation: Cannot read GeoTIFF file '" + path.toAbsolutePath().toString() + " due to "
-                    + e.toString());
-            return null;
-        }
-        try {
-            GeoTiffIIOMetadataDecoder metadata;
-            GridCoverage2D coverage;
-            try {
-                metadata = reader.getMetadata();
-                coverage = reader.read(null);
-            } catch (IOException e) {
-                Logging.error("Elevation: Cannot read GeoTIFF file '" + path.toAbsolutePath().toString() + " due to "
-                        + e.toString());
-                return null;
-            }
-            try {
-                return new GeoTiffImage(path, metadata, coverage);
-            } catch (GeoTiffImageException e) {
-                Logging.error("Elevation: Cannot create GeoTiffImage for file '" + path.toAbsolutePath().toString()
-                        + " due to " + e.toString() + " with cause: " + e.getCause());
-                return null;
-            }
+
+            GeoTiffIIOMetadataDecoder metadata = reader.getMetadata();
+            // May throw IOException
+            GridCoverage2D coverage = reader.read(null);
+
+            // May throw GeoTiffImageException
+            return new GeoTiffImage(path, metadata, coverage);
+
         } finally {
-            reader.dispose();
+            if (reader != null) {
+                reader.dispose();
+            }
         }
     }
 

@@ -10,6 +10,7 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.image.BufferedImage;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -90,6 +91,8 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
     private static GeoTiffElevationLayerAdjustmentDialog layerAdjustmentDialog = null;
     private static final Object layerAdjustmentDialogLock = new Object();
 
+    private static final Object addGeoTiffLayerLock = new Object();
+
     /**
      * Creates a new map layer for visualization of the elevation data provided by a
      * GeoTIFF image using default values from preferences.
@@ -98,7 +101,7 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
      * @param geoTiffImage The GeoTIFF image providing the elevation data for this
      *                     layer.
      */
-    public GeoTiffElevationLayer(String name, GeoTiffImage geoTiffImage) {
+    private GeoTiffElevationLayer(String name, GeoTiffImage geoTiffImage) {
         super(name, ImageProvider.get("layers", "elevation_geotiff.svg"),
                 ElevationPreferences.getGeoTiffContourLineIsostep(),
                 ElevationPreferences.getGeoTiffContourLineStrokeWidth(),
@@ -658,23 +661,41 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
     }
 
     /**
-     * Adds a new {@code GeoTIFFElevationLayer} to JOSM, if no
-     * {@code GeoTIFFElevationLayer} for the same file name exists yet. Otherwise
-     * does nothing, but noting this via the logger.
+     * Adds a new {@code GeoTIFFElevationLayer} to JOSM, if the specified GeoTIFF
+     * file can be read and parsed and if no {@code GeoTIFFElevationLayer} for the
+     * same file name exists yet. Otherwise does nothing, but noting this via the
+     * logger.
      *
-     * @param geoTiffImage The GeoTIFF image for which to add the new layer.
+     * @param path The path from which the GeoTIFF data is to be read.
+     * @return {@code true} if the layer was added, {@code false} otherwise.
      */
-    public static void addGeoTiffElevationLayer(GeoTiffImage geoTiffImage) {
-        String layerName = deriveLayerName(geoTiffImage.getAbsolutePath());
+    public static boolean addGeoTiffElevationLayer(Path path) {
+        synchronized (addGeoTiffLayerLock) {
+            String layerName = deriveLayerName(path.toAbsolutePath());
 
-        if (getGeoTiffLayer(layerName) != null) {
-            Logging.info("Elevation: Not adding GeoTIFF layer for '" + geoTiffImage.getAbsolutePath()
-                    + "' because a GeoTiFFLayer with the same name already exists");
-            return;
+            if (getGeoTiffLayer(layerName) != null) {
+                Logging.info("Elevation: Not adding GeoTIFF layer for '" + path.toAbsolutePath().toString()
+                        + "' because a GeoTiFFLayer with the same name already exists");
+                return false;
+            }
+
+            try {
+                // May throw GeoTiffImageException, IOException
+                GeoTiffImage geoTiffImage = GeoTiffImage.readGeoTiffFile(path);
+                Logging.info("Elevation: GeoTIFF file read: " + path.toAbsolutePath().toString());
+                GeoTiffElevationLayer geoTiffLayer = new GeoTiffElevationLayer(layerName, geoTiffImage);
+                MainApplication.getLayerManager().addLayer(geoTiffLayer);
+                return true;
+            } catch (IOException e) {
+                Logging.error("Elevation: Cannot read GeoTIFF file '" + path.toAbsolutePath().toString() + " due to "
+                        + e.toString());
+                return false;
+            } catch (GeoTiffImageException e) {
+                Logging.error("Elevation: Cannot create GeoTiffImage for file '" + path.toAbsolutePath().toString()
+                        + " due to " + e.toString() + " with cause: " + e.getCause());
+                return false;
+            }
         }
-
-        GeoTiffElevationLayer geoTiffLayer = new GeoTiffElevationLayer(layerName, geoTiffImage);
-        MainApplication.getLayerManager().addLayer(geoTiffLayer);
     }
 
     /**

@@ -381,14 +381,6 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
         FontMetrics metrics = g.getFontMetrics(font);
         int eleStringDisplayWidth = metrics.stringWidth("000000");
         int eleStringDisplayHeight = metrics.getHeight() + 2;
-        // Dimensions of the map view in screen coordinates
-        int mapViewDisplayWidth = mapView.getWidth();
-        int mapViewDisplayHeight = mapView.getHeight();
-
-        // Dimensions of the map view in world coordinates
-        Bounds mapViewBounds = mapView.getLatLonBounds(mapView.getBounds());
-        double mapViewWidth = mapViewBounds.getWidth();
-        double mapViewHeight = mapViewBounds.getHeight();
 
         // Screen pixel width and height of the elevation raster
         Point p1 = mapView.getPoint(elevationRaster.getBounds().getMin());
@@ -406,40 +398,41 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
         gridStepLon = Math.max(gridStepLon, 1);
         gridStepLat = Math.max(gridStepLat, 1);
 
-        // Dimensions of the elevation value string in world coordinates
-        double eleStringWidth = (double) eleStringDisplayWidth / (double) mapViewDisplayWidth * mapViewWidth;
-        double eleStringHeight = (double) eleStringDisplayHeight / (double) mapViewDisplayHeight * mapViewHeight;
-
-        // Distance between two adjacent raster points in world coordinates
-        double latStep = elevationRaster.getLatStep();
-        double lonStep = elevationRaster.getLonStep();
-
         // The size of the marker of an elevation data point in display coordinates
         final int markerSize = 3;
 
-        double latDist = 0.0;
+        // Last y position where label text was drawn
+        // Offset initial value outside screen
+        int lastLabeledY = rasterPixelHeight - 1 + (eleStringDisplayHeight - eleStringDisplayHeight / 2);
+
         for (int latIndex = 0; latIndex < elevationRaster.getHeight(); latIndex += gridStepLat) {
-            double lonDist = 0.0;
+            // Last x position where label text was drawn
+            // Offset initial value outside screen
+            int lastLabeledX = -(eleStringDisplayWidth + markerSize) - 1;
+            int textY = lastLabeledY;
+
             for (int lonIndex = 0; lonIndex < elevationRaster.getWidth(); lonIndex += gridStepLon) {
                 LatLonEle latLonEle = elevationRaster.getLatLonEle(latIndex, lonIndex);
 
                 Point p = mapView.getPoint(latLonEle);
-                String eleText = Integer.toString((int) latLonEle.ele());
+                int x  = p.x;
+                int y = p.y;
 
                 g.setColor(Color.RED);
-                g.fillOval(p.x - markerSize / 2, p.y - markerSize / 2, markerSize, markerSize);
-                if (latDist == 0.0 && lonDist == 0.0) {
+                g.fillOval(x - markerSize / 2, y - markerSize / 2, markerSize, markerSize);
+
+                int textX =  x + markerSize;
+                textY = y + eleStringDisplayHeight / 2;
+                if (textX - lastLabeledX >= eleStringDisplayWidth && lastLabeledY - textY >= eleStringDisplayHeight) {
+                    String eleText = Integer.toString((int) latLonEle.ele());
                     g.setColor(Color.BLUE);
-                    g.drawString(eleText, p.x + markerSize, p.y + eleStringDisplayHeight / 2);
-                }
-                lonDist += lonStep;
-                if (lonDist > eleStringWidth) {
-                    lonDist = 0.0;
+                    g.drawString(eleText, textX, textY);
+                    lastLabeledX = textX;
                 }
             }
-            latDist += latStep;
-            if (latDist > eleStringHeight) {
-                latDist = 0.0;
+
+            if (lastLabeledY - textY >= eleStringDisplayHeight) {
+                lastLabeledY = textY;
             }
         }
     }

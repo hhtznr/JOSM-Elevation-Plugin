@@ -20,6 +20,7 @@ import java.util.concurrent.Future;
 
 import javax.swing.Action;
 import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JOptionPane;
 
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.openstreetmap.josm.actions.JosmAction;
@@ -31,6 +32,7 @@ import org.openstreetmap.josm.gui.MapView;
 import org.openstreetmap.josm.gui.dialogs.LayerListDialog;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Logging;
+import org.openstreetmap.josm.tools.Utils;
 
 import hhtznr.josm.plugins.elevation.ElevationPlugin;
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
@@ -92,6 +94,8 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
     private static final Object layerAdjustmentDialogLock = new Object();
 
     private static final Object addGeoTiffLayerLock = new Object();
+
+    private static boolean ignoreOpenGeoTiffErrors = false;
 
     /**
      * Creates a new map layer for visualization of the elevation data provided by a
@@ -689,12 +693,58 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
             } catch (IOException e) {
                 Logging.error("Elevation: Cannot read GeoTIFF file '" + path.toAbsolutePath().toString() + " due to "
                         + e.toString());
+                showOpenGeoTiffErrorDialog(path, e);
                 return false;
             } catch (GeoTiffImageException e) {
                 Logging.error("Elevation: Cannot create GeoTiffImage for file '" + path.toAbsolutePath().toString()
                         + " due to " + e.toString() + " with cause: " + e.getCause());
+                showOpenGeoTiffErrorDialog(path, e);
                 return false;
             }
+        }
+    }
+
+    private static void showOpenGeoTiffErrorDialog(Path path, Exception e) {
+        if (ignoreOpenGeoTiffErrors) {
+            return;
+        }
+
+        String fileName = path.getFileName().toString();
+        String title = "Failed to open " + fileName;
+
+        String message = "<html>";
+        message += Utils.escapeReservedCharactersHTML("Failed to open " + path.toAbsolutePath().toString());
+        message += "<br><br>";
+        message += "Exception: " + Utils.escapeReservedCharactersHTML(e.toString());
+        if (e instanceof GeoTiffImageException && e.getCause() != null) {
+            message += "<br>";
+            message += "Caused by: " + Utils.escapeReservedCharactersHTML(e.getCause().toString());
+        }
+        message += "<html>";
+
+        final String optionOK = "OK";
+        final String optionIgnore = "Ignore further errors";
+
+        String[] options = { optionOK, optionIgnore };
+        int choice = JOptionPane.showOptionDialog(MainApplication.getMainFrame(), message, title,
+                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE, null, options, options[0]);
+
+        if (choice == JOptionPane.CLOSED_OPTION) {
+            return;
+        }
+
+        String selectedOption = options[choice];
+
+        switch (selectedOption) {
+        case optionIgnore:
+            // Ignore errors, i.e. do not show a dialog again
+            ignoreOpenGeoTiffErrors = true;
+            break;
+
+        case optionOK:
+        default:
+            // Just close the dialog
+            break;
         }
     }
 

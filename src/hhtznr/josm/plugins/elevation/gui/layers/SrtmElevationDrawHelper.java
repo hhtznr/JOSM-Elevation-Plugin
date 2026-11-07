@@ -291,7 +291,7 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
         // This prevents a change of the contour lines while working on them
         // The pending contour lines task may update them asynchronously
         ContourLines currentContourLines = contourLines;
-        if (currentContourLines == null || contourLineIsostep != layerContourLineIsostep
+        if (currentContourLines == null || hasPendingContourLines() || contourLineIsostep != layerContourLineIsostep
                 || lowerCutoffElevation != layerLowerCutoffElevation
                 || upperCutoffElevation != layerUpperCutoffElevation
                 || !CoordinateUtil.doBoundsContainWithExtraSpace(currentContourLines.getBounds(), clipBounds,
@@ -390,10 +390,10 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
 
         // Compute grid steps to skip grid points
         // Skip more grid points if further zoomed out from the map
-        int gridStepLon = (int) Math.round(elevationRaster.getWidth() / (double) rasterPixelWidth
-                * ElevationLayer.PIXELS_PER_GRID_POINT);
-        int gridStepLat = (int) Math.round(elevationRaster.getHeight() / (double) rasterPixelHeight
-                * ElevationLayer.PIXELS_PER_GRID_POINT);
+        int gridStepLon = (int) Math
+                .round(elevationRaster.getWidth() / (double) rasterPixelWidth * ElevationLayer.PIXELS_PER_GRID_POINT);
+        int gridStepLat = (int) Math
+                .round(elevationRaster.getHeight() / (double) rasterPixelHeight * ElevationLayer.PIXELS_PER_GRID_POINT);
         // Ensure that the steps are always at least 1
         gridStepLon = Math.max(gridStepLon, 1);
         gridStepLat = Math.max(gridStepLat, 1);
@@ -415,13 +415,13 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
                 LatLonEle latLonEle = elevationRaster.getLatLonEle(latIndex, lonIndex);
 
                 Point p = mapView.getPoint(latLonEle);
-                int x  = p.x;
+                int x = p.x;
                 int y = p.y;
 
                 g.setColor(Color.RED);
                 g.fillOval(x - markerSize / 2, y - markerSize / 2, markerSize, markerSize);
 
-                int textX =  x + markerSize;
+                int textX = x + markerSize;
                 textY = y + eleStringDisplayHeight / 2;
                 if (textX - lastLabeledX >= eleStringDisplayWidth && lastLabeledY - textY >= eleStringDisplayHeight) {
                     String eleText = Integer.toString((int) latLonEle.ele());
@@ -505,7 +505,8 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
         // Create and dispose crosswise so that cached tiles are taken over if possible
         HillshadeImageTile oldHillshadeImageTile = hillshadeImageTile;
         try {
-            hillshadeImageTile = layer.getElevationDataProvider().getHillshadeImageTile(bounds, altitude, azimuth, false);
+            hillshadeImageTile = layer.getElevationDataProvider().getHillshadeImageTile(bounds, altitude, azimuth,
+                    false);
         } catch (AsyncOperationException | InterruptedException e) {
             Logging.error("Elevation: Exception during hillshade computation: " + e.toString());
             hillshadeImageTile = null;
@@ -513,6 +514,12 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
         if (oldHillshadeImageTile != null) {
             oldHillshadeImageTile.dispose();
             oldHillshadeImageTile = null;
+        }
+    }
+
+    private boolean hasPendingContourLines() {
+        synchronized (pendingContourLinesLock) {
+            return pendingContourLines != null;
         }
     }
 

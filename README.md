@@ -29,6 +29,8 @@ This JOSM screenshot provides an overview of some of the features of the **Eleva
 ## Building from source
 **Elevation** plugin is configured as [Eclipse](https://www.eclipse.org/) Java project. The project directory must be placed in <code>josm/plugins</code> of the original [JOSM source](https://josm.openstreetmap.de/svn/trunk) tree for [build.xml](https://github.com/hhtznr/JOSM-Elevation-Plugin/blob/main/build.xml) to work. The location of the JOSM project needs to be specified on the build path. The built plugin <code>Elevation.jar</code> will be found in <code>josm/dist</code>.
 
+The plugin depends on the functional JOSM plugins [jts](https://github.com/JOSM/josm-plugins/tree/master/jts) and [geotools](https://github.com/JOSM/josm-plugins/tree/master/geotools). Therefore, [jts.jar](https://josm.openstreetmap.de/osmsvn/applications/editors/josm/dist/jts.jar) and [geotools.jar](https://josm.openstreetmap.de/osmsvn/applications/editors/josm/dist/geotools.jar) must be available in <code>josm/dist</code> and specified on the build path as a prerequisite for building the plugin.
+
 ## Installation
 ### Installation via JOSM preferences
 1. From the JOSM menu bar select `Edit -> Preferences`.

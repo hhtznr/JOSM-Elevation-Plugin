@@ -611,7 +611,9 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
 
     @Override
     public synchronized void destroy() {
-        geoTiffLayers.remove(this);
+        synchronized (addGeoTiffLayerLock) {
+            geoTiffLayers.remove(this);
+        }
         // Cancel any running background tasks of this layer
         invalidateContourLines();
         for (Future<?> future : new Future<?>[] { elevationGridFuture, elevationGridFuture, grayscaleImageFuture }) {
@@ -690,6 +692,7 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
                 GeoTiffElevationLayer geoTiffLayer = new GeoTiffElevationLayer(layerName, geoTiffImage);
                 MainApplication.getLayerManager().addLayer(geoTiffLayer, false);
                 geoTiffLayers.add(geoTiffLayer);
+                geoTiffLayer.acquireLayerAdjustmentDialog();
                 return true;
             } catch (IOException e) {
                 Logging.error("Elevation: Cannot read GeoTIFF file '" + path.toAbsolutePath().toString() + " due to "

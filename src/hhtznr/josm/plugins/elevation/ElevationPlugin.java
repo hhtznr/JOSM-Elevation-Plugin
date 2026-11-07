@@ -12,10 +12,13 @@ import java.util.concurrent.Executors;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.MainMenu;
 import org.openstreetmap.josm.gui.MapFrame;
-import org.openstreetmap.josm.gui.layer.LayerManager;
+import org.openstreetmap.josm.gui.layer.Layer;
 import org.openstreetmap.josm.gui.layer.LayerManager.LayerAddEvent;
+import org.openstreetmap.josm.gui.layer.LayerManager.LayerChangeListener;
 import org.openstreetmap.josm.gui.layer.LayerManager.LayerOrderChangeEvent;
 import org.openstreetmap.josm.gui.layer.LayerManager.LayerRemoveEvent;
+import org.openstreetmap.josm.gui.layer.MainLayerManager.ActiveLayerChangeEvent;
+import org.openstreetmap.josm.gui.layer.MainLayerManager.ActiveLayerChangeListener;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 import org.openstreetmap.josm.gui.preferences.PreferenceSetting;
 import org.openstreetmap.josm.plugins.Plugin;
@@ -38,6 +41,7 @@ import hhtznr.josm.plugins.elevation.gui.components.ElevationTabPreferenceSettin
 import hhtznr.josm.plugins.elevation.gui.components.LocalElevationLabel;
 import hhtznr.josm.plugins.elevation.gui.dialogs.SrtmFileDownloadErrorDialog;
 import hhtznr.josm.plugins.elevation.gui.dialogs.TopographicIsolationFinderAction;
+import hhtznr.josm.plugins.elevation.gui.layers.GeoTiffElevationLayer;
 import hhtznr.josm.plugins.elevation.gui.layers.GeoTiffEnvelopeLayer;
 import hhtznr.josm.plugins.elevation.gui.layers.MapViewElevationDataConsumer;
 import hhtznr.josm.plugins.elevation.gui.layers.SrtmElevationLayer;
@@ -49,7 +53,7 @@ import hhtznr.josm.plugins.elevation.util.Coloring;
  *
  * @author Harald Hetzner
  */
-public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeListener {
+public class ElevationPlugin extends Plugin implements LayerChangeListener, ActiveLayerChangeListener {
 
     private ElevationTabPreferenceSetting tabPreferenceSetting = null;
 
@@ -144,6 +148,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
         }
 
         MainApplication.getLayerManager().addLayerChangeListener(this);
+        MainApplication.getLayerManager().addActiveLayerChangeListener(this);
         Logging.info("Elevation: Plugin initialized");
     }
 
@@ -515,5 +520,14 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
 
     @Override
     public void layerOrderChanged(LayerOrderChangeEvent e) {
+    }
+
+    @Override
+    public void activeOrEditLayerChanged(ActiveLayerChangeEvent e) {
+        Layer activeLayer = MainApplication.getLayerManager().getActiveLayer();
+        if (activeLayer instanceof GeoTiffElevationLayer) {
+            GeoTiffElevationLayer geoTiffLayer = (GeoTiffElevationLayer) activeLayer;
+            geoTiffLayer.acquireLayerAdjustmentDialog();
+        }
     }
 }

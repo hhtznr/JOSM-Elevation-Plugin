@@ -27,8 +27,8 @@ import hhtznr.josm.plugins.elevation.concurrent.ParallelExecutorService;
 import hhtznr.josm.plugins.elevation.data.ElevationDataProvider;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmDataSource;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmTile;
-import hhtznr.josm.plugins.elevation.gui.actions.AddSrtmElevationLayerAction;
 import hhtznr.josm.plugins.elevation.gui.actions.AddGeoTiffEnvelopeLayerAction;
+import hhtznr.josm.plugins.elevation.gui.actions.AddSrtmElevationLayerAction;
 import hhtznr.josm.plugins.elevation.gui.actions.GeoTiffSyncIndexFromDiskAction;
 import hhtznr.josm.plugins.elevation.gui.actions.KeyColFinderAction;
 import hhtznr.josm.plugins.elevation.gui.actions.OpenGeoTiffAction;
@@ -398,7 +398,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
 
             if (mapFrame != null) {
                 if (!MainApplication.getLayerManager().containsLayer(elevationLayer)) {
-                    MainApplication.getLayerManager().addLayer(elevationLayer);
+                    MainApplication.getLayerManager().addLayer(elevationLayer, false);
                 }
                 mapFrame.mapView.repaint();
             }
@@ -438,7 +438,7 @@ public class ElevationPlugin extends Plugin implements LayerManager.LayerChangeL
 
             if (mapFrame != null) {
                 if (!MainApplication.getLayerManager().containsLayer(geoTiffEnvelopeLayer)) {
-                    MainApplication.getLayerManager().addLayer(geoTiffEnvelopeLayer);
+                    MainApplication.getLayerManager().addLayer(geoTiffEnvelopeLayer, false);
                     if (setActive) {
                         MainApplication.getLayerManager().setActiveLayer(geoTiffEnvelopeLayer);
                     }

@@ -689,6 +689,7 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
                 Logging.info("Elevation: GeoTIFF file read: " + path.toAbsolutePath().toString());
                 GeoTiffElevationLayer geoTiffLayer = new GeoTiffElevationLayer(layerName, geoTiffImage);
                 MainApplication.getLayerManager().addLayer(geoTiffLayer);
+                geoTiffLayers.add(geoTiffLayer);
                 return true;
             } catch (IOException e) {
                 Logging.error("Elevation: Cannot read GeoTIFF file '" + path.toAbsolutePath().toString() + " due to "

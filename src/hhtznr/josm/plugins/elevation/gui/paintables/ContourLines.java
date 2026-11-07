@@ -30,7 +30,7 @@ public class ContourLines extends AbstractElevationGridPaintable {
     private static final int UNDEFINED_ISOSTEP = -1;
 
     private final int isostep;
-    private final IsolineSegments[] isolineSegments;
+    private IsolineSegments[] isolineSegments;
 
     /**
      * Creates a new set of contour lines covering the bounds of the specified view.
@@ -118,9 +118,13 @@ public class ContourLines extends AbstractElevationGridPaintable {
             } else {
                 this.isostep = isostep;
             }
-            MarchingSquares marchingSquares = new MarchingSquares(this.elevationGridView, isovalues, gridStepLat,
-                    gridStepLon);
-            this.isolineSegments = marchingSquares.getIsolineSegments();
+            if (isovalues.length > 0) {
+                MarchingSquares marchingSquares = new MarchingSquares(this.elevationGridView, isovalues, gridStepLat,
+                        gridStepLon);
+                this.isolineSegments = marchingSquares.getIsolineSegments();
+            } else {
+                this.isolineSegments = new IsolineSegments[0];
+            }
         } catch (AsyncOperationException | InterruptedException | RuntimeException | Error e) {
             if (e instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
@@ -147,6 +151,70 @@ public class ContourLines extends AbstractElevationGridPaintable {
      */
     public IsolineSegments[] getIsolineSegments() {
         return isolineSegments;
+    }
+
+    /**
+     * Reduces the number of isoline segments of these contour lines by removing
+     * segments with isovalues smaller and greater then the specified target values.
+     *
+     * @param targetMinIsovalue The targeted new minimum isovalue. If the specified
+     *                          value does not align with present isovalues, the
+     *                          next greater present isovalue will be chosen as new
+     *                          minimum isovalue.
+     * @param targetMaxIsovalue The targeted new maximum isovalue. If the specified
+     *                          value does not align with present isovalues, the
+     *                          next smaller present isovalue will be chosen as new
+     *                          maximum isovalue.
+     * @return {@code true} if the number of isoline segments was actually reduced
+     *         by the requested operation, {@code false} otherwise.
+     */
+    public boolean shrinkIsolineSegments(int targetMinIsovalue, int targetMaxIsovalue) {
+        if (targetMinIsovalue > targetMaxIsovalue || isolineSegments.length < 1) {
+            return false;
+        }
+        int minIsovalue = isolineSegments[0].getIsoValue();
+        int maxIsovalue = isolineSegments[isolineSegments.length - 1].getIsoValue();
+        // Requested isovalue range is larger than current range
+        if (targetMinIsovalue <= minIsovalue && targetMaxIsovalue >= maxIsovalue) {
+            return false;
+        }
+        // Requested isovalue range is outside current range
+        if (targetMaxIsovalue < minIsovalue || targetMinIsovalue > maxIsovalue) {
+            isolineSegments = new IsolineSegments[0];
+            return true;
+        }
+
+        int minIndex = 0;
+        int maxIndex = isolineSegments.length - 1;
+        for (int i = 0; i < isolineSegments.length; i++) {
+            int isovalue = isolineSegments[i].getIsoValue();
+            if (isovalue >= targetMinIsovalue) {
+                minIndex = i;
+                break;
+            }
+        }
+        for (int i = isolineSegments.length - 1; i >= 0; i--) {
+            int isovalue = isolineSegments[i].getIsoValue();
+            if (isovalue <= targetMaxIsovalue) {
+                maxIndex = i;
+                break;
+            }
+        }
+        // Isoline segments unchanged
+        if (minIndex == 0 && maxIndex == isolineSegments.length - 1) {
+            return false;
+        }
+        if (minIndex > maxIndex) {
+            isolineSegments = new IsolineSegments[0];
+            return true;
+        }
+
+        IsolineSegments[] newIsolineSegments = new IsolineSegments[maxIndex - minIndex + 1];
+        for (int i = 0; i < newIsolineSegments.length; i++) {
+            newIsolineSegments[i] = isolineSegments[minIndex + i];
+        }
+        isolineSegments = newIsolineSegments;
+        return true;
     }
 
     /**

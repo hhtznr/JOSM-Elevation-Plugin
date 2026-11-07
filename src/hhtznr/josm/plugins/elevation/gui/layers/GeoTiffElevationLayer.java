@@ -392,6 +392,16 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
         int newContourLineIsostep = getContourLineIsostep();
         short newLowerCutoffElevation = getLowerCutoffElevation();
         short newUpperCutoffElevation = getUpperCutoffElevation();
+
+        // If current contour lines exist and cutoff elevation values were reduced,
+        // attempt to shrink the amount of contour lines instead of computing new ones
+        if (currentContourLines != null
+                && (lowerCutoffElevation < newLowerCutoffElevation || upperCutoffElevation > newUpperCutoffElevation)
+                && currentContourLines.shrinkIsolineSegments(newLowerCutoffElevation, newUpperCutoffElevation)) {
+            lowerCutoffElevation = newLowerCutoffElevation;
+            upperCutoffElevation = newUpperCutoffElevation;
+        }
+
         boolean contourLineSettingsChanged = contourLineIsostep != newContourLineIsostep
                 || lowerCutoffElevation != newLowerCutoffElevation || upperCutoffElevation != newUpperCutoffElevation;
         if (contourLineSettingsChanged) {

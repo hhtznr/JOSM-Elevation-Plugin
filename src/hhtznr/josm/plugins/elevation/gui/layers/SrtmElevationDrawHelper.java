@@ -291,11 +291,23 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
         // This prevents a change of the contour lines while working on them
         // The pending contour lines task may update them asynchronously
         ContourLines currentContourLines = contourLines;
-        if (currentContourLines == null || hasPendingContourLines() || contourLineIsostep != layerContourLineIsostep
+        // If current contour lines exist and cutoff elevation values were reduced,
+        // attempt to shrink the amount of contour lines instead of computing new ones
+        if (currentContourLines != null
+                && (lowerCutoffElevation < layerLowerCutoffElevation
+                        || upperCutoffElevation > layerUpperCutoffElevation)
+                && currentContourLines.shrinkIsolineSegments(layerLowerCutoffElevation, layerUpperCutoffElevation)) {
+            lowerCutoffElevation = layerLowerCutoffElevation;
+            upperCutoffElevation = layerUpperCutoffElevation;
+        }
+
+        boolean contourLineSettingsChanged = contourLineIsostep != layerContourLineIsostep
                 || lowerCutoffElevation != layerLowerCutoffElevation
-                || upperCutoffElevation != layerUpperCutoffElevation
+                || upperCutoffElevation != layerUpperCutoffElevation;
+        if (currentContourLines == null || hasPendingContourLines() || contourLineSettingsChanged
                 || !CoordinateUtil.doBoundsContainWithExtraSpace(currentContourLines.getBounds(), clipBounds,
                         currentContourLines.getSrtmLatLonStep())) {
+
             contourLineIsostep = layerContourLineIsostep;
             lowerCutoffElevation = layerLowerCutoffElevation;
             upperCutoffElevation = layerUpperCutoffElevation;
@@ -309,6 +321,7 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
                 return;
             }
         }
+
         IsolineSegments[] isolineSegments = currentContourLines.getIsolineSegments();
         if (isolineSegments.length < 1) {
             return;

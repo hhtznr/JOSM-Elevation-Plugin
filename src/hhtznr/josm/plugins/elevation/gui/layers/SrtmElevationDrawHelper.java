@@ -354,7 +354,7 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
         }
         for (ContourLines.IsolineSegments isolineSegment : isolineSegments) {
             if (useFalseColor) {
-                short ele = isolineSegment.getIsoValue();
+                short ele = isolineSegment.getIsovalue();
                 g.setColor(Coloring.getRainbowColor(ele, minEle, maxEle));
             }
             for (LatLonLine segment : isolineSegment.getLineSegments()) {

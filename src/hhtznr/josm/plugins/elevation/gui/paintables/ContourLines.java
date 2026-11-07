@@ -172,8 +172,8 @@ public class ContourLines extends AbstractElevationGridPaintable {
         if (targetMinIsovalue > targetMaxIsovalue || isolineSegments.length < 1) {
             return false;
         }
-        int minIsovalue = isolineSegments[0].getIsoValue();
-        int maxIsovalue = isolineSegments[isolineSegments.length - 1].getIsoValue();
+        int minIsovalue = isolineSegments[0].getIsovalue();
+        int maxIsovalue = isolineSegments[isolineSegments.length - 1].getIsovalue();
         // Requested isovalue range is larger than current range
         if (targetMinIsovalue <= minIsovalue && targetMaxIsovalue >= maxIsovalue) {
             return false;
@@ -187,14 +187,14 @@ public class ContourLines extends AbstractElevationGridPaintable {
         int minIndex = 0;
         int maxIndex = isolineSegments.length - 1;
         for (int i = 0; i < isolineSegments.length; i++) {
-            int isovalue = isolineSegments[i].getIsoValue();
+            int isovalue = isolineSegments[i].getIsovalue();
             if (isovalue >= targetMinIsovalue) {
                 minIndex = i;
                 break;
             }
         }
         for (int i = isolineSegments.length - 1; i >= 0; i--) {
-            int isovalue = isolineSegments[i].getIsoValue();
+            int isovalue = isolineSegments[i].getIsovalue();
             if (isovalue <= targetMaxIsovalue) {
                 maxIndex = i;
                 break;
@@ -261,7 +261,7 @@ public class ContourLines extends AbstractElevationGridPaintable {
          *
          * @return The isovalue of the isoline segments.
          */
-        public short getIsoValue() {
+        public short getIsovalue() {
             return isovalue;
         }
 

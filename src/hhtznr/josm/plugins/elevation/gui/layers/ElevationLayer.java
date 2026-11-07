@@ -8,6 +8,7 @@ import javax.swing.Icon;
 
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.layer.Layer;
+import org.openstreetmap.josm.gui.layer.LayerPositionStrategy;
 import org.openstreetmap.josm.tools.ImageProvider;
 
 import hhtznr.josm.plugins.elevation.util.Coloring;
@@ -263,6 +264,11 @@ public abstract class ElevationLayer extends Layer {
     @Override
     public boolean isMergable(Layer other) {
         return false;
+    }
+
+    @Override
+    public LayerPositionStrategy getDefaultLayerPosition() {
+        return LayerPositionStrategy.AFTER_LAST_DATA_LAYER;
     }
 
     protected static abstract class AbstractElevationLayerAction extends AbstractAction implements LayerAction {

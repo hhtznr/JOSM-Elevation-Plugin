@@ -25,6 +25,7 @@ import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.MapView;
 import org.openstreetmap.josm.gui.dialogs.LayerListDialog;
 import org.openstreetmap.josm.gui.layer.Layer;
+import org.openstreetmap.josm.gui.layer.LayerPositionStrategy;
 import org.openstreetmap.josm.gui.layer.MapViewGraphics;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Logging;
@@ -188,6 +189,11 @@ public class GeoTiffEnvelopeLayer extends Layer implements GeoTiffElevationDataP
     public synchronized void destroy() {
         elevationDataProvider.removeGeoTiffElevationDataProviderListener(this);
         super.destroy();
+    }
+
+    @Override
+    public LayerPositionStrategy getDefaultLayerPosition() {
+        return LayerPositionStrategy.AFTER_LAST_DATA_LAYER;
     }
 
     /**

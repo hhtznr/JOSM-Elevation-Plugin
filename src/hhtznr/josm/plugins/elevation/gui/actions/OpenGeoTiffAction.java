@@ -82,7 +82,7 @@ public class OpenGeoTiffAction extends DiskAccessAction {
         for (File file : files) {
             Path path = file.toPath().toAbsolutePath();
             Logging.info("Elevation: GeoTIFF file opened: " + path.toString());
-            GeoTiffElevationLayer.addGeoTiffElevationLayer(path);
+            GeoTiffElevationLayer.addGeoTiffElevationLayer(path, true);
         }
     }
 }

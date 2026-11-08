@@ -783,10 +783,13 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
      * same file name exists yet. Otherwise does nothing, but noting this via the
      * logger.
      *
-     * @param path The path from which the GeoTIFF data is to be read.
+     * @param path        The path from which the GeoTIFF data is to be read.
+     * @param initialZoom if {@code true} the map view is zoomed at the added
+     *                    layer's projection bounds; if {@code false} the map view
+     *                    is not zoomed.
      * @return {@code true} if the layer was added, {@code false} otherwise.
      */
-    public static boolean addGeoTiffElevationLayer(Path path) {
+    public static boolean addGeoTiffElevationLayer(Path path, boolean initialZoom) {
         synchronized (addGeoTiffLayerLock) {
             String layerName = deriveLayerName(path.toAbsolutePath());
 
@@ -802,7 +805,7 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
                 Logging.info("Elevation: GeoTIFF file read: " + path.toAbsolutePath().toString());
                 GeoTiffElevationLayer geoTiffLayer = new GeoTiffElevationLayer(layerName, geoTiffImage);
                 geoTiffLayers.add(geoTiffLayer);
-                MainApplication.getLayerManager().addLayer(geoTiffLayer, false);
+                MainApplication.getLayerManager().addLayer(geoTiffLayer, initialZoom);
                 geoTiffLayer.acquireLayerAdjustmentDialog();
                 return true;
             } catch (IOException e) {

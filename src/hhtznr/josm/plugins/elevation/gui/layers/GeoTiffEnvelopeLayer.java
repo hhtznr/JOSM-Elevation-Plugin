@@ -277,7 +277,7 @@ public class GeoTiffEnvelopeLayer extends Layer implements GeoTiffElevationDataP
                                     + "' because a GeoTiFFLayer with the same name already exists");
                             return;
                         }
-                        GeoTiffElevationLayer.addGeoTiffElevationLayer(path);
+                        GeoTiffElevationLayer.addGeoTiffElevationLayer(path, false);
                     }
                 }
             }

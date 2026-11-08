@@ -794,6 +794,15 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
         return null;
     }
 
+    /**
+     * Returns a list of all currently existing GeoTIFF elevation layers.
+     *
+     * @return All currently existing GeoTIFF elevation layers.
+     */
+    public static List<GeoTiffElevationLayer> getGeoTiffLayers() {
+        return geoTiffLayers;
+    }
+
     private class ShowContourLinesAction extends AbstractElevationLayerAction {
 
         private static final long serialVersionUID = 1L;

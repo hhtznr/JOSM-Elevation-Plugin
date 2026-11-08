@@ -10,10 +10,8 @@ import org.geotools.api.referencing.operation.TransformException;
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.ILatLon;
 import org.openstreetmap.josm.data.coor.LatLon;
-import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.MapFrame;
 import org.openstreetmap.josm.gui.MapStatus;
-import org.openstreetmap.josm.gui.layer.MainLayerManager;
 import org.openstreetmap.josm.gui.widgets.ImageLabel;
 import org.openstreetmap.josm.tools.GBC;
 
@@ -116,8 +114,7 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
     }
 
     private void updateEleText(MapFrame mapFrame, ILatLon latLon) {
-        MainLayerManager layerManager = MainApplication.getLayerManager();
-        List<GeoTiffElevationLayer> geoTiffLayers = layerManager.getLayersOfType(GeoTiffElevationLayer.class);
+        List<GeoTiffElevationLayer> geoTiffLayers = GeoTiffElevationLayer.getGeoTiffLayers();
         OptionalDouble elevation = OptionalDouble.empty();
         GeoTiffElevationGrid elevationGrid = null;
         for (GeoTiffElevationLayer layer : geoTiffLayers) {

@@ -395,11 +395,18 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
 
         // If current contour lines exist and cutoff elevation values were reduced,
         // attempt to shrink the amount of contour lines instead of computing new ones
-        if (currentContourLines != null
-                && (lowerCutoffElevation < newLowerCutoffElevation || upperCutoffElevation > newUpperCutoffElevation)
-                && currentContourLines.shrinkIsolineSegments(newLowerCutoffElevation, newUpperCutoffElevation)) {
-            lowerCutoffElevation = newLowerCutoffElevation;
-            upperCutoffElevation = newUpperCutoffElevation;
+        if (currentContourLines != null && !hasPendingContourLines()) {
+            // Attempt to shrink contour lines if cutoff elevations changed
+            if ((lowerCutoffElevation < newLowerCutoffElevation || upperCutoffElevation > newUpperCutoffElevation)
+                    && currentContourLines.shrinkIsolineSegments(newLowerCutoffElevation, newUpperCutoffElevation)) {
+                lowerCutoffElevation = newLowerCutoffElevation;
+                upperCutoffElevation = newUpperCutoffElevation;
+            }
+            // Attempt to prune contour lines if isostep changed
+            if (contourLineIsostep != newContourLineIsostep
+                    && currentContourLines.pruneIsolineSegments(newContourLineIsostep)) {
+                contourLineIsostep = newContourLineIsostep;
+            }
         }
 
         boolean contourLineSettingsChanged = contourLineIsostep != newContourLineIsostep
@@ -414,7 +421,6 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
         if (currentContourLines == null || contourLineSettingsChanged) {
             Future<?> future = contourLinesFuture;
             if (future == null || future.isDone()) {
-
                 triggerContourLineComputation(mapView, gridView, newContourLineIsostep, newLowerCutoffElevation,
                         newUpperCutoffElevation);
             }
@@ -530,6 +536,12 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
                     triggerRepaint();
                 }
             });
+        }
+    }
+
+    private boolean hasPendingContourLines() {
+        synchronized (contourLinesLock) {
+            return contourLinesFuture != null;
         }
     }
 

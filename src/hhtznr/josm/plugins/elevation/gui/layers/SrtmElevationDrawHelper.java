@@ -293,12 +293,19 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
         ContourLines currentContourLines = contourLines;
         // If current contour lines exist and cutoff elevation values were reduced,
         // attempt to shrink the amount of contour lines instead of computing new ones
-        if (currentContourLines != null
-                && (lowerCutoffElevation < layerLowerCutoffElevation
-                        || upperCutoffElevation > layerUpperCutoffElevation)
-                && currentContourLines.shrinkIsolineSegments(layerLowerCutoffElevation, layerUpperCutoffElevation)) {
-            lowerCutoffElevation = layerLowerCutoffElevation;
-            upperCutoffElevation = layerUpperCutoffElevation;
+        if (currentContourLines != null && !hasPendingContourLines()) {
+            // Attempt to shrink contour lines if cutoff elevations changed
+            if ((lowerCutoffElevation < layerLowerCutoffElevation || upperCutoffElevation > layerUpperCutoffElevation)
+                    && currentContourLines.shrinkIsolineSegments(layerLowerCutoffElevation,
+                            layerUpperCutoffElevation)) {
+                lowerCutoffElevation = layerLowerCutoffElevation;
+                upperCutoffElevation = layerUpperCutoffElevation;
+            }
+            // Attempt to prune contour lines if isostep changed
+            if (contourLineIsostep != layerContourLineIsostep
+                    && currentContourLines.pruneIsolineSegments(layerContourLineIsostep)) {
+                contourLineIsostep = layerContourLineIsostep;
+            }
         }
 
         boolean contourLineSettingsChanged = contourLineIsostep != layerContourLineIsostep

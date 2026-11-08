@@ -1,5 +1,6 @@
 package hhtznr.josm.plugins.elevation.gui.paintables;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
@@ -29,7 +30,7 @@ public class ContourLines extends AbstractElevationGridPaintable {
 
     private static final int UNDEFINED_ISOSTEP = -1;
 
-    private final int isostep;
+    private int isostep;
     private IsolineSegments[] isolineSegments;
 
     /**
@@ -214,6 +215,76 @@ public class ContourLines extends AbstractElevationGridPaintable {
             newIsolineSegments[i] = isolineSegments[minIndex + i];
         }
         isolineSegments = newIsolineSegments;
+        return true;
+    }
+
+    /**
+     * Reduces the number of isoline segments of these contour lines by removing
+     * segments with isovalues that do not correspond with the new isostep.
+     *
+     * @param newIsostep The new isostep. It must be greater than the current
+     *                   isostep and divisible by the current isostep. For instance,
+     *                   with a current isostep of {@code 5}, a new isostep of
+     *                   {@code 20} is valid for pruning isoline segments.
+     * @return {@code true} if the number of isoline segments was reduced or the new
+     *         isostep was compatible and set as the contour line's isostep, whilst
+     *         the number of isoline segments was effectively not reduced (e.g. in
+     *         case of only a single isovalue); {@code false} otherwise.
+     */
+    public boolean pruneIsolineSegments(int newIsostep) {
+        // Reject negative or zero isovalues
+        if (newIsostep < 1) {
+            throw new IllegalArgumentException("Isostep must be > 0");
+        }
+
+        // Nothing to do, if isostep is unchanged
+        if (newIsostep == isostep) {
+            return false;
+        }
+
+        // We cannot prune isolines if the new isostep is smaller
+        if (newIsostep < isostep) {
+            return false;
+        }
+
+        // We cannot prune if the new isostep is not a divisor
+        if (newIsostep % isostep != 0) {
+            return false;
+        }
+
+        // If no isoline segments exist, only update isostep
+        if (isolineSegments.length == 0) {
+            isostep = newIsostep;
+            return true;
+        }
+
+        // Determine the index of the first isovalue aligned with the new isostep
+        int firstIndex = -1;
+        for (int i = 0; i < isolineSegments.length; i++) {
+            int isovalue = isolineSegments[i].getIsovalue();
+            if (isovalue % newIsostep == 0) {
+                firstIndex = i;
+                break;
+            }
+        }
+
+        // Empty isoline segments if no existing isovalue is aligned with new isostep
+        if (firstIndex < 0) {
+            isolineSegments = new IsolineSegments[0];
+            isostep = newIsostep;
+            return true;
+        }
+
+        // Step between current indices to retrieve remaining isovalues
+        int indexStep = newIsostep / isostep;
+        // Retrieve remaining isovalues
+        ArrayList<IsolineSegments> newIsolineSegments = new ArrayList<>(
+                (isolineSegments.length - firstIndex) / indexStep);
+        for (int i = firstIndex; i < isolineSegments.length; i += indexStep) {
+            newIsolineSegments.add(isolineSegments[i]);
+        }
+        isolineSegments = newIsolineSegments.toArray(new IsolineSegments[newIsolineSegments.size()]);
+        isostep = newIsostep;
         return true;
     }
 

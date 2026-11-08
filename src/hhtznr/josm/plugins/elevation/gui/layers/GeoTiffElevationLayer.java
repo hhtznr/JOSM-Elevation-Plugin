@@ -25,6 +25,7 @@ import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JOptionPane;
 
 import org.geotools.geometry.jts.ReferencedEnvelope;
+import org.openstreetmap.josm.actions.AutoScaleAction;
 import org.openstreetmap.josm.actions.JosmAction;
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
@@ -701,19 +702,20 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
 
     @Override
     public Action[] getMenuEntries() {
-        Action[] actions = new Action[12];
+        Action[] actions = new Action[13];
         actions[0] = LayerListDialog.getInstance().createActivateLayerAction(this);
         actions[1] = LayerListDialog.getInstance().createShowHideLayerAction();
-        actions[2] = LayerListDialog.getInstance().createDeleteLayerAction();
-        actions[3] = SeparatorLayerAction.INSTANCE;
-        actions[4] = new ShowLowestAndHighestPointsAction();
-        actions[5] = new ShowContourLinesAction();
-        actions[6] = new ShowElevationRasterAction();
-        actions[7] = new ShowGrayscaleImageAction();
-        actions[8] = SeparatorLayerAction.INSTANCE;
-        actions[9] = new ShowLayerAdjustmentDialogAction();
-        actions[10] = SeparatorLayerAction.INSTANCE;
-        actions[11] = new ShowInfoDialogAction();
+        actions[2] = MainApplication.getMenu().autoScaleActions.get(AutoScaleAction.AutoScaleMode.LAYER);
+        actions[3] = LayerListDialog.getInstance().createDeleteLayerAction();
+        actions[4] = SeparatorLayerAction.INSTANCE;
+        actions[5] = new ShowLowestAndHighestPointsAction();
+        actions[6] = new ShowContourLinesAction();
+        actions[7] = new ShowElevationRasterAction();
+        actions[8] = new ShowGrayscaleImageAction();
+        actions[9] = SeparatorLayerAction.INSTANCE;
+        actions[10] = new ShowLayerAdjustmentDialogAction();
+        actions[11] = SeparatorLayerAction.INSTANCE;
+        actions[12] = new ShowInfoDialogAction();
         return actions;
     }
 

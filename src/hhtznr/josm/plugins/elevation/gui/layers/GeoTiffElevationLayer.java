@@ -5,9 +5,11 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -55,6 +57,7 @@ import hhtznr.josm.plugins.elevation.gui.paintables.LowestAndHighestPoints;
 import hhtznr.josm.plugins.elevation.util.Coloring;
 import hhtznr.josm.plugins.elevation.util.DrawUtils;
 import hhtznr.josm.plugins.elevation.util.DrawUtils.NonOverlappingTextRenderer;
+import hhtznr.josm.plugins.elevation.util.FileUtils;
 
 /**
  * This class implements a JOSM layer for displaying GeoTIFF images. It converts
@@ -306,6 +309,8 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
         if (isContourLinesEnabled()) {
             drawContourLines(g, mapView, elevationGridView);
         }
+
+        drawOutline(g, mapView);
 
         if (isLowestAndHighestPointsEnabled()) {
             drawLowestAndHighestPoints(g, mapView, elevationGridView);
@@ -582,6 +587,50 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
     private boolean hasPendingContourLines() {
         synchronized (contourLinesLock) {
             return contourLinesFuture != null;
+        }
+    }
+
+    private void drawOutline(Graphics2D g, MapView mapView) {
+        Color outlineColor = new Color(0, 102, 0); // dark green
+        Color outlineFillColor = Color.WHITE;
+        float outlineWidth = 2.0f;
+
+
+        Bounds bounds = geoTiffImage.getBounds();
+        Point p1 = mapView.getPoint(bounds.getMin());
+        Point p2 = mapView.getPoint(bounds.getMax());
+        int x = p1.x;
+        int y = p2.y;
+        int width = Math.abs(p1.x - p2.x);
+        int height = Math.abs(p1.y - p2.y);
+
+        Rectangle outline = new Rectangle(x, y, width, height);
+
+        String name = FileUtils.getFileNameWithoutExtension(geoTiffImage.getAbsolutePath(), ".tif", ",tiff");
+        int fontSize = 12;
+        Font font = g.getFont().deriveFont(Font.BOLD, fontSize);
+
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        // Draw stroke
+        g.setStroke(new BasicStroke(3.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.setColor(outlineFillColor);
+        g.draw(outline);
+        g.setStroke(new BasicStroke(2.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.setColor(outlineColor);
+        g.draw(outline);
+
+        FontMetrics metrics = g.getFontMetrics();
+        int textWidth = metrics.stringWidth(name);
+        int textHeight = metrics.getHeight();
+        int ascent = metrics.getAscent();
+        y = y - textHeight / 2 + ascent;
+
+        if (textWidth + 8 < width) {
+            // Draw text
+            g.setFont(font);
+            DrawUtils.drawOutlinedText(g, x + 4, y + fontSize / 2 + 2, font, outlineColor, outlineFillColor,
+                    outlineWidth, name);
         }
     }
 

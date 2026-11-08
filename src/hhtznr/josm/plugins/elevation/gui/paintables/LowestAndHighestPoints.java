@@ -100,35 +100,6 @@ public class LowestAndHighestPoints extends AbstractElevationGridPaintable {
     }
 
     /**
-     * Creates a new lowest and highest points object where the lowest and highest
-     * points are not derived from the view, but provided explicitly as pre-computed
-     * values.
-     *
-     * @param elevationGridView The elevation grid view to which these lowest and
-     *                          highest points belong.
-     * @param lowestPoints      The list of the lowest coordinate points along with
-     *                          their elevation.
-     * @param highestPoints     The list of the highest coordinate points along with
-     *                          their elevation.
-     */
-    public LowestAndHighestPoints(ElevationGridView elevationGridView, List<LatLonEle> lowestPoints,
-            List<LatLonEle> highestPoints) {
-        super(namer.nextName(), elevationGridView);
-        this.lowestPoints = lowestPoints;
-        this.highestPoints = highestPoints;
-        if (lowestPoints.size() > 0) {
-            this.lowestElevation = lowestPoints.get(0).ele();
-        } else {
-            this.lowestElevation = Double.NaN;
-        }
-        if (highestPoints.size() > 0) {
-            this.highestElevation = highestPoints.get(0).ele();
-        } else {
-            this.highestElevation = Double.NaN;
-        }
-    }
-
-    /**
      * Returns the list of the lowest points in the tile grid view. The list will be
      * empty if the view does not contain valid elevation data.
      *

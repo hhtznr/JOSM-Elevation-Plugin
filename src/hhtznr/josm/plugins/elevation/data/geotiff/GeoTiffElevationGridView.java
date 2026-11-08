@@ -1,8 +1,5 @@
 package hhtznr.josm.plugins.elevation.data.geotiff;
 
-import java.awt.Point;
-import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
 import org.openstreetmap.josm.data.Bounds;
@@ -32,66 +29,7 @@ public class GeoTiffElevationGridView implements ElevationGridView {
         width = lonIndexEast - lonIndexWest + 1;
         this.bounds = bounds;
 
-        double previousMinEle = Double.POSITIVE_INFINITY;
-        double previousMaxEle = Double.NEGATIVE_INFINITY;
-
-        double lowestElevation = Double.POSITIVE_INFINITY;
-        double highestElevation = Double.NEGATIVE_INFINITY;
-
-        List<Point> lowestPointIndices = new LinkedList<>();
-        List<Point> highestPointIndices = new LinkedList<>();
-
-        for (int latIndex = 0; latIndex < height; latIndex++) {
-            for (int lonIndex = 0; lonIndex < width; lonIndex++) {
-                double ele = getElevation(latIndex, lonIndex);
-                if (isNoDataValue(ele)) {
-                    continue;
-                }
-
-                if (ele < previousMinEle) {
-                    lowestPointIndices.clear();
-                    lowestPointIndices.add(new Point(lonIndex, latIndex));
-                    previousMinEle = ele;
-                } else if (ele == previousMinEle) {
-                    lowestPointIndices.add(new Point(lonIndex, latIndex));
-                }
-
-                if (ele > previousMaxEle) {
-                    highestPointIndices.clear();
-                    highestPointIndices.add(new Point(lonIndex, latIndex));
-                    previousMaxEle = ele;
-                } else if (ele == previousMaxEle) {
-                    highestPointIndices.add(new Point(lonIndex, latIndex));
-                }
-            }
-        }
-        if (previousMinEle == Double.POSITIVE_INFINITY) {
-            lowestElevation = Double.NaN;
-        } else {
-            lowestElevation = previousMinEle;
-        }
-        if (previousMaxEle == Double.NEGATIVE_INFINITY) {
-            highestElevation = Double.NaN;
-        } else {
-            highestElevation = previousMaxEle;
-        }
-
-        ArrayList<LatLonEle> lowestPoints = new ArrayList<>(lowestPointIndices.size());
-        for (Point point : lowestPointIndices) {
-            int latIndex = point.y;
-            int lonIndex = point.x;
-            LatLon latLon = toLatLon(latIndex, lonIndex);
-            lowestPoints.add(new LatLonEle(latLon.lat(), latLon.lon(), lowestElevation));
-        }
-
-        ArrayList<LatLonEle> highestPoints = new ArrayList<>(highestPointIndices.size());
-        for (Point point : highestPointIndices) {
-            int latIndex = point.y;
-            int lonIndex = point.x;
-            LatLon latLon = toLatLon(latIndex, lonIndex);
-            highestPoints.add(new LatLonEle(latLon.lat(), latLon.lon(), highestElevation));
-        }
-        lowestAndHighestPoints = new LowestAndHighestPoints(this, lowestPoints, highestPoints);
+        lowestAndHighestPoints = new LowestAndHighestPoints(this);
     }
 
     @Override

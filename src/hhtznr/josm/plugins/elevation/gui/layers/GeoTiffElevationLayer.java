@@ -39,6 +39,7 @@ import hhtznr.josm.plugins.elevation.ElevationPreferences;
 import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.ElevationGridException;
 import hhtznr.josm.plugins.elevation.data.GeoTiffElevationDataProviderListener;
+import hhtznr.josm.plugins.elevation.data.coordinate.CoordinateUtil;
 import hhtznr.josm.plugins.elevation.data.coordinate.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.coordinate.LatLonLine;
 import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffElevationGrid;
@@ -87,7 +88,8 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
     private boolean elevationRasterEnabled;
     private Future<?> elevationGridFuture = null;
     private Future<?> grayscaleImageFuture = null;
-    private Bounds previousMapBounds;
+    private Bounds previousMapBounds = null;
+    private Bounds previousIntersectionBounds = null;
 
     private static final CopyOnWriteArrayList<GeoTiffElevationLayer> geoTiffLayers = new CopyOnWriteArrayList<>();
     private static GeoTiffElevationLayerAdjustmentDialog layerAdjustmentDialog = null;
@@ -222,20 +224,58 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
             return;
         }
 
+        boolean invalidatePaintables = false;
+        boolean elevationGridViewRecreated = false;
+
         if (previousMapBounds == null || !previousMapBounds.equals(mapBounds)) {
-            try {
-                elevationGridView = elevationGrid.getView(mapBounds);
-            } catch (ElevationGridException e) {
-                Logging.warn("Elevation: Could not create map view for GeoTIFF with path'"
-                        + geoTiffImage.getAbsolutePath().toString() + "': " + e.toString());
-                elevationGridView = null;
-                return;
+            if (elevationGridView == null) {
+                try {
+                    elevationGridView = elevationGrid.getView(mapBounds);
+                    elevationGridViewRecreated = true;
+                    invalidatePaintables = true;
+                } catch (ElevationGridException e) {
+                    Logging.warn("Elevation: Could not create map view for GeoTIFF with path'"
+                            + geoTiffImage.getAbsolutePath().toString() + "': " + e.toString());
+                    return;
+                }
             }
+
+            Bounds intersectionBounds = CoordinateUtil.trivialIntersection(mapBounds, elevationGridView.getBounds());
+
+            // If there is no intersection, returned bounds will be null
+            if (intersectionBounds == null) {
+                invalidatePaintables = true;
+                previousIntersectionBounds = null;
+            }
+            // Otherwise check whether the intersection has changed
+            else if (!intersectionBounds.equals(previousIntersectionBounds)) {
+
+                // Recreate the elevation grid view if it was not already (re-)created
+                if (!elevationGridViewRecreated) {
+                    try {
+                        elevationGridView = elevationGrid.getView(mapBounds);
+                        elevationGridViewRecreated = true;
+                        invalidatePaintables = true;
+                    } catch (ElevationGridException e) {
+                        Logging.warn("Elevation: Could not create map view for GeoTIFF with path'"
+                                + geoTiffImage.getAbsolutePath().toString() + "': " + e.toString());
+                        elevationGridView = null;
+                        return;
+                    }
+                }
+
+                invalidatePaintables = true;
+                previousIntersectionBounds = intersectionBounds;
+            }
+
+            previousMapBounds = mapBounds;
+        }
+
+        if (invalidatePaintables) {
             invalidateContourLines();
             synchronized (elevationRasterLock) {
                 elevationRaster = null;
             }
-            previousMapBounds = mapBounds;
         }
 
         if (grayscaleImageEnabled) {

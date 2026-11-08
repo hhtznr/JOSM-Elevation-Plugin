@@ -107,7 +107,7 @@ public class GeoTiffEnvelopeLayer extends Layer implements GeoTiffElevationDataP
         }
     }
 
-    private void drawEnvelope(Graphics2D g, MapView mapView, GeoTiffRecord geoTiffRecord, Color envelopeColor,
+    private static void drawEnvelope(Graphics2D g, MapView mapView, GeoTiffRecord geoTiffRecord, Color envelopeColor,
             NonOverlappingTextRenderer textRenderer) {
         ReferencedEnvelope envelope = geoTiffRecord.getReferencedEnvelope();
 

@@ -133,7 +133,7 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
             if (elevationGrid.getBounds().intersects(mapViewBounds)) {
                 try {
                     elevation = elevationGrid.getElevationAt(latLon);
-                    if (!elevation.isEmpty()) {
+                    if (!elevation.isEmpty() && !elevationGrid.isNoDataValue(elevation.getAsDouble())) {
                         break;
                     }
                 } catch (TransformException e) {
@@ -142,7 +142,7 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
             }
         }
         DecimalFormat eleFormat = ELEVATION_FORMAT_NO_INTERPOLATION;
-        double elevationToDisplay = Double.NaN;
+        double elevationToDisplay = LatLonEle.NO_VALID_ELEVATION;
         if (elevation.isEmpty()) {
             LatLonEle latLonEle = elevationDataProvider.getLatLonEleNoWait(latLon);
             if (latLonEle.isValid()) {
@@ -156,7 +156,7 @@ public class LocalElevationLabel extends ImageLabel implements MouseMotionListen
             eleFormat = ELEVATION_FORMAT_GEOTIFF;
         }
 
-        if (!Double.isNaN(elevationToDisplay)) {
+        if (LatLonEle.isValidEle(elevationToDisplay)) {
             setText(eleFormat.format(elevationToDisplay));
         } else {
             setText("No data");

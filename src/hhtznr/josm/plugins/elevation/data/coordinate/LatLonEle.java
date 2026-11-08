@@ -109,7 +109,8 @@ public class LatLonEle extends LatLon {
      *         otherwise.
      */
     public boolean isValidEle() {
-        return !Double.isNaN(ele);
+        // Checks whether value is not NaN or negative/positive infinity
+        return Double.isFinite(ele);
     }
 
     /**
@@ -119,7 +120,8 @@ public class LatLonEle extends LatLon {
      *         otherwise.
      */
     public static boolean isValidEle(double ele) {
-        return !Double.isNaN(ele);
+        // Checks whether value is not NaN or negative/positive infinity
+        return Double.isFinite(ele);
     }
 
     @Override
@@ -134,10 +136,12 @@ public class LatLonEle extends LatLon {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null || !(obj instanceof LatLonEle))
+        }
+        if (obj == null || !(obj instanceof LatLonEle)) {
             return false;
+        }
         LatLonEle that = (LatLonEle) obj;
         return Double.compare(that.x, x) == 0 && Double.compare(that.y, y) == 0 && Double.compare(that.ele, ele) == 0;
     }

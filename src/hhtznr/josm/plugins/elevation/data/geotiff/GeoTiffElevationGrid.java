@@ -110,13 +110,19 @@ public class GeoTiffElevationGrid implements ElevationGrid {
                         int lonIndex = x - minX;
                         double elevation = tile.getSampleDouble(x, y, 0);
                         elevations[latIndex * width + lonIndex] = elevation;
-                        if (isValidElevation(elevation)) {
+                        if (!isNoDataValue(elevation)) {
                             minElevation = Math.min(minElevation, elevation);
                             maxElevation = Math.max(maxElevation, elevation);
                         }
                     }
                 }
             }
+        }
+
+        // The second check is effectively redundant
+        if (minElevation == Double.POSITIVE_INFINITY || maxElevation == Double.NEGATIVE_INFINITY) {
+            minElevation = LatLonEle.NO_VALID_ELEVATION;
+            maxElevation = LatLonEle.NO_VALID_ELEVATION;
         }
         this.lowestElevation = minElevation;
         this.highestElevation = maxElevation;
@@ -148,17 +154,7 @@ public class GeoTiffElevationGrid implements ElevationGrid {
 
     @Override
     public boolean isNoDataValue(double ele) {
-        if (!Double.isFinite(ele)) {
-            return true;
-        }
-        if (noDataValues != null) {
-            for (double noDataValue : noDataValues) {
-                if (Double.isNaN(noDataValue) ? Double.isNaN(ele) : ele == noDataValue) {
-                    return true;
-                }
-            }
-        }
-        return false;
+        return !GeoTiffImage.isValidSample(ele, noDataValues);
     }
 
     private int linearIndex(int latIndex, int lonIndex) {
@@ -171,28 +167,6 @@ public class GeoTiffElevationGrid implements ElevationGrid {
             throw new IndexOutOfBoundsException("Grid coordinate (latIndex, lonIndex) = (" + latIndex + ", " + lonIndex
                     + ") is outside " + height + " x " + width + " raster");
         }
-    }
-
-    /**
-     * Returns whether the provided value is a valid elevation value of this GeoTIFF
-     * elevation grid.
-     *
-     * @param value The value to check.
-     * @return {@code true} if the value is finite and the underlying GeoTIFF image
-     *         does not list it as no-data value, {@code false} otherwise.
-     */
-    public boolean isValidElevation(double value) {
-        if (!Double.isFinite(value)) {
-            return false;
-        }
-        if (noDataValues != null) {
-            for (double noDataValue : noDataValues) {
-                if (Double.isNaN(noDataValue) ? Double.isNaN(value) : value == noDataValue) {
-                    return false;
-                }
-            }
-        }
-        return true;
     }
 
     @Override
@@ -259,13 +233,11 @@ public class GeoTiffElevationGrid implements ElevationGrid {
      * Returns the minimum and maximum valid values in the first coverage band.
      *
      * @return an array containing the minimum at index {@code 0} and maximum at
-     *         index {@code 1}, or {@code {Double.NaN, Double.NaN}} if the raster
-     *         contains no valid samples
+     *         index {@code 1}, or
+     *         {{@link LatLonEle#NO_VALID_ELEVATION}{@code , }{@link LatLonEle#NO_VALID_ELEVATION}}
+     *         if the raster contains no valid samples.
      */
     public double[] getLowestAndHighestElevation() {
-        if (lowestElevation == Double.POSITIVE_INFINITY) {
-            return new double[] { Double.NaN, Double.NaN };
-        }
         return new double[] { lowestElevation, highestElevation };
     }
 

@@ -72,12 +72,12 @@ public class LowestAndHighestPoints extends AbstractElevationGridPaintable {
             }
         }
         if (previousMinEle == Double.POSITIVE_INFINITY) {
-            lowestElevation = Double.NaN;
+            lowestElevation = LatLonEle.NO_VALID_ELEVATION;
         } else {
             lowestElevation = previousMinEle;
         }
         if (previousMaxEle == Double.NEGATIVE_INFINITY) {
-            highestElevation = Double.NaN;
+            highestElevation = LatLonEle.NO_VALID_ELEVATION;
         } else {
             highestElevation = previousMaxEle;
         }
@@ -120,8 +120,9 @@ public class LowestAndHighestPoints extends AbstractElevationGridPaintable {
     }
 
     /**
-     * Returns the lowest elevation value in the tile grid view. {@code Double.NaN}
-     * will be returned if the view does not contain valid elevation data.
+     * Returns the lowest elevation value in the tile grid view.
+     * {@link LatLonEle#NO_VALID_ELEVATION} will be returned if the view does not
+     * contain valid elevation data.
      *
      * @return The lowest elevation value.
      */
@@ -130,8 +131,9 @@ public class LowestAndHighestPoints extends AbstractElevationGridPaintable {
     }
 
     /**
-     * Returns the highest elevation value in the tile grid view. {@code Double.NaN}
-     * will be returned if the view does not contain valid elevation data.
+     * Returns the highest elevation value in the tile grid view.
+     * {@link LatLonEle#NO_VALID_ELEVATION} will be returned if the view does not
+     * contain valid elevation data.
      *
      * @return The highest elevation value.
      */
@@ -145,6 +147,6 @@ public class LowestAndHighestPoints extends AbstractElevationGridPaintable {
      * @return The lowest and highest elevation value.
      */
     public LowestAndHighestElevation getLowestAndHighestElevation() {
-        return new LowestAndHighestElevation(lowestElevation, highestElevation);
+        return new LowestAndHighestElevation(getElevationGridView(), lowestElevation, highestElevation);
     }
 }

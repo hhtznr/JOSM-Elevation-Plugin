@@ -32,6 +32,16 @@ public abstract class AbstractElevationGridPaintable extends ElevationDataConsum
     }
 
     /**
+     * Returns the elevation grid view from which this paintable obtains elevation
+     * values.
+     *
+     * @return The elevation grid view used by this paintable.
+     */
+    public ElevationGridView getElevationGridView() {
+        return this.elevationGridView;
+    }
+
+    /**
      * Returns whether the given bounds are covered by the bounds of this tile grid
      * paintable.
      *

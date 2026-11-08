@@ -269,7 +269,16 @@ public class GeoTiffImage {
         return gray;
     }
 
-    private static boolean isValidSample(double value, double[] noDataValues) {
+    /**
+     * Checks whether the specified value is a valid elevation sample considering
+     * the specified no-data values.
+     *
+     * @param value        The value to check.
+     * @param noDataValues A list of values representing no-data values.
+     * @return {@code true} if the specified value is finite and not listed in the
+     *         specified no-data values; {@code false} otherwise.
+     */
+    public static boolean isValidSample(double value, double[] noDataValues) {
         if (!Double.isFinite(value)) {
             return false;
         }

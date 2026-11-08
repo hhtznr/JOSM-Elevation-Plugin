@@ -129,8 +129,6 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
         grayscaleImageOpacity = ElevationPreferences.getGeoTiffGrayscaleImageOpacity();
         elevationRasterEnabled = ElevationPreferences.getGeoTiffElevationRasterEnabled();
 
-        geoTiffLayers.add(this);
-
         elevationGridFuture = ElevationPlugin.getParallelExecutor().submit(() -> {
             if (Thread.currentThread().isInterrupted()) {
                 elevationGridFuture = null;
@@ -595,7 +593,6 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
         Color outlineFillColor = Color.WHITE;
         float outlineWidth = 2.0f;
 
-
         Bounds bounds = geoTiffImage.getBounds();
         Point p1 = mapView.getPoint(bounds.getMin());
         Point p2 = mapView.getPoint(bounds.getMax());
@@ -723,7 +720,10 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
     @Override
     public synchronized void destroy() {
         synchronized (addGeoTiffLayerLock) {
-            geoTiffLayers.remove(this);
+            if (!geoTiffLayers.remove(this)) {
+                Logging.warn("Elevation: GeoTIFF elevation layer '" + getName()
+                        + "', which was requested to be removed from the global GeoTIFF layer list upon destruction, was not registered on the list!");
+            }
         }
         // Cancel any running background tasks of this layer
         invalidateContourLines();
@@ -801,8 +801,8 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
                 GeoTiffImage geoTiffImage = GeoTiffImage.readGeoTiffFile(path);
                 Logging.info("Elevation: GeoTIFF file read: " + path.toAbsolutePath().toString());
                 GeoTiffElevationLayer geoTiffLayer = new GeoTiffElevationLayer(layerName, geoTiffImage);
-                MainApplication.getLayerManager().addLayer(geoTiffLayer, false);
                 geoTiffLayers.add(geoTiffLayer);
+                MainApplication.getLayerManager().addLayer(geoTiffLayer, false);
                 geoTiffLayer.acquireLayerAdjustmentDialog();
                 return true;
             } catch (IOException e) {

@@ -8,8 +8,8 @@ import java.util.List;
 import org.openstreetmap.josm.data.coor.LatLon;
 
 import hhtznr.josm.plugins.elevation.data.ElevationGridView;
+import hhtznr.josm.plugins.elevation.data.LowestAndHighestElevation;
 import hhtznr.josm.plugins.elevation.data.coordinate.LatLonEle;
-import hhtznr.josm.plugins.elevation.data.srtm.SrtmTile;
 import hhtznr.josm.plugins.elevation.util.IncrementalNumberedNameCreator;
 
 /**
@@ -120,9 +120,8 @@ public class LowestAndHighestPoints extends AbstractElevationGridPaintable {
     }
 
     /**
-     * Returns the lowest elevation value in the tile grid view.
-     * {@link SrtmTile#SRTM_DATA_VOID} will be returned if the view does not contain
-     * valid elevation data.
+     * Returns the lowest elevation value in the tile grid view. {@code Double.NaN}
+     * will be returned if the view does not contain valid elevation data.
      *
      * @return The lowest elevation value.
      */
@@ -131,13 +130,21 @@ public class LowestAndHighestPoints extends AbstractElevationGridPaintable {
     }
 
     /**
-     * Returns the highest elevation value in the tile grid view.
-     * {@link SrtmTile#SRTM_DATA_VOID} will be returned if the view does not contain
-     * valid elevation data.
+     * Returns the highest elevation value in the tile grid view. {@code Double.NaN}
+     * will be returned if the view does not contain valid elevation data.
      *
      * @return The highest elevation value.
      */
     public double getHighestElevation() {
         return highestElevation;
+    }
+
+    /**
+     * Returns the lowest and highest elevation value in the tile grid view.
+     *
+     * @return The lowest and highest elevation value.
+     */
+    public LowestAndHighestElevation getLowestAndHighestElevation() {
+        return new LowestAndHighestElevation(lowestElevation, highestElevation);
     }
 }

@@ -5,6 +5,7 @@ import java.util.List;
 
 import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.ElevationGridView;
+import hhtznr.josm.plugins.elevation.data.LowestAndHighestElevation;
 import hhtznr.josm.plugins.elevation.data.coordinate.LatLonLine;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmTileGridView;
 import hhtznr.josm.plugins.elevation.math.MarchingSquares;
@@ -34,16 +35,30 @@ public class ContourLines extends AbstractElevationGridPaintable {
     private IsolineSegments[] isolineSegments;
 
     /**
+     * Creates a new set of contour lines for a single isovalue covering the bounds
+     * of the specified view.
+     *
+     * @param elevationGridView The view on an elevation grid for which the contour
+     *                          lines should be computed.
+     * @param isovalue          The isovalue in meters for which the contour lines
+     *                          shall be computed.
+     * @throws AsyncOperationException if asynchronous computation of the contour
+     *                                 lines is rejected.
+     * @throws InterruptedException    if asynchronous computation of the contour
+     *                                 lines is interrupted.
+     */
+    public ContourLines(ElevationGridView elevationGridView, short isovalue)
+            throws AsyncOperationException, InterruptedException {
+        this(elevationGridView, 1, MINIMUM_GRID_STEP, MINIMUM_GRID_STEP, isovalue, isovalue);
+    }
+
+    /**
      * Creates a new set of contour lines covering the bounds of the specified view.
      *
      * @param elevationGridView    The view on an elevation grid for which the
      *                             contour lines should be computed.
      * @param isostep              The step in meters between adjacent contour
      *                             lines.
-     * @param lowerCutoffElevation The elevation value below which contour lines
-     *                             will not be generated.
-     * @param upperCutoffElevation The elevation value above which contour lines
-     *                             will not be generated.
      * @param gridStepLat          The step in latitude direction when iterating
      *                             over the elevation grid upon computing the
      *                             contour lines. If the step is {@code 1}, each
@@ -53,63 +68,68 @@ public class ContourLines extends AbstractElevationGridPaintable {
      * @param gridStepLon          The step in longitude direction when iterating
      *                             over the elevation grid upon computing the
      *                             contour lines. Value must be {@code >= 1}.
-     * @throws AsyncOperationException if asynchronous computation of the contour
-     *                                 lines is rejected
-     * @throws InterruptedException    if asynchronous computation of the contour
-     *                                 lines is interrupted.
-     */
-    public ContourLines(ElevationGridView elevationGridView, int isostep, int gridStepLat, int gridStepLon,
-            int lowerCutoffElevation, int upperCutoffElevation) throws AsyncOperationException, InterruptedException {
-        this(elevationGridView, elevationGridView.getIsovalues(isostep, lowerCutoffElevation, upperCutoffElevation),
-                isostep, gridStepLat, gridStepLon);
-    }
-
-    /**
-     * Creates a new set of contour lines covering the bounds of the specified view
-     * using the {@link MINIMUM_GRID_STEP}.
-     *
-     * @param elevationGridView    The view on an elevation grid for which the
-     *                             contour lines should be computed.
-     * @param isostep              The step in meters between adjacent contour
-     *                             lines.
      * @param lowerCutoffElevation The elevation value below which contour lines
      *                             will not be generated.
      * @param upperCutoffElevation The elevation value above which contour lines
      *                             will not be generated.
      * @throws AsyncOperationException if asynchronous computation of the contour
-     *                                 lines is rejected
+     *                                 lines is rejected.
      * @throws InterruptedException    if asynchronous computation of the contour
      *                                 lines is interrupted.
      */
-    public ContourLines(ElevationGridView elevationGridView, int isostep, int lowerCutoffElevation,
-            int upperCutoffElevation) throws AsyncOperationException, InterruptedException {
-        this(elevationGridView, elevationGridView.getIsovalues(isostep, lowerCutoffElevation, upperCutoffElevation),
-                isostep, MINIMUM_GRID_STEP, MINIMUM_GRID_STEP);
-    }
-
-    /**
-     * Creates a new set of contour lines covering the bounds of the specified view
-     * using the {@link MINIMUM_GRID_STEP}.
-     *
-     * @param elevationGridView The view on an elevation grid for which the contour
-     *                          lines should be computed.
-     * @param isovalues         An array of elevation values defining the isolevels.
-     *                          See
-     *                          {@link MarchingSquares#MarchingSquares(ElevationGridView, short[])}.
-     * @throws AsyncOperationException if asynchronous computation of the contour
-     *                                 lines is rejected
-     * @throws InterruptedException    if asynchronous computation of the contour
-     *                                 lines is interrupted.
-     */
-    public ContourLines(ElevationGridView elevationGridView, short[] isovalues)
-            throws AsyncOperationException, InterruptedException {
-        this(elevationGridView, isovalues, UNDEFINED_ISOSTEP, MINIMUM_GRID_STEP, MINIMUM_GRID_STEP);
-    }
-
-    private ContourLines(ElevationGridView elevationGridView, short[] isovalues, int isostep, int gridStepLat,
-            int gridStepLon) throws AsyncOperationException, InterruptedException {
+    public ContourLines(ElevationGridView elevationGridView, int isostep, int gridStepLat, int gridStepLon,
+            int lowerCutoffElevation, int upperCutoffElevation) throws AsyncOperationException, InterruptedException {
         super(namer.nextName(), elevationGridView);
         try {
+            LowestAndHighestElevation lowestAndHighestElevation = elevationGridView.getLowestAndHighestPoints()
+                    .getLowestAndHighestElevation();
+
+            if (!lowestAndHighestElevation.isValid()) {
+                this.isolineSegments = new IsolineSegments[0];
+            }
+
+            double lowestElevation = lowestAndHighestElevation.getLowestElevation();
+            double highestElevation = lowestAndHighestElevation.getHighestElevation();
+
+            // Apply the lower cutoff elevation value, if it is greater than the minimum
+            // elevation within the grid
+            double minEle = Math.max(lowestElevation, lowerCutoffElevation);
+            // Apply the upper cutoff elevation value, if it is smaller than the maximum
+            // elevation within the grid
+            double maxEle = Math.min(highestElevation, upperCutoffElevation);
+
+            short[] isovalues;
+
+            if (minEle > maxEle) {
+                isovalues = new short[0]; // The cutoffs exclude the view's elevation range.
+            } else {
+
+                // Determine the list of isovalues, i.e. the elevation levels for which contour
+                // lines should be computed
+                // TODO: Use Math.ceil() and Math.floor() instead of cast to short
+                short minIsovalue;
+                short maxIsovalue;
+                if ((short) minEle % isostep == 0) {
+                    minIsovalue = (short) minEle;
+                } else {
+                    minIsovalue = (short) (((short) minEle / isostep) * isostep);
+                }
+                if ((short) maxEle % isostep == 0) {
+                    maxIsovalue = (short) maxEle;
+                } else {
+                    maxIsovalue = (short) (((short) maxEle / isostep) * isostep);
+                }
+                if (maxIsovalue < minIsovalue) {
+                    isovalues = new short[0];
+                } else {
+                    int nSteps = (maxIsovalue - minIsovalue) / isostep + 1;
+                    isovalues = new short[nSteps];
+                    for (int i = 0; i < nSteps; i++) {
+                        isovalues[i] = (short) (minIsovalue + i * isostep);
+                    }
+                }
+            }
+
             if (isostep == UNDEFINED_ISOSTEP) {
                 if (isovalues.length < 2) {
                     this.isostep = 1;

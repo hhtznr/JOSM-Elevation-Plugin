@@ -49,6 +49,11 @@ public class SrtmTileGridView implements ElevationGridView {
     private final Bounds bounds;
 
     /**
+     * The lowest and highest points within this view.
+     */
+    private LowestAndHighestPoints lowestAndHighestPoints = null;
+
+    /**
      * Creates a new SRTM tile grid view.
      *
      * @param tileGrid      The underlying tile grid for which this view is created.
@@ -181,71 +186,6 @@ public class SrtmTileGridView implements ElevationGridView {
     }
 
     /**
-     * Returns an array of isovalues within the bounds of this view.
-     *
-     * @param isostep              Step between two adjacent isolines.
-     * @param lowerCutoffElevation The elevation value below which isovalues will
-     *                             not be returned.
-     * @param upperCutoffElevation The elevation value above which isovalues will
-     *                             not be returned.
-     * @return An array of the isovaluesconsidering the given isostep and the given
-     *         cutoff values.
-     */
-    @Override
-    public short[] getIsovalues(int isostep, int lowerCutoffElevation, int upperCutoffElevation) {
-        short minEle = Short.MAX_VALUE;
-        short maxEle = SrtmTile.SRTM_DATA_VOID;
-        for (int latIndex = 0; latIndex < height; latIndex++) {
-            for (int lonIndex = 0; lonIndex < width; lonIndex++) {
-                short ele = getElevationAsShort(latIndex, lonIndex);
-                // Ignore data voids in the assessment of minimum elevation
-                if (ele == SrtmTile.SRTM_DATA_VOID) {
-                    continue;
-                }
-                minEle = (short) Math.min(minEle, ele);
-                maxEle = (short) Math.max(maxEle, ele);
-            }
-        }
-        // If the area consists of data voids only,
-        // minEle will still have its initial value
-        if (minEle == Short.MAX_VALUE) {
-            minEle = SrtmTile.SRTM_DATA_VOID;
-        }
-
-        // Apply the lower cutoff elevation value, if it is greater than the minimum
-        // elevation within the grid
-        minEle = (short) Math.max(minEle, lowerCutoffElevation);
-        // Apply the upper cutoff elevation value, if it is smaller than the maximum
-        // elevation within the grid
-        maxEle = (short) Math.min(maxEle, upperCutoffElevation);
-
-        // Determine the list of isovalues, i.e. the elevation levels for which contour
-        // lines should be computed
-        short minIsovalue;
-        short maxIsovalue;
-        if (minEle % isostep == 0) {
-            minIsovalue = minEle;
-        } else {
-            minIsovalue = (short) ((minEle / isostep) * isostep);
-        }
-        if (maxEle % isostep == 0) {
-            maxIsovalue = maxEle;
-        } else {
-            maxIsovalue = (short) ((maxEle / isostep) * isostep);
-        }
-        if (maxIsovalue < minIsovalue) {
-            return new short[] {};
-        }
-        int nSteps = (maxIsovalue - minIsovalue) / isostep + 1;
-        short[] isovalues = new short[nSteps];
-        for (int i = 0; i < nSteps; i++) {
-            isovalues[i] = (short) (minIsovalue + i * isostep);
-        }
-
-        return isovalues;
-    }
-
-    /**
      * Returns a list of isoline segments defining elevation contour lines within
      * the bounds of this SRTM tile grid view. The segments do not have a useful
      * order. This method will slightly adjust the bounds to the closest coordinates
@@ -298,7 +238,10 @@ public class SrtmTileGridView implements ElevationGridView {
         if (!tileGrid.areAllTilesCached() || tileGrid.isDisposed()) {
             return null;
         }
-        return new LowestAndHighestPoints(this);
+        if (lowestAndHighestPoints == null) {
+            lowestAndHighestPoints = new LowestAndHighestPoints(this);
+        }
+        return lowestAndHighestPoints;
     }
 
     /**

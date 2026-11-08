@@ -126,12 +126,11 @@ public class TopographicIsolationFinder extends AbstractElevationTool {
         informListenersAboutStatus("All needed SRTM tiles cached");
 
         short isolationReferenceElevation = (short) (peak.ele() + 1);
-        short[] isovalues = new short[] { isolationReferenceElevation };
 
         informListenersAboutStatus("Creating contour lines");
         ContourLines contourLines;
         try {
-            contourLines = new ContourLines(tileGridView, isovalues);
+            contourLines = new ContourLines(tileGridView, isolationReferenceElevation);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             informListenersAboutStatus("Creating contour lines interrupted");

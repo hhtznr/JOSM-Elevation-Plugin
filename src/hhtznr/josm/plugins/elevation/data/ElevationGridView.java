@@ -99,20 +99,6 @@ public interface ElevationGridView {
     public Bounds getBounds();
 
     /**
-     * Returns isovalues for this elevation grid view based on the provided isostep.
-     * Isovalues returned shall be multiples of the isostep.
-     *
-     * @param isostep              The difference between an isobalue and the next
-     *                             greater isovalue.
-     * @param lowerCutoffElevation Elevation values below this value shall not be
-     *                             considered when determining the isovalues.
-     * @param upperCutoffElevation Elevation values above this value shall not be
-     *                             considered then determining the isovalues.
-     * @return An array holding the isovalues.
-     */
-    public short[] getIsovalues(int isostep, int lowerCutoffElevation, int upperCutoffElevation);
-
-    /**
      * Returns the lowest and highest points in this grid view.
      *
      * @return An object with two lists holding the coordinates and elevations of

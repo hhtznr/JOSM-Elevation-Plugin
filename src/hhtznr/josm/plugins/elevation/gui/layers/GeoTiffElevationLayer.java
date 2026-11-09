@@ -10,6 +10,8 @@ import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -702,7 +704,7 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
 
     @Override
     public Action[] getMenuEntries() {
-        Action[] actions = new Action[13];
+        Action[] actions = new Action[14];
         actions[0] = LayerListDialog.getInstance().createActivateLayerAction(this);
         actions[1] = LayerListDialog.getInstance().createShowHideLayerAction();
         actions[2] = MainApplication.getMenu().autoScaleActions.get(AutoScaleAction.AutoScaleMode.LAYER);
@@ -715,7 +717,8 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
         actions[9] = SeparatorLayerAction.INSTANCE;
         actions[10] = new ShowLayerAdjustmentDialogAction();
         actions[11] = SeparatorLayerAction.INSTANCE;
-        actions[12] = new ShowInfoDialogAction();
+        actions[12] = new CopyGeoTiffFileNameToClipBoardAction();
+        actions[13] = new ShowInfoDialogAction();
         return actions;
     }
 
@@ -1048,6 +1051,24 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
                 }
                 layerAdjustmentDialog.showDialog();
             }
+        }
+    }
+
+    private class CopyGeoTiffFileNameToClipBoardAction extends JosmAction {
+
+        private static final long serialVersionUID = 1L;
+
+        public CopyGeoTiffFileNameToClipBoardAction() {
+            super("Copy file name to clipboard", new ImageProvider("copy.svg"), "Copy GeoTIFF file name to clipboard",
+                    null, false, "geotiff-copy-to-clipboard", false);
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            String fileName = geoTiffImage.getAbsolutePath().getFileName().toString();
+            StringSelection selection = new StringSelection(fileName);
+            Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
+            ;
         }
     }
 

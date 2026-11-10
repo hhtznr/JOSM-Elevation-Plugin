@@ -13,6 +13,7 @@ import java.awt.RenderingHints;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -46,7 +47,6 @@ import hhtznr.josm.plugins.elevation.data.ElevationGridException;
 import hhtznr.josm.plugins.elevation.data.GeoTiffElevationDataProviderListener;
 import hhtznr.josm.plugins.elevation.data.coordinate.CoordinateUtil;
 import hhtznr.josm.plugins.elevation.data.coordinate.LatLonEle;
-import hhtznr.josm.plugins.elevation.data.coordinate.LatLonLine;
 import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffElevationGrid;
 import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffElevationGridView;
 import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffImage;
@@ -54,7 +54,6 @@ import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffImageException;
 import hhtznr.josm.plugins.elevation.gui.dialogs.GeoTiffElevationLayerAdjustmentDialog;
 import hhtznr.josm.plugins.elevation.gui.dialogs.GeoTiffInfoDialog;
 import hhtznr.josm.plugins.elevation.gui.paintables.ContourLines;
-import hhtznr.josm.plugins.elevation.gui.paintables.ContourLines.IsolineSegments;
 import hhtznr.josm.plugins.elevation.gui.paintables.ElevationRaster;
 import hhtznr.josm.plugins.elevation.gui.paintables.LowestAndHighestPoints;
 import hhtznr.josm.plugins.elevation.util.Coloring;
@@ -472,20 +471,14 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
             }
         }
 
-        ContourLines contourLinesRef = contourLines;
-        if (contourLinesRef == null) {
+        if (currentContourLines == null) {
             return;
         }
 
-        IsolineSegments[] isolineSegments = contourLinesRef.getIsolineSegments();
-        if (isolineSegments.length < 1) {
+        ContourLines.IsolinePath[] isolinePaths = currentContourLines.getIsolinePaths(mapView);
+        if (isolinePaths == null) {
             return;
         }
-
-        Rectangle screenClip = g.getClipBounds();
-
-        g.setColor(layerContourLineConstantColor);
-        g.setStroke(contourLineStroke);
 
         double minEle = lowerCutoffElevation;
         double maxEle = upperCutoffElevation;
@@ -502,20 +495,21 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
                 useFalseColor = true;
             }
         }
-        for (ContourLines.IsolineSegments isolineSegment : isolineSegments) {
+
+        Graphics2D g2 = (Graphics2D) g.create();
+        AffineTransform mapTransform = mapView.getAffineTransform();
+
+        g2.setColor(layerContourLineConstantColor);
+        g2.setStroke(contourLineStroke);
+
+        for (ContourLines.IsolinePath isolinePath : isolinePaths) {
             if (useFalseColor) {
-                short ele = isolineSegment.getIsovalue();
-                g.setColor(Coloring.getRainbowColor(ele, minEle, maxEle));
+                short ele = isolinePath.getIsovalue();
+                g2.setColor(Coloring.getRainbowColor(ele, minEle, maxEle));
             }
-            for (LatLonLine segment : isolineSegment.getLineSegments()) {
-                Point p1 = mapView.getPoint(segment.getLatLon1());
-                Point p2 = mapView.getPoint(segment.getLatLon2());
-                // Only draw if the line's bounding box intersects the map's bounding box
-                if (screenClip.intersectsLine(p1.x, p1.y, p2.x, p2.y)) {
-                    g.drawLine(p1.x, p1.y, p2.x, p2.y);
-                }
-            }
+            g2.draw(mapTransform.createTransformedShape(isolinePath.getPath()));
         }
+        g2.dispose();
     }
 
     private void invalidateContourLines() {
@@ -681,7 +675,6 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
         Font font = g.getFont().deriveFont(Font.BOLD, 12);
         g.setFont(font);
         // Draw non-overlapping labels for the highest and lowest points
-        // Draw non-overlapping labels for the highest and lowest points
         NonOverlappingTextRenderer textRenderer = new NonOverlappingTextRenderer();
         for (Point p : lowestPixels) {
             textRenderer.drawTextSafely(g, p.x + textOffsetX, p.y, Color.BLUE, Color.WHITE, textLowestElevation);
@@ -759,6 +752,9 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
 
         grayscaleImage = null;
         synchronized (contourLinesLock) {
+            if (contourLines != null) {
+                contourLines.dispose(); // De facto not needed with GeoTIFF
+            }
             contourLines = null;
         }
         synchronized (elevationRasterLock) {

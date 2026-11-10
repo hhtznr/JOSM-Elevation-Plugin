@@ -7,7 +7,7 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Point;
-import java.awt.Rectangle;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,10 +30,8 @@ import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.ElevationGridException;
 import hhtznr.josm.plugins.elevation.data.coordinate.CoordinateUtil;
 import hhtznr.josm.plugins.elevation.data.coordinate.LatLonEle;
-import hhtznr.josm.plugins.elevation.data.coordinate.LatLonLine;
 import hhtznr.josm.plugins.elevation.data.srtm.SrtmTile;
 import hhtznr.josm.plugins.elevation.gui.paintables.ContourLines;
-import hhtznr.josm.plugins.elevation.gui.paintables.ContourLines.IsolineSegments;
 import hhtznr.josm.plugins.elevation.gui.paintables.ElevationRaster;
 import hhtznr.josm.plugins.elevation.gui.paintables.HillshadeImageTile;
 import hhtznr.josm.plugins.elevation.gui.paintables.LowestAndHighestPoints;
@@ -291,6 +289,7 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
         // This prevents a change of the contour lines while working on them
         // The pending contour lines task may update them asynchronously
         ContourLines currentContourLines = contourLines;
+
         // If current contour lines exist and cutoff elevation values were reduced,
         // attempt to shrink the amount of contour lines instead of computing new ones
         if (currentContourLines != null && !hasPendingContourLines()) {
@@ -320,26 +319,21 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
             upperCutoffElevation = layerUpperCutoffElevation;
 
             Bounds scaledBounds = CoordinateUtil.getScaledBounds(clipBounds, BOUNDS_SCALE_FACTOR);
+
             ContourLines refreshedContourLines = refreshContourLines(mapView, scaledBounds);
             if (refreshedContourLines != null) {
                 currentContourLines = refreshedContourLines;
             }
-            if (currentContourLines == null) {
-                return;
-            }
         }
-
-        IsolineSegments[] isolineSegments = currentContourLines.getIsolineSegments();
-        if (isolineSegments.length < 1) {
+        if (currentContourLines == null) {
             return;
         }
 
-        Graphics2D g = graphics.getDefaultGraphics();
 
-        Rectangle screenClip = g.getClipBounds();
-
-        g.setColor(layerContourLineConstantColor);
-        g.setStroke(contourLineStroke);
+        ContourLines.IsolinePath[] isolinePaths = currentContourLines.getIsolinePaths(mapView);
+        if (isolinePaths.length < 1) {
+            return;
+        }
 
         short minEle = lowerCutoffElevation;
         short maxEle = upperCutoffElevation;
@@ -359,20 +353,21 @@ public class SrtmElevationDrawHelper implements MapViewPaintable.LayerPainter, P
                 }
             }
         }
-        for (ContourLines.IsolineSegments isolineSegment : isolineSegments) {
+
+        Graphics2D g2 = (Graphics2D) graphics.getDefaultGraphics().create();
+        AffineTransform mapTransform = mapView.getAffineTransform();
+
+        g2.setColor(layerContourLineConstantColor);
+        g2.setStroke(contourLineStroke);
+
+        for (ContourLines.IsolinePath isolinePath : isolinePaths) {
             if (useFalseColor) {
-                short ele = isolineSegment.getIsovalue();
-                g.setColor(Coloring.getRainbowColor(ele, minEle, maxEle));
+                short ele = isolinePath.getIsovalue();
+                g2.setColor(Coloring.getRainbowColor(ele, minEle, maxEle));
             }
-            for (LatLonLine segment : isolineSegment.getLineSegments()) {
-                Point p1 = mapView.getPoint(segment.getLatLon1());
-                Point p2 = mapView.getPoint(segment.getLatLon2());
-                // Only draw if the line's bounding box intersects the map's bounding box
-                if (screenClip.intersectsLine(p1.x, p1.y, p2.x, p2.y)) {
-                    g.drawLine(p1.x, p1.y, p2.x, p2.y);
-                }
-            }
+            g2.draw(mapTransform.createTransformedShape(isolinePath.getPath()));
         }
+        g2.dispose();
     }
 
     private synchronized void setContourLineStroke(float width) {

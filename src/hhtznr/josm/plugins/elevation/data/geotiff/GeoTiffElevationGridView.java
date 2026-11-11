@@ -8,6 +8,12 @@ import hhtznr.josm.plugins.elevation.data.ElevationGridView;
 import hhtznr.josm.plugins.elevation.data.coordinate.LatLonEle;
 import hhtznr.josm.plugins.elevation.gui.paintables.LowestAndHighestPoints;
 
+/**
+ * This class implements a view for convenient index-based access to a subarea
+ * of GeoTIFF elevation grid.
+ *
+ * @author Harald Hetzner
+ */
 public class GeoTiffElevationGridView implements ElevationGridView {
 
     private final GeoTiffElevationGrid elevationGrid;
@@ -16,8 +22,24 @@ public class GeoTiffElevationGridView implements ElevationGridView {
     private final int height;
     private final int width;
     private final Bounds bounds;
-    private final LowestAndHighestPoints lowestAndHighestPoints;
+    private LowestAndHighestPoints lowestAndHighestPoints = null;
 
+    /**
+     * Creates a new GeoTIFF elevation grid view.
+     *
+     * @param elevationGrid The underlying GeoTIFF elevation grid for which this
+     *                      view is created.
+     * @param latIndexSouth The minimum (southernmost) grid raster index in latitude
+     *                      direction.
+     * @param latIndexNorth The maximum (northernmost) grid raster index in latitude
+     *                      direction.
+     * @param lonIndexWest  The minimum (westernnmost) grid raster index in
+     *                      longitude direction.
+     * @param lonIndexEast  The maximum (easternmost) grid raster index in longitude
+     *                      direction.
+     * @param bounds        The coordinate bounds corresponding to this GeoTIFF grid
+     *                      view.
+     */
     protected GeoTiffElevationGridView(GeoTiffElevationGrid elevationGrid, int latIndexSouth, int latIndexNorth,
             int lonIndexWest, int lonIndexEast, Bounds bounds) {
         this.elevationGrid = elevationGrid;
@@ -26,8 +48,6 @@ public class GeoTiffElevationGridView implements ElevationGridView {
         height = latIndexNorth - latIndexSouth + 1;
         width = lonIndexEast - lonIndexWest + 1;
         this.bounds = bounds;
-
-        lowestAndHighestPoints = new LowestAndHighestPoints(this);
     }
 
     @Override
@@ -85,6 +105,9 @@ public class GeoTiffElevationGridView implements ElevationGridView {
 
     @Override
     public LowestAndHighestPoints getLowestAndHighestPoints() {
+        if (lowestAndHighestPoints == null) {
+            lowestAndHighestPoints = new LowestAndHighestPoints(this);
+        }
         return lowestAndHighestPoints;
     }
 }

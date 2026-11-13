@@ -142,6 +142,40 @@ public class LowestAndHighestPoints extends AbstractElevationGridPaintable {
     }
 
     /**
+     * Returns whether the lowest elevation is a valid elevation value (see
+     * {@link ElevationGridView#isNoDataValue(double)}).
+     *
+     * @return {@code true} if the lowest elevation is a valid elevation values,
+     *         {@code false} otherwise.
+     */
+    public boolean hasValidLowestElevation() {
+        return !getElevationGridView().isNoDataValue(lowestElevation);
+    }
+
+    /**
+     * Returns whether the highest elevation is a valid elevation value (see
+     * {@link ElevationGridView#isNoDataValue(double)}).
+     *
+     * @return {@code true} if the highest elevation is a valid elevation values,
+     *         {@code false} otherwise.
+     */
+    public boolean hasValidHighestElevation() {
+        return !getElevationGridView().isNoDataValue(highestElevation);
+    }
+
+    /**
+     * Returns whether both, lowest and highest elevation, are valid elevation
+     * values (see {@link ElevationGridView#isNoDataValue(double)}).
+     *
+     * @return {@code true} if lowest and highest elevation are valid elevation
+     *         values, {@code false} otherwise.
+     */
+    public boolean hasValidElevations() {
+        ElevationGridView view = getElevationGridView();
+        return !view.isNoDataValue(lowestElevation) && !view.isNoDataValue(highestElevation);
+    }
+
+    /**
      * Returns the lowest and highest elevation value in the tile grid view.
      *
      * @return The lowest and highest elevation value.

@@ -44,11 +44,11 @@ import hhtznr.josm.plugins.elevation.ElevationPlugin;
 import hhtznr.josm.plugins.elevation.ElevationPreferences;
 import hhtznr.josm.plugins.elevation.concurrent.AsyncOperationException;
 import hhtznr.josm.plugins.elevation.data.ElevationGridException;
+import hhtznr.josm.plugins.elevation.data.ElevationGridView;
 import hhtznr.josm.plugins.elevation.data.GeoTiffElevationDataProviderListener;
 import hhtznr.josm.plugins.elevation.data.coordinate.CoordinateUtil;
 import hhtznr.josm.plugins.elevation.data.coordinate.LatLonEle;
 import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffElevationGrid;
-import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffElevationGridView;
 import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffImage;
 import hhtznr.josm.plugins.elevation.data.geotiff.GeoTiffImageException;
 import hhtznr.josm.plugins.elevation.gui.dialogs.GeoTiffElevationLayerAdjustmentDialog;
@@ -72,9 +72,11 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
 
     private static final double MIN_CONTOUR_LINE_PIXELS = 100.0;
 
+    private static final double BOUNDS_SCALE_FACTOR = 1.5;
+
     private final GeoTiffImage geoTiffImage;
     private GeoTiffElevationGrid elevationGrid = null;
-    private GeoTiffElevationGridView elevationGridView = null;
+    private ElevationGridView previousElevationGridView = null;
     private BufferedImage grayscaleImage = null;
     private float grayscaleImageOpacity;
     private ElevationRaster elevationRaster = null;
@@ -83,6 +85,8 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
     private volatile Future<?> contourLinesFuture = null;
     private final Object contourLinesLock = new Object();
     private long contourLinesRequestId = 0L;
+    private LowestAndHighestPoints lowestAndHighestPoints = null;
+    private final Object lowestAndHighestPointsLock = new Object();
 
     // For storing of previous values
     private int contourLineIsostep;
@@ -227,57 +231,71 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
             return;
         }
 
-        boolean invalidatePaintables = false;
+        ElevationGridView elevationGridView = previousElevationGridView;
+
+        boolean invalidateUnscaledPaintables = false;
+        boolean invalidateScaledPaintables = false;
         boolean elevationGridViewRecreated = false;
 
         if (previousMapBounds == null || !previousMapBounds.equals(mapBounds)) {
-            if (elevationGridView == null) {
-                try {
-                    elevationGridView = elevationGrid.getView(mapBounds);
-                    elevationGridViewRecreated = true;
-                    invalidatePaintables = true;
-                } catch (ElevationGridException e) {
-                    Logging.warn("Elevation: Could not create map view for GeoTIFF with path'"
-                            + geoTiffImage.getAbsolutePath().toString() + "': " + e.toString());
-                    return;
+            try {
+                elevationGridView = elevationGrid.getView(mapBounds);
+                elevationGridViewRecreated = true;
+                invalidateUnscaledPaintables = true;
+            } catch (ElevationGridException e) {
+                Logging.warn("Elevation: Could not create map view for GeoTIFF with path'"
+                        + geoTiffImage.getAbsolutePath().toString() + "': " + e.toString());
+                return;
+            }
+
+            // Grid view will be null if there is no intersection
+            if (elevationGridView != null) {
+                // Bounds of the grid view are intersection of grid with map view
+                Bounds intersectionBounds = elevationGridView.getBounds();
+
+                // If there is no intersection, returned bounds will be null
+                if (intersectionBounds == null) {
+                    invalidateUnscaledPaintables = true;
+                    invalidateScaledPaintables = true;
+                    previousIntersectionBounds = null;
                 }
-            }
-
-            Bounds intersectionBounds = CoordinateUtil.trivialIntersection(mapBounds, elevationGridView.getBounds());
-
-            // If there is no intersection, returned bounds will be null
-            if (intersectionBounds == null) {
-                invalidatePaintables = true;
-                previousIntersectionBounds = null;
-            }
-            // Otherwise check whether the intersection has changed
-            else if (!intersectionBounds.equals(previousIntersectionBounds)) {
-
-                // Recreate the elevation grid view if it was not already (re-)created
-                if (!elevationGridViewRecreated) {
-                    try {
-                        elevationGridView = elevationGrid.getView(mapBounds);
-                        elevationGridViewRecreated = true;
-                        invalidatePaintables = true;
-                    } catch (ElevationGridException e) {
-                        Logging.warn("Elevation: Could not create map view for GeoTIFF with path'"
-                                + geoTiffImage.getAbsolutePath().toString() + "': " + e.toString());
-                        elevationGridView = null;
-                        return;
+                // Otherwise check whether the intersection has changed
+                // It will still be the same if GeoTIFF is completely visible in map view
+                else if (!intersectionBounds.equals(previousIntersectionBounds)) {
+                    // Recreate the elevation grid view if it was not already (re-)created
+                    if (!elevationGridViewRecreated) {
+                        try {
+                            elevationGridView = elevationGrid.getView(mapBounds);
+                            elevationGridViewRecreated = true;
+                            invalidateUnscaledPaintables = true;
+                        } catch (ElevationGridException e) {
+                            Logging.warn("Elevation: Could not create map view for GeoTIFF with path'"
+                                    + geoTiffImage.getAbsolutePath().toString() + "': " + e.toString());
+                            return;
+                        }
                     }
-                }
 
-                invalidatePaintables = true;
-                previousIntersectionBounds = intersectionBounds;
+                    invalidateUnscaledPaintables = true;
+                    previousIntersectionBounds = intersectionBounds;
+                }
+            } else {
+                previousIntersectionBounds = null;
             }
 
             previousMapBounds = mapBounds;
         }
+        previousElevationGridView = elevationGridView;
 
-        if (invalidatePaintables) {
+        if (invalidateScaledPaintables) {
             invalidateContourLines();
+        }
+
+        if (invalidateUnscaledPaintables) {
             synchronized (elevationRasterLock) {
                 elevationRaster = null;
+            }
+            synchronized (lowestAndHighestPointsLock) {
+                lowestAndHighestPoints = null;
             }
         }
 
@@ -303,11 +321,11 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
         }
 
         if (elevationRasterEnabled) {
-            drawElevationRater(g, mapView, elevationGridView);
+            drawElevationRaster(g, mapView, elevationGridView);
         }
 
         if (isContourLinesEnabled()) {
-            drawContourLines(g, mapView, elevationGridView);
+            drawContourLines(g, mapView, mapBounds, elevationGridView);
         }
 
         drawOutline(g, mapView);
@@ -372,17 +390,13 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
 
     }
 
-    private void drawElevationRater(Graphics2D g, MapView mapView, GeoTiffElevationGridView gridView) {
+    private void drawElevationRaster(Graphics2D g, MapView mapView, ElevationGridView gridView) {
         ElevationRaster currentElevationRaster;
         synchronized (elevationRasterLock) {
-            currentElevationRaster = elevationRaster;
-        }
-
-        if (currentElevationRaster == null) {
-            currentElevationRaster = new ElevationRaster(gridView);
-            synchronized (elevationRasterLock) {
-                elevationRaster = currentElevationRaster;
+            if (elevationRaster == null) {
+                elevationRaster = new ElevationRaster(gridView);
             }
+            currentElevationRaster = elevationRaster;
         }
 
         // Set the font for elevation value strings
@@ -424,7 +438,7 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
         }
     }
 
-    private void drawContourLines(Graphics2D g, MapView mapView, GeoTiffElevationGridView gridView) {
+    private void drawContourLines(Graphics2D g, MapView mapView, Bounds mapBounds, ElevationGridView mapGridView) {
         float layerContourLineStrokeWidth = getContourLineStrokeWidth();
         BasicStroke contourLineStroke = new BasicStroke(layerContourLineStrokeWidth, BasicStroke.CAP_ROUND,
                 BasicStroke.JOIN_ROUND);
@@ -463,16 +477,18 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
             upperCutoffElevation = newUpperCutoffElevation;
         }
 
-        if (currentContourLines == null || contourLineSettingsChanged) {
+        // Compute contour lines if no contour lines exist or
+        // if contour lines exist, but do not cover the map grid view of the GeoTIFF
+        if (currentContourLines == null || !currentContourLines.covers(mapGridView.getBounds())) {
             Future<?> future = contourLinesFuture;
             if (future == null || future.isDone()) {
-                triggerContourLineComputation(mapView, gridView, newContourLineIsostep, newLowerCutoffElevation,
+                triggerContourLineComputation(mapView, mapBounds, newContourLineIsostep, newLowerCutoffElevation,
                         newUpperCutoffElevation);
             }
-        }
-
-        if (currentContourLines == null) {
-            return;
+            currentContourLines = contourLines;
+            if (currentContourLines == null) {
+                return;
+            }
         }
 
         ContourLines.IsolinePath[] isolinePaths = currentContourLines.getIsolinePaths(mapView);
@@ -484,12 +500,19 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
         double maxEle = upperCutoffElevation;
         boolean useFalseColor = false;
         if (layerContourLineColoringScheme == Coloring.Scheme.FALSE_COLOR) {
-            LowestAndHighestPoints lowestAndHighestPoints = gridView.getLowestAndHighestPoints();
+            // Obtain lowest and highest points based on the map grid view
+            // This ensures that coloring is based on the visible points
+            LowestAndHighestPoints mapViewLowestAndHighestPoints;
+            synchronized (lowestAndHighestPointsLock) {
+                if (lowestAndHighestPoints == null) {
+                    lowestAndHighestPoints = mapGridView.getLowestAndHighestPoints();
+                }
+                mapViewLowestAndHighestPoints = lowestAndHighestPoints;
+            }
 
-            double lowestElevation = lowestAndHighestPoints.getLowestElevation();
-            double highestElevation = lowestAndHighestPoints.getHighestElevation();
-            if (!gridView.isNoDataValue(lowestElevation) && !gridView.isNoDataValue(highestElevation)
-                    && lowestElevation != highestElevation) {
+            double lowestElevation = mapViewLowestAndHighestPoints.getLowestElevation();
+            double highestElevation = mapViewLowestAndHighestPoints.getHighestElevation();
+            if (mapViewLowestAndHighestPoints.hasValidElevations() && lowestElevation != highestElevation) {
                 minEle = Math.max(minEle, lowestElevation);
                 maxEle = Math.min(maxEle, highestElevation);
                 useFalseColor = true;
@@ -524,11 +547,19 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
         }
     }
 
-    private void triggerContourLineComputation(MapView mapView, GeoTiffElevationGridView gridView,
-            int contourLineIsostep, short lowerCutoffElevation, short upperCutoffElevation) {
-        if (gridView == null) {
+    private void triggerContourLineComputation(MapView mapView, Bounds mapBounds, int contourLineIsostep,
+            short lowerCutoffElevation, short upperCutoffElevation) {
+        final ElevationGridView gridView;
+        try {
+            // Use scaled bounds to create contour lines larger than map view
+            // This avoid recalculation if map is slightly moved
+            gridView = elevationGrid.getView(CoordinateUtil.getScaledBounds(mapBounds, BOUNDS_SCALE_FACTOR));
+        } catch (ElevationGridException e) {
+            Logging.warn("Elevation: Could not create map view for GeoTIFF with path'"
+                    + geoTiffImage.getAbsolutePath().toString() + "': " + e.toString());
             return;
         }
+
         synchronized (contourLinesLock) {
             long requestId = ++contourLinesRequestId;
             contourLinesFuture = ElevationPlugin.getParallelExecutor().submit(() -> {
@@ -628,11 +659,21 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
         }
     }
 
-    private void drawLowestAndHighestPoints(Graphics2D g, MapView mapView, GeoTiffElevationGridView gridView) {
-        LowestAndHighestPoints lowestAndHighestPoints = gridView.getLowestAndHighestPoints();
+    private void drawLowestAndHighestPoints(Graphics2D g, MapView mapView, ElevationGridView gridView) {
+        LowestAndHighestPoints currentLowestAndHighestPoints;
+        synchronized (lowestAndHighestPointsLock) {
+            if (lowestAndHighestPoints == null) {
+                lowestAndHighestPoints = gridView.getLowestAndHighestPoints();
+            }
+            currentLowestAndHighestPoints = lowestAndHighestPoints;
+        }
 
-        List<LatLonEle> lowestPoints = lowestAndHighestPoints.getLowestPoints();
-        List<LatLonEle> highestPoints = lowestAndHighestPoints.getHighestPoints();
+        if (!currentLowestAndHighestPoints.hasValidElevations()) {
+            return;
+        }
+
+        List<LatLonEle> lowestPoints = currentLowestAndHighestPoints.getLowestPoints();
+        List<LatLonEle> highestPoints = currentLowestAndHighestPoints.getHighestPoints();
         int maxLowestPoints = Math.min(lowestPoints.size(), ElevationPreferences.MAX_RENDERED_LOWEST_OR_HIGHEST_POINTS);
         List<Point> lowestPixels = new ArrayList<>(maxLowestPoints);
         for (int i = 0; i < maxLowestPoints; i++) {
@@ -640,11 +681,9 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
             Point p = mapView.getPoint(latLonEle);
             lowestPixels.add(p);
         }
-        String textLowestElevation = "";
-        double lowestElevation = lowestAndHighestPoints.getLowestElevation();
-        if (!gridView.isNoDataValue(lowestElevation)) {
-            textLowestElevation = String.format("%.3f", lowestElevation);
-        }
+        double lowestElevation = currentLowestAndHighestPoints.getLowestElevation();
+        String textLowestElevation = String.format("%.3f", lowestElevation);
+
         int maxHighestPoints = Math.min(highestPoints.size(),
                 ElevationPreferences.MAX_RENDERED_LOWEST_OR_HIGHEST_POINTS);
         List<Point> highestPixels = new ArrayList<>(maxHighestPoints);
@@ -653,11 +692,8 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
             Point p = mapView.getPoint(latLonEle);
             highestPixels.add(p);
         }
-        String textHighestElevation = "";
-        double highestElevation = lowestAndHighestPoints.getHighestElevation();
-        if (!gridView.isNoDataValue(highestElevation)) {
-            textHighestElevation = String.format("%.3f", highestElevation);
-        }
+        double highestElevation = currentLowestAndHighestPoints.getHighestElevation();
+        String textHighestElevation = String.format("%.3f", highestElevation);
 
         // The size of the marker of an elevation data point in display coordinates
         final int markerSize = 8;
@@ -757,10 +793,13 @@ public class GeoTiffElevationLayer extends ElevationLayer implements GeoTiffElev
             }
             contourLines = null;
         }
+        synchronized (lowestAndHighestPointsLock) {
+            lowestAndHighestPoints = null;
+        }
         synchronized (elevationRasterLock) {
             elevationRaster = null;
         }
-        elevationGridView = null;
+        previousElevationGridView = null;
         elevationGrid = null;
 
         super.destroy();

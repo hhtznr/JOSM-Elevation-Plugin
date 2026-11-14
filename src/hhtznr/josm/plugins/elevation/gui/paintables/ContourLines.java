@@ -101,10 +101,10 @@ public class ContourLines extends AbstractElevationGridPaintable {
 
             // Apply lower cutoff elevation, if greater than minimum grid elevation
             // If result is not an integer, use next smaller integer value
-            short minEle = (short) Math.floor(Math.max(lowestElevation, lowerCutoffElevation));
+            short minEle = (short) Math.max((int) Math.floor(lowestElevation), lowerCutoffElevation);
             // Apply upper cutoff elevation, if smaller than maximum grid elevation
             // If result is not an integer, use next greater integer value
-            short maxEle = (short) Math.ceil(Math.min(highestElevation, upperCutoffElevation));
+            short maxEle = (short) Math.min((int) Math.ceil(highestElevation), upperCutoffElevation);
 
             short[] isovalues;
 

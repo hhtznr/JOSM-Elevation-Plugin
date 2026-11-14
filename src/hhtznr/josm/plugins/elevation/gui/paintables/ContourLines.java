@@ -99,12 +99,12 @@ public class ContourLines extends AbstractElevationGridPaintable {
             double lowestElevation = lowestAndHighestElevation.getLowestElevation();
             double highestElevation = lowestAndHighestElevation.getHighestElevation();
 
-            // Apply the lower cutoff elevation value, if it is greater than the minimum
-            // elevation within the grid
-            double minEle = Math.max(lowestElevation, lowerCutoffElevation);
-            // Apply the upper cutoff elevation value, if it is smaller than the maximum
-            // elevation within the grid
-            double maxEle = Math.min(highestElevation, upperCutoffElevation);
+            // Apply lower cutoff elevation, if greater than minimum grid elevation
+            // If result is not an integer, use next smaller integer value
+            short minEle = (short) Math.floor(Math.max(lowestElevation, lowerCutoffElevation));
+            // Apply upper cutoff elevation, if smaller than maximum grid elevation
+            // If result is not an integer, use next greater integer value
+            short maxEle = (short) Math.ceil(Math.min(highestElevation, upperCutoffElevation));
 
             short[] isovalues;
 
@@ -114,18 +114,19 @@ public class ContourLines extends AbstractElevationGridPaintable {
 
                 // Determine the list of isovalues, i.e. the elevation levels for which contour
                 // lines should be computed
-                // TODO: Use Math.ceil() and Math.floor() instead of cast to short
                 short minIsovalue;
                 short maxIsovalue;
-                if ((short) minEle % isostep == 0) {
-                    minIsovalue = (short) minEle;
+                // Min. and max. isovalue shall be divisible by isostep
+                // If isostep is e.g. 10, isovalues shall be e.g. 260, 280, 290, ..., 530
+                if (minEle % isostep == 0) {
+                    minIsovalue = minEle;
                 } else {
-                    minIsovalue = (short) (((short) minEle / isostep) * isostep);
+                    minIsovalue = (short) ((minEle / isostep) * isostep);
                 }
-                if ((short) maxEle % isostep == 0) {
-                    maxIsovalue = (short) maxEle;
+                if (maxEle % isostep == 0) {
+                    maxIsovalue = maxEle;
                 } else {
-                    maxIsovalue = (short) (((short) maxEle / isostep) * isostep);
+                    maxIsovalue = (short) ((maxEle / isostep) * isostep);
                 }
                 if (maxIsovalue < minIsovalue) {
                     isovalues = new short[0];
